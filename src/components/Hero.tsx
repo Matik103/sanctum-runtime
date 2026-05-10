@@ -1,0 +1,55 @@
+import { Button } from "@/components/ui/button";
+import { ArrowRight, BookOpen, ShieldCheck } from "lucide-react";
+import logo from "@/assets/sanctum-logo.png";
+
+export function Hero() {
+  return (
+    <section className="relative overflow-hidden pt-32 pb-24 md:pt-44 md:pb-36">
+      <div className="absolute inset-0 grid-bg opacity-40" />
+      <div className="absolute inset-0 bg-gradient-glow" />
+      <div className="absolute -top-20 left-1/2 h-[500px] w-[800px] -translate-x-1/2 bg-gradient-primary opacity-20 blur-[120px] rounded-full" />
+
+      <div className="container relative mx-auto px-6">
+        <div className="mx-auto max-w-4xl text-center">
+          <div className="mb-8 flex justify-center">
+            <img src={logo} alt="Sanctum" className="h-20 w-20 animate-float drop-shadow-[0_0_40px_rgba(79,124,255,0.5)]" />
+          </div>
+
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-4 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur">
+            <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+            Trusted Runtime for Physical AI
+          </div>
+
+          <h1 className="font-display text-5xl md:text-7xl font-semibold leading-[1.05] tracking-tight">
+            Trusted Infrastructure for{" "}
+            <span className="text-gradient">Physical AI</span>
+          </h1>
+
+          <p className="mx-auto mt-6 max-w-2xl text-lg md:text-xl text-muted-foreground leading-relaxed">
+            Sanctum secures humanoids, robots, and AI agents with local-first runtime
+            protection, behavioral monitoring, and action authorization.
+          </p>
+
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+            <Button size="lg" className="bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90 h-12 px-6">
+              Get Early Access
+              <ArrowRight className="ml-1 h-4 w-4" />
+            </Button>
+            <Button size="lg" variant="outline" className="glass h-12 px-6 hover:bg-surface">
+              <BookOpen className="mr-2 h-4 w-4" />
+              View Documentation
+            </Button>
+          </div>
+
+          <div className="mt-16 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs text-muted-foreground">
+            <span>Built for ROS2 · Jetson · Unitree</span>
+            <span className="hidden sm:inline">·</span>
+            <span>Local-first · Offline capable</span>
+            <span className="hidden sm:inline">·</span>
+            <span>SOC2-aligned audit logs</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
