@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { User, Brain, ShieldCheck, Bot } from "lucide-react";
 
 const nodes = [
@@ -20,9 +21,8 @@ export function Architecture() {
           <div className="absolute inset-0 grid-bg opacity-30" />
           <div className="relative grid grid-cols-1 md:grid-cols-7 items-center gap-6 md:gap-2">
             {nodes.map((node, i) => (
-              <>
+              <Fragment key={node.label}>
                 <div
-                  key={node.label}
                   className={`md:col-span-1 flex flex-col items-center text-center ${
                     node.highlight ? "md:scale-110" : ""
                   }`}
@@ -40,12 +40,12 @@ export function Architecture() {
                   <p className="mt-1 text-xs text-muted-foreground">{node.desc}</p>
                 </div>
                 {i < nodes.length - 1 && (
-                  <div key={`arrow-${i}`} className="md:col-span-1 flex justify-center">
+                  <div className="md:col-span-1 flex justify-center">
                     <div className="hidden md:block h-px w-full bg-gradient-to-r from-primary/20 via-primary to-primary/20" />
                     <div className="md:hidden h-8 w-px bg-gradient-to-b from-primary/20 via-primary to-primary/20" />
                   </div>
                 )}
-              </>
+              </Fragment>
             ))}
           </div>
         </div>
