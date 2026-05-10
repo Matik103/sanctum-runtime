@@ -1,26 +1,47 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Navbar } from "@/components/Navbar";
+import { Hero } from "@/components/Hero";
+import { Problem } from "@/components/Problem";
+import { Solution } from "@/components/Solution";
+import { Architecture } from "@/components/Architecture";
+import { SdkSection } from "@/components/SdkSection";
+import { UseCases } from "@/components/UseCases";
+import { Trust } from "@/components/Trust";
+import { CtaFooter } from "@/components/CtaFooter";
 
 export const Route = createFileRoute("/")({
   component: Index,
+  head: () => ({
+    meta: [
+      { title: "Sanctum — Trusted Runtime for Physical AI" },
+      {
+        name: "description",
+        content:
+          "Sanctum secures humanoids, robots, and AI agents with local-first runtime protection, behavioral monitoring, and action authorization.",
+      },
+      { property: "og:title", content: "Sanctum — Trusted Runtime for Physical AI" },
+      {
+        property: "og:description",
+        content: "Local-first runtime protection, behavioral monitoring, and action authorization for embodied intelligence.",
+      },
+    ],
+  }),
 });
 
-// IMPORTANT: Replace this placeholder. For sites with multiple pages (About, Services, Contact, etc.),
-// create separate route files (about.tsx, services.tsx, contact.tsx) — don't put all pages in this file.
-function PlaceholderIndex() {
+function Index() {
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <main>
+        <Hero />
+        <Problem />
+        <Solution />
+        <Architecture />
+        <SdkSection />
+        <UseCases />
+        <Trust />
+        <CtaFooter />
+      </main>
     </div>
   );
-}
-
-function Index() {
-  return <PlaceholderIndex />;
 }
