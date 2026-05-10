@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, BookOpen, ShieldCheck } from "lucide-react";
-import logo from "@/assets/sanctum-logo.png";
 
 export function Hero() {
   return (
@@ -11,10 +10,6 @@ export function Hero() {
 
       <div className="container relative mx-auto px-6">
         <div className="mx-auto max-w-4xl text-center">
-          <div className="mb-8 flex justify-center">
-            <img src={logo} alt="Sanctum" className="h-20 w-20 animate-float drop-shadow-[0_0_40px_rgba(79,124,255,0.5)]" />
-          </div>
-
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-4 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur">
             <ShieldCheck className="h-3.5 w-3.5 text-primary" />
             Trusted Runtime for Physical AI
