@@ -18,7 +18,9 @@ export function Navbar() {
           <a href="#trust" className="hover:text-foreground transition-colors">Trust</a>
         </nav>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" className="hidden sm:inline-flex text-muted-foreground hover:text-foreground">Docs</Button>
+          <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex text-muted-foreground hover:text-foreground">
+            <Link to="/docs">Docs</Link>
+          </Button>
           <Button size="sm" className="bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90">
             Get Early Access
           </Button>

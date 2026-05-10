@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, BookOpen, ShieldCheck } from "lucide-react";
 
@@ -30,9 +31,11 @@ export function Hero() {
               Get Early Access
               <ArrowRight className="ml-1 h-4 w-4" />
             </Button>
-            <Button size="lg" variant="outline" className="glass h-12 px-6 hover:bg-surface">
-              <BookOpen className="mr-2 h-4 w-4" />
-              View Documentation
+            <Button asChild size="lg" variant="outline" className="glass h-12 px-6 hover:bg-surface">
+              <Link to="/docs">
+                <BookOpen className="mr-2 h-4 w-4" />
+                View Documentation
+              </Link>
             </Button>
           </div>
 
