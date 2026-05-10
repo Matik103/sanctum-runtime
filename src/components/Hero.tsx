@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, BookOpen, ShieldCheck } from "lucide-react";
-import logo from "@/assets/sanctum-logo.png";
 
 export function Hero() {
   return (
