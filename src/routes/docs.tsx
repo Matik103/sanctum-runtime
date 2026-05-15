@@ -112,6 +112,7 @@ const toc = [
   { id: "architecture", label: "Architecture Philosophy" },
   { id: "stack", label: "Technology Stack" },
   { id: "quickstart", label: "Quick Start" },
+  { id: "open-core", label: "Open Source" },
   { id: "philosophy", label: "Runtime Philosophy" },
   { id: "long-term", label: "Long-Term Direction" },
   { id: "phase", label: "Current Phase" },
@@ -580,35 +581,85 @@ function DocsPage() {
               </Section>
 
               <Section id="quickstart" title="Quick Start">
-                <H3>Install Sanctum Runtime</H3>
-                <Code lang="bash" code={`npm install @sanctum/runtime`} />
+                <p>Goal: first verified action in under five minutes. Start the runtime API locally, then call it from your agent.</p>
 
-                <H3>Basic Runtime Initialization</H3>
+                <H3>1. Start the runtime</H3>
+                <Code
+                  lang="bash"
+                  code={`git clone https://github.com/Matik103/sanctum-runtime.git
+cd sanctum-runtime
+npm install
+npm run dev:runtime   # API :3001 · dashboard :5174`}
+                />
+
+                <H3>2. Install SDK (monorepo workspaces)</H3>
+                <Code lang="bash" code={`npm install @sanctum/sdk @sanctum/adapter-agent-runtime`} />
+
+                <H3>3. Verify before execute</H3>
                 <Code
                   lang="typescript"
-                  code={`const sanctum = new SanctumRuntime({
-  offlineMode: true,
-  actionVerification: true,
-  behavioralMonitoring: true,
+                  code={`import { SanctumRuntime } from "@sanctum/sdk"
+import { protectAgent, AgentActions } from "@sanctum/adapter-agent-runtime"
+
+const sanctum = new SanctumRuntime({ baseUrl: "http://127.0.0.1:3001" })
+
+await protectAgent(sanctum, {
+  actor: "workflow-agent",
+  action: AgentActions.SEND_EMAIL,
+  context: { to: "user@example.com" },
+  execute: async () => sendEmail(),
 })`}
                 />
 
-                <H3>Action Verification Example</H3>
+                <H3>Direct verify (no execute wrapper)</H3>
                 <Code
                   lang="typescript"
                   code={`const result = await sanctum.verifyAction({
   actor: "assistant-agent",
   action: "unlock_door",
-  context: {
-    user: "authorized_user",
-    location: "home_entry",
-  },
+  context: { time: "02:13 AM", owner_sleeping: true },
 })
 
-if (result.allowed) {
-  executeAction()
-}`}
+if (result.decision === "APPROVED") executeAction()`}
                 />
+              </Section>
+
+              <Section id="open-core" eyebrow="Strategy" title="Open Source & Enterprise">
+                <p>
+                  Sanctum uses an <strong>open-core</strong> model: open infrastructure for adoption,
+                  private intelligence and enterprise features for moat and revenue (PRD §4.3).
+                </p>
+
+                <H3>Public (open infrastructure)</H3>
+                <List
+                  items={[
+                    "Core runtime SDK — interception, verification, audit, events",
+                    "Basic policy engine — Approve, Verify, Block",
+                    "Local integrations — Ollama, llama.cpp, offline mode",
+                    "Category adapters — agents, ROS2 starters, examples",
+                    "CLI, examples, and this documentation",
+                    "Community dashboard — logs, actions, runtime status",
+                  ]}
+                />
+
+                <H3>Private (enterprise & intelligence)</H3>
+                <List
+                  items={[
+                    "Advanced threat intelligence and proprietary risk models",
+                    "Fleet orchestration and organization-wide policy sync",
+                    "Advanced analytics, trust scoring, behavioral intelligence",
+                    "Hosted Sanctum Cloud, compliance, and device attestation",
+                  ]}
+                />
+
+                <Quote>
+                  Public: how Sanctum works. Private: how Sanctum becomes smarter than competitors.
+                </Quote>
+
+                <p>
+                  License direction for OSS: Apache 2.0 or MIT initially; enterprise features may be
+                  dual-licensed later. See the repository and PRD for the current split.
+                </p>
               </Section>
 
               <Section id="philosophy" title="Runtime Philosophy">

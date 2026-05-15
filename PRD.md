@@ -1,6 +1,6 @@
 # Sanctum — Product Requirements Document (PRD)
 
-**Version:** 1.2  
+**Version:** 1.3  
 **Status:** Active — single source of truth for product and engineering  
 **Last updated:** 2026-05-15
 
@@ -50,14 +50,89 @@ As AI becomes embodied (robots, humanoids, industrial systems, smart environment
 
 ### 4.3 Open-core strategy (business + product boundary)
 
-| Layer | Model |
-|--------|--------|
-| **Free / open (adoption)** | Core SDK, local runtime basics, action verification basics, offline basics, developer APIs, community-oriented integrations, local audit patterns, plugins where applicable. |
-| **Paid — Sanctum Enterprise** | Advanced anomaly detection, fleet orchestration, enterprise dashboards, compliance tooling, policy engine depth, remote governance, device attestation, team management, encrypted sync, support, runtime analytics, behavioral intelligence. |
+**Model:** **Open core + private intelligence layer** — the standard infrastructure playbook (Stripe, Supabase, Vercel, Cloudflare pattern).
 
-**Positioning line (preferred):** “Open runtime infrastructure for trusted physical AI” — not “open-source robot security.”
+| Mental model | Meaning |
+|--------------|---------|
+| **Public** | “How Sanctum works.” — adoption, trust, ecosystem |
+| **Private** | “How Sanctum becomes smarter than competitors.” — moat, revenue, enterprise leverage |
+
+**Risk if wrong:** Open-sourcing too much → lose monetization and differentiation; competitors clone the moat. Hiding too much → developers don’t trust you, adoption and integrations stall.
 
 **North star before revenue:** Become the runtime developers **try first** (adoption, credibility, inspectability).
+
+**Positioning line (preferred):** “Open runtime infrastructure for trusted autonomous AI” — not “open-source robot security.”
+
+#### 4.3.1 Open-source layer (adoption engine)
+
+**License (strategy, not legal advice):** Prefer **Apache 2.0** or **MIT** for OSS tier initially; **dual-license** or commercial terms for enterprise features later.
+
+| Component | Open? | Notes |
+|-----------|-------|--------|
+| **Core runtime SDK** | **Yes** | Action interception, policy hooks, verification, local runtime connection, audit basics, events |
+| **Policy engine (basic)** | **Yes** | Approve / Verify / Block — not the moat |
+| **Local runtime integrations** | **Yes** | Ollama connector, local inference bridge, llama.cpp support — reinforces local-first identity |
+| **Category adapters** | **Yes** | Agent adapter, ROS2 starter, smart-home examples — ecosystem growth |
+| **CLI tools** | **Yes** | e.g. `sanctum init`, `sanctum monitor`, `sanctum policy` |
+| **Community dashboard (basic)** | **Partial** | Logs, actions, runtime events — enough to adopt; enterprise UX private |
+| **Documentation site** | **Yes** | Public docs are part of the product (onboarding, positioning, trust) |
+| **Examples & demos** | **Yes** | Example apps, demo agents, offline demos, policy samples, dashboard starter |
+
+**Target public GitHub layout (evolve from current monorepo):**
+
+```text
+sanctum-runtime    — core runtime (this repo: apps/api, packages/runtime-engine, …)
+sanctum-sdk          — @sanctum/sdk (or packages/sdk in monorepo)
+sanctum-docs         — public documentation (may mirror /docs route until split)
+sanctum-examples     — example apps, agents, policies
+sanctum-ros2         — ROS2 integration (Phase 2)
+sanctum-cli          — developer CLI (roadmap)
+```
+
+#### 4.3.2 Private layer (intelligence + enterprise)
+
+**Paid product:** Sanctum Enterprise / Sanctum Cloud — revenue, moat, enterprise leverage.
+
+| Component | Private | Why |
+|-----------|---------|-----|
+| **Advanced threat intelligence** | **Yes** | Behavioral scoring, anomaly models, attack heuristics, prompt-injection intelligence, proprietary risk engine — do not expose full detection logic |
+| **Enterprise orchestration** | **Yes** | Fleet management, org controls, centralized runtime, deployment orchestration, enterprise policy sync |
+| **Advanced runtime analytics** | **Yes** | Behavior graphs, predictive threats, trust scoring, behavioral intelligence |
+| **Cloud infrastructure** | **Yes** | Secure sync, enterprise APIs, managed runtime, multi-org |
+| **Compliance systems** | **Yes** | Healthcare/industrial governance, audit certification, signed runtime verification |
+| **Device attestation & secure identity** | **Yes** | TPM, hardware trust, signed runtime identities |
+| **Proprietary runtime intelligence** | **Yes** | Aggregated anomaly patterns, execution intelligence, trust models, telemetry datasets |
+| **Hosted Sanctum platform** | **Yes** | Sanctum Cloud / Enterprise control plane |
+
+**Private repos (future):** `sanctum-enterprise`, `sanctum-cloud`, `sanctum-intelligence`.
+
+**Current repo note:** Phase 1 MVP may ship heuristic + local-model risk in `runtime-engine` for demos; treat **advanced / fleet / cloud intelligence** as the line for what moves to private packages as the product matures (**§5** scope stays OSS-friendly basics).
+
+#### 4.3.3 Public documentation structure
+
+Public docs are **not** API reference only — they are developer onboarding, category positioning, trust building, ecosystem signaling (Stripe / Supabase / Vercel / Cloudflare quality bar).
+
+| # | Section | Public content |
+|---|---------|----------------|
+| 1 | **Introduction** | What Sanctum is; runtime trust; local-first; action verification; behavioral monitoring |
+| 2 | **Core concepts** | Runtime, policies, action verification, threat detection, offline mode, audit logging, runtime integrity |
+| 3 | **Quick start** | Working in **&lt; 5 minutes** — install SDK, init runtime, first verification |
+| 4 | **SDK reference** | Methods, APIs, events, policy hooks, adapters (e.g. `verifyAction`, policy CRUD, `onThreatDetected` roadmap) |
+| 5 | **Policies** | Approve / Verify / Block; action categories; policy flows; examples |
+| 6 | **Runtime events** | e.g. `action.requested`, `action.blocked`, `threat.detected`, `runtime.offline`, `verification.required` |
+| 7 | **Local runtime setup** | Ollama, local models, offline mode, local verification — **differentiation** |
+| 8 | **Integration guides** | AI agents, robotics, smart home, local AI, ROS2, Node, Python |
+| 9 | **Architecture overview** | **High level only:** AI → Sanctum → Policy → Execution — **no** internal scoring, proprietary threat models, or enterprise orchestration internals |
+| 10 | **Open-source examples** | Example apps, demo agents, offline demos, policies, dashboard starter |
+
+Canonical implementation: marketing **`/docs`** route (**§6.3**) until a dedicated docs site ships.
+
+#### 4.3.4 Summary matrix
+
+| Open (infrastructure) | Private (intelligence + enterprise) |
+|------------------------|-------------------------------------|
+| Runtime SDK, adapters, local integrations, policy framework, examples, docs, basic dashboard, developer tooling | Advanced detection, orchestration, enterprise controls, behavioral intelligence, analytics, cloud infra, trust scoring, compliance, attestation |
+| **Purpose:** adoption, trust, ecosystem | **Purpose:** moat, monetization, enterprise leverage |
 
 ### 4.4 Defensibility and competitive reality
 
@@ -171,12 +246,12 @@ Enterprises require **observability**; this is non-negotiable for MVP credibilit
 
 **Required sections (content + UX):**
 
-1. **Hero** — Headline: *Trusted Infrastructure for Physical AI*. Subhead: Sanctum secures humanoids, robots, and AI agents with local-first runtime protection, behavioral monitoring, and action authorization. CTAs: **Get Early Access**, **View Documentation**. Background: dark animated grid + subtle neural motion (restrained).
+1. **Hero** — Headline: *Runtime trust infrastructure for autonomous systems*. Subhead: between AI reasoning and execution — permissions, verification, audit, local governance. CTAs: **Get Early Access**, **View Documentation**. Background: dark animated grid + subtle neural motion (restrained).
 2. **Problem** — Title: *AI Can Think. But Can You Trust It?* Themes: cloud dependence, hijacking, unsafe actions, prompt injection, privacy.
 3. **Solution** — Title: *The Runtime Layer for Trusted Autonomy.* Three pillars: **Action Firewall**, **Local Cognition**, **Behavioral Monitoring**.
 4. **Architecture** — Interactive diagram: User → AI Model → **Sanctum Runtime** → Physical Actions (must feel concrete).
 5. **SDK** — Snippet developers copy mentally in 10 seconds, e.g. `SanctumRuntime` with `offlineMode`, `actionVerification`, `behavioralMonitoring`.
-6. **Use cases** — Cards: Humanoids, AI Assistants, Industrial Robotics, Drones, Smart Homes, Autonomous Systems.
+6. **Use cases** — Lead with **AI Agents**; then humanoids/robotics, industrial, drones, smart home, enterprise automation (**§4.5**).
 7. **Trust / metrics** — Actions verified, threats blocked, offline integrity, runtime latency (simulated acceptable initially with honest labeling).
 8. **Final CTA** — *Build AI Humans Can Trust* + **Request Access**.
 
@@ -194,6 +269,35 @@ Enterprises require **observability**; this is non-negotiable for MVP credibilit
 - **Permission** flows (policies, roles, exceptions as v1 allows)  
 
 **Auth:** Use company **external Supabase** (see §7) for identity; dashboard is authenticated, role-aware (details in security appendix as implemented).
+
+**Open-core boundary:** MVP dashboard in this repo is the **community/basic** tier (**§4.3.1**). Enterprise fleet, org views, advanced analytics, and compliance UX stay **private** (**§4.3.2**).
+
+### 6.3 Public documentation (`/docs`)
+
+**Purpose:** Developer onboarding + trust + ecosystem (**§4.3.3**). Same narrative as marketing site; deeper technical depth.
+
+**Required sections (align TOC with §4.3.3):** Introduction, core concepts, quick start (&lt; 5 min), SDK, policies, runtime events (document as implemented / roadmap), local runtime (Ollama), integration guides, high-level architecture, open-source & examples, **open-core** (what is public vs private — transparency without giving away moat).
+
+**Do not publish in public docs:** Internal risk scoring formulas, full threat-model weights, enterprise orchestration internals, proprietary telemetry schemas.
+
+**Quick start contract (canonical packages):**
+
+```bash
+npm install @sanctum/sdk @sanctum/adapter-agent-runtime
+```
+
+```ts
+import { SanctumRuntime } from '@sanctum/sdk'
+import { protectAgent, AgentActions } from '@sanctum/adapter-agent-runtime'
+
+const sanctum = new SanctumRuntime({ baseUrl: 'http://127.0.0.1:3001' })
+await protectAgent(sanctum, {
+  actor: 'workflow-agent',
+  action: AgentActions.SEND_EMAIL,
+  context: { to: 'user@example.com' },
+  execute: async () => { /* ... */ },
+})
+```
 
 ---
 
@@ -334,7 +438,8 @@ Enterprises require **observability**; this is non-negotiable for MVP credibilit
 |------|--------|
 | **Embodied intelligence** | AI that can affect the physical world or high-risk digital side effects. |
 | **Runtime** | The execution boundary where Sanctum evaluates and logs actions. |
-| **Open-core** | OSS SDK/adoption layer; paid enterprise control plane and advanced features. |
+| **Open-core** | OSS infrastructure layer (**§4.3.1**); paid intelligence + enterprise layer (**§4.3.2**). |
+| **Intelligence layer** | Private threat scoring, behavioral models, fleet analytics, proprietary telemetry (**§4.3.2**). |
 | **Autonomous AI systems** | AI that executes actions with operational effect (agents, robots, automation, edge). |
 | **Category adapter** | Pluggable action schema + policies + UI module for a market segment (**§17**). |
 | **Runtime trust** | Intercept, evaluate, approve/verify/block, audit — between reasoning and execution. |

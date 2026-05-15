@@ -6,7 +6,7 @@ Use this file as the **entry point** for how we build Sanctum in this repository
 
 | Artifact | Role |
 |----------|------|
-| **[`PRD.md`](./PRD.md)** | Single source of truth: product scope, MVP (**§5**), surfaces (**§6**), external Supabase (**§7**), stack, design system (**§12**), roadmap (**§13**), open-core vs enterprise (**§4.3**), defensibility / moats (**§4.4**), market map (**§4.5**), category adapters (**§17**), feature verification (**§18**). |
+| **[`PRD.md`](./PRD.md)** | Single source of truth: MVP (**§5**), surfaces (**§6**), Supabase (**§7**), open-core vs private intelligence (**§4.3**, public docs **§6.3**), defensibility (**§4.4**), market map (**§4.5**), adapters (**§17**), verification (**§18**). |
 | **[`.cursor/rules/prd-alignment.mdc`](./.cursor/rules/prd-alignment.mdc)** | Cursor **always-on** rule: map work to PRD sections; no silent scope drift; respect Supabase and open-core boundaries. |
 
 ## Before you ship a feature
@@ -17,7 +17,9 @@ Use this file as the **entry point** for how we build Sanctum in this repository
 ## Quick navigation (`PRD.md`)
 
 - **§4.5** — Market map and positioning (autonomous AI systems, not humanoids-only)  
-- **§4.3–§4.4** — Open-core boundaries and competitive / defensibility strategy  
+- **§4.3** — Open core vs private intelligence layer (what to open-source, what stays enterprise)  
+- **§4.3.3 / §6.3** — Public documentation structure (`/docs`)  
+- **§4.4** — Defensibility and competitive strategy  
 - **§17** — Category expansion via adapters (do not build 12 products)  
 - **§5** — MVP only (action verification, behavioral monitoring, offline, audit logs)  
 - **§7** — External Supabase (auth, Postgres, RLS, realtime)  
