@@ -17,8 +17,8 @@ export function Hero() {
           </div>
 
           <h1 className="font-display text-5xl md:text-7xl font-semibold leading-[1.05] tracking-tight">
-            Trusted Infrastructure for{" "}
-            <span className="text-gradient">Physical AI</span>
+            Runtime trust infrastructure for{" "}
+            <span className="text-gradient">autonomous systems</span>
           </h1>
 
           <p className="mx-auto mt-6 max-w-2xl text-lg md:text-xl text-muted-foreground leading-relaxed">
