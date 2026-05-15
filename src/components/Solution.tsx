@@ -4,7 +4,7 @@ const pillars = [
   {
     icon: ShieldCheck,
     title: "Action Firewall",
-    desc: "Every physical action is intercepted, evaluated against permission policy, and approved or blocked — before a single motor moves.",
+    desc: "Every high-stakes action is intercepted, evaluated against policy, and approved, verified, or blocked — before execution.",
   },
   {
     icon: Cpu,

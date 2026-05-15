@@ -1,19 +1,15 @@
 import { Check } from "lucide-react";
 
-const code = `import { SanctumRuntime } from "@sanctum/runtime";
+const code = `import { SanctumRuntime } from "@sanctum/sdk";
+import { protectAgent, AgentActions } from "@sanctum/adapter-agent-runtime";
 
-const sanctum = new SanctumRuntime({
-  offlineMode: true,
-  actionVerification: true,
-  policy: "./sanctum.policy.yaml",
-});
+const sanctum = new SanctumRuntime({ baseUrl: "http://127.0.0.1:3001" });
 
-// Intercept every physical action
-await sanctum.authorize({
-  agent: "humanoid-04",
-  action: "arm.grasp",
-  target: "object_id_8821",
-  confidence: 0.92,
+await protectAgent(sanctum, {
+  actor: "workflow-agent",
+  action: AgentActions.DELETE_FILE,
+  context: { path: "/project/src" },
+  execute: async () => fs.rm("/project/src", { recursive: true }),
 });`;
 
 const features = [
@@ -33,8 +29,8 @@ export function SdkSection() {
             Four lines between your model and the real world.
           </h2>
           <p className="mt-5 text-lg text-muted-foreground leading-relaxed">
-            Sanctum Runtime sits between your AI agent and its actuators.
-            Permissions, anomaly detection, and full audit — without rewriting your stack.
+            Sanctum sits between your agent and execution — verify, govern, and audit
+            every action without rewriting your stack.
           </p>
           <ul className="mt-8 space-y-3">
             {features.map((f) => (

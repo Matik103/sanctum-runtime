@@ -13,7 +13,7 @@ export function Hero() {
         <div className="mx-auto max-w-4xl text-center">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-4 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur">
             <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-            Trusted Runtime for Physical AI
+            Runtime trust for autonomous AI
           </div>
 
           <h1 className="font-display text-5xl md:text-7xl font-semibold leading-[1.05] tracking-tight">
@@ -22,8 +22,9 @@ export function Hero() {
           </h1>
 
           <p className="mx-auto mt-6 max-w-2xl text-lg md:text-xl text-muted-foreground leading-relaxed">
-            Sanctum secures humanoids, robots, and AI agents with local-first runtime
-            protection, behavioral monitoring, and action authorization.
+            Sanctum sits between AI reasoning and real-world execution — permissions,
+            verification, audit logs, and local governance for agents, robotics, and
+            automation.
           </p>
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
@@ -40,7 +41,7 @@ export function Hero() {
           </div>
 
           <div className="mt-16 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs text-muted-foreground">
-            <span>Built for ROS2 · Jetson · Unitree</span>
+            <span>AI agents · ROS2 · Ollama · edge</span>
             <span className="hidden sm:inline">·</span>
             <span>Local-first · Offline capable</span>
             <span className="hidden sm:inline">·</span>

@@ -1,0 +1,25 @@
+---
+description: Verify all feature work against PRD.md (scope, stack, MVP)
+alwaysApply: true
+---
+
+# PRD alignment (Sanctum)
+
+The canonical product spec is **`PRD.md`** at the repository root. Treat it as the gate for what we build and how we position it.
+
+## Before implementing or changing a feature
+
+1. **Identify** which PRD section applies (MVP §5, surfaces §6, Supabase §7, backend §8, design §12, roadmap §13, market §4.5, category/adapters §17, open-core §4.3, defensibility §4.4).
+2. **Confirm** the work is **in scope** for the current phase. If it is not in MVP §5 or the active week in §13, **stop** and ask whether to extend the PRD first (do not silently expand scope).
+3. **Stack** — Auth/data/realtime must follow **§7 (external Supabase)**. Do not introduce an alternate primary database or auth without an explicit PRD update.
+4. **Positioning** — Copy, UX tone, and “what we sell” must match **§2 / §6** (trust infrastructure for embodied intelligence; not toy “robot security”).
+
+## When the code and PRD disagree
+
+- Prefer **updating the PRD** in the same change set (or follow-up PR) when the product decision is intentional.
+- If only a technical shortcut is needed, document it in code or a short ADR comment and keep behavior within PRD **intent** (e.g. MVP still delivers action verification + auditability).
+
+## PR checklist (implicit for any feature PR)
+
+- [ ] Linked or summarized the **PRD section(s)** this change satisfies.
+- [ ] No **undocumented** scope beyond MVP/roadmap unless PRD was updated.

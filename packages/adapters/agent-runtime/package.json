@@ -1,0 +1,13 @@
+{
+  "name": "@sanctum/adapter-agent-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@sanctum/sdk": "*",
+    "zod": "^3.24.2"
+  }
+}

@@ -13,16 +13,17 @@ export const Route = createFileRoute("/")({
   component: Index,
   head: () => ({
     meta: [
-      { title: "Sanctum — Trusted Runtime for Physical AI" },
+      { title: "Sanctum — Runtime Trust for Autonomous AI" },
       {
         name: "description",
         content:
-          "Sanctum secures humanoids, robots, and AI agents with local-first runtime protection, behavioral monitoring, and action authorization.",
+          "Runtime trust infrastructure for autonomous AI systems — action verification, permissions, audit logs, and local governance.",
       },
-      { property: "og:title", content: "Sanctum — Trusted Runtime for Physical AI" },
+      { property: "og:title", content: "Sanctum — Runtime Trust for Autonomous AI" },
       {
         property: "og:description",
-        content: "Local-first runtime protection, behavioral monitoring, and action authorization for embodied intelligence.",
+        content:
+          "Sanctum provides runtime trust infrastructure between AI reasoning and real-world execution.",
       },
     ],
   }),

@@ -1,12 +1,12 @@
-import { Bot, MessageSquare, Factory, Plane, Home, Rocket } from "lucide-react";
+import { Workflow, Bot, Factory, Plane, Home, Rocket } from "lucide-react";
 
 const cases = [
-  { icon: Bot, title: "Humanoids", desc: "Authorize every limb action against signed policy." },
-  { icon: MessageSquare, title: "AI Assistants", desc: "Block tool calls that exceed user permissions." },
-  { icon: Factory, title: "Industrial Robotics", desc: "Halt unsafe sequences before they reach the floor." },
-  { icon: Plane, title: "Drones", desc: "Geofenced action approval, fully offline." },
-  { icon: Home, title: "Smart Homes", desc: "Local intent verification — no cloud required." },
-  { icon: Rocket, title: "Autonomous Systems", desc: "Cryptographic chain of custody for every decision." },
+  { icon: Workflow, title: "AI Agents", desc: "Verify emails, files, APIs, and workflows before they execute." },
+  { icon: Bot, title: "Humanoids & Robotics", desc: "Authorize physical actions against signed policy — flagship path." },
+  { icon: Factory, title: "Industrial Automation", desc: "Halt unsafe sequences before they reach the floor." },
+  { icon: Plane, title: "Drones & Mobility", desc: "Geofenced commands and routing governance, offline-capable." },
+  { icon: Home, title: "Smart Home AI", desc: "Locks, cameras, and automations with local intent verification." },
+  { icon: Rocket, title: "Enterprise Automation", desc: "Governance, audit trails, and approval chains for AI workflows." },
 ];
 
 export function UseCases() {
@@ -15,7 +15,7 @@ export function UseCases() {
       <div className="container mx-auto px-6">
         <div className="mx-auto max-w-2xl text-center">
           <p className="text-sm font-medium text-primary uppercase tracking-wider">Use cases</p>
-          <h2 className="mt-3 text-4xl md:text-5xl font-semibold">Built for any embodied agent</h2>
+          <h2 className="mt-3 text-4xl md:text-5xl font-semibold">One runtime, every autonomous system</h2>
         </div>
 
         <div className="mt-16 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">

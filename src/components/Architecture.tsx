@@ -5,7 +5,7 @@ const nodes = [
   { icon: User, label: "Operator", desc: "Human intent" },
   { icon: Brain, label: "AI Model", desc: "Local or cloud LLM" },
   { icon: ShieldCheck, label: "Sanctum Runtime", desc: "Verify · Authorize · Audit", highlight: true },
-  { icon: Bot, label: "Physical Action", desc: "Motors · Sensors · Effectors" },
+  { icon: Bot, label: "Execution", desc: "APIs · Devices · Physical world" },
 ];
 
 export function Architecture() {
@@ -14,7 +14,7 @@ export function Architecture() {
       <div className="container mx-auto px-6">
         <div className="mx-auto max-w-2xl text-center">
           <p className="text-sm font-medium text-primary uppercase tracking-wider">Architecture</p>
-          <h2 className="mt-3 text-4xl md:text-5xl font-semibold">A trust layer between thought and motion</h2>
+          <h2 className="mt-3 text-4xl md:text-5xl font-semibold">Between reasoning and execution</h2>
         </div>
 
         <div className="mt-16 glass rounded-3xl p-8 md:p-12 relative overflow-hidden">

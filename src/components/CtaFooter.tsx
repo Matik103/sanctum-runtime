@@ -14,7 +14,7 @@ export function CtaFooter() {
           can <span className="text-gradient">trust</span>.
         </h2>
         <p className="mt-6 text-lg text-muted-foreground max-w-xl mx-auto">
-          Join the early access program shaping the runtime layer of physical intelligence.
+          Join early access for runtime trust infrastructure — agents today, embodied systems tomorrow.
         </p>
         <div className="mt-10 flex justify-center">
           <Button size="lg" className="bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90 h-12 px-8">
@@ -29,7 +29,7 @@ export function CtaFooter() {
           <div className="flex items-center gap-2">
             <img src={logo} alt="Sanctum" className="h-6 w-6" />
             <span className="font-display font-semibold text-foreground">Sanctum</span>
-            <span className="ml-2">— Trusted Runtime for Physical AI</span>
+            <span className="ml-2">— Runtime trust for autonomous AI</span>
           </div>
           <div className="flex items-center gap-6">
             <a href="#" className="hover:text-foreground">Docs</a>

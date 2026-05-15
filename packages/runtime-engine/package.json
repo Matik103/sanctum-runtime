@@ -1,0 +1,15 @@
+{
+  "name": "@sanctum/runtime-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@sanctum/audit-system": "*",
+    "@sanctum/ollama-bridge": "*",
+    "@sanctum/policy-engine": "*",
+    "@sanctum/sdk": "*"
+  }
+}

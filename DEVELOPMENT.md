@@ -6,7 +6,7 @@ Use this file as the **entry point** for how we build Sanctum in this repository
 
 | Artifact | Role |
 |----------|------|
-| **[`PRD.md`](./PRD.md)** | Single source of truth: product scope, MVP (**§5**), surfaces (**§6**), external Supabase (**§7**), stack, design system (**§12**), roadmap (**§13**), open-core vs enterprise (**§4.3**), defensibility / moats (**§4.4**), feature verification (**§17**). |
+| **[`PRD.md`](./PRD.md)** | Single source of truth: product scope, MVP (**§5**), surfaces (**§6**), external Supabase (**§7**), stack, design system (**§12**), roadmap (**§13**), open-core vs enterprise (**§4.3**), defensibility / moats (**§4.4**), market map (**§4.5**), category adapters (**§17**), feature verification (**§18**). |
 | **[`.cursor/rules/prd-alignment.mdc`](./.cursor/rules/prd-alignment.mdc)** | Cursor **always-on** rule: map work to PRD sections; no silent scope drift; respect Supabase and open-core boundaries. |
 
 ## Before you ship a feature
@@ -16,13 +16,72 @@ Use this file as the **entry point** for how we build Sanctum in this repository
 
 ## Quick navigation (`PRD.md`)
 
+- **§4.5** — Market map and positioning (autonomous AI systems, not humanoids-only)  
 - **§4.3–§4.4** — Open-core boundaries and competitive / defensibility strategy  
+- **§17** — Category expansion via adapters (do not build 12 products)  
 - **§5** — MVP only (action verification, behavioral monitoring, offline, audit logs)  
 - **§7** — External Supabase (auth, Postgres, RLS, realtime)  
 - **§13** — Week 1–3 engineering sequence  
-- **§17** — Feature verification + Cursor enforcement  
+- **§18** — Feature verification + Cursor enforcement  
 
 Do not treat messaging or stack choices as informal — if it affects product behavior or positioning, it belongs in **`PRD.md`**.
+
+## Phase 1 runtime (PRD §5)
+
+Monorepo layout:
+
+```text
+apps/api              — Fastify runtime API (port 3001)
+apps/dashboard        — Trust dashboard UI (port 5174)
+packages/sdk          — Types + SanctumClient / SanctumRuntime
+packages/runtime-engine — Intercept → policy → risk → audit
+packages/policy-engine
+packages/audit-system
+packages/adapters/agent-runtime — Category 1 adapter (PRD §17)
+services/ollama-bridge — Local Qwen risk analysis
+```
+
+**Agent adapter (verify before execute):**
+
+```ts
+import { SanctumRuntime } from '@sanctum/sdk'
+import { protectAgent, AgentActions } from '@sanctum/adapter-agent-runtime'
+
+const sanctum = new SanctumRuntime()
+await protectAgent(sanctum, {
+  actor: 'workflow-agent',
+  action: AgentActions.SEND_EMAIL,
+  context: { to: 'customer@example.com' },
+  execute: async () => sendMail(...),
+})
+```
+
+**Start the runtime stack** (API + dashboard; keep Ollama running for online risk calls):
+
+```bash
+npm run dev:runtime
+```
+
+Or separately:
+
+```bash
+npm run dev:api        # http://127.0.0.1:3001
+npm run dev:dashboard  # http://127.0.0.1:5174
+```
+
+**Demo flow:** Dashboard → “Demo: Unlock door” (online vs offline). Expect `REQUIRE_VERIFICATION` or `BLOCKED` for `unlock_door` at 2 AM with policy + anomaly rules.
+
+**API (examples):**
+
+```bash
+curl -X POST http://127.0.0.1:3001/v1/actions/verify \
+  -H 'Content-Type: application/json' \
+  -d '{"actor":"local-agent","action":"unlock_door","context":{"time":"02:13 AM","owner_sleeping":true},"offlineMode":true}'
+```
+
+Copy [`.env.example`](./.env.example) to `.env` to tune `OLLAMA_MODEL`, `SANCTUM_OFFLINE_MODE`, etc.
+
+Marketing site (root): `npm run dev` → port 8080.
 
 ## Local AI (dev / PRD §9)
 

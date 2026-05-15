@@ -10,13 +10,13 @@ export const Route = createFileRoute("/docs")({
       {
         name: "description",
         content:
-          "Sanctum Runtime documentation: trusted infrastructure for physical AI. Local-first runtime protection, behavioral monitoring, and action authorization.",
+          "Sanctum Runtime documentation: runtime trust infrastructure for autonomous AI systems.",
       },
       { property: "og:title", content: "Documentation — Sanctum Runtime" },
       {
         property: "og:description",
         content:
-          "Local-first runtime protection, behavioral monitoring, and action authorization for humanoids, robotics, and autonomous AI.",
+          "Action verification, permissions, audit logs, and local governance for agents, robotics, and automation.",
       },
     ],
   }),
@@ -160,12 +160,12 @@ function DocsPage() {
                   Sanctum Runtime
                 </p>
                 <h1 className="font-display text-5xl md:text-6xl font-semibold tracking-tight leading-[1.05]">
-                  Trusted Infrastructure for{" "}
-                  <span className="text-gradient">Physical AI</span>
+                  Runtime trust infrastructure for{" "}
+                  <span className="text-gradient">autonomous AI</span>
                 </h1>
                 <p className="mt-6 text-lg text-muted-foreground leading-relaxed">
-                  Local-first runtime protection, behavioral monitoring, and action
-                  authorization for humanoids, robotics systems, and autonomous AI.
+                  Sanctum provides runtime trust between AI reasoning and real-world
+                  execution — for agents, robotics, automation, and embodied systems.
                 </p>
               </header>
 
@@ -205,7 +205,7 @@ function DocsPage() {
                   ]}
                 />
                 <p>Sanctum exists to solve this problem.</p>
-                <p>We are building the runtime trust layer for embodied intelligence.</p>
+                <p>We are building runtime trust infrastructure for autonomous AI systems.</p>
               </Section>
 
               <Section id="why" title="Why Sanctum Exists">
@@ -239,8 +239,8 @@ function DocsPage() {
 
               <Section id="what" title="What Sanctum Is">
                 <p>
-                  Sanctum is a local-first runtime security and action authorization
-                  platform for physical AI systems.
+                  Sanctum is a local-first runtime trust layer for autonomous AI systems —
+                  agents, robotics, automation, and embodied platforms.
                 </p>
                 <p>It acts as a secure control layer between:</p>
                 <List

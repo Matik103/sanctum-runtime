@@ -72,11 +72,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Sanctum — Trusted Runtime for Physical AI" },
-      { name: "description", content: "Local-first runtime protection, behavioral monitoring, and action authorization for embodied intelligence." },
+      { title: "Sanctum — Runtime Trust for Autonomous AI" },
+      {
+        name: "description",
+        content:
+          "Runtime trust infrastructure for autonomous AI systems — verification, permissions, audit, and local governance.",
+      },
       { name: "author", content: "Sanctum" },
-      { property: "og:title", content: "Sanctum — Trusted Runtime for Physical AI" },
-      { property: "og:description", content: "Secure humanoids, robots and AI agents with the Sanctum runtime." },
+      { property: "og:title", content: "Sanctum — Runtime Trust for Autonomous AI" },
+      {
+        property: "og:description",
+        content: "Sanctum provides runtime trust infrastructure between AI reasoning and real-world execution.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },

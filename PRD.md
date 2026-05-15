@@ -1,0 +1,423 @@
+# Sanctum — Product Requirements Document (PRD)
+
+**Version:** 1.2  
+**Status:** Active — single source of truth for product and engineering  
+**Last updated:** 2026-05-15
+
+---
+
+## 1. Purpose of this document
+
+This PRD defines what Sanctum is, what we build first, how we position it, and the technical and design constraints the team uses for day-to-day development. All features, stack choices, and scope decisions should trace back here unless explicitly superseded.
+
+---
+
+## 2. Executive summary
+
+**Product name:** Sanctum  
+**Primary product:** Sanctum Runtime — trust layer between AI reasoning and physical or high-risk execution.
+
+**Tagline:** Trusted Runtime for Physical AI  
+**Alternative positioning:** Sovereign Intelligence Infrastructure  
+**Market positioning (primary):** **Runtime trust infrastructure for autonomous AI systems** — not “humanoid security” alone (that market is still early). Physical AI and humanoids remain a **flagship** narrative, not the **only** market.
+
+**Core narrative (do not dilute):** We are **not** selling “robot protection” or fear-based “AI dangers.” We sell **trusted execution infrastructure** — observable, permission-aware, auditable, resilient — wherever AI can **do, move, decide, control, access, trigger, or execute**.
+
+**Starting wedge (Phase 1 only):**  
+**AI Behavioral Firewall + Action Permission SDK** — prioritize **AI agents** and **local/edge developers** first (market exists today); humanoids and full category adapters follow the shared runtime architecture (**§17**).
+
+---
+
+## 3. Problem statement
+
+As AI becomes embodied (robots, humanoids, industrial systems, smart environments), risks shift from “bad outputs” to **unauthorized or unsafe real-world actions**: cloud dependence, remote manipulation, prompt injection, unsafe command chains, and weak observability. Sanctum exists to provide a **runtime trust layer**: intercept, evaluate, approve/block/escalate, log, and remain usable **local-first / offline-capable** where it matters.
+
+---
+
+## 4. Product definition
+
+### 4.1 What Sanctum is
+
+- **Local-first** runtime security and **action authorization** for physical AI and high-stakes agentic systems.
+- Sits between **models**, **devices**, **users**, **cloud**, and **actions**.
+- Goals for builders: **observable**, **permission-aware**, **auditable**, **resilient**, **safer to deploy**.
+
+### 4.2 What Sanctum is not (near term)
+
+- Not a full robotics stack replacement.
+- Not “block all AI” — the objective is **trusted autonomy**, not fear-based restriction.
+- Not the complete long-term synthetic identity / memory platform in v1 — that remains **directional** only.
+
+### 4.3 Open-core strategy (business + product boundary)
+
+| Layer | Model |
+|--------|--------|
+| **Free / open (adoption)** | Core SDK, local runtime basics, action verification basics, offline basics, developer APIs, community-oriented integrations, local audit patterns, plugins where applicable. |
+| **Paid — Sanctum Enterprise** | Advanced anomaly detection, fleet orchestration, enterprise dashboards, compliance tooling, policy engine depth, remote governance, device attestation, team management, encrypted sync, support, runtime analytics, behavioral intelligence. |
+
+**Positioning line (preferred):** “Open runtime infrastructure for trusted physical AI” — not “open-source robot security.”
+
+**North star before revenue:** Become the runtime developers **try first** (adoption, credibility, inspectability).
+
+### 4.4 Defensibility and competitive reality
+
+**Reality for infrastructure startups:** The **idea** is easy to copy — landing pages, SDK concepts, feature lists, UI, repos, messaging. The **company** is not. Defensibility does **not** come from patents, secrecy, or “stealth mode” alone (especially in AI — the market moves fast). If the wedge is real, **parts will be copied**. The strategic goal is **not** to prevent all copying; it is to **become the trusted default before others do**.
+
+**What is hard to copy (real moats):**
+
+| Moat | Why it compounds |
+|------|-------------------|
+| **Ecosystem adoption** | Developers wire APIs, integrations, policies, workflows, plugins, robotics paths — switching hurts later (Stripe, Supabase, Cloudflare, Docker, K8s pattern). |
+| **Trust reputation** | Reliability, privacy, local-first, safe AI infra — brand value for enterprise and robotics. |
+| **Runtime data + behavioral intelligence** | Anomaly datasets, behavior models, action risk scoring, execution intelligence — proprietary operational knowledge as more workloads flow through Sanctum. |
+| **Deep integrations** | ROS2, Jetson, local AI runtimes, robotics APIs, enterprise policy, edge — **embedding** in workflows. |
+| **Community + developer trust** | Elite docs, clean APIs, fast onboarding, local-first that works, premium feel — developers remember great infra. |
+| **Execution speed** | Copycats often stay shallow (visuals, buzzwords); sustained quality, support, integrations, architecture, and momentum differentiate. |
+
+**Category ownership:** Aim for **mental association** — when teams think *AI runtime trust*, *physical AI security*, *AI action verification*, they think **Sanctum**. That beats relying on “we had the idea first.”
+
+**Open-source and licensing (strategy, not legal advice):** Prefer adoption-friendly licenses for the OSS tier (**Apache 2.0**, **MIT**, or **dual-license** later). Align with **§4.3**: open core SDK; **enterprise runtime / orchestration / advanced intelligence** proprietary — common infra pattern.
+
+**What to avoid:** Obsessing over secrecy (kills adoption and trust in infra). Over-indexing on patents as primary defense vs large competitors — **execution and adoption** matter more for software velocity.
+
+**Comfortable truth:** Success attracts **large competitors**, **forks**, and **copycats** — that signals value. Winners tend to be teams that **execute fastest** and **earn trust first**.
+
+**Long-term split (reinforces §4.3):**
+
+| Open | Closed / paid |
+|------|----------------|
+| SDK, docs, integrations, community tooling | Enterprise orchestration, advanced monitoring, runtime intelligence, fleet management, compliance, behavioral analytics, hosted infra |
+
+**Moat summary:** Not “first idea” — **runtime trust**, ecosystem embedding, adoption, behavioral intelligence, enterprise reputation, and **standards-level positioning**.
+
+### 4.5 Market map (strategic)
+
+**Core category:** Systems that **execute actions**. If execution has real-world or high-stakes effect, Sanctum is relevant.
+
+**Outreach line (use this):**  
+> “Sanctum provides runtime trust infrastructure for autonomous AI systems.”
+
+**Avoid:** “We stop rogue robots,” “robot security company,” fear-only positioning.
+
+**What buyers care about (language):** permissions, compliance, audit logs, safe automation, observability, local runtime, offline execution, governance — not hype.
+
+| Priority | Segment | Why now |
+|----------|---------|---------|
+| **1 — MVP** | **AI agents** (browser, coding, workflow, API, operators) | Exists today; fastest demos and adoption |
+| **2** | Local AI / edge (Ollama, on-device runtimes) | Aligns with local-first PRD |
+| **3** | Robotics startups (software layers, not full stack) | Integrate trust vs build in-house |
+| **4** | Autonomous workflow / automation platforms | Enterprise-adjacent, shorter cycles than humanoids |
+| **Later** | Humanoids (flagship long-term), smart home, industrial, healthcare, defense, mobility, companions | Reuse same core; add **adapters** + category UI |
+
+**12 expansion categories (one runtime, many adapters):** AI agents · Humanoids · Embodied AI · Smart home AI · AI operating systems · Robotics startups (integrators) · Enterprise AI automation · Defense/security robotics · Healthcare robotics · Autonomous vehicles/systems · AI companion systems · Industrial automation. Details and per-category deliverables: **§17**.
+
+**Go-to-market (immediate):** Developer ecosystem (agent builders, ROS2/Ollama communities, GitHub) and startups; **enterprise** after demos, adoption, and runtime credibility.
+
+---
+
+## 5. MVP scope (build only this first)
+
+Everything outside this list is **out of scope** for MVP unless reprioritized in this PRD.
+
+### 5.1 Action verification
+
+- AI (or agent) requests an action → Sanctum **intercepts** → checks **permissions / policy** → **approve | deny | escalate | hold**.
+- Clear API contract for “action + context + identity + device trust signals (as available).”
+
+### 5.2 Behavioral monitoring
+
+Detect and surface (initially rules + heuristics acceptable; ML later):
+
+- Unusual requests / sequences  
+- Unsafe command chains  
+- Suspicious remote prompts  
+- Escalation attempts  
+- Policy violations  
+
+Goal: **signal and enforce boundaries**, not eliminate all intelligence.
+
+### 5.3 Offline mode (major differentiator)
+
+Demonstrate and ship:
+
+- Local execution path  
+- Disconnected / degraded state  
+- Secure fallback behavior (deny-by-default or policy-defined fallback)  
+- Clear UX and SDK flags for offline capability  
+
+### 5.4 Audit logs
+
+Log **material runtime events** (minimum fields):
+
+- Who requested  
+- What action / resource  
+- Why / policy path (human-readable + machine reference)  
+- Model or agent confidence **when available**  
+- Approval state (allowed / denied / pending / escalated)  
+- Timestamp + correlation id  
+- Anomaly flags (if any)  
+
+Enterprises require **observability**; this is non-negotiable for MVP credibility.
+
+---
+
+## 6. User-facing surfaces
+
+### 6.1 Marketing website
+
+**Purpose:** Narrative, trust, developer pull, early access.
+
+**Planned stack:** Next.js, Tailwind CSS, Framer Motion, shadcn/ui.
+
+**Required sections (content + UX):**
+
+1. **Hero** — Headline: *Trusted Infrastructure for Physical AI*. Subhead: Sanctum secures humanoids, robots, and AI agents with local-first runtime protection, behavioral monitoring, and action authorization. CTAs: **Get Early Access**, **View Documentation**. Background: dark animated grid + subtle neural motion (restrained).
+2. **Problem** — Title: *AI Can Think. But Can You Trust It?* Themes: cloud dependence, hijacking, unsafe actions, prompt injection, privacy.
+3. **Solution** — Title: *The Runtime Layer for Trusted Autonomy.* Three pillars: **Action Firewall**, **Local Cognition**, **Behavioral Monitoring**.
+4. **Architecture** — Interactive diagram: User → AI Model → **Sanctum Runtime** → Physical Actions (must feel concrete).
+5. **SDK** — Snippet developers copy mentally in 10 seconds, e.g. `SanctumRuntime` with `offlineMode`, `actionVerification`, `behavioralMonitoring`.
+6. **Use cases** — Cards: Humanoids, AI Assistants, Industrial Robotics, Drones, Smart Homes, Autonomous Systems.
+7. **Trust / metrics** — Actions verified, threats blocked, offline integrity, runtime latency (simulated acceptable initially with honest labeling).
+8. **Final CTA** — *Build AI Humans Can Trust* + **Request Access**.
+
+### 6.2 Dashboard (product)
+
+**Planned stack:** Next.js App Router, TypeScript, Zustand, TanStack Query.
+
+**MVP modules:**
+
+- Robot / agent **sessions**  
+- **Anomaly** log  
+- **Action approvals** queue / history  
+- **Device trust** scores (define v1 formula in eng spec; can start simple)  
+- **Local / offline** state visibility  
+- **Permission** flows (policies, roles, exceptions as v1 allows)  
+
+**Auth:** Use company **external Supabase** (see §7) for identity; dashboard is authenticated, role-aware (details in security appendix as implemented).
+
+---
+
+## 7. Data, auth, and realtime — **external Supabase**
+
+**Decision:** Sanctum uses a **dedicated external Supabase project** (company-owned), not an ad-hoc database per developer machine for production-bound features.
+
+**Use Supabase for:**
+
+- **PostgreSQL** — canonical store for users/tenants (if multi-tenant), devices, sessions, audit events, policy metadata, approval records.  
+- **Authentication** — email/OAuth/etc. as configured; JWT/session integration with app and API.  
+- **Row Level Security (RLS)** — tenant and user isolation for all user-scoped tables.  
+- **Realtime** (where applicable) — live updates for dashboard (sessions, approvals, anomalies) without overbuilding; prefer clear channels and filters.
+
+**Application access pattern:**
+
+- **Option A (recommended for greenfield):** Supabase client for auth + realtime; server-side use **service role** only in trusted backend paths; never expose service role to the browser.  
+- **Option B:** **Prisma** (or Drizzle) against the same Postgres connection string for migrations and complex reporting — still backed by Supabase Postgres. Choose one ORM strategy per service and document it.
+
+**Non-goals for MVP:** NATS, multi-region orchestration — **later**; WebSockets directly in Fastify only if Supabase Realtime is insufficient (justify in ADR).
+
+---
+
+## 8. Backend and services
+
+**Core API (planned):** Node.js, TypeScript, **Fastify** — fast, clear boundaries for SDK and dashboard.
+
+**Responsibilities:**
+
+- Policy evaluation orchestration (may call local rules engine first).  
+- Audit **write path** (durable, ordered, correlatable).  
+- Webhook / SDK ingestion endpoints with authentication (API keys + Supabase user context as appropriate).  
+- Rate limits and abuse basics for public demo endpoints.
+
+**Later:** Rust microservices for hot paths; **Go** only if an ADR warrants it.
+
+---
+
+## 9. AI runtime layer
+
+**Principle:** **Local inference first** — demos and credibility without mandatory cloud model dependency.
+
+**Compatible directions:** Ollama, llama.cpp, DeepSeek local, Qwen local (exact packaging TBD per integration).
+
+**Reference models (current 8 GB dev machine):** **Qwen2.5-3B-Instruct Q4_K_M** as the primary local agent for realistic scenario work; **Qwen2.5-0.5B-Instruct Q4_K_M** for fast plumbing. Trust decisions remain **policy + runtime** (§5), not model scale. Larger models are for a higher-RAM machine later.
+
+**Security note:** Local models still go through **Sanctum action verification** before side effects.
+
+---
+
+## 10. Security layer (phased)
+
+**MVP:** JWT (via Supabase), API keys for SDK/server, **device keys** (register + rotate story), least-privilege service roles, audit integrity (append-only patterns where possible).
+
+**Later:** TPM / hardware attestation, Rust enforcement services, advanced threat models.
+
+---
+
+## 11. Robotics and SDK roadmap
+
+**Phase 1:** Python SDK, Node SDK (align public API surface where possible).  
+**Phase 2:** ROS2, NVIDIA Jetson, Raspberry Pi, Unitree — **after** core runtime + audit story is credible.
+
+---
+
+## 12. Design system (canonical)
+
+### 12.1 Palette
+
+| Token | Hex |
+|--------|-----|
+| Background | `#070B14` |
+| Surface | `#111827` |
+| Elevated surface | `#1A2233` |
+| Primary accent | `#4F7CFF` |
+| Secondary accent | `#8B5CF6` |
+| Success | `#10B981` |
+| Warning | `#F59E0B` |
+| Danger | `#EF4444` |
+| Text primary | `#F9FAFB` |
+| Text secondary | `#9CA3AF` |
+
+### 12.2 Typography
+
+- **Headlines:** Space Grotesk  
+- **Body:** Inter  
+
+### 12.3 UI personality
+
+**Yes:** Military-grade *trust*, secure cognition, premium infrastructure, minimal dark UI, clean charts, subtle motion.  
+**No:** Playful “AI slop,” neon cyberpunk overload, gratuitous robots everywhere.
+
+**Reference tone:** Linear, Stripe, Palantir, Vercel, Anduril — combined **restraint**.
+
+### 12.4 Buttons
+
+- Primary: blue glow, subtle border, hover elevation.  
+- Secondary: glass, border-first.  
+- Corners: rounded, not toy-like.
+
+---
+
+## 13. Engineering roadmap (sequenced)
+
+### Week 1
+
+- Landing page (structure above) + **brand system** (tokens, type, components).  
+- **Dashboard shell** + navigation + empty states.  
+- **Authentication** wired to **external Supabase**.  
+- **SDK mock** (types + stub behavior + docs snippet) so demos do not wait on full backend.
+
+### Week 2
+
+- **Action verification engine** (v1 rules + API).  
+- **Permission UI** (minimal viable roles/policies).  
+- **Audit logs** (write + list + filter + export stub).
+
+### Week 3
+
+- **Local runtime demo** (happy path + failure path).  
+- **Offline mode simulation** (real disconnect behavior, not only a toggle graphic).  
+- **Threat / anomaly demo** (clear false-positive strategy in UX copy).
+
+---
+
+## 14. Success metrics (MVP)
+
+- Developer can run **demo in <15 minutes** from docs.  
+- **Action** is blocked/allowed with **auditable reason** every time.  
+- **Offline** path demonstrably different from online (observable in UI + logs).  
+- **Enterprise narrative** holds in a 10-minute walkthrough without hand-waving security.
+
+---
+
+## 15. Glossary
+
+| Term | Meaning |
+|------|--------|
+| **Embodied intelligence** | AI that can affect the physical world or high-risk digital side effects. |
+| **Runtime** | The execution boundary where Sanctum evaluates and logs actions. |
+| **Open-core** | OSS SDK/adoption layer; paid enterprise control plane and advanced features. |
+| **Autonomous AI systems** | AI that executes actions with operational effect (agents, robots, automation, edge). |
+| **Category adapter** | Pluggable action schema + policies + UI module for a market segment (**§17**). |
+| **Runtime trust** | Intercept, evaluate, approve/verify/block, audit — between reasoning and execution. |
+
+---
+
+## 16. Document control
+
+- **Owner:** Product + eng lead (assign names internally).  
+- **Changes:** Version bump + date; breaking scope changes require explicit review.  
+- **Repo alignment:** If this repository ships a TanStack Start / Vite surface before Next.js split, treat **§6–§8** as target architecture and track migration or dual-hosting in the engineering backlog — **§7 (Supabase)** is fixed regardless of frontend host.
+
+---
+
+## 17. Category expansion blueprint (architecture)
+
+**Principle:** Sanctum is **one runtime trust layer**, not twelve products. Build the **core once**; expand via **category adapters** (action schemas, policy presets, dashboard modules) — not separate systems.
+
+### 17.1 Build once (shared core)
+
+All categories reuse:
+
+- Action interception and verification (**§5.1**)
+- Policy engine (**§5**, Policy Manager UI)
+- Threat / anomaly detection (**§5.2**)
+- Audit logging (**§5.4**)
+- Local / offline execution (**§5.3**, **§9**)
+- Realtime events (Supabase **§7** when wired)
+
+Current monorepo direction (evolve, do not duplicate):
+
+```text
+packages/
+  sdk/                 # public API
+  runtime-engine/      # intercept → decide → audit
+  policy-engine/
+  audit-system/
+services/
+  ollama-bridge/       # local risk analysis
+packages/adapters/     # NEW — per category (Phase 2+)
+  agent-runtime/       # FIRST adapter after MVP
+  humanoid-runtime/
+  smart-home/
+  industrial/
+  …
+apps/
+  api/
+  dashboard/           # shared shell; category-specific views/modules
+```
+
+### 17.2 Category phases (product, not MVP commitment)
+
+| Category | Phase | Adapter / schema focus | Dashboard additions (examples) |
+|----------|-------|------------------------|--------------------------------|
+| **1. AI agents** | **Now (MVP+)** | `send_email`, `delete_file`, `execute_terminal`, `transfer_funds`, … | Agent sessions, workflows, injection detections |
+| **2. Humanoids** | Flagship later | `unlock_door`, `move_to_location`, context-aware policies | Movement timeline, location context, trust score |
+| **3. Embodied AI** | Later | Arms, carts, drones, kiosks | Physical state, actuator logs |
+| **4. Smart home** | Later | Locks, cameras, hubs | Device grid, trust zones |
+| **5. AI OS** | Later | File/system/app permissions | Process monitor, execution graph |
+| **6. Robotics startups** | Ongoing | SDK, `sanctum.protect()`, presets, webhooks | Integration health |
+| **7. Enterprise automation** | Post-adoption | Approval chains, RBAC, governance | Org view, workflow maps |
+| **8. Defense / security** | Later | Hardened local-only, signed policies, encrypted audit | Zero-cloud mode, integrity |
+| **9. Healthcare** | Later | Patient-safe policies, compliance | Oversight, compliance logs |
+| **10. Autonomous mobility** | Later | Navigation / routing commands | Route telemetry, incidents |
+| **11. AI companions** | Later | Memory / interaction boundaries | Memory access logs |
+| **12. Industrial** | Later | Machinery, emergency stop | Factory map, equipment trust |
+
+**UI principle:** Dashboard **adapts per category** (humanoid → locations; smart home → devices; agents → workflows) but always shows the same **verification, policies, logs, threats**.
+
+**Integration north star:** One-line style integration for partners (e.g. `sanctum.protect(agent)` / `verifyAction`) — document in SDK **§11** roadmap.
+
+**Scope gate:** New adapter or category UI requires PRD update here and must not expand **§5 MVP** without explicit reprioritization.
+
+---
+
+## 18. Feature verification (development)
+
+Every feature or product-facing change must be **justified against this PRD** (correct section cited in PR descriptions or internal notes). Do not expand MVP scope (**§5**), add category adapters (**§17**), or reorder the roadmap (**§13**) without updating this document.
+
+**Developer entry point:** **`DEVELOPMENT.md`** at the repository root links here and to Cursor rules for day-to-day reliance without hunting sections.
+
+**Enforcement in-repo:** Cursor loads **`.cursor/rules/prd-alignment.mdc`** (`alwaysApply: true`) so agents map work to PRD sections, respect **§7 (external Supabase)** and open-core boundaries (**§4.3** — **§4.4** for adoption/defensibility tradeoffs), and flag conflicts instead of drifting silently.
+
+---
+
+*End of PRD.*

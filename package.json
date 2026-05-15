@@ -1,10 +1,19 @@
 {
-  "name": "tanstack_start_ts",
+  "name": "sanctum-runtime",
   "private": true,
   "sideEffects": false,
   "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "packages/adapters/*",
+    "services/*"
+  ],
   "scripts": {
     "dev": "vite dev",
+    "dev:api": "npm run dev -w @sanctum/api",
+    "dev:dashboard": "npm run dev -w @sanctum/dashboard",
+    "dev:runtime": "concurrently -n api,dash -c blue,magenta \"npm run dev:api\" \"npm run dev:dashboard\"",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
@@ -82,6 +91,8 @@
     "prettier": "^3.7.3",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "concurrently": "^9.1.2",
+    "tsx": "^4.19.4"
   }
 }
