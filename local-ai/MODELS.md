@@ -1,0 +1,171 @@
+# Local AI models (Sanctum development)
+
+This document describes the **local inference stack** used for Sanctum Phase 1 work (PRD §9): offline-capable demos, simulated agents, and runtime integration tests. Weights are **not** committed to git; this file explains what to install and how both runtimes share the same files.
+
+---
+
+## What is installed (reference setup)
+
+| Ollama name | Base model | Quantization | Disk (approx.) | Role |
+|-------------|------------|--------------|----------------|------|
+| `qwen2.5-3b-instruct` | [Qwen2.5-3B-Instruct](https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF) | **Q4_K_M** | ~2.0–2.1 GB | **Primary** — realistic local agent, structured prompts, scenario demos |
+| `qwen2.5-0.5b-instruct` | [Qwen2.5-0.5B-Instruct](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF) | **Q4_K_M** | ~0.5 GB | **Fast** — plumbing, quick smoke tests |
+
+**Runtimes**
+
+| Tool | Install (macOS) | Version (reference) |
+|------|-----------------|---------------------|
+| [llama.cpp](https://github.com/ggml-org/llama.cpp) | `brew install llama.cpp` | 9150+ |
+| [Ollama](https://ollama.com) | https://ollama.com/download | 0.21+ |
+
+**Important:** Sanctum’s trust layer (action verification, audit, policy) does **not** depend on which local model you use. Models simulate the **agent**; Sanctum gates **actions** (PRD §5).
+
+---
+
+## Hardware assumptions
+
+Tuned for a **8 GB RAM** dev machine (Intel Mac, CPU inference):
+
+- Use **3B** for credible agent behavior; close heavy browser tabs before runs.
+- Use **0.5B** when speed matters.
+- Keep context at **`num_ctx 2048`** (see Modelfiles).
+- **7B+** models are out of scope on 8 GB; use a higher-RAM machine later.
+
+---
+
+## How weights are shared (no double download from registry)
+
+1. **llama.cpp** downloads GGUF into the Hugging Face cache via `-hf`.
+2. **Ollama** imports the **same** `.gguf` file with `ollama create -f Modelfile` (see below).
+
+HF cache layout (typical):
+
+```text
+~/.cache/huggingface/hub/models--Qwen--Qwen2.5-3B-Instruct-GGUF/snapshots/<snapshot-id>/qwen2.5-3b-instruct-q4_k_m.gguf
+~/.cache/huggingface/hub/models--Qwen--Qwen2.5-0.5B-Instruct-GGUF/snapshots/<snapshot-id>/qwen2.5-0.5b-instruct-q4_k_m.gguf
+```
+
+Snapshot IDs change when the cache is refreshed. After download, resolve paths with:
+
+```bash
+find ~/.cache/huggingface/hub/models--Qwen--Qwen2.5-3B-Instruct-GGUF -name '*.gguf'
+find ~/.cache/huggingface/hub/models--Qwen--Qwen2.5-0.5B-Instruct-GGUF -name '*.gguf'
+```
+
+Update the `FROM` line in the Modelfiles in this directory, then recreate Ollama models.
+
+---
+
+## First-time setup (new developer)
+
+### 1. Install runtimes
+
+```bash
+brew install llama.cpp
+# Install Ollama from https://ollama.com/download and ensure the app/daemon is running
+```
+
+### 2. Download weights (llama.cpp → HF cache)
+
+```bash
+# Primary (~2 GB download)
+llama-cli -hf Qwen/Qwen2.5-3B-Instruct-GGUF:Q4_K_M -p "ready" -n 8 --temp 0
+
+# Fast (~0.5 GB download)
+llama-cli -hf Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M -p "ready" -n 8 --temp 0
+```
+
+(First run may take several minutes on CPU; you can cancel after the download completes.)
+
+### 3. Point Modelfiles at your GGUF paths
+
+Edit `local-ai/Modelfile.qwen-3b` and `local-ai/Modelfile.qwen-0.5b` — set `FROM` to the absolute path from `find` above.
+
+### 4. Register with Ollama
+
+From the repository root:
+
+```bash
+ollama create qwen2.5-3b-instruct -f local-ai/Modelfile.qwen-3b
+ollama create qwen2.5-0.5b-instruct -f local-ai/Modelfile.qwen-0.5b
+ollama list
+```
+
+### 5. Smoke test
+
+```bash
+ollama run qwen2.5-3b-instruct "Reply with one word: ok"
+```
+
+Or HTTP API (port 11434):
+
+```bash
+curl -s http://127.0.0.1:11434/api/generate -d '{
+  "model": "qwen2.5-3b-instruct",
+  "prompt": "Say ok",
+  "stream": false
+}'
+```
+
+---
+
+## Daily commands
+
+| Goal | Command |
+|------|---------|
+| Chat (primary) | `ollama run qwen2.5-3b-instruct` |
+| Chat (fast) | `ollama run qwen2.5-0.5b-instruct` |
+| llama.cpp (primary) | `llama-cli -hf Qwen/Qwen2.5-3B-Instruct-GGUF:Q4_K_M` |
+| llama.cpp (fast) | `llama-cli -hf Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M` |
+| OpenAI-compatible server | `llama-server -hf Qwen/Qwen2.5-3B-Instruct-GGUF:Q4_K_M` |
+
+For non-interactive / scripts, prefer **`llama-completion`** over `llama-cli` (see [llama.cpp README](https://github.com/ggml-org/llama.cpp)).
+
+---
+
+## Modelfile parameters (what we changed from defaults)
+
+| Parameter | 3B | 0.5B | Why |
+|-----------|-----|------|-----|
+| `num_ctx` | 2048 | 2048 | Limits RAM on 8 GB systems |
+| `temperature` | 0.2 | 0 | 3B: slight flexibility for demos; 0.5B: deterministic smoke tests |
+| `TEMPLATE` | Qwen2.5 ChatML | same | Matches instruct format |
+| `SYSTEM` | Sanctum demo agent | generic assistant | 3B: action-oriented demo tone |
+
+Files: [`Modelfile.qwen-3b`](./Modelfile.qwen-3b), [`Modelfile.qwen-0.5b`](./Modelfile.qwen-0.5b).
+
+---
+
+## Alternative: Ollama registry (simpler, separate copy)
+
+If you skip shared HF cache import:
+
+```bash
+ollama pull qwen2.5:3b
+ollama pull qwen2.5:0.5b
+```
+
+This downloads **separate** blobs into `~/.ollama` (extra disk). Prefer **Modelfile + HF cache** when using both llama.cpp and Ollama.
+
+---
+
+## Troubleshooting
+
+| Issue | Fix |
+|-------|-----|
+| `ollama create` fails on `FROM` | Re-run `find` for `.gguf`; update Modelfile path |
+| Very slow on 8 GB | Use 0.5B; reduce `num_ctx`; quit browser tabs |
+| `llama-cli` hangs in chat | Use `llama-completion` or `/exit`; prefer Ollama API for scripts |
+| Out of disk | 3B + 0.5B + Ollama copies ≈ **3–4 GB** minimum in caches |
+
+---
+
+## Related docs
+
+- [`DEVELOPMENT.md`](../DEVELOPMENT.md) — repo dev entry point  
+- [`PRD.md`](../PRD.md) §9 — product direction for local AI  
+- PRD §5 — MVP trust features (policy / audit; not model-dependent)
+
+---
+
+*Last verified: 2026-05-15 — Qwen2.5 3B/0.5B Instruct Q4_K_M on macOS 14, 8 GB RAM, Intel CPU.*

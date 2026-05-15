@@ -1,0 +1,14 @@
+# Primary Sanctum dev model. See MODELS.md — update FROM after: find ~/.cache/huggingface/hub/models--Qwen--Qwen2.5-3B-Instruct-GGUF -name '*.gguf'
+FROM /Users/ematik/.cache/huggingface/hub/models--Qwen--Qwen2.5-3B-Instruct-GGUF/snapshots/7dabda4d13d513e3e842b20f0d435c732f172cbe/qwen2.5-3b-instruct-q4_k_m.gguf
+
+PARAMETER temperature 0.2
+PARAMETER num_ctx 2048
+
+TEMPLATE """{{- if .System }}<|im_start|>system
+{{ .System }}
+{{ end }}{{- if .Prompt }}<|im_start|>user
+{{ .Prompt }}
+{{ end }}<|im_start|>assistant
+"""
+
+SYSTEM You are a local AI agent for Sanctum demos. Propose actions clearly; follow instructions precisely.

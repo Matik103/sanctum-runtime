@@ -1,0 +1,14 @@
+# Fast dev model. See MODELS.md — update FROM after: find ~/.cache/huggingface/hub/models--Qwen--Qwen2.5-0.5B-Instruct-GGUF -name '*.gguf'
+FROM /Users/ematik/.cache/huggingface/hub/models--Qwen--Qwen2.5-0.5B-Instruct-GGUF/snapshots/9217f5db79a29953eb74d5343926648285ec7e67/qwen2.5-0.5b-instruct-q4_k_m.gguf
+
+PARAMETER temperature 0
+PARAMETER num_ctx 2048
+
+TEMPLATE """{{- if .System }}<|im_start|>system
+{{ .System }}
+{{ end }}{{- if .Prompt }}<|im_start|>user
+{{ .Prompt }}
+{{ end }}<|im_start|>assistant
+"""
+
+SYSTEM You are a helpful assistant.
