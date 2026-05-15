@@ -313,6 +313,15 @@ Enterprises require **observability**; this is non-negotiable for MVP credibilit
 7. **Trust / metrics** — Actions verified, threats blocked, offline integrity, runtime latency (simulated acceptable initially with honest labeling).
 8. **Final CTA** — *Build AI Humans Can Trust* + **Request Access**.
 
+**CTA destinations (implemented in `src/lib/site-links.ts`):**
+
+| Control | Points to | Purpose |
+|---------|-----------|---------|
+| **Docs** / View Documentation | `/docs` on marketing deploy | Public technical docs (**§6.3**) |
+| **Get Early Access** / Request Access | `VITE_EARLY_ACCESS_URL` or GitHub early-access issue | Waitlist / design partners — **not** runtime install |
+| **GitHub** (footer) | `VITE_GITHUB_URL` → public OSS repo | Source, issues, OSS adoption |
+| **Try runtime** (in docs quick start) | Clone repo + `npm run dev:runtime` | Developer path (**§4.6**) |
+
 ### 6.2 Dashboard (product)
 
 **Planned stack:** Next.js App Router, TypeScript, Zustand, TanStack Query.

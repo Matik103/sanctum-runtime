@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
+import { docsPath, earlyAccessUrl } from "@/lib/site-links";
 import logo from "@/assets/sanctum-logo.png";
 
 export function Navbar() {
@@ -19,10 +20,12 @@ export function Navbar() {
         </nav>
         <div className="flex items-center gap-2">
           <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex text-muted-foreground hover:text-foreground">
-            <Link to="/docs">Docs</Link>
+            <Link to={docsPath}>Docs</Link>
           </Button>
-          <Button size="sm" className="bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90">
-            Get Early Access
+          <Button asChild size="sm" className="bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90">
+            <a href={earlyAccessUrl} target="_blank" rel="noopener noreferrer">
+              Get Early Access
+            </a>
           </Button>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
+import { docsPath, earlyAccessUrl } from "@/lib/site-links";
 import { ArrowRight, BookOpen, ShieldCheck } from "lucide-react";
 
 export function Hero() {
@@ -28,12 +29,14 @@ export function Hero() {
           </p>
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-            <Button size="lg" className="bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90 h-12 px-6">
-              Get Early Access
-              <ArrowRight className="ml-1 h-4 w-4" />
+            <Button asChild size="lg" className="bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90 h-12 px-6">
+              <a href={earlyAccessUrl} target="_blank" rel="noopener noreferrer">
+                Get Early Access
+                <ArrowRight className="ml-1 h-4 w-4" />
+              </a>
             </Button>
             <Button asChild size="lg" variant="outline" className="glass h-12 px-6 hover:bg-surface">
-              <Link to="/docs">
+              <Link to={docsPath}>
                 <BookOpen className="mr-2 h-4 w-4" />
                 View Documentation
               </Link>

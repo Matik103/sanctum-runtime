@@ -1,4 +1,6 @@
+import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
+import { docsPath, earlyAccessUrl, githubUrl, privacyUrl } from "@/lib/site-links";
 import { ArrowRight } from "lucide-react";
 import logo from "@/assets/sanctum-logo.png";
 
@@ -17,9 +19,11 @@ export function CtaFooter() {
           Join early access for runtime trust infrastructure — agents today, embodied systems tomorrow.
         </p>
         <div className="mt-10 flex justify-center">
-          <Button size="lg" className="bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90 h-12 px-8">
-            Request Access
-            <ArrowRight className="ml-1 h-4 w-4" />
+          <Button asChild size="lg" className="bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90 h-12 px-8">
+            <a href={earlyAccessUrl} target="_blank" rel="noopener noreferrer">
+              Request Access
+              <ArrowRight className="ml-1 h-4 w-4" />
+            </a>
           </Button>
         </div>
       </div>
@@ -32,9 +36,15 @@ export function CtaFooter() {
             <span className="ml-2">— Runtime trust for autonomous AI</span>
           </div>
           <div className="flex items-center gap-6">
-            <a href="#" className="hover:text-foreground">Docs</a>
-            <a href="#" className="hover:text-foreground">GitHub</a>
-            <a href="#" className="hover:text-foreground">Privacy</a>
+            <Link to={docsPath} className="hover:text-foreground">
+              Docs
+            </Link>
+            <a href={githubUrl} target="_blank" rel="noopener noreferrer" className="hover:text-foreground">
+              GitHub
+            </a>
+            <a href={privacyUrl} className="hover:text-foreground">
+              Privacy
+            </a>
             <span>© 2026</span>
           </div>
         </div>
