@@ -1,6 +1,6 @@
-import type { ActionRequest, ActionResult, Decision } from '@sanctum/sdk'
-import { ActionRequestSchema } from '@sanctum/sdk'
-import type { SanctumRuntime } from '@sanctum/sdk'
+import type { ActionRequest, ActionResult, Decision } from '@sanctum/runtime'
+import { ActionRequestSchema, SanctumActionBlockedError, SanctumVerificationRequiredError } from '@sanctum/runtime'
+import type { SanctumRuntime } from '@sanctum/runtime'
 import type { AgentAction } from './actions.js'
 
 export type AgentRuntimeAdapterOptions = {
@@ -19,23 +19,11 @@ export type AgentProtectOptions<T> = {
   execute: () => Promise<T>
 }
 
-export class AgentActionBlockedError extends Error {
-  readonly result: ActionResult
-  constructor(result: ActionResult) {
-    super(`Action blocked: ${result.action} (${result.reasoning})`)
-    this.name = 'AgentActionBlockedError'
-    this.result = result
-  }
-}
+/** @deprecated Use SanctumActionBlockedError from @sanctum/runtime */
+export class AgentActionBlockedError extends SanctumActionBlockedError {}
 
-export class AgentVerificationRequiredError extends Error {
-  readonly result: ActionResult
-  constructor(result: ActionResult) {
-    super(`Verification required: ${result.action} (${result.reasoning})`)
-    this.name = 'AgentVerificationRequiredError'
-    this.result = result
-  }
-}
+/** @deprecated Use SanctumVerificationRequiredError from @sanctum/runtime */
+export class AgentVerificationRequiredError extends SanctumVerificationRequiredError {}
 
 /** Normalizes agent-layer calls into Sanctum {@link ActionRequest}. */
 export class AgentRuntimeAdapter {
@@ -93,6 +81,6 @@ export class AgentRuntimeAdapter {
 }
 
 function assertExecutable(decision: Decision, result: ActionResult): void {
-  if (decision === 'BLOCKED') throw new AgentActionBlockedError(result)
-  if (decision === 'REQUIRE_VERIFICATION') throw new AgentVerificationRequiredError(result)
+  if (decision === 'BLOCKED') throw new SanctumActionBlockedError(result)
+  if (decision === 'REQUIRE_VERIFICATION') throw new SanctumVerificationRequiredError(result)
 }

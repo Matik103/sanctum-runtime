@@ -1,4 +1,4 @@
-import type { PolicyMap } from '@sanctum/sdk'
+import type { PolicyMap } from '@sanctum/runtime'
 import { actionLabel, policyToResponse, type PolicyResponse } from '../lib/api'
 
 type Props = {

@@ -1,16 +1,18 @@
 import { Check } from "lucide-react";
 
-const code = `import { SanctumRuntime } from "@sanctum/sdk";
-import { protectAgent, AgentActions } from "@sanctum/adapter-agent-runtime";
+const code = `npm install @sanctum/runtime
 
-const sanctum = new SanctumRuntime({ baseUrl: "http://127.0.0.1:3001" });
+import { SanctumRuntime } from "@sanctum/runtime";
 
-await protectAgent(sanctum, {
-  actor: "workflow-agent",
-  action: AgentActions.DELETE_FILE,
-  context: { path: "/project/src" },
-  execute: async () => fs.rm("/project/src", { recursive: true }),
-});`;
+const sanctum = new SanctumRuntime({ offlineMode: true });
+
+await sanctum.middleware()({
+  action: "send_email",
+  context: { to: "user@example.com" },
+  execute: async () => sendEmail(),
+});
+
+await sanctum.policy("unlock_door", "verify");`;
 
 const features = [
   "Drop-in SDK for Node, Python, ROS2",

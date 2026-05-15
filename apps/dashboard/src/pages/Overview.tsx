@@ -1,4 +1,4 @@
-import type { ActionResult, PolicyMap, RuntimeStatus } from '@sanctum/sdk'
+import type { ActionResult, PolicyMap, RuntimeStatus } from '@sanctum/runtime'
 import { decisionTone, timeAgo } from '../lib/format'
 
 type Props = {

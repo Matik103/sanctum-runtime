@@ -7,7 +7,7 @@ import {
   Shield,
   ShieldAlert,
 } from 'lucide-react'
-import type { RuntimeStatus } from '@sanctum/sdk'
+import type { RuntimeStatus } from '@sanctum/runtime'
 
 export type PageId =
   | 'overview'

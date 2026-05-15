@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { ActionResult } from '@sanctum/sdk'
+import type { ActionResult } from '@sanctum/runtime'
 import { ActionDrawer } from './components/ActionDrawer'
 import { VerificationModal } from './components/VerificationModal'
 import { useDashboard } from './hooks/useDashboard'

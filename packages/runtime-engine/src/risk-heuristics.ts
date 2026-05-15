@@ -1,4 +1,4 @@
-import type { ActionRequest, RiskLevel } from '@sanctum/sdk'
+import type { ActionRequest, RiskLevel } from '@sanctum/runtime'
 
 const RANK: Record<RiskLevel, number> = { low: 0, medium: 1, high: 2 }
 

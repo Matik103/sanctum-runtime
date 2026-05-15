@@ -1,4 +1,4 @@
-import type { ActionResult } from '@sanctum/sdk'
+import type { ActionResult } from '@sanctum/runtime'
 import { decisionTone, timeAgo } from '../lib/format'
 
 type Props = { audit: ActionResult[]; onSelect: (e: ActionResult) => void }

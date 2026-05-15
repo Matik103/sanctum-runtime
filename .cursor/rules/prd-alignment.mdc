@@ -9,7 +9,7 @@ The canonical product spec is **`PRD.md`** at the repository root. Treat it as t
 
 ## Before implementing or changing a feature
 
-1. **Identify** which PRD section applies (MVP §5, surfaces §6, Supabase §7, backend §8, design §12, roadmap §13, market §4.5, category/adapters §17, open-core §4.3 incl. public docs §4.3.3 / §6.3, defensibility §4.4).
+1. **Identify** which PRD section applies (MVP §5, developer access §4.6, surfaces §6, Supabase §7, backend §8, design §12, roadmap §13, market §4.5, category/adapters §17, open-core §4.3 incl. public docs §4.3.3 / §6.3, defensibility §4.4).
 2. **Confirm** the work is **in scope** for the current phase. If it is not in MVP §5 or the active week in §13, **stop** and ask whether to extend the PRD first (do not silently expand scope).
 3. **Stack** — Auth/data/realtime must follow **§7 (external Supabase)**. Do not introduce an alternate primary database or auth without an explicit PRD update.
 4. **Positioning** — Copy, UX tone, and “what we sell” must match **§2 / §6** (runtime trust for autonomous AI; not toy “robot security”).

@@ -1,4 +1,4 @@
-import type { RuntimeStatus } from '@sanctum/sdk'
+import type { RuntimeStatus } from '@sanctum/runtime'
 
 type Props = { status: RuntimeStatus | null }
 

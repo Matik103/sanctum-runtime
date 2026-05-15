@@ -1,4 +1,4 @@
-import type { ActionPolicy, PolicyMap } from '@sanctum/sdk'
+import type { ActionPolicy, PolicyMap } from '@sanctum/runtime'
 
 export const DEFAULT_POLICIES: PolicyMap = {
   unlock_door: {

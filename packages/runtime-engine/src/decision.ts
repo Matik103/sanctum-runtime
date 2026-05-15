@@ -1,4 +1,4 @@
-import type { ActionPolicy, Decision, RiskLevel } from '@sanctum/sdk'
+import type { ActionPolicy, Decision, RiskLevel } from '@sanctum/runtime'
 
 /** Policy Manager controls hard blocks; model can only require verification unless Block is on. */
 export function resolveDecision(options: {

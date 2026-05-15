@@ -6,7 +6,7 @@ import {
   type DashboardData,
   type PolicyResponse,
 } from '../lib/api'
-import type { ActionResult } from '@sanctum/sdk'
+import type { ActionResult } from '@sanctum/runtime'
 
 export function useDashboard() {
   const [data, setData] = useState<DashboardData>({

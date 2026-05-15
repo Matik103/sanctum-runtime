@@ -1,6 +1,6 @@
 import { appendFile, mkdir, readFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import type { AuditEntry } from '@sanctum/sdk'
+import type { AuditEntry } from '@sanctum/runtime'
 
 export type AuditStoreOptions = {
   dataDir?: string

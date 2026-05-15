@@ -111,6 +111,7 @@ const toc = [
   { id: "use-cases", label: "Use Cases" },
   { id: "architecture", label: "Architecture Philosophy" },
   { id: "stack", label: "Technology Stack" },
+  { id: "access", label: "Developer Access" },
   { id: "quickstart", label: "Quick Start" },
   { id: "open-core", label: "Open Source" },
   { id: "philosophy", label: "Runtime Philosophy" },
@@ -580,6 +581,50 @@ function DocsPage() {
                 <List items={["ROS2 integration", "NVIDIA Jetson support", "Raspberry Pi support", "Unitree support"]} />
               </Section>
 
+              <Section id="access" eyebrow="Architecture" title="How You Access Sanctum">
+                <p>
+                  Sanctum is infrastructure you <strong>install into systems</strong> — like Stripe,
+                  Docker, or Supabase — not an app end users open.
+                </p>
+
+                <H3>A — Local SDK (Phase 1, primary)</H3>
+                <p>
+                  Runs <strong>inside</strong> your agent, backend, or robotics stack. This is the
+                  core experience.
+                </p>
+                <Code lang="bash" code={`npm install @sanctum/runtime`} />
+
+                <H3>B — Local runtime service (roadmap)</H3>
+                <p>
+                  Optional daemon on a device: intercepts actions, connects to Ollama, enforces
+                  policies — think “Docker daemon for AI trust.”
+                </p>
+                <Code lang="bash" code={`npx sanctum init   # coming soon`} />
+
+                <H3>C — Cloud dashboard (optional)</H3>
+                <p>
+                  Policy management, logs, and threat views. Visibility and control —{" "}
+                  <strong>not</strong> the runtime itself.
+                </p>
+
+                <H3>Execution flow</H3>
+                <List
+                  items={[
+                    "Before: AI → executes action directly",
+                    "After: AI → Sanctum Runtime → Decision → Execution",
+                  ]}
+                />
+
+                <H3>What Sanctum is not</H3>
+                <List
+                  items={[
+                    "Not a chatbot or standalone consumer app",
+                    "Not a robot controller",
+                    "Not dashboard-first — the runtime is embedded middleware",
+                  ]}
+                />
+              </Section>
+
               <Section id="quickstart" title="Quick Start">
                 <p>Goal: first verified action in under five minutes. Start the runtime API locally, then call it from your agent.</p>
 
@@ -592,23 +637,27 @@ npm install
 npm run dev:runtime   # API :3001 · dashboard :5174`}
                 />
 
-                <H3>2. Install SDK (monorepo workspaces)</H3>
-                <Code lang="bash" code={`npm install @sanctum/sdk @sanctum/adapter-agent-runtime`} />
+                <H3>2. Install SDK</H3>
+                <Code lang="bash" code={`npm install @sanctum/runtime`} />
 
-                <H3>3. Verify before execute</H3>
+                <H3>3. Initialize and gate actions</H3>
                 <Code
                   lang="typescript"
-                  code={`import { SanctumRuntime } from "@sanctum/sdk"
-import { protectAgent, AgentActions } from "@sanctum/adapter-agent-runtime"
+                  code={`import { SanctumRuntime } from "@sanctum/runtime"
 
-const sanctum = new SanctumRuntime({ baseUrl: "http://127.0.0.1:3001" })
+const sanctum = new SanctumRuntime({
+  baseUrl: "http://127.0.0.1:3001",
+  offlineMode: true,
+})
 
-await protectAgent(sanctum, {
+await sanctum.middleware()({
   actor: "workflow-agent",
-  action: AgentActions.SEND_EMAIL,
+  action: "send_email",
   context: { to: "user@example.com" },
   execute: async () => sendEmail(),
-})`}
+})
+
+await sanctum.policy("unlock_door", "verify")`}
                 />
 
                 <H3>Direct verify (no execute wrapper)</H3>

@@ -17,6 +17,7 @@ Use this file as the **entry point** for how we build Sanctum in this repository
 ## Quick navigation (`PRD.md`)
 
 - **§4.5** — Market map and positioning (autonomous AI systems, not humanoids-only)  
+- **§4.6** — Developer access: SDK in-process (primary), optional daemon, dashboard as control plane only  
 - **§4.3** — Open core vs private intelligence layer (what to open-source, what stays enterprise)  
 - **§4.3.3 / §6.3** — Public documentation structure (`/docs`)  
 - **§4.4** — Defensibility and competitive strategy  
@@ -35,7 +36,7 @@ Monorepo layout:
 ```text
 apps/api              — Fastify runtime API (port 3001)
 apps/dashboard        — Trust dashboard UI (port 5174)
-packages/sdk          — Types + SanctumClient / SanctumRuntime
+packages/sdk          — npm `@sanctum/runtime` (SanctumClient / SanctumRuntime / middleware)
 packages/runtime-engine — Intercept → policy → risk → audit
 packages/policy-engine
 packages/audit-system
@@ -46,7 +47,7 @@ services/ollama-bridge — Local Qwen risk analysis
 **Agent adapter (verify before execute):**
 
 ```ts
-import { SanctumRuntime } from '@sanctum/sdk'
+import { SanctumRuntime } from '@sanctum/runtime'
 import { protectAgent, AgentActions } from '@sanctum/adapter-agent-runtime'
 
 const sanctum = new SanctumRuntime()

@@ -1,6 +1,6 @@
 import cors from '@fastify/cors'
 import { RuntimeEngine } from '@sanctum/runtime-engine'
-import { ActionRequestSchema } from '@sanctum/sdk'
+import { ActionRequestSchema } from '@sanctum/runtime'
 import Fastify from 'fastify'
 import { z } from 'zod'
 

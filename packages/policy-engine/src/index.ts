@@ -1,4 +1,4 @@
-import type { ActionPolicy, ActionRequest, PolicyMap } from '@sanctum/sdk'
+import type { ActionPolicy, ActionRequest, PolicyMap } from '@sanctum/runtime'
 import { DEFAULT_POLICIES, DEFAULT_POLICY } from './default-policies.js'
 import { loadPoliciesFromDisk, savePoliciesToDisk } from './store.js'
 
