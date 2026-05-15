@@ -304,7 +304,7 @@ Enterprises require **observability**; this is non-negotiable for MVP credibilit
 
 **Required sections (content + UX):**
 
-1. **Hero** — Headline: *Runtime trust infrastructure for autonomous systems*. Subhead: between AI reasoning and execution — permissions, verification, audit, local governance. CTAs: **Get Early Access**, **View Documentation**. Background: dark animated grid + subtle neural motion (restrained).
+1. **Hero** — Headline: *Runtime trust infrastructure for autonomous systems*. Subhead: between AI reasoning and execution — permissions, verification, audit, local governance. CTAs: **Start with Runtime** (→ `/docs#quickstart`), **Quick Start**, **Enterprise** (waitlist — private layer). Background: dark animated grid + subtle neural motion (restrained).
 2. **Problem** — Title: *AI Can Think. But Can You Trust It?* Themes: cloud dependence, hijacking, unsafe actions, prompt injection, privacy.
 3. **Solution** — Title: *The Runtime Layer for Trusted Autonomy.* Three pillars: **Action Firewall**, **Local Cognition**, **Behavioral Monitoring**.
 4. **Architecture** — Interactive diagram: User → AI Model → **Sanctum Runtime** → Physical Actions (must feel concrete).
@@ -318,7 +318,8 @@ Enterprises require **observability**; this is non-negotiable for MVP credibilit
 | Control | Points to | Purpose |
 |---------|-----------|---------|
 | **Docs** / View Documentation | `/docs` on marketing deploy | Public technical docs (**§6.3**) |
-| **Get Early Access** / Request Access | `VITE_EARLY_ACCESS_URL` or GitHub early-access issue | Waitlist / design partners — **not** runtime install |
+| **Start with Runtime** / Quick Start | `/docs#quickstart` → clone + `npm run dev:runtime` | Primary developer path (**§4.6**) — OSS v0.1 ready |
+| **Enterprise** / Request Access | `VITE_EARLY_ACCESS_URL` or GitHub enterprise issue | Fleet / cloud / advanced intel — **not** required for OSS |
 | **GitHub** (footer) | `VITE_GITHUB_URL` → public OSS repo | Source, issues, OSS adoption |
 | **Try runtime** (in docs quick start) | Clone repo + `npm run dev:runtime` | Developer path (**§4.6**) |
 

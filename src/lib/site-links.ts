@@ -8,14 +8,22 @@ const githubRepo = import.meta.env.VITE_GITHUB_URL ?? "https://github.com/Matik1
 /** Public docs on this site. Later: https://docs.sanctum.dev */
 export const docsPath = import.meta.env.VITE_DOCS_PATH ?? "/docs";
 
+/** OSS quick start — primary CTA for developers (PRD §4.6). */
+export const quickstartPath = `${docsPath}#quickstart`;
+
+/** Open-core boundaries (public vs enterprise). */
+export const openCorePath = `${docsPath}#open-core`;
+
 /**
- * Waitlist / sales intake — not the runtime itself.
- * Set VITE_EARLY_ACCESS_URL to your Typeform, Tally, or Loops form in production.
- * Default: GitHub issue (works without a form backend).
+ * Enterprise / design partners — fleet, cloud, advanced intelligence (PRD §4.3.2).
+ * Not required to run the open-source runtime locally.
  */
-export const earlyAccessUrl =
+export const enterpriseAccessUrl =
   import.meta.env.VITE_EARLY_ACCESS_URL ??
   `${githubRepo}/issues/new?template=early-access.md&labels=early-access`;
+
+/** @deprecated Use enterpriseAccessUrl */
+export const earlyAccessUrl = enterpriseAccessUrl;
 
 export const githubUrl = githubRepo;
 

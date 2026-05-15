@@ -74,6 +74,8 @@ npm run dev:dashboard  # http://127.0.0.1:5174
 
 **Demo flow:** Dashboard → “Demo: Unlock door” (online vs offline). Expect `REQUIRE_VERIFICATION` or `BLOCKED` for `unlock_door` at 2 AM with policy + anomaly rules.
 
+**OSS adoption:** See [OPEN_CORE.md](./OPEN_CORE.md) for public vs enterprise boundaries. `npm run smoke` and `npm run example:agent` for developer onboarding checks.
+
 **API (examples):**
 
 ```bash

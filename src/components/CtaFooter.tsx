@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import { docsPath, earlyAccessUrl, githubUrl, privacyUrl } from "@/lib/site-links";
+import { docsPath, enterpriseAccessUrl, githubUrl, openCorePath, privacyUrl, quickstartPath } from "@/lib/site-links";
 import { ArrowRight } from "lucide-react";
 import logo from "@/assets/sanctum-logo.png";
 
@@ -16,13 +16,19 @@ export function CtaFooter() {
           can <span className="text-gradient">trust</span>.
         </h2>
         <p className="mt-6 text-lg text-muted-foreground max-w-xl mx-auto">
-          Join early access for runtime trust infrastructure — agents today, embodied systems tomorrow.
+          Clone the open-source runtime, gate your first agent action in minutes. Enterprise fleet
+          and cloud features are a separate track.
         </p>
-        <div className="mt-10 flex justify-center">
+        <div className="mt-10 flex flex-wrap justify-center gap-3">
           <Button asChild size="lg" className="bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90 h-12 px-8">
-            <a href={earlyAccessUrl} target="_blank" rel="noopener noreferrer">
-              Request Access
+            <Link to={quickstartPath}>
+              Start with Runtime
               <ArrowRight className="ml-1 h-4 w-4" />
+            </Link>
+          </Button>
+          <Button asChild size="lg" variant="outline" className="glass h-12 px-8">
+            <a href={enterpriseAccessUrl} target="_blank" rel="noopener noreferrer">
+              Enterprise interest
             </a>
           </Button>
         </div>
@@ -38,6 +44,9 @@ export function CtaFooter() {
           <div className="flex items-center gap-6">
             <Link to={docsPath} className="hover:text-foreground">
               Docs
+            </Link>
+            <Link to={openCorePath} className="hover:text-foreground">
+              Open core
             </Link>
             <a href={githubUrl} target="_blank" rel="noopener noreferrer" className="hover:text-foreground">
               GitHub

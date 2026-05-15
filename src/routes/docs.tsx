@@ -169,6 +169,16 @@ function DocsPage() {
                   Sanctum provides runtime trust between AI reasoning and real-world
                   execution — for agents, robotics, automation, and embodied systems.
                 </p>
+                <div className="mt-8 rounded-xl border border-primary/30 bg-primary/5 px-5 py-4 text-sm text-foreground/90">
+                  <strong className="text-foreground">v0.1 — ready to use (open source).</strong>{" "}
+                  Clone this repo, run <code className="font-mono text-primary">npm run dev:runtime</code>
+                  , embed the SDK. Fleet orchestration, hosted cloud, and advanced threat
+                  intelligence are{" "}
+                  <a href="#open-core" className="text-primary hover:underline">
+                    enterprise / private
+                  </a>
+                  .
+                </div>
               </header>
 
               <Section id="introduction" title="Introduction">
@@ -626,7 +636,10 @@ function DocsPage() {
               </Section>
 
               <Section id="quickstart" title="Quick Start">
-                <p>Goal: first verified action in under five minutes. Start the runtime API locally, then call it from your agent.</p>
+                <p>
+                  Goal: first verified action in under five minutes. Install the SDK from npm or
+                  use the monorepo workspace — see <a href="#open-core" className="text-primary hover:underline">open core</a>.
+                </p>
 
                 <H3>1. Start the runtime</H3>
                 <Code
@@ -634,26 +647,29 @@ function DocsPage() {
                   code={`git clone https://github.com/Matik103/sanctum-runtime.git
 cd sanctum-runtime
 npm install
-npm run dev:runtime   # API :3001 · dashboard :5174`}
+npm run dev:runtime   # API :3001 · dashboard :5174
+npm run smoke         # optional health check`}
                 />
 
-                <H3>2. Install SDK</H3>
+                <H3>2. Install the SDK</H3>
                 <Code lang="bash" code={`npm install @sanctum/runtime`} />
 
-                <H3>3. Initialize and gate actions</H3>
+                <H3>3. Run the agent example (monorepo)</H3>
+                <Code lang="bash" code={`npm run example:agent`} />
+
+                <H3>4. Initialize and gate actions</H3>
                 <Code
                   lang="typescript"
                   code={`import { SanctumRuntime } from "@sanctum/runtime"
+import { protectAgent, AgentActions } from "@sanctum/adapter-agent-runtime"
 
-const sanctum = new SanctumRuntime({
-  baseUrl: "http://127.0.0.1:3001",
-  offlineMode: true,
-})
+const sanctum = new SanctumRuntime({ baseUrl: "http://127.0.0.1:3001" })
 
-await sanctum.middleware()({
+await protectAgent(sanctum, {
   actor: "workflow-agent",
-  action: "send_email",
+  action: AgentActions.SEND_EMAIL,
   context: { to: "user@example.com" },
+  offlineMode: true,
   execute: async () => sendEmail(),
 })
 
@@ -706,8 +722,17 @@ if (result.decision === "APPROVED") executeAction()`}
                 </Quote>
 
                 <p>
-                  License direction for OSS: Apache 2.0 or MIT initially; enterprise features may be
-                  dual-licensed later. See the repository and PRD for the current split.
+                  License: <strong>MIT</strong> for this repository. Enterprise features may be
+                  dual-licensed later. Canonical boundary doc:{" "}
+                  <a
+                    href="https://github.com/Matik103/sanctum-runtime/blob/main/OPEN_CORE.md"
+                    className="text-primary hover:underline"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    OPEN_CORE.md
+                  </a>
+                  .
                 </p>
               </Section>
 

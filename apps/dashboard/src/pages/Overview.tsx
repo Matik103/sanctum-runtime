@@ -24,10 +24,13 @@ export function Overview({ audit, policies, status, loading, onRunDemo, onSelect
       <header className="page-header">
         <div>
           <h1>Sanctum Runtime</h1>
-          <p>Trusted runtime infrastructure — mission control</p>
+          <p>Community edition — mission control (OSS)</p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <span className="pill ok">Local runtime active</span>
+          <span className="pill" title="Fleet, cloud, advanced intel — enterprise track">
+            OSS v0.1
+          </span>
           <span className="pill">
             {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>

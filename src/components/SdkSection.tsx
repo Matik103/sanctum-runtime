@@ -1,24 +1,25 @@
 import { Check } from "lucide-react";
 
-const code = `npm install @sanctum/runtime
+const code = `git clone github.com/Matik103/sanctum-runtime
+npm install && npm run dev:runtime
 
 import { SanctumRuntime } from "@sanctum/runtime";
+import { protectAgent, AgentActions } from "@sanctum/adapter-agent-runtime";
 
-const sanctum = new SanctumRuntime({ offlineMode: true });
+const sanctum = new SanctumRuntime({ baseUrl: "http://127.0.0.1:3001" });
 
-await sanctum.middleware()({
-  action: "send_email",
+await protectAgent(sanctum, {
+  action: AgentActions.SEND_EMAIL,
   context: { to: "user@example.com" },
+  offlineMode: true,
   execute: async () => sendEmail(),
-});
-
-await sanctum.policy("unlock_door", "verify");`;
+});`;
 
 const features = [
-  "Drop-in SDK for Node, Python, ROS2",
-  "Local inference with Ollama & llama.cpp",
-  "Signed device identities & TPM-ready",
-  "Streaming audit logs to your SIEM",
+  "Verify before execute — middleware or protectAgent()",
+  "Policies: approve, verify, or block per action",
+  "Local Ollama risk + offline heuristics (OSS)",
+  "Audit log + community dashboard",
 ];
 
 export function SdkSection() {

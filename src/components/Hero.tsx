@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import { docsPath, earlyAccessUrl } from "@/lib/site-links";
+import { enterpriseAccessUrl, quickstartPath } from "@/lib/site-links";
 import { ArrowRight, BookOpen, ShieldCheck } from "lucide-react";
 
 export function Hero() {
@@ -14,7 +14,7 @@ export function Hero() {
         <div className="mx-auto max-w-4xl text-center">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-4 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur">
             <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-            Runtime trust for autonomous AI
+            Open-core runtime · MIT · v0.1 preview
           </div>
 
           <h1 className="font-display text-5xl md:text-7xl font-semibold leading-[1.05] tracking-tight">
@@ -30,16 +30,21 @@ export function Hero() {
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
             <Button asChild size="lg" className="bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90 h-12 px-6">
-              <a href={earlyAccessUrl} target="_blank" rel="noopener noreferrer">
-                Get Early Access
+              <Link to={quickstartPath}>
+                Start with Runtime
                 <ArrowRight className="ml-1 h-4 w-4" />
-              </a>
+              </Link>
             </Button>
             <Button asChild size="lg" variant="outline" className="glass h-12 px-6 hover:bg-surface">
-              <Link to={docsPath}>
+              <Link to={quickstartPath}>
                 <BookOpen className="mr-2 h-4 w-4" />
-                View Documentation
+                Quick Start
               </Link>
+            </Button>
+            <Button asChild size="lg" variant="ghost" className="h-12 px-4 text-muted-foreground hover:text-foreground">
+              <a href={enterpriseAccessUrl} target="_blank" rel="noopener noreferrer">
+                Enterprise
+              </a>
             </Button>
           </div>
 
@@ -48,7 +53,7 @@ export function Hero() {
             <span className="hidden sm:inline">·</span>
             <span>Local-first · Offline capable</span>
             <span className="hidden sm:inline">·</span>
-            <span>SOC2-aligned audit logs</span>
+            <span>Basic audit logs (OSS)</span>
           </div>
         </div>
       </div>

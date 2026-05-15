@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import { docsPath, earlyAccessUrl } from "@/lib/site-links";
+import { docsPath, enterpriseAccessUrl, quickstartPath } from "@/lib/site-links";
 import logo from "@/assets/sanctum-logo.png";
 
 export function Navbar() {
@@ -23,8 +23,11 @@ export function Navbar() {
             <Link to={docsPath}>Docs</Link>
           </Button>
           <Button asChild size="sm" className="bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90">
-            <a href={earlyAccessUrl} target="_blank" rel="noopener noreferrer">
-              Get Early Access
+            <Link to={quickstartPath}>Start</Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex text-muted-foreground">
+            <a href={enterpriseAccessUrl} target="_blank" rel="noopener noreferrer">
+              Enterprise
             </a>
           </Button>
         </div>
