@@ -20,15 +20,21 @@ npm run smoke
 npm run example:agent
 ```
 
+```bash
+npm install @sanctum-runtime/sdk @sanctum-runtime/adapter-agent-runtime
+```
+
 ```ts
 import { SanctumRuntime } from "@sanctum-runtime/sdk";
+import { protectAgent, AgentActions } from "@sanctum-runtime/adapter-agent-runtime";
 
 const sanctum = new SanctumRuntime({
   baseUrl: process.env.SANCTUM_API_URL!, // from your .env
 });
 
-await sanctum.middleware()({
-  action: "send_email",
+await protectAgent(sanctum, {
+  actor: "my-agent",
+  action: AgentActions.SEND_EMAIL,
   context: { to: "user@example.com" },
   offlineMode: true,
   execute: async () => sendEmail(),

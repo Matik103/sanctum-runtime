@@ -24,10 +24,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build SDK
-        run: npm run build -w @sanctum-runtime/sdk
+      - name: Build packages
+        run: |
+          npm run build -w @sanctum-runtime/sdk
+          npm run build -w @sanctum-runtime/adapter-agent-runtime
 
-      - name: Publish to npm
+      - name: Publish SDK to npm
+        continue-on-error: true
         run: npm publish -w @sanctum-runtime/sdk --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish adapter to npm
+        run: npm publish -w @sanctum-runtime/adapter-agent-runtime --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

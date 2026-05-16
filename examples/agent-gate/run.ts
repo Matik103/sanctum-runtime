@@ -7,7 +7,7 @@ import {
   SanctumRuntime,
   SanctumActionBlockedError,
   SanctumVerificationRequiredError,
-} from '../../packages/sdk/src/index.ts'
+} from '@sanctum-runtime/sdk'
 import { resolveSanctumApiUrl } from '../../scripts/env.ts'
 
 const API = resolveSanctumApiUrl()

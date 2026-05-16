@@ -351,12 +351,12 @@ Enterprises require **observability**; this is non-negotiable for MVP credibilit
 **Quick start contract (canonical packages):**
 
 ```bash
-npm install @sanctum-runtime/sdk @sanctum/adapter-agent-runtime
+npm install @sanctum-runtime/sdk @sanctum-runtime/adapter-agent-runtime
 ```
 
 ```ts
 import { SanctumRuntime } from '@sanctum-runtime/sdk'
-import { protectAgent, AgentActions } from '@sanctum/adapter-agent-runtime'
+import { protectAgent, AgentActions } from '@sanctum-runtime/adapter-agent-runtime'
 
 const sanctum = new SanctumRuntime({ baseUrl: 'http://127.0.0.1:3001' })
 await protectAgent(sanctum, {

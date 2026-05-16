@@ -17,6 +17,15 @@ See [`.env.example`](./.env.example) for every variable.
 npm install
 npm run dev:runtime
 npm run smoke
+npm run example:agent
+```
+
+**npm-only app** (after packages are on npm):
+
+```bash
+npm install @sanctum-runtime/sdk @sanctum-runtime/adapter-agent-runtime
+export SANCTUM_API_URL=http://127.0.0.1:3001   # your API from .env
+node examples/npm-consumer/run.mjs             # from a clone, or copy run.mjs into your app
 ```
 
 Open the dashboard at the URL from your `DASHBOARD_URL` (or `DASHBOARD_HOST` + `DASHBOARD_PORT`).  
@@ -37,21 +46,27 @@ Health check: `{SANCTUM_API_URL or http://HOST:PORT}/health`
 
 ## Embed in your project
 
+```bash
+npm install @sanctum-runtime/sdk @sanctum-runtime/adapter-agent-runtime
+```
+
 ```ts
 import { SanctumRuntime } from '@sanctum-runtime/sdk'
+import { protectAgent, AgentActions } from '@sanctum-runtime/adapter-agent-runtime'
 
 // Pass your API URL (from .env SANCTUM_API_URL, or explicit in production)
 const sanctum = new SanctumRuntime({ baseUrl: process.env.SANCTUM_API_URL! })
 
-await sanctum.middleware()({
-  action: 'send_email',
+await protectAgent(sanctum, {
+  actor: 'my-agent',
+  action: AgentActions.SEND_EMAIL,
   context: { to: 'user@example.com' },
   offlineMode: true,
   execute: async () => sendEmail(),
 })
 ```
 
-In Node, the SDK also reads `SANCTUM_API_URL` when `baseUrl` is omitted.
+Or use `sanctum.middleware()` directly. In Node, the SDK reads `SANCTUM_API_URL` when `baseUrl` is omitted.
 
 ## Configuration reference
 

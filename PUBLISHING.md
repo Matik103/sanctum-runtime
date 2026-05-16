@@ -2,7 +2,7 @@
 
 One-time setup, then releases are automated.
 
-## 1. npm — `@sanctum-runtime/sdk`
+## 1. npm — `@sanctum-runtime/sdk` and `@sanctum-runtime/adapter-agent-runtime`
 
 Create an npm organization (the name **`sanctum`** is taken on npm):
 
@@ -11,14 +11,18 @@ Create an npm organization (the name **`sanctum`** is taken on npm):
 3. Add your user (`matik103`) as owner
 4. Recreate `NPM_TOKEN` with publish access to the **sanctum-runtime** org
 
-Published package: **`@sanctum-runtime/sdk`** (`npm install @sanctum-runtime/sdk`).
+Published packages:
+
+- **`@sanctum-runtime/sdk`** — `npm install @sanctum-runtime/sdk`
+- **`@sanctum-runtime/adapter-agent-runtime`** — `protectAgent()`, `AgentActions`
 
 If publish fails with `404 Not Found`, the org does not exist yet or the token lacks scope access.
 
 ```bash
 npm login
-cd packages/sdk
-npm publish --access public
+npm run build:packages
+npm publish -w @sanctum-runtime/sdk --access public
+npm publish -w @sanctum-runtime/adapter-agent-runtime --access public
 ```
 
 **CI (recommended):** Add repo secret `NPM_TOKEN` (granular or automation token with **publish** permission).
@@ -31,6 +35,7 @@ Verify:
 
 ```bash
 npm view @sanctum-runtime/sdk version
+npm view @sanctum-runtime/adapter-agent-runtime version
 ```
 
 ## 2. GitHub Release

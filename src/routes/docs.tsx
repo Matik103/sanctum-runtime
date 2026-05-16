@@ -661,7 +661,10 @@ npm run smoke`}
                 />
 
                 <H3>2. Install the SDK</H3>
-                <Code lang="bash" code={`npm install @sanctum-runtime/sdk`} />
+                <Code
+                  lang="bash"
+                  code={`npm install @sanctum-runtime/sdk @sanctum-runtime/adapter-agent-runtime`}
+                />
 
                 <H3>3. Run the agent example (monorepo)</H3>
                 <Code lang="bash" code={`npm run example:agent`} />
@@ -670,7 +673,7 @@ npm run smoke`}
                 <Code
                   lang="typescript"
                   code={`import { SanctumRuntime } from "@sanctum-runtime/sdk"
-import { protectAgent, AgentActions } from "@sanctum/adapter-agent-runtime"
+import { protectAgent, AgentActions } from "@sanctum-runtime/adapter-agent-runtime"
 
 const sanctum = new SanctumRuntime({ baseUrl: process.env.SANCTUM_API_URL! })
 

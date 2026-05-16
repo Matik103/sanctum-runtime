@@ -48,7 +48,7 @@ services/ollama-bridge — Local Qwen risk analysis
 
 ```ts
 import { SanctumRuntime } from '@sanctum-runtime/sdk'
-import { protectAgent, AgentActions } from '@sanctum/adapter-agent-runtime'
+import { protectAgent, AgentActions } from '@sanctum-runtime/adapter-agent-runtime'
 
 const sanctum = new SanctumRuntime()
 await protectAgent(sanctum, {
