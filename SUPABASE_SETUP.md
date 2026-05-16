@@ -24,11 +24,25 @@ Auth is **optional**: if Supabase env vars are unset, the dashboard works withou
 
 ---
 
-## Step 3 — Enable email auth
+## Step 3 — Enable auth providers
+
+### Email (operators)
 
 1. **Authentication** → **Providers** → **Email**
 2. Turn **Email** on
 3. For local dev, you can disable **Confirm email** under Email settings (faster sign-up)
+
+### SSO (enterprise)
+
+Enable each provider your org uses under **Authentication** → **Providers**:
+
+| Dashboard button | Supabase provider |
+|------------------|-------------------|
+| Google Workspace | Google |
+| Microsoft Entra ID | Azure |
+| GitHub Enterprise | GitHub |
+
+Set **Site URL** to your dashboard (e.g. `https://sanctum-dashboard.onrender.com`) and add the same host under **Redirect URLs**.
 
 ---
 
@@ -47,6 +61,7 @@ Auth is **optional**: if Supabase env vars are unset, the dashboard works withou
 | `005_runtime_policies.sql` | Cloud policy storage |
 | `006_webhook_deliveries.sql` | Webhook delivery log |
 | `007_views_and_audit_fixes.sql` | Indexes + `pending_verifications` view |
+| `008_auth_portal.sql` | Operator/enterprise profiles, domain SSO join, org bootstrap |
 
 See [supabase/README.md](./supabase/README.md).
 
@@ -111,6 +126,24 @@ API log should include: `Supabase JWT auth enabled`
 | **Dashboard** (browser) | Supabase session → `Authorization: Bearer <access_token>` to API |
 | **Scripts / SDK** (`npm run smoke`) | `SANCTUM_API_KEY` header if set |
 | **Neither configured** | Open API on localhost (dev only) |
+
+---
+
+## Enterprise org + domain join
+
+After migration `008_auth_portal.sql`, map a company email domain to an org (SQL Editor):
+
+```sql
+insert into public.organizations (id, name)
+values ('acme-corp', 'Acme Corp')
+on conflict (id) do nothing;
+
+insert into public.organization_domains (domain, org_id, verified)
+values ('acme.com', 'acme-corp', true)
+on conflict (domain) do nothing;
+```
+
+Users who sign in via **Enterprise SSO** with `@acme.com` are auto-added to `acme-corp`. Operators get a personal workspace org on signup (`personal-…`).
 
 ---
 

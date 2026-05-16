@@ -13,8 +13,12 @@ extra_search_path = ["public", "extensions"]
 
 [auth]
 enabled = true
-site_url = "http://127.0.0.1:5174"
-additional_redirect_urls = ["http://127.0.0.1:5174/**", "https://*.onrender.com/**"]
+site_url = "https://sanctum-dashboard.onrender.com"
+additional_redirect_urls = [
+  "http://127.0.0.1:5174/**",
+  "https://sanctum-dashboard.onrender.com/**",
+  "https://*.onrender.com/**",
+]
 
 [studio]
 enabled = true

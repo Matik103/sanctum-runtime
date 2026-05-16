@@ -11,6 +11,7 @@
 | `005_runtime_policies.sql` | `runtime_policies` (cloud policy store) |
 | `006_webhook_deliveries.sql` | `webhook_deliveries` |
 | `007_views_and_audit_fixes.sql` | indexes, `pending_verifications` view |
+| `008_auth_portal.sql` | `portal_type`, enterprise domains, org bootstrap, `my_profile` |
 
 ## Deploy to linked project
 

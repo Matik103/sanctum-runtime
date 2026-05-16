@@ -43,7 +43,11 @@ export function Login() {
     setBusy(true)
     try {
       if (tab === 'signup') {
-        const { error: err } = await sb.auth.signUp({ email, password })
+        const { error: err } = await sb.auth.signUp({
+          email,
+          password,
+          options: { data: { portal_type: 'operator', auth_provider: 'email' } },
+        })
         if (err) throw err
         setMessage('Account created. Check your email if confirmation is required, then sign in.')
         setTab('signin')
@@ -72,15 +76,12 @@ export function Login() {
         provider: provider === 'azure' ? 'azure' : provider,
         options: {
           redirectTo: window.location.origin,
+          data: { portal_type: 'enterprise', auth_provider: provider },
         },
       })
       if (err) throw err
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : `Enable ${provider} under Supabase → Authentication → Providers.`,
-      )
+      setError(err instanceof Error ? err.message : 'SSO sign-in failed. Contact your administrator.')
     } finally {
       setBusy(false)
     }
