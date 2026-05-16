@@ -10,8 +10,25 @@ Use this so the repo ranks well on **GitHub search**, **Google**, and **npm** �
 Open-source trust layer for autonomous AI — gate agent, robot, smart home, and industrial actions before they run. Policies, HITL, Ollama/OpenAI, audit. MIT. npm @sanctum-runtime/sdk
 ```
 
-**Website:** `https://github.com/Matik103/sanctum-runtime#readme`  
-(or your marketing site when live)
+**Website (homepage link next to About):**  
+`https://www.npmjs.com/package/@sanctum-runtime/sdk`  
+(developers land on install page; README stays canonical docs)
+
+Alternate: `https://github.com/Matik103/sanctum-runtime#readme`
+
+**Resources sidebar** (auto-filled when these files exist):
+
+| File | Shows as |
+|------|----------|
+| `README.md` | Readme |
+| `LICENSE` | MIT license |
+| `CONTRIBUTING.md` | Contributing |
+| `SECURITY.md` | Security policy |
+| `SUPPORT.md` | Support (community links) |
+| Published npm package | Packages → `@sanctum-runtime/sdk` |
+| Releases / tags | Releases |
+
+Enable **Discussions** for community exposure: `gh repo edit --enable-discussions`
 
 **Topics** (add all 20 — GitHub limit):
 

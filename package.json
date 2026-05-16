@@ -1,8 +1,26 @@
 {
   "name": "sanctum-runtime",
-  "description": "Open-source autonomous action runtime — gate AI agents, robots, smart home, and industrial commands before execution (MIT)",
+  "description": "Open-source trust layer for autonomous AI — gate agent, robot, smart home, and industrial actions before they run. MIT.",
   "packageManager": "npm@10.9.2",
   "private": true,
+  "homepage": "https://github.com/Matik103/sanctum-runtime#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Matik103/sanctum-runtime.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Matik103/sanctum-runtime/issues"
+  },
+  "keywords": [
+    "ai-agents",
+    "robotics",
+    "smart-home",
+    "iot",
+    "llm-security",
+    "guardrails",
+    "policy-engine",
+    "open-source"
+  ],
   "sideEffects": false,
   "type": "module",
   "workspaces": [

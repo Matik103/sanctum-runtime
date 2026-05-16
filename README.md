@@ -7,8 +7,14 @@ One runtime for **agents, robots, smart home, industrial systems, and workflows*
 [![npm @sanctum-runtime/sdk](https://img.shields.io/npm/v/@sanctum-runtime/sdk?label=npm%20sdk)](https://www.npmjs.com/package/@sanctum-runtime/sdk)
 [![GitHub stars](https://img.shields.io/github/stars/Matik103/sanctum-runtime?style=social)](https://github.com/Matik103/sanctum-runtime)
 
-> **First time here?** [START_HERE.md](./START_HERE.md) (5‑minute setup) → [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md) (full API & SDK)  
-> **OSS vs enterprise:** [OPEN_CORE.md](./OPEN_CORE.md)
+**About this repo:** Open-source trust layer for autonomous AI — gate agent, robot, smart home, and industrial actions before they run. Policies, HITL, Ollama/OpenAI, audit. MIT · `npm install @sanctum-runtime/sdk`
+
+| | |
+|---|---|
+| **Start** | [START_HERE.md](./START_HERE.md) · [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md) · [CATEGORIES.md](./CATEGORIES.md) |
+| **Install** | `npm install @sanctum-runtime/sdk` · [adapter](https://www.npmjs.com/package/@sanctum-runtime/adapter-agent-runtime) |
+| **Help** | [SUPPORT.md](./SUPPORT.md) · [Issues](https://github.com/Matik103/sanctum-runtime/issues) · [Discussions](https://github.com/Matik103/sanctum-runtime/discussions) |
+| **Scope** | [OPEN_CORE.md](./OPEN_CORE.md) (OSS vs enterprise) |
 
 ---
 
