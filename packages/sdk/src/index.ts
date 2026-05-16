@@ -39,3 +39,9 @@ export {
   defaultAttestationReport,
   type AttestationReport,
 } from './attestation.js'
+export {
+  AgentMemoryVault,
+  memoryKeyHint,
+  resolveMemoryKey,
+  type AgentMemoryVaultOptions,
+} from './agent-memory.js'

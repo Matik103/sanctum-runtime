@@ -14,7 +14,7 @@ Runtime attestation and trust scoring for the Sanctum control plane. This is **i
 | Fleet “Verified” badge | Done |
 | Re-attest endpoint | Done |
 | TPM / SGX hardware quotes | Stub only |
-| Encrypted agent memory | Planned |
+| Encrypted agent memory | **Done** | See [PHASE_3_MEMORY.md](./PHASE_3_MEMORY.md) |
 
 ## Connect with attestation
 
@@ -67,4 +67,4 @@ Optional `SANCTUM_ATTESTATION_SECRET` (≥16 chars) for HMAC tokens. If unset, d
 
 - Hardware attestation (TPM quote verification)
 - Policy gates on `attestation_status === 'verified'`
-- Encrypted memory vault per agent
+- Key rotation / re-wrap API

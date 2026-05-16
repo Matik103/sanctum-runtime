@@ -8,6 +8,7 @@ import { z } from 'zod'
 import { registerApiKeyRoutes } from './api-keys.js'
 import { registerControlPlaneRoutes } from './control-plane-routes.js'
 import { registerOrchestrationRoutes } from './orchestration-routes.js'
+import { registerAgentMemoryRoutes } from './agent-memory-routes.js'
 import { registerRuntimeWsRoutes } from './runtime-ws-routes.js'
 import { runtimeWsHub } from './runtime-ws-hub.js'
 import {
@@ -127,6 +128,7 @@ app.get('/', async () => ({
     operatorContext: 'GET /v1/operator/context',
     eventStream: 'GET /v1/events/stream (SSE)',
     runtimeWs: 'WS /v1/runtimes/ws?runtimeId=',
+    agentMemory: 'GET|PUT|DELETE /v1/runtimes/:id/agents/:agentId/memory/:key',
     analyze: 'POST /analyze-action',
   },
 }))
@@ -136,6 +138,7 @@ if (supabaseAuth) {
   await registerControlPlaneRoutes(app)
   await registerOrchestrationRoutes(app)
   await registerRuntimeWsRoutes(app)
+  await registerAgentMemoryRoutes(app)
 }
 
 app.get('/health', async () => {

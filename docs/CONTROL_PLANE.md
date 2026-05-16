@@ -39,7 +39,7 @@
 | Runtime attestation / trust score | 3 | **Done** | `connect()` + `014_phase3_attestation` |
 | Re-attest + trust API | 3 | **Done** | `POST …/attest`, `GET …/trust` |
 | Fleet verified badge | 3 | **Done** | Fleet runtimes tab |
-| Encrypted memory | 3 | Planned | |
+| Encrypted memory | 3 | **Done** | `runtime.memory(agentId)` |
 | TPM / hardware quotes | 3 | Stub | `stubHardwareQuote()` |
 | Fleet maps / regions | 4 | **Done** | `GET /v1/fleet/map` |
 | Command dispatch | 4 | **Done** | heartbeat delivery + ack |
@@ -155,6 +155,8 @@ Pass `mode` on `connect()`.
 | `policy.blocked` | After BLOCKED decision |
 | `command.executed` | After approved action runs |
 | `operator.override` | Manual dashboard resolve |
+| `memory.updated` | Encrypted memory PUT |
+| `memory.deleted` | Encrypted memory DELETE |
 
 Emit custom types with `emitEvent()`.
 

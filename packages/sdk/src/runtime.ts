@@ -1,5 +1,10 @@
 import { SanctumClient, type SanctumClientOptions } from './client.js'
 import {
+  AgentMemoryVault,
+  resolveMemoryKey,
+  type AgentMemoryVaultOptions,
+} from './agent-memory.js'
+import {
   ControlPlaneSession,
   type ConnectOptions,
   type ConnectResult,
@@ -47,6 +52,24 @@ export class SanctumRuntime {
 
   emitEvent(eventType: string, payload?: Record<string, unknown>, agentId?: string) {
     return this.control.emitEvent(eventType, payload, agentId)
+  }
+
+  /**
+   * Encrypted memory vault for an agent. Ciphertext is stored in the control plane;
+   * decryption keys never leave the host (SANCTUM_MEMORY_KEY).
+   */
+  memory(
+    agentId: string,
+    options?: Pick<AgentMemoryVaultOptions, 'encryptionKey' | 'salt'>,
+  ): AgentMemoryVault {
+    if (!this.control.runtimeId) {
+      throw new Error('Call connect() before memory()')
+    }
+    const org = this.control.organizationId
+    return new AgentMemoryVault(this.client, this.control.runtimeId, agentId, {
+      encryptionKey: resolveMemoryKey(options?.encryptionKey),
+      salt: options?.salt ?? (org ? `sanctum:${org}:${agentId}` : undefined),
+    })
   }
 
   async verifyAction(
