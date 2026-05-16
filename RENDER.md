@@ -55,7 +55,8 @@ Render sets `PORT` automatically — do **not** hardcode it.
 | `NODE_VERSION` | `22` |
 | `SANCTUM_OFFLINE_MODE` | `true` |
 | `SANCTUM_RISK_PROVIDER` | `none` |
-| `SANCTUM_API_KEY` | *(your openssl secret)* |
+| `SANCTUM_API_KEY` | *(optional legacy server key for scripts)* |
+| `SANCTUM_API_KEY_PEPPER` | *(required if Supabase + dashboard keys)* `openssl rand -base64 32` — never rotate without re-issuing all `sk_sanctum_*` keys |
 | `DASHBOARD_URL` | `https://your-dashboard.onrender.com` *(or `http://127.0.0.1:5174` until dashboard exists)* |
 
 **Webhooks** (optional — HTTP POST on verify / block / resolve):

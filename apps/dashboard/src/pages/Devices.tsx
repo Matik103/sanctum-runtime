@@ -166,7 +166,7 @@ export function Devices({ status }: Props) {
                 <thead>
                   <tr>
                     <th>Name</th>
-                    <th>Prefix</th>
+                    <th>Secret key</th>
                     <th>Created</th>
                     <th>Last used</th>
                     <th />
@@ -179,7 +179,9 @@ export function Devices({ status }: Props) {
                         <strong>{k.name}</strong>
                       </td>
                       <td>
-                        <span className="key-prefix">{k.key_prefix}…</span>
+                        <code className="key-prefix">
+                          {k.display_key ?? `${k.key_prefix}…${k.key_suffix ?? ''}`}
+                        </code>
                       </td>
                       <td style={{ color: 'var(--muted)' }}>{formatDate(k.created_at)}</td>
                       <td style={{ color: 'var(--muted)' }}>{formatDate(k.last_used_at)}</td>

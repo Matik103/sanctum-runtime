@@ -7,6 +7,8 @@ export type ApiKeyRecord = {
   id: string
   name: string
   key_prefix: string
+  key_suffix: string | null
+  display_key: string
   org_id: string | null
   created_at: string
   revoked_at: string | null

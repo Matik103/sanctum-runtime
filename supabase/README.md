@@ -14,6 +14,7 @@
 | `008_auth_portal.sql` | `portal_type`, enterprise domains, org bootstrap, `my_profile` |
 | `009_api_keys.sql` | Operator API key registry (hash + prefix) |
 | `010_control_plane.sql` | Runtime registry, agents, event stream |
+| `011_api_keys_openai_style.sql` | Peppered bcrypt hashes, key suffix display, scopes |
 
 ## Deploy to linked project
 

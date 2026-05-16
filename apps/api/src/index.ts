@@ -290,7 +290,17 @@ try {
   if (process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
     console.log('Supabase data sync enabled (audit_events, runtime_policies, webhook_deliveries)')
   }
-  if (apiKey) console.log('API key auth enabled (X-Sanctum-Key)')
+  if (apiKey) console.log('Legacy API key auth enabled (SANCTUM_API_KEY env)')
+  if (supabaseAuth) {
+    const pepper = process.env.SANCTUM_API_KEY_PEPPER?.trim()
+    if (pepper && pepper.length >= 16) {
+      console.log('Dashboard API keys: bcrypt + pepper (OpenAI-style)')
+    } else if (process.env.NODE_ENV === 'production') {
+      console.warn('WARN: Set SANCTUM_API_KEY_PEPPER (32+ chars) to create sk_sanctum_* keys')
+    } else {
+      console.log('Dashboard API keys: dev pepper (set SANCTUM_API_KEY_PEPPER in production)')
+    }
+  }
 } catch (err) {
   app.log.error(err)
   process.exit(1)
