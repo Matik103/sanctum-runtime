@@ -15,6 +15,8 @@ export type MarketplacePackage = {
   installed: boolean
   installId: string | null
   readme: string | null
+  policy_templates?: unknown[]
+  policyTemplates?: unknown[]
 }
 
 export type OperatorContext = {
@@ -57,6 +59,7 @@ export async function fetchMarketplacePackages(orgId?: string): Promise<Marketpl
   return data.packages.map((p) => ({
     ...p,
     installed: Boolean(p.installed),
+    policyTemplates: p.policy_templates ?? p.policyTemplates ?? [],
   }))
 }
 

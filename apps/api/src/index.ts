@@ -145,7 +145,7 @@ if (supabaseAuth) {
   await registerOrchestrationRoutes(app)
   await registerRuntimeWsRoutes(app)
   await registerAgentMemoryRoutes(app)
-  await registerMarketplaceRoutes(app)
+  await registerMarketplaceRoutes(app, runtime)
   await registerUsageRoutes(app)
   await registerHardwareAttestationRoutes(app)
 }

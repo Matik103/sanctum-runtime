@@ -74,38 +74,38 @@ values
   (
     'sanctum-agent-host',
     'Sanctum Agent Host',
-    'General-purpose AI agent runtime with policy gating and audit.',
+    'General-purpose AI agent runtime — connect, register agents, and gate tool use with org policies.',
     '1.0.0',
     'sanctum',
     'agent-host',
     'public',
-    '{"mode":"cloud","metadata":{"package":"sanctum-agent-host"},"suggestedRuntimeName":"agent-host-01","agents":[{"id":"default_agent","model":"gpt-4o-mini","permissions":["read","verify"]}]}'::jsonb,
-    '[{"action":"send_email","requiresVerification":true},{"action":"execute_terminal","autoBlock":true}]'::jsonb,
-    'Connect with runtime.connect() then registerAgent from connect_defaults.agents.'
+    '{"mode":"cloud","region":"us-east","metadata":{"package":"sanctum-agent-host"},"suggestedRuntimeName":"agent-host-01","agents":[{"id":"default_agent","model":"gpt-4o-mini","permissions":["read","verify","send_email"]}]}'::jsonb,
+    '[{"action":"send_email","requiresVerification":true},{"action":"delete_file","requiresVerification":true},{"action":"execute_terminal","autoBlock":true},{"action":"access_database","requiresVerification":true,"blockWhenOffline":true}]'::jsonb,
+    '1. Install for your org. 2. connectFromPackage(''sanctum-agent-host'', orgId). 3. verifyAction with actor default_agent.'
   ),
   (
     'warehouse-robot',
     'Warehouse Robot',
-    'AMR / warehouse patrol runtime template with movement permissions.',
+    'Warehouse AMR template — edge mode, navigation agent, movement and door policies.',
     '1.0.0',
     'sanctum',
     'robotics',
     'public',
     '{"mode":"edge","region":"us-west","metadata":{"package":"warehouse-robot"},"suggestedRuntimeName":"warehouse-bot-01","agents":[{"id":"navigation","model":"gpt-4o","permissions":["movement","camera_access"]}]}'::jsonb,
-    '[{"action":"unlock_door","requiresVerification":true},{"action":"movement.forward","requiresVerification":false}]'::jsonb,
-    'Use mode edge for on-device inference with cloud policy sync.'
+    '[{"action":"move_robot","requiresVerification":false},{"action":"unlock_door","requiresVerification":true},{"action":"disable_alarm","requiresVerification":true,"blockWhenOffline":true}]'::jsonb,
+    '1. Install for your org. 2. connectFromPackage(''warehouse-robot'', orgId). 3. Gate moves with action move_robot and actor navigation.'
   ),
   (
     'edge-sensor-gateway',
     'Edge Sensor Gateway',
-    'IoT / sensor gateway with hybrid mode and telemetry-focused defaults.',
+    'Hybrid IoT gateway — telemetry agent, alarm and offline-sensitive policies.',
     '1.0.0',
     'sanctum',
     'edge',
     'public',
-    '{"mode":"hybrid","metadata":{"package":"edge-sensor-gateway"},"suggestedRuntimeName":"sensor-gw-01","agents":[{"id":"telemetry","permissions":["read"]}]}'::jsonb,
-    '[]'::jsonb,
-    'Hybrid mode: local rules + cloud policies.'
+    '{"mode":"hybrid","region":"edge-local","metadata":{"package":"edge-sensor-gateway"},"suggestedRuntimeName":"sensor-gw-01","agents":[{"id":"telemetry","model":"gpt-4o-mini","permissions":["read"]}]}'::jsonb,
+    '[{"action":"disable_alarm","requiresVerification":true,"blockWhenOffline":true},{"action":"access_database","requiresVerification":true,"blockWhenOffline":true}]'::jsonb,
+    '1. Install for your org. 2. connectFromPackage(''edge-sensor-gateway'', orgId). 3. emitEvent from agent telemetry.'
   )
 on conflict (slug) do update set
   name = excluded.name,

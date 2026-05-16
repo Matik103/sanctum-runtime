@@ -88,7 +88,7 @@ export function Marketplace() {
           ),
         )
         setSuccess(
-          `${pkg.name} installed — run connectFromPackage('${pkg.slug}', '${orgId}') or open Fleet`,
+          `${pkg.name} installed — org policies applied. Run connectFromPackage('${pkg.slug}', '${orgId}') or open Fleet.`,
         )
       }
       await refresh()
@@ -168,9 +168,12 @@ export function Marketplace() {
                   <Package size={20} style={{ flexShrink: 0, marginTop: '0.15rem' }} />
                   <div style={{ flex: 1 }}>
                     <h3 style={{ margin: '0 0 0.25rem' }}>{pkg.name}</h3>
-                    <p className="hint-line" style={{ margin: 0 }}>
-                      {pkg.slug} · v{pkg.version} · {pkg.category}
-                    </p>
+                  <p className="hint-line" style={{ margin: 0 }}>
+                    {pkg.slug} · v{pkg.version} · {pkg.category}
+                    {Array.isArray(pkg.policyTemplates) && pkg.policyTemplates.length > 0
+                      ? ` · ${pkg.policyTemplates.length} policies on install`
+                      : ''}
+                  </p>
                   </div>
                   {installed && <span className="badge success">Installed</span>}
                 </div>

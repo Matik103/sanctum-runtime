@@ -1,7 +1,13 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify'
+import type { RuntimeEngine } from '@sanctum/runtime-engine'
 import { z } from 'zod'
 import { getSupabaseAuthConfig } from './auth.js'
 import { ControlPlaneStore } from './control-plane-store.js'
+import {
+  applyMarketplacePolicyTemplates,
+  policyKeysFromInstallConfig,
+  removeMarketplacePolicyTemplates,
+} from './marketplace-policies.js'
 import { MarketplaceStore } from './marketplace-store.js'
 import { recordUsage, UsageMetrics } from './usage-store.js'
 
@@ -46,7 +52,10 @@ const slugSchema = z
   .max(64)
   .regex(/^[a-z0-9-]+$/)
 
-export async function registerMarketplaceRoutes(app: FastifyInstance) {
+export async function registerMarketplaceRoutes(
+  app: FastifyInstance,
+  runtime: RuntimeEngine,
+) {
   const cfg = getSupabaseAuthConfig()
   if (!cfg) return
 
@@ -128,10 +137,24 @@ export async function registerMarketplaceRoutes(app: FastifyInstance) {
     await store.ensureOrg(body.organizationId)
 
     try {
+      const catalog = await market.getBySlug(slug, body.organizationId)
+      if (!catalog) return reply.status(404).send({ error: 'package_not_found' })
+
+      const appliedPolicyKeys = await applyMarketplacePolicyTemplates(
+        runtime,
+        body.organizationId,
+        catalog.policy_templates,
+      )
+
       const { install, package: pkg } = await market.install(
         body.organizationId,
         slug,
-        body.config,
+        {
+          ...(body.config ?? {}),
+          appliedPolicyKeys,
+          packageSlug: slug,
+          packageVersion: catalog.version,
+        },
       )
       await store.insertEvent({
         orgId: body.organizationId,
@@ -146,7 +169,12 @@ export async function registerMarketplaceRoutes(app: FastifyInstance) {
         ...((install.config as Record<string, unknown>) ?? {}),
       })
       connect.organizationId = body.organizationId
-      return { installId: install.id, installedAt: install.installed_at, connect }
+      return {
+        installId: install.id,
+        installedAt: install.installed_at,
+        connect,
+        appliedPolicyKeys,
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'install_failed'
       if (msg === 'package_not_found') return reply.status(404).send({ error: msg })
@@ -161,8 +189,17 @@ export async function registerMarketplaceRoutes(app: FastifyInstance) {
     const scope = await resolveOrgScope(req as SanctumReq, store)
     if (!assertOrgAllowed(scope, orgId, reply)) return
 
+    const installRow = await market.getInstallRecord(orgId, slug)
+    const policyKeys = policyKeysFromInstallConfig(
+      (installRow?.install.config as Record<string, unknown> | undefined) ?? undefined,
+    )
+
     const removed = await market.uninstall(orgId, slug)
     if (!removed) return reply.status(404).send({ error: 'not_installed' })
+
+    if (policyKeys.length > 0) {
+      await removeMarketplacePolicyTemplates(runtime, policyKeys)
+    }
     await store.insertEvent({
       orgId,
       eventType: 'marketplace.uninstalled',

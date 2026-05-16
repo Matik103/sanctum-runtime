@@ -174,16 +174,30 @@ export class MarketplaceStore {
     return (data?.length ?? 0) > 0
   }
 
-  async getInstallConfig(orgId: string, slug: string) {
+  async getInstallRecord(orgId: string, slug: string) {
     const pkg = await this.getBySlug(slug, orgId)
     if (!pkg?.installed) return null
-    const { data } = await this.admin()
+    const { data, error } = await this.admin()
       .from('runtime_package_installs')
-      .select('config')
+      .select('id, config, installed_at')
       .eq('org_id', orgId)
       .eq('package_id', pkg.id)
       .maybeSingle()
-    return this.connectHints(pkg, (data?.config as Record<string, unknown>) ?? {})
+    if (error) throw new Error(error.message)
+    if (!data) return null
+    return {
+      install: data as Pick<RuntimePackageInstall, 'id' | 'config' | 'installed_at'>,
+      package: pkg,
+    }
+  }
+
+  async getInstallConfig(orgId: string, slug: string) {
+    const row = await this.getInstallRecord(orgId, slug)
+    if (!row) return null
+    return this.connectHints(
+      row.package,
+      (row.install.config as Record<string, unknown>) ?? {},
+    )
   }
 
   connectHints(pkg: RuntimePackage, config: Record<string, unknown> = {}) {

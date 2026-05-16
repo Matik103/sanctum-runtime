@@ -4,13 +4,15 @@ Catalog of runtime templates with one-click org install and SDK `connectFromPack
 
 ## Catalog (seeded)
 
-| Slug | Category | Mode |
-|------|----------|------|
-| `sanctum-agent-host` | agent-host | cloud |
-| `warehouse-robot` | robotics | edge |
-| `edge-sensor-gateway` | edge | hybrid |
+| Slug | Category | Mode | Primary agent | Policies on install |
+|------|----------|------|---------------|---------------------|
+| `sanctum-agent-host` | agent-host | cloud | `default_agent` | `send_email`, `delete_file`, `execute_terminal`, `access_database` |
+| `warehouse-robot` | robotics | edge | `navigation` | `move_robot`, `unlock_door`, `disable_alarm` |
+| `edge-sensor-gateway` | edge | hybrid | `telemetry` | `disable_alarm`, `access_database` |
 
-Apply migration `017_runtime_marketplace.sql` via `npm run db:push`.
+Apply migrations `017` + `020` via `npm run db:push`.
+
+**Install applies org-scoped policies** (`{orgId}:{action}`) and stores keys in the install record. **Uninstall removes** those policy keys.
 
 ## Dashboard
 
