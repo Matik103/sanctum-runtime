@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { ActionResult } from '@sanctum-runtime/sdk'
 import { ActionDrawer } from './components/ActionDrawer'
+import { ReviewQueueBanner, summarizePendingActions } from './components/ReviewQueueBanner'
 import { VerificationModal } from './components/VerificationModal'
 import { useDashboard } from './hooks/useDashboard'
 import { Sidebar, type PageId } from './layout/Sidebar'
@@ -24,8 +25,11 @@ export function App() {
     setPolicy,
     pendingVerification,
     pendingReviewCount,
+    pendingReviewQueue,
+    getQueuePosition,
     markVerificationsDismissed,
     openNextPendingReview,
+    dismissCurrentAndAdvance,
     apiError,
     lastRefreshed,
   } = useDashboard()
@@ -53,26 +57,13 @@ export function App() {
         )}
 
         {!pendingVerification && pendingReviewCount > 0 && (
-          <div
-            className="card"
-            style={{
-              marginBottom: '1rem',
-              borderColor: 'var(--warning)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '1rem',
-              flexWrap: 'wrap',
-            }}
-          >
-            <p style={{ margin: 0, fontSize: '0.9rem' }}>
-              <strong>{pendingReviewCount}</strong> action
-              {pendingReviewCount === 1 ? '' : 's'} waiting for your review (from audit log).
-            </p>
-            <button type="button" className="btn btn-ghost" onClick={openNextPendingReview}>
-              Review next
-            </button>
-          </div>
+          <ReviewQueueBanner
+            count={pendingReviewCount}
+            summary={summarizePendingActions(pendingReviewQueue.map((e) => e.action))}
+            onReviewNext={openNextPendingReview}
+            onDismissAll={() => markVerificationsDismissed('all')}
+            onViewActivity={() => setPage('activity')}
+          />
         )}
 
         {page === 'overview' && (
@@ -101,9 +92,10 @@ export function App() {
       {pendingVerification && (
         <VerificationModal
           entry={pendingVerification}
+          queuePosition={getQueuePosition(pendingVerification.id)}
           onApproveOnce={() => {
             const entry = pendingVerification
-            markVerificationsDismissed('all')
+            dismissCurrentAndAdvance(entry.id)
             setSelected(entry)
           }}
           onAlwaysApprove={async () => {
@@ -111,7 +103,7 @@ export function App() {
             await setPolicy(entry.action, 'approve')
             markVerificationsDismissed({ action: entry.action })
           }}
-          onDeny={() => markVerificationsDismissed('all')}
+          onDeny={() => dismissCurrentAndAdvance(pendingVerification.id)}
         />
       )}
     </div>

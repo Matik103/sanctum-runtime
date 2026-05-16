@@ -3,6 +3,7 @@ import { actionLabel, actorLabel } from '../lib/labels'
 
 type Props = {
   entry: ActionResult
+  queuePosition?: { current: number; total: number }
   onApproveOnce: () => void
   onAlwaysApprove: () => void
   onDeny: () => void
@@ -10,6 +11,7 @@ type Props = {
 
 export function VerificationModal({
   entry,
+  queuePosition,
   onApproveOnce,
   onAlwaysApprove,
   onDeny,
@@ -18,7 +20,19 @@ export function VerificationModal({
     <div className="modal-backdrop" role="dialog" aria-modal="true">
       <div className="modal">
         <h2>Verification required</h2>
-        <p style={{ color: 'var(--muted)', fontSize: '0.9rem', margin: 0 }}>
+        {queuePosition && queuePosition.total > 1 && (
+          <p
+            style={{
+              margin: '0.35rem 0 0',
+              fontSize: '0.8rem',
+              color: 'var(--warning)',
+              fontWeight: 500,
+            }}
+          >
+            Reviewing {queuePosition.current} of {queuePosition.total} in your queue
+          </p>
+        )}
+        <p style={{ color: 'var(--muted)', fontSize: '0.9rem', margin: '0.5rem 0 0' }}>
           Sanctum paused this action until you decide. You remain in control.
         </p>
 

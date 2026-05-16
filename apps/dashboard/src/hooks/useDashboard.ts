@@ -123,20 +123,44 @@ export function useDashboard() {
     setData((d) => ({ ...d, policies }))
   }
 
-  const pendingReviewCount = data.audit.filter(
-    (e) =>
-      e.decision === 'REQUIRE_VERIFICATION' &&
-      !dismissedVerificationIds.current.has(e.id),
-  ).length
-
-  const openNextPendingReview = useCallback(() => {
-    const next = auditRef.current.find(
+  const getPendingReviewQueue = useCallback(() => {
+    return auditRef.current.filter(
       (e) =>
         e.decision === 'REQUIRE_VERIFICATION' &&
         !dismissedVerificationIds.current.has(e.id),
     )
+  }, [])
+
+  const pendingReviewQueue = data.audit.filter(
+    (e) =>
+      e.decision === 'REQUIRE_VERIFICATION' &&
+      !dismissedVerificationIds.current.has(e.id),
+  )
+
+  const pendingReviewCount = pendingReviewQueue.length
+
+  const getQueuePosition = useCallback(
+    (entryId: string) => {
+      const queue = getPendingReviewQueue()
+      const index = queue.findIndex((e) => e.id === entryId)
+      return index >= 0 ? { current: index + 1, total: queue.length } : undefined
+    },
+    [getPendingReviewQueue, pendingReviewCount],
+  )
+
+  const openNextPendingReview = useCallback(() => {
+    const next = getPendingReviewQueue()[0]
     if (next) showVerification(next)
-  }, [showVerification])
+  }, [getPendingReviewQueue, showVerification])
+
+  const dismissCurrentAndAdvance = useCallback(
+    (entryId: string) => {
+      markVerificationsDismissed({ id: entryId })
+      const next = getPendingReviewQueue()[0]
+      if (next) showVerification(next)
+    },
+    [markVerificationsDismissed, getPendingReviewQueue, showVerification],
+  )
 
   return {
     ...data,
@@ -148,7 +172,10 @@ export function useDashboard() {
     setPolicy,
     pendingVerification,
     pendingReviewCount,
+    pendingReviewQueue,
+    getQueuePosition,
     markVerificationsDismissed,
     openNextPendingReview,
+    dismissCurrentAndAdvance,
   }
 }
