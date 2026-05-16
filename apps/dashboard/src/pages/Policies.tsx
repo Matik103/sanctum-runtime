@@ -10,19 +10,40 @@ import {
   type PolicyResponse,
 } from '../lib/api'
 
+const BUILTIN_ACTIONS = new Set([
+  'unlock_door',
+  'lock_door',
+  'send_email',
+  'delete_file',
+  'execute_terminal',
+  'access_database',
+  'create_user',
+  'transfer_funds',
+  'disable_alarm',
+  'move_robot',
+])
+
 type Props = {
   policies: PolicyMap
   audit: { action: string; timestamp: string }[]
-  onSetPolicy: (action: string, response: PolicyResponse) => void
+  supabaseConfigured?: boolean
+  onSetPolicy: (action: string, response: PolicyResponse) => Promise<void>
   onPoliciesChange: (policies: PolicyMap) => void
 }
 
-export function Policies({ policies, audit, onSetPolicy, onPoliciesChange }: Props) {
+export function Policies({
+  policies,
+  audit,
+  supabaseConfigured,
+  onSetPolicy,
+  onPoliciesChange,
+}: Props) {
   const [newAction, setNewAction] = useState('')
   const [newMode, setNewMode] = useState<PolicyResponse>('verify')
   const [adding, setAdding] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [yamlBusy, setYamlBusy] = useState(false)
+  const [savingAction, setSavingAction] = useState<string | null>(null)
 
   const exportYaml = async () => {
     setYamlBusy(true)
@@ -122,7 +143,8 @@ export function Policies({ policies, audit, onSetPolicy, onPoliciesChange }: Pro
       <div className="card" style={{ marginBottom: '1.25rem' }}>
         <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--muted)', lineHeight: 1.6 }}>
           Add as many action policies as your product needs. Each policy sets how Sanctum responds
-          when an AI requests that action.{' '}
+          when an AI requests that action. Changes are saved to the runtime API
+          {supabaseConfigured ? ' and Supabase' : ''}.{' '}
           <strong style={{ color: 'var(--success)' }}>Approve</strong> runs automatically,{' '}
           <strong style={{ color: 'var(--warning)' }}>Verify</strong> pauses for you,{' '}
           <strong style={{ color: '#fca5a5' }}>Block</strong> denies immediately.
@@ -187,14 +209,16 @@ export function Policies({ policies, audit, onSetPolicy, onPoliciesChange }: Pro
             <article key={action} className="policy-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>
                 <h3 style={{ margin: 0 }}>{actionLabel(action)}</h3>
-                <button
-                  type="button"
-                  className="response-btn"
-                  style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem' }}
-                  onClick={() => void removePolicy(action)}
-                >
-                  Remove
-                </button>
+                {!BUILTIN_ACTIONS.has(action) && (
+                  <button
+                    type="button"
+                    className="response-btn"
+                    style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem' }}
+                    onClick={() => void removePolicy(action)}
+                  >
+                    Remove
+                  </button>
+                )}
               </div>
               <p style={{ margin: '0.25rem 0', color: 'var(--muted)', fontSize: '0.85rem' }}>
                 When an agent requests this action, Sanctum applies the response below.
@@ -209,9 +233,22 @@ export function Policies({ policies, audit, onSetPolicy, onPoliciesChange }: Pro
                     key={r}
                     type="button"
                     className={`response-btn ${response === r ? `active ${r}` : ''}`}
-                    onClick={() => onSetPolicy(action, r)}
+                    disabled={savingAction === action}
+                    onClick={() => {
+                      setSavingAction(action)
+                      setError(null)
+                      void onSetPolicy(action, r)
+                        .catch((e) => {
+                          setError(
+                            e instanceof Error ? e.message : 'Failed to save policy',
+                          )
+                        })
+                        .finally(() => setSavingAction(null))
+                    }}
                   >
-                    {r.charAt(0).toUpperCase() + r.slice(1)}
+                    {savingAction === action
+                      ? 'Saving…'
+                      : r.charAt(0).toUpperCase() + r.slice(1)}
                   </button>
                 ))}
               </div>

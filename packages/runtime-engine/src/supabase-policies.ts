@@ -44,6 +44,33 @@ export async function syncPoliciesToSupabase(policies: PolicyMap): Promise<void>
   }
 }
 
+/** Seed full policy map when `runtime_policies` is empty (first deploy). */
+export async function seedPoliciesToSupabaseIfEmpty(policies: PolicyMap): Promise<void> {
+  const existing = await loadPoliciesFromSupabase()
+  if (existing && Object.keys(existing).length > 0) return
+  await syncPoliciesToSupabase(policies)
+}
+
+export async function syncPolicyToSupabase(
+  actionKey: string,
+  policy: ActionPolicy,
+): Promise<void> {
+  const sb = getSupabaseServiceClient()
+  if (!sb) return
+  const { error } = await sb.from('runtime_policies').upsert(
+    {
+      action_key: actionKey,
+      org_id: orgIdFromActionKey(actionKey),
+      policy,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'action_key' },
+  )
+  if (error) {
+    console.error(`[sanctum] sync policy ${actionKey} to Supabase failed:`, error.message)
+  }
+}
+
 export async function deletePolicyFromSupabase(actionKey: string): Promise<void> {
   const sb = getSupabaseServiceClient()
   if (!sb) return

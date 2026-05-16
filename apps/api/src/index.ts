@@ -79,6 +79,10 @@ app.addHook('onRequest', async (req, reply) => {
 })
 
 await runtime.init()
+if (process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY?.trim()) {
+  const count = Object.keys(runtime.getPolicyEngine().getPolicies()).length
+  console.log(`Supabase policy store active (${count} policies loaded/seeded)`)
+}
 
 app.get('/', async () => ({
   name: 'Sanctum Runtime API',

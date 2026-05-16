@@ -81,6 +81,7 @@ export function App() {
           <Policies
             policies={policies}
             audit={audit}
+            supabaseConfigured={status?.supabaseConfigured}
             onSetPolicy={setPolicy}
             onPoliciesChange={replacePolicies}
           />

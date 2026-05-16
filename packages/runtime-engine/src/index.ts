@@ -22,9 +22,11 @@ import {
 } from '@sanctum-runtime/sdk'
 import { maybeSyncAuditToSupabase } from './supabase-audit.js'
 import { isSupabaseConfigured } from './supabase-client.js'
+import { buildPolicyReasoning } from './policy-reasoning.js'
 import {
   deletePolicyFromSupabase,
   loadPoliciesFromSupabase,
+  seedPoliciesToSupabaseIfEmpty,
   syncPoliciesToSupabase,
 } from './supabase-policies.js'
 import {
@@ -33,7 +35,7 @@ import {
   webhookEventForDecision,
 } from './webhooks.js'
 import { detectAnomalies } from './anomaly.js'
-import { decisionReasoningSuffix, resolveDecision } from './decision.js'
+import { resolveDecision } from './decision.js'
 import { heuristicRiskFloor, heuristicRiskReason, mergeRisk } from './risk-heuristics.js'
 
 export type RuntimeEngineOptions = {
@@ -55,7 +57,9 @@ export class RuntimeEngine {
   constructor(options: RuntimeEngineOptions = {}) {
     this.policyEngine = options.policyEngine ?? new PolicyEngine(undefined, undefined)
     this.policyEngine.setAfterPersist(async (policies) => {
-      await syncPoliciesToSupabase(policies)
+      if (isSupabaseConfigured()) {
+        await syncPoliciesToSupabase(policies)
+      }
     })
     this.policyEngine.setOnDelete(async (action) => {
       await deletePolicyFromSupabase(action)
@@ -95,9 +99,13 @@ export class RuntimeEngine {
 
   async init(): Promise<void> {
     await this.policyEngine.load()
-    const fromDb = await loadPoliciesFromSupabase()
-    if (fromDb && Object.keys(fromDb).length > 0) {
-      this.policyEngine.mergePolicies(fromDb)
+    if (isSupabaseConfigured()) {
+      const fromDb = await loadPoliciesFromSupabase()
+      if (fromDb && Object.keys(fromDb).length > 0) {
+        this.policyEngine.applySupabasePolicies(fromDb)
+      } else {
+        await seedPoliciesToSupabaseIfEmpty(this.policyEngine.getPolicies())
+      }
     }
     await this.auditStore.loadFromDisk()
   }
@@ -199,7 +207,7 @@ export class RuntimeEngine {
     const policyEval = this.policyEngine.evaluate(request, useHeuristicsOnly)
 
     let risk: RiskLevel = riskFloor
-    let reasoning = 'Policy evaluation passed.'
+    let modelReason: string | undefined
     let modelConfidence: number | undefined
     let decision: Decision = 'APPROVED'
     let modelInvoked = false
@@ -207,19 +215,15 @@ export class RuntimeEngine {
     if (policyEval.violations.includes('policy_auto_block')) {
       decision = 'BLOCKED'
       risk = 'high'
-      reasoning = 'Blocked by policy (auto-block).'
     } else if (policyEval.violations.includes('policy_block_when_offline')) {
       decision = 'BLOCKED'
       risk = 'high'
-      reasoning = 'Blocked: action not permitted while offline.'
     } else if (policyEval.violations.includes('policy_actor_not_allowed')) {
       decision = 'BLOCKED'
       risk = 'high'
-      reasoning = 'Blocked: actor not in allowed list.'
     } else if (anomalyFlags.includes('suspicious_prompt_pattern')) {
       decision = 'BLOCKED'
       risk = 'high'
-      reasoning = 'Blocked: suspicious prompt / injection pattern detected.'
     } else if (!useHeuristicsOnly && this.riskModel) {
       const { assessment, error } = await this.riskModel.analyzeAction(request, {
         riskPrompt: policyEval.policy.riskPrompt,
@@ -231,10 +235,12 @@ export class RuntimeEngine {
         const modelRisk = assessment.risk
         risk = mergeRisk(modelRisk, riskFloor)
         modelConfidence = assessment.confidence
-        reasoning = assessment.reason
+        modelReason = assessment.reason
         if (risk !== modelRisk) {
           const hint = heuristicRiskReason(request, anomalyFlags, riskFloor)
-          if (hint) reasoning = `${hint} Model said ${modelRisk}; Sanctum uses ${risk}.`
+          modelReason = hint
+            ? `${hint} Risk model suggested ${modelRisk}; Sanctum applied ${risk} given policy.`
+            : `${assessment.reason} Sanctum applied ${risk} given policy.`
         }
 
         decision = resolveDecision({
@@ -243,24 +249,16 @@ export class RuntimeEngine {
           modelRecommendation: assessment.recommendation,
           anomalyFlags,
         })
-        const suffix = decisionReasoningSuffix(
-          decision,
-          policyEval.policy,
-          assessment.recommendation,
-        )
-        if (suffix) reasoning = `${reasoning} ${suffix}`
       } else {
         evaluationMode = 'offline_model_failed'
-        reasoning = error
-          ? `Model call failed (${error}). Heuristic policy and anomaly rules applied.`
-          : 'Model call failed. Heuristic policy and anomaly rules applied.'
+        modelReason = error ? `Risk model error: ${error}` : undefined
 
-        if (policyEval.policy.requiresVerification || anomalyFlags.length > 0) {
-          decision = 'REQUIRE_VERIFICATION'
-          risk = mergeRisk(risk, riskFloor)
-          const hint = heuristicRiskReason(request, anomalyFlags, riskFloor)
-          if (hint && !reasoning.includes('Sanctum')) reasoning = `${hint} ${reasoning}`
-        }
+        decision = resolveDecision({
+          policy: policyEval.policy,
+          risk: mergeRisk(risk, riskFloor),
+          anomalyFlags,
+        })
+        risk = mergeRisk(risk, riskFloor)
 
         if (
           anomalyFlags.includes('unsafe_command_chain') &&
@@ -268,29 +266,15 @@ export class RuntimeEngine {
         ) {
           decision = 'BLOCKED'
           risk = 'high'
-          reasoning = 'Blocked: unsafe command chain (auto-block enabled in Policy Manager).'
         }
       }
     } else {
-      if (evaluationMode === 'offline_forced') {
-        reasoning =
-          'Offline mode (forced): heuristic policy and anomaly rules applied — no model call.'
-      } else {
-        reasoning =
-          'Offline mode (Ollama unavailable): heuristic policy and anomaly rules applied — no model call.'
-      }
-
       risk = mergeRisk(risk, riskFloor)
-      const hint = heuristicRiskReason(request, anomalyFlags, riskFloor)
-      if (hint) reasoning = `${hint} ${reasoning}`
-
       decision = resolveDecision({
         policy: policyEval.policy,
         risk,
         anomalyFlags,
       })
-      const suffix = decisionReasoningSuffix(decision, policyEval.policy)
-      if (suffix) reasoning = `${reasoning} ${suffix}`
     }
 
     if (
@@ -300,8 +284,18 @@ export class RuntimeEngine {
       !policyEval.policy.autoBlock
     ) {
       decision = 'REQUIRE_VERIFICATION'
-      reasoning = `Policy requires verification for "${request.action}".`
     }
+
+    const reasoning = buildPolicyReasoning({
+      request,
+      policy: policyEval.policy,
+      policyPath: policyEval.policyPath,
+      decision,
+      anomalyFlags,
+      evaluationMode,
+      risk,
+      modelReason,
+    })
 
     const partial = {
       actor: request.actor,

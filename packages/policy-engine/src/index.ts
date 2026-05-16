@@ -92,10 +92,17 @@ export class PolicyEngine {
         return { key: orgKey, path: `policy.${orgId}.${request.action}` }
       }
     }
-    if (request.action in this.policies) {
-      return { key: request.action, path: `policy.${request.action}` }
-    }
-    return { key: request.action, path: 'policy.default' }
+    return { key: request.action, path: `policy.${request.action}` }
+  }
+
+  /** Replace in-memory policies (used when Supabase is the store). */
+  setPolicies(map: PolicyMap): void {
+    this.policies = { ...map }
+  }
+
+  /** Defaults + cloud/dashboard overrides. */
+  applySupabasePolicies(overlay: PolicyMap): void {
+    this.policies = { ...DEFAULT_POLICIES, ...overlay }
   }
 
   evaluate(request: ActionRequest, offlineMode: boolean): PolicyEvaluation {
@@ -120,4 +127,4 @@ export class PolicyEngine {
   }
 }
 
-export { DEFAULT_POLICIES, DEFAULT_POLICY }
+export { DEFAULT_POLICIES, DEFAULT_POLICY, BUILTIN_POLICY_ACTIONS }

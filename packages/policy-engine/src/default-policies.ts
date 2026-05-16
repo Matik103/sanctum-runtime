@@ -58,3 +58,5 @@ export const DEFAULT_POLICY: ActionPolicy = {
   autoBlock: false,
   blockWhenOffline: false,
 }
+
+export const BUILTIN_POLICY_ACTIONS = Object.keys(DEFAULT_POLICIES)
