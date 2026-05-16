@@ -103,6 +103,60 @@ export async function fetchFleetMap(orgId: string): Promise<FleetMap> {
   return res.json() as Promise<FleetMap>
 }
 
+export type DeploymentGroup = {
+  id: string
+  org_id: string
+  name: string
+  region: string | null
+  description: string | null
+  metadata: Record<string, unknown>
+}
+
+export async function fetchDeploymentGroups(orgId: string): Promise<DeploymentGroup[]> {
+  const res = await fetch(
+    `${apiBase}/v1/deployment-groups?org_id=${encodeURIComponent(orgId)}`,
+    { headers: await fleetHeaders() },
+  )
+  if (!res.ok) throw new Error(`Deployment groups: ${res.status}`)
+  return res.json() as Promise<DeploymentGroup[]>
+}
+
+export async function createDeploymentGroup(input: {
+  organizationId: string
+  name: string
+  region?: string
+  description?: string
+}): Promise<DeploymentGroup> {
+  const res = await fetch(`${apiBase}/v1/deployment-groups`, {
+    method: 'POST',
+    headers: await fleetHeaders(),
+    body: JSON.stringify({
+      organizationId: input.organizationId,
+      name: input.name,
+      region: input.region,
+      description: input.description,
+    }),
+  })
+  if (!res.ok) throw new Error(`Create group: ${res.status}`)
+  const data = (await res.json()) as { group: DeploymentGroup }
+  return data.group
+}
+
+export async function updateRuntimePlacement(
+  runtimeId: string,
+  patch: { deploymentGroupId?: string | null; region?: string | null },
+): Promise<void> {
+  const res = await fetch(`${apiBase}/v1/runtimes/${runtimeId}/placement`, {
+    method: 'PATCH',
+    headers: await fleetHeaders(),
+    body: JSON.stringify({
+      deploymentGroupId: patch.deploymentGroupId,
+      region: patch.region,
+    }),
+  })
+  if (!res.ok) throw new Error(`Placement: ${res.status}`)
+}
+
 export async function dispatchFleetCommand(input: {
   organizationId: string
   command: string

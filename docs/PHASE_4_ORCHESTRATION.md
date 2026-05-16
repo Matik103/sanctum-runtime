@@ -30,7 +30,7 @@ Commands are auto-acked after `onCommand` succeeds; failed handlers mark the com
 
 ## Dispatch from dashboard
 
-Fleet → **Map** tab → select org → **Dispatch command** (optional region filter).
+Fleet → **Map** tab → select org → create **deployment groups**, assign runtimes on **Runtimes** tab, then **Dispatch command** (by group, region, or both).
 
 ## Dispatch from API
 

@@ -263,6 +263,31 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
     return { runtime, agents }
   })
 
+  app.patch('/v1/runtimes/:runtimeId/placement', async (req, reply) => {
+    const { runtimeId } = req.params as { runtimeId: string }
+    const body = z
+      .object({
+        deploymentGroupId: z.string().uuid().nullable().optional(),
+        region: z.string().max(64).nullable().optional(),
+      })
+      .parse(req.body ?? {})
+
+    const scope = await resolveOrgScope(req as SanctumReq, store)
+    const orgId = await store.getRuntimeOrgId(runtimeId)
+    if (!orgId) return reply.status(404).send({ error: 'runtime_not_found' })
+    if (!assertOrgAllowed(scope, orgId, reply)) return
+
+    const runtime = await store.updateRuntimePlacement(runtimeId, {
+      deploymentGroupId: body.deploymentGroupId,
+      region: body.region,
+    })
+    return {
+      runtimeId: runtime.id,
+      deploymentGroupId: runtime.deployment_group_id,
+      region: runtime.region,
+    }
+  })
+
   app.get('/v1/runtimes/:runtimeId/trust', async (req, reply) => {
     const { runtimeId } = req.params as { runtimeId: string }
     const scope = await resolveOrgScope(req as SanctumReq, store)

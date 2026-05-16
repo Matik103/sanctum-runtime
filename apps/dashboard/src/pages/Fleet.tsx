@@ -5,12 +5,16 @@ import { EmptyState } from '../components/ui/EmptyState'
 import { PageActions } from '../components/ui/PageActions'
 import { TabBar } from '../components/ui/TabBar'
 import {
+  createDeploymentGroup,
   dispatchFleetCommand,
+  fetchDeploymentGroups,
   fetchFleetAgents,
   fetchFleetEvents,
   fetchFleetMap,
   fetchMyOrgs,
   fetchRuntimes,
+  updateRuntimePlacement,
+  type DeploymentGroup,
   type FleetAgent,
   type FleetEvent,
   type FleetMap,
@@ -42,6 +46,11 @@ export function Fleet() {
   const [dispatchCmd, setDispatchCmd] = useState('ping')
   const [dispatchRegion, setDispatchRegion] = useState('')
   const [dispatchMsg, setDispatchMsg] = useState<string | null>(null)
+  const [dispatchGroupId, setDispatchGroupId] = useState('')
+  const [groups, setGroups] = useState<DeploymentGroup[]>([])
+  const [newGroupName, setNewGroupName] = useState('')
+  const [newGroupRegion, setNewGroupRegion] = useState('')
+  const [groupMsg, setGroupMsg] = useState<string | null>(null)
 
   useEffect(() => {
     void fetchMyOrgs().then((list) => setOrgs(list))
@@ -59,9 +68,19 @@ export function Fleet() {
       setAgents(await fetchFleetAgents())
       const mapOrg = filter ?? orgs[0]?.org_id
       if (mapOrg) {
-        setFleetMap(await fetchFleetMap(mapOrg))
+        const [map, gr] = await Promise.all([
+          fetchFleetMap(mapOrg),
+          fetchDeploymentGroups(mapOrg),
+        ])
+        setFleetMap(map)
+        setGroups(gr)
+      } else if (orgs.length > 0) {
+        setFleetMap(null)
+        const all = await Promise.all(orgs.map((o) => fetchDeploymentGroups(o.org_id)))
+        setGroups(all.flat())
       } else {
         setFleetMap(null)
+        setGroups([])
       }
       setError(null)
     } catch (e) {
@@ -84,6 +103,37 @@ export function Fleet() {
     { id: 'events' as const, label: 'Events', count: events.length },
   ]
 
+  async function handleCreateGroup() {
+    if (!mapOrgId || !newGroupName.trim()) {
+      setGroupMsg('Organization and group name required')
+      return
+    }
+    try {
+      await createDeploymentGroup({
+        organizationId: mapOrgId,
+        name: newGroupName.trim(),
+        region: newGroupRegion.trim() || undefined,
+      })
+      setNewGroupName('')
+      setNewGroupRegion('')
+      setGroupMsg('Group created')
+      void refresh()
+    } catch (e) {
+      setGroupMsg(e instanceof Error ? e.message : 'Create failed')
+    }
+  }
+
+  async function assignRuntimeGroup(runtimeId: string, deploymentGroupId: string) {
+    try {
+      await updateRuntimePlacement(runtimeId, {
+        deploymentGroupId: deploymentGroupId || null,
+      })
+      void refresh()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not assign group')
+    }
+  }
+
   async function handleDispatch() {
     if (!mapOrgId) {
       setDispatchMsg('Select an organization first')
@@ -95,6 +145,7 @@ export function Fleet() {
         command: dispatchCmd.trim(),
         payload: { source: 'dashboard' },
         region: dispatchRegion.trim() || undefined,
+        deploymentGroupId: dispatchGroupId || undefined,
       })
       setDispatchMsg(`Dispatched to ${res.targetCount} runtime(s)`)
     } catch (e) {
@@ -196,6 +247,26 @@ export function Fleet() {
                       {r.current_task}
                     </p>
                   )}
+                  {groups.filter((g) => g.org_id === r.org_id).length > 0 && (
+                    <label className="hint-line" style={{ display: 'block', marginTop: '0.5rem', fontSize: '0.8rem' }}>
+                      Group
+                      <select
+                        className="input"
+                        style={{ display: 'block', width: '100%', marginTop: '0.2rem', fontSize: '0.8rem' }}
+                        value={r.deployment_group_id ?? ''}
+                        onChange={(e) => void assignRuntimeGroup(r.id, e.target.value)}
+                      >
+                        <option value="">— unassigned —</option>
+                        {groups
+                          .filter((g) => g.org_id === r.org_id)
+                          .map((g) => (
+                            <option key={g.id} value={g.id}>
+                              {g.name}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+                  )}
                   <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem', color: 'var(--muted)' }}>
                     Last seen {r.last_seen_at ? new Date(r.last_seen_at).toLocaleString() : '—'}
                   </p>
@@ -259,21 +330,68 @@ export function Fleet() {
                 </div>
               )}
 
-              {fleetMap.groups.length > 0 && (
-                <>
-                  <h2 style={{ fontSize: '1rem', margin: '0 0 0.75rem' }}>Deployment groups</h2>
-                  <div className="policy-grid" style={{ marginBottom: '1.5rem' }}>
-                    {fleetMap.groups.map((g) => (
-                      <article key={g.id} className="policy-card">
-                        <h3 style={{ margin: '0 0 0.35rem' }}>{g.name}</h3>
-                        <p className="hint-line" style={{ margin: 0 }}>
-                          {g.online}/{g.total} online
-                          {g.region ? ` · ${g.region}` : ''}
-                        </p>
-                      </article>
-                    ))}
-                  </div>
-                </>
+              <h2 style={{ fontSize: '1rem', margin: '0 0 0.75rem' }}>Deployment groups</h2>
+              <div className="policy-card" style={{ maxWidth: '28rem', marginBottom: '1rem' }}>
+                <label className="hint-line" style={{ display: 'block', marginBottom: '0.35rem' }}>
+                  New group name
+                  <input
+                    className="input"
+                    style={{ display: 'block', width: '100%', marginTop: '0.25rem' }}
+                    value={newGroupName}
+                    onChange={(e) => setNewGroupName(e.target.value)}
+                  />
+                </label>
+                <label className="hint-line" style={{ display: 'block', margin: '0.5rem 0 0.35rem' }}>
+                  Region (optional)
+                  <input
+                    className="input"
+                    style={{ display: 'block', width: '100%', marginTop: '0.25rem' }}
+                    value={newGroupRegion}
+                    onChange={(e) => setNewGroupRegion(e.target.value)}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  style={{ marginTop: '0.5rem' }}
+                  onClick={() => void handleCreateGroup()}
+                >
+                  Create group
+                </button>
+                {groupMsg && (
+                  <p style={{ marginTop: '0.35rem', fontSize: '0.8rem', color: 'var(--muted)' }}>
+                    {groupMsg}
+                  </p>
+                )}
+              </div>
+              {fleetMap.groups.length > 0 ? (
+                <div className="policy-grid" style={{ marginBottom: '1.5rem' }}>
+                  {fleetMap.groups.map((g) => (
+                    <article key={g.id} className="policy-card">
+                      <h3 style={{ margin: '0 0 0.35rem' }}>{g.name}</h3>
+                      <p className="hint-line" style={{ margin: 0 }}>
+                        {g.online}/{g.total} online
+                        {g.region ? ` · ${g.region}` : ''}
+                      </p>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        style={{ marginTop: '0.5rem' }}
+                        onClick={() => {
+                          setDispatchGroupId(g.id)
+                          setDispatchCmd('ping')
+                          setDispatchMsg(`Target set to group “${g.name}” — click Dispatch`)
+                        }}
+                      >
+                        Target for dispatch
+                      </button>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="hint-line" style={{ marginBottom: '1rem' }}>
+                  No groups yet — create one above, then assign runtimes on the Runtimes tab.
+                </p>
               )}
 
               <h2 style={{ fontSize: '1rem', margin: '0 0 0.75rem' }}>Dispatch command</h2>
@@ -286,6 +404,22 @@ export function Fleet() {
                     value={dispatchCmd}
                     onChange={(e) => setDispatchCmd(e.target.value)}
                   />
+                </label>
+                <label className="hint-line" style={{ display: 'block', margin: '0.75rem 0 0.35rem' }}>
+                  Deployment group (optional)
+                  <select
+                    className="input"
+                    style={{ display: 'block', width: '100%', marginTop: '0.25rem' }}
+                    value={dispatchGroupId}
+                    onChange={(e) => setDispatchGroupId(e.target.value)}
+                  >
+                    <option value="">— none —</option>
+                    {groups.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.name}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 <label className="hint-line" style={{ display: 'block', margin: '0.75rem 0 0.35rem' }}>
                   Region filter (optional)

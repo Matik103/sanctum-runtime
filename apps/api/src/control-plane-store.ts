@@ -231,6 +231,28 @@ export class ControlPlaneStore {
     return data as RegisteredRuntime
   }
 
+  async updateRuntimePlacement(
+    runtimeId: string,
+    patch: { deploymentGroupId?: string | null; region?: string | null },
+  ): Promise<RegisteredRuntime> {
+    const admin = this.admin()
+    const row: Record<string, unknown> = {}
+    if (patch.deploymentGroupId !== undefined) {
+      row.deployment_group_id = patch.deploymentGroupId
+    }
+    if (patch.region !== undefined) {
+      row.region = patch.region?.trim() || null
+    }
+    const { data, error } = await admin
+      .from('registered_runtimes')
+      .update(row)
+      .eq('id', runtimeId)
+      .select('*')
+      .single()
+    if (error) throw new Error(error.message)
+    return data as RegisteredRuntime
+  }
+
   async registerAgent(
     runtimeId: string,
     input: {
