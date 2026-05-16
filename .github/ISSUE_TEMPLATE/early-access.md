@@ -1,6 +1,6 @@
 ---
 name: Enterprise interest
-about: Fleet, hosted cloud, compliance, or advanced intelligence (private layer — PRD §4.3.2)
+about: Fleet, hosted cloud, compliance, or advanced intelligence (enterprise layer)
 title: "Enterprise interest"
 labels: early-access
 ---

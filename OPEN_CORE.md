@@ -1,6 +1,6 @@
 # Open core vs enterprise
 
-Sanctum uses an **open-core** model (PRD §4.3): this repository is the **public adoption layer**. Enterprise intelligence and hosted control plane ship separately when built.
+Sanctum uses an **open-core** model: this repository is the **public adoption layer**. Enterprise intelligence and hosted control plane ship separately when built.
 
 **Repository:** [github.com/Matik103/sanctum-runtime](https://github.com/Matik103/sanctum-runtime) — **public**, **MIT license**, visible to all developers.
 
@@ -74,7 +74,7 @@ These stay **out of this repo** so adoption stays open and the moat stays privat
 | SIEM connectors, signed attestation packs, fleet deployment orchestration | Enterprise integrations |
 | Advanced webhook routing, retry DLQ, multi-tenant signing | Enterprise control plane |
 
-**Transparency:** OSS includes **basic** heuristics, policy rules, and optional **local** Ollama scoring — not the full proprietary intelligence stack described in PRD §4.3.2.
+**Transparency:** OSS includes **basic** heuristics, policy rules, and optional **local** Ollama scoring — not the full proprietary enterprise intelligence stack.
 
 ---
 

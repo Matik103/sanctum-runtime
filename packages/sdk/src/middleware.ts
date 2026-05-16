@@ -10,7 +10,7 @@ export type SanctumMiddlewareContext = {
   execute: () => Promise<void> | void
 }
 
-/** Agent-style hook: verify → then run execute (PRD §4.6). */
+/** Agent-style hook: verify → then run execute. */
 export function createSanctumMiddleware(runtime: SanctumRuntime) {
   return async (ctx: SanctumMiddlewareContext): Promise<ActionResult> => {
     const request: ActionRequest = {

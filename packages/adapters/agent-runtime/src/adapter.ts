@@ -68,7 +68,7 @@ export class AgentRuntimeAdapter {
 
   /**
    * Intercept → verify → execute. Throws on block or verification required.
-   * PRD integration north star: `sanctum.protect(agent)` style flows.
+   * Integration pattern: `sanctum.protect(agent)` style flows.
    */
   async protect<T>(options: AgentProtectOptions<T>): Promise<{ result: ActionResult; value: T }> {
     const correlationId = options.correlationId ?? crypto.randomUUID()

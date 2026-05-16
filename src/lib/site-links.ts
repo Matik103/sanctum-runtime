@@ -1,5 +1,5 @@
 /**
- * Marketing site destinations (PRD §6.1, §4.6).
+ * Marketing site destinations.
  * Override via Vite env for production (waitlist URL, custom docs host, etc.).
  */
 
@@ -8,14 +8,14 @@ const githubRepo = import.meta.env.VITE_GITHUB_URL ?? "https://github.com/Matik1
 /** Public docs on this site. Later: https://docs.sanctum.dev */
 export const docsPath = import.meta.env.VITE_DOCS_PATH ?? "/docs";
 
-/** OSS quick start — primary CTA for developers (PRD §4.6). */
+/** OSS quick start — primary CTA for developers. */
 export const quickstartPath = `${docsPath}#quickstart`;
 
 /** Open-core boundaries (public vs enterprise). */
 export const openCorePath = `${docsPath}#open-core`;
 
 /**
- * Enterprise / design partners — fleet, cloud, advanced intelligence (PRD §4.3.2).
+ * Enterprise / design partners — fleet, cloud, advanced intelligence.
  * Not required to run the open-source runtime locally.
  */
 export const enterpriseAccessUrl =

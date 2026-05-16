@@ -1,6 +1,6 @@
 # Local AI models (Sanctum development)
 
-This document describes the **local inference stack** used for Sanctum Phase 1 work (PRD §9): offline-capable agents, integration tests, and local risk scoring. Weights are **not** committed to git; this file explains what to install and how both runtimes share the same files.
+This document describes the **local inference stack** used for Sanctum development: offline-capable agents, integration tests, and local risk scoring. Weights are **not** committed to git; this file explains what to install and how both runtimes share the same files.
 
 ---
 
@@ -18,7 +18,7 @@ This document describes the **local inference stack** used for Sanctum Phase 1 w
 | [llama.cpp](https://github.com/ggml-org/llama.cpp) | `brew install llama.cpp` | 9150+ |
 | [Ollama](https://ollama.com) | https://ollama.com/download | 0.21+ |
 
-**Important:** Sanctum’s trust layer (action verification, audit, policy) does **not** depend on which local model you use. Models simulate the **agent**; Sanctum gates **actions** (PRD §5).
+**Important:** Sanctum’s trust layer (action verification, audit, policy) does **not** depend on which local model you use. Models simulate the **agent**; Sanctum gates **actions**.
 
 ---
 
@@ -185,8 +185,7 @@ Verify the runtime sees your model: `curl http://127.0.0.1:3001/v1/status` → `
 
 - [`DEVELOPER_GUIDE.md`](../DEVELOPER_GUIDE.md) — full OSS capabilities  
 - [`DEVELOPMENT.md`](../DEVELOPMENT.md) — repo dev entry point  
-- [`PRD.md`](../PRD.md) §9 — product direction for local AI  
-- PRD §5 — MVP trust features (policy / audit; not model-dependent)
+- [`DEVELOPER_GUIDE.md`](../DEVELOPER_GUIDE.md) — risk models and offline mode
 
 ---
 

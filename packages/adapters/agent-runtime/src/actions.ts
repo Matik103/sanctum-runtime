@@ -1,4 +1,4 @@
-/** Canonical agent action types (PRD §17 — Category 1). */
+/** Canonical agent action types (Category 1 — AI agents). */
 export const AgentActions = {
   SEND_EMAIL: 'send_email',
   DELETE_FILE: 'delete_file',

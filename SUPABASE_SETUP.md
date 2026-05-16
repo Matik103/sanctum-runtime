@@ -1,6 +1,6 @@
 # Supabase auth setup (Sanctum dashboard + API)
 
-Sanctum uses **your** Supabase project for dashboard sign-in (PRD §7). No Sanctum-hosted accounts — you create a free project at [supabase.com](https://supabase.com).
+Sanctum uses **your** Supabase project for dashboard sign-in. No Sanctum-hosted accounts — you create a free project at [supabase.com](https://supabase.com).
 
 Auth is **optional**: if Supabase env vars are unset, the dashboard works without login (local dev).
 

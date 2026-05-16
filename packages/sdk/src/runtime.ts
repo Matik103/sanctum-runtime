@@ -16,7 +16,7 @@ function policyModeToPatch(mode: PolicyMode): Partial<ActionPolicy> {
   }
 }
 
-/** PRD-facing runtime entry — embed in agents, backends, robotics hosts (§4.6). */
+/** Runtime entry — embed in agents, backends, robotics hosts. */
 export class SanctumRuntime {
   private client: SanctumClient
 

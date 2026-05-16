@@ -704,7 +704,7 @@ if (result.decision === "APPROVED") executeAction()`}
               <Section id="open-core" eyebrow="Strategy" title="Open Source & Enterprise">
                 <p>
                   Sanctum uses an <strong>open-core</strong> model: open infrastructure for adoption,
-                  private intelligence and enterprise features for moat and revenue (PRD §4.3).
+                  private intelligence and enterprise features for moat and revenue.
                 </p>
 
                 <H3>Public (open infrastructure)</H3>
