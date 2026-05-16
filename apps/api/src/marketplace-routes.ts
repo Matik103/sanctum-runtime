@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { getSupabaseAuthConfig } from './auth.js'
 import { ControlPlaneStore } from './control-plane-store.js'
 import { MarketplaceStore } from './marketplace-store.js'
+import { recordUsage, UsageMetrics } from './usage-store.js'
 
 type SanctumReq = FastifyRequest & {
   sanctumUser?: { id: string; email?: string }
@@ -135,6 +136,10 @@ export async function registerMarketplaceRoutes(app: FastifyInstance) {
         orgId: body.organizationId,
         eventType: 'marketplace.installed',
         payload: { slug, version: pkg.version },
+      })
+      recordUsage(cfg, body.organizationId, UsageMetrics.MARKETPLACE_INSTALL, 1, {
+        slug,
+        version: pkg.version,
       })
       const connect = market.connectHints(pkg, {
         ...((install.config as Record<string, unknown>) ?? {}),

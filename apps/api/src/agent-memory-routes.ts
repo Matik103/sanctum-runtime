@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { AgentMemoryStore } from './agent-memory-store.js'
 import { getSupabaseAuthConfig } from './auth.js'
 import { ControlPlaneStore } from './control-plane-store.js'
+import { recordUsage, UsageMetrics } from './usage-store.js'
 
 type SanctumReq = FastifyRequest & {
   sanctumUser?: { id: string; email?: string }
@@ -121,6 +122,7 @@ export async function registerAgentMemoryRoutes(app: FastifyInstance) {
       eventType: 'memory.updated',
       payload: { memoryKey, keyHint: body.keyHint ?? null },
     })
+    recordUsage(cfg, orgId, UsageMetrics.MEMORY_WRITE, 1, { memoryKey, agentId })
     return {
       memoryKey: entry.memory_key,
       updatedAt: entry.updated_at,

@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { evaluateAndTokenize, type AttestationReport } from './attestation.js'
-import { createSupabaseAdmin, getSupabaseAuthConfig, type SupabaseAuthConfig } from './auth.js'
+import { createSupabaseAdmin, type SupabaseAuthConfig } from './auth.js'
+import { recordUsage, UsageMetrics } from './usage-store.js'
 
 export type RuntimeMode = 'cloud' | 'edge' | 'airgap' | 'hybrid'
 
@@ -158,6 +159,10 @@ export class ControlPlaneStore {
         reasons: att.reasons,
       },
     })
+    recordUsage(this.supabase, input.orgId, UsageMetrics.RUNTIME_CONNECT, 1, {
+      runtimeId: data.id,
+      mode: input.mode,
+    })
     return attested as RegisteredRuntime
   }
 
@@ -290,11 +295,14 @@ export class ControlPlaneStore {
     if (error) throw new Error(error.message)
 
     await this.insertEvent({
-      orgId: runtime.org_id,
+      orgId: runtime.org_id as string,
       runtimeId,
       agentId: input.agentId,
       eventType: 'agent.registered',
       payload: { model: input.model, permissions: input.permissions },
+    })
+    recordUsage(this.supabase, runtime.org_id as string, UsageMetrics.AGENT_REGISTER, 1, {
+      agentId: input.agentId,
     })
     return data as RegisteredAgent
   }

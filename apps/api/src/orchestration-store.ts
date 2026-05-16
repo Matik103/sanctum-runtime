@@ -1,5 +1,6 @@
 import { createSupabaseAdmin, type SupabaseAuthConfig } from './auth.js'
 import { runtimeWsHub } from './runtime-ws-hub.js'
+import { recordUsage, UsageMetrics } from './usage-store.js'
 import type { RegisteredRuntime } from './control-plane-store.js'
 
 export type DeploymentGroup = {
@@ -155,6 +156,11 @@ export class OrchestrationStore {
           .eq('id', row.id)
       }
     }
+
+    recordUsage(this.supabase, input.orgId, UsageMetrics.COMMAND_DISPATCH, runtimeIds.length, {
+      command: input.command,
+      wsDelivered,
+    })
 
     return {
       commandIds: (data ?? []).map((r: { id: string }) => r.id),

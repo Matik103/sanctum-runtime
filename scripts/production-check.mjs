@@ -62,6 +62,20 @@ async function main() {
     }
 
     try {
+      const usageOrg = process.env.SANCTUM_ORG_ID?.trim()
+      if (usageOrg) {
+        const usage = await fetch(
+          `${API}/v1/usage?org_id=${encodeURIComponent(usageOrg)}&days=7`,
+          { headers: { 'X-Sanctum-Key': KEY } },
+        )
+        if (usage.ok) ok('GET /v1/usage')
+        else bad('GET /v1/usage', usage.status)
+      }
+    } catch (e) {
+      bad('GET /v1/usage', e.message)
+    }
+
+    try {
       const mapOrg = process.env.SANCTUM_ORG_ID?.trim()
       if (mapOrg) {
         const map = await fetch(`${API}/v1/fleet/map?org_id=${encodeURIComponent(mapOrg)}`, {

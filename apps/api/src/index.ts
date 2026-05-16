@@ -10,6 +10,8 @@ import { registerControlPlaneRoutes } from './control-plane-routes.js'
 import { registerOrchestrationRoutes } from './orchestration-routes.js'
 import { registerAgentMemoryRoutes } from './agent-memory-routes.js'
 import { registerMarketplaceRoutes } from './marketplace-routes.js'
+import { registerUsageRoutes } from './usage-routes.js'
+import { recordUsage, UsageMetrics } from './usage-store.js'
 import { registerRuntimeWsRoutes } from './runtime-ws-routes.js'
 import { runtimeWsHub } from './runtime-ws-hub.js'
 import {
@@ -131,6 +133,7 @@ app.get('/', async () => ({
     runtimeWs: 'WS /v1/runtimes/ws?runtimeId=',
     agentMemory: 'GET|PUT|DELETE /v1/runtimes/:id/agents/:agentId/memory/:key',
     marketplace: 'GET /v1/marketplace/packages · install · connect hints',
+    usage: 'GET /v1/usage?org_id=',
     analyze: 'POST /analyze-action',
   },
 }))
@@ -142,6 +145,7 @@ if (supabaseAuth) {
   await registerRuntimeWsRoutes(app)
   await registerAgentMemoryRoutes(app)
   await registerMarketplaceRoutes(app)
+  await registerUsageRoutes(app)
 }
 
 app.get('/health', async () => {
@@ -261,10 +265,17 @@ app.post('/v1/actions/verify', async (req) => {
     context: body.context,
   })
 
-  return runtime.verifyAction(request, {
+  const result = await runtime.verifyAction(request, {
     offlineMode: body.offlineMode,
     correlationId: body.correlationId,
   })
+  const orgId =
+    typeof body.context?.org_id === 'string' ? body.context.org_id : undefined
+  recordUsage(supabaseAuth, orgId, UsageMetrics.ACTION_VERIFY, 1, {
+    action: body.action,
+    decision: result.decision,
+  })
+  return result
 })
 
 app.post('/analyze-action', async (req) => {

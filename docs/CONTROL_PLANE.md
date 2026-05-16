@@ -35,7 +35,8 @@
 | Live SSE | 1 | **Done** | `GET /v1/events/stream` |
 | Auto `policy.*` on verify | 2 | **Done** | SDK emits when connected |
 | WebSocket (bidirectional) | 2 | **Done** | `WS /v1/runtimes/ws` + SDK auto-connect |
-| Billing | 4 | Planned | Enterprise |
+| Usage metering | 4 | **Done** | `GET /v1/usage` |
+| Billing (Stripe) | 4 | Planned | Enterprise |
 | Runtime attestation / trust score | 3 | **Done** | `connect()` + `014_phase3_attestation` |
 | Re-attest + trust API | 3 | **Done** | `POST …/attest`, `GET …/trust` |
 | Fleet verified badge | 3 | **Done** | Fleet runtimes tab |
@@ -45,7 +46,8 @@
 | Command dispatch | 4 | **Done** | heartbeat delivery + ack |
 | Deployment groups | 4 | **Done** | `deployment_groups` table |
 | Runtime marketplace | 4 | **Done** | Catalog + install + `connectFromPackage` |
-| Billing | 4 | Planned | Enterprise |
+| Usage metering | 4 | **Done** | `GET /v1/usage` |
+| Billing (Stripe) | 4 | Planned | Enterprise |
 
 ---
 
