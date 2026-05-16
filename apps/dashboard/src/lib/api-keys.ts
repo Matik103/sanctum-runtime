@@ -20,9 +20,10 @@ export type CreateApiKeyResult = ApiKeyRecord & {
   hint: string
 }
 
-async function authHeaders(): Promise<HeadersInit> {
+async function authHeaders(json = false): Promise<HeadersInit> {
   const token = await getAccessToken()
-  const h: Record<string, string> = { 'Content-Type': 'application/json' }
+  const h: Record<string, string> = {}
+  if (json) h['Content-Type'] = 'application/json'
   if (token) h['Authorization'] = `Bearer ${token}`
   return h
 }
@@ -36,7 +37,7 @@ export async function listApiKeys(): Promise<ApiKeyRecord[]> {
 export async function createApiKey(name: string): Promise<CreateApiKeyResult> {
   const res = await fetch(`${apiBase}/v1/api-keys`, {
     method: 'POST',
-    headers: await authHeaders(),
+    headers: await authHeaders(true),
     body: JSON.stringify({ name }),
   })
   if (!res.ok) throw new Error(`Failed to create API key: ${res.status}`)

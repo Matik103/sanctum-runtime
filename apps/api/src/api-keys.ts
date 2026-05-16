@@ -97,27 +97,39 @@ export async function registerApiKeyRoutes(
 
   /** Delete key permanently (OpenAI-style — removed from list, auth stops immediately). */
   app.delete('/v1/api-keys/:id', async (req, reply) => {
-    const user = (req as { sanctumUser?: { id: string } }).sanctumUser
-    if (!user) {
-      return reply.status(403).send({ error: 'dashboard_auth_required' })
-    }
+    try {
+      const user = (req as { sanctumUser?: { id: string } }).sanctumUser
+      if (!user) {
+        return reply.status(403).send({ error: 'dashboard_auth_required' })
+      }
 
-    const id = z.string().uuid().parse((req.params as { id: string }).id)
+      const rawId = (req.params as { id?: string }).id?.trim()
+      const parsed = z.string().uuid().safeParse(rawId)
+      if (!parsed.success) {
+        return reply.status(400).send({ error: 'invalid_id' })
+      }
+      const id = parsed.data
 
-    const { error, count } = await admin
-      .from('api_keys')
-      .delete({ count: 'exact' })
-      .eq('id', id)
-      .eq('user_id', user.id)
+      const { data, error } = await admin
+        .from('api_keys')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .select('id')
 
-    if (error) {
-      req.log.error({ err: error, keyId: id }, 'api_keys_delete_failed')
-      return reply.status(500).send({ error: 'api_keys_delete_failed', detail: error.message })
+      if (error) {
+        req.log.error({ err: error, keyId: id }, 'api_keys_delete_failed')
+        return reply.status(500).send({ error: 'api_keys_delete_failed', detail: error.message })
+      }
+      if (!data?.length) {
+        return reply.status(404).send({ error: 'api_key_not_found' })
+      }
+      return { ok: true, deleted: true }
+    } catch (e) {
+      req.log.error(e, 'api_keys_delete_exception')
+      const detail = e instanceof Error ? e.message : 'delete_failed'
+      return reply.status(500).send({ error: 'api_keys_delete_failed', detail })
     }
-    if (!count) {
-      return reply.status(404).send({ error: 'api_key_not_found' })
-    }
-    return { ok: true, deleted: true }
   })
 }
 

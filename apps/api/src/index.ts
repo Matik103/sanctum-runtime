@@ -54,7 +54,11 @@ app.setErrorHandler((err, _req, reply) => {
     })
   }
   app.log.error(err)
-  return reply.status(500).send({ error: 'internal_error' })
+  const detail = err instanceof Error ? err.message : undefined
+  return reply.status(500).send({
+    error: 'internal_error',
+    ...(detail && { detail }),
+  })
 })
 
 app.addHook('onRequest', async (req, reply) => {
