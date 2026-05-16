@@ -125,6 +125,7 @@ export async function registerMarketplaceRoutes(app: FastifyInstance) {
 
     const scope = await resolveOrgScope(req as SanctumReq, store)
     if (!assertOrgAllowed(scope, body.organizationId, reply)) return
+    await store.ensureOrg(body.organizationId)
 
     try {
       const { install, package: pkg } = await market.install(

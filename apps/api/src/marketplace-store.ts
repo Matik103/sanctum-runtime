@@ -164,13 +164,14 @@ export class MarketplaceStore {
   async uninstall(orgId: string, slug: string): Promise<boolean> {
     const pkg = await this.getBySlug(slug, orgId)
     if (!pkg) return false
-    const { error, count } = await this.admin()
+    const { data, error } = await this.admin()
       .from('runtime_package_installs')
-      .delete({ count: 'exact' })
+      .delete()
       .eq('org_id', orgId)
       .eq('package_id', pkg.id)
+      .select('id')
     if (error) throw new Error(error.message)
-    return (count ?? 0) > 0
+    return (data?.length ?? 0) > 0
   }
 
   async getInstallConfig(orgId: string, slug: string) {
