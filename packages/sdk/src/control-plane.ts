@@ -1,4 +1,8 @@
 import type { SanctumClient } from './client.js'
+import { defaultAttestationReport, type AttestationReport } from './attestation.js'
+
+export type { AttestationReport } from './attestation.js'
+export { defaultAttestationReport } from './attestation.js'
 
 export type RuntimeMode = 'cloud' | 'edge' | 'airgap' | 'hybrid'
 
@@ -12,6 +16,25 @@ export type ConnectOptions = {
   activeModel?: string
   currentTask?: string
   heartbeatIntervalMs?: number
+  /** Host attestation report; defaults to local platform/hostname when omitted. */
+  attestation?: AttestationReport
+  /** When false, connect without sending attestation (trust score may be lower). */
+  attest?: boolean
+  deploymentGroupId?: string
+  region?: string
+  /** Invoked when the control plane delivers a command on heartbeat. */
+  onCommand?: (cmd: RuntimeCommand) => void | Promise<void>
+}
+
+export type RuntimeCommand = {
+  id: string
+  command: string
+  payload: Record<string, unknown>
+}
+
+type HeartbeatResult = {
+  ok: boolean
+  commands?: RuntimeCommand[]
 }
 
 export type ConnectResult = {
@@ -19,6 +42,8 @@ export type ConnectResult = {
   organizationId: string
   status: string
   trustScore: number
+  attestationStatus?: string
+  attestationToken?: string | null
   connectedAt: string | null
 }
 
@@ -33,6 +58,7 @@ export class ControlPlaneSession {
   runtimeId: string | null = null
   organizationId: string | null = null
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null
+  private onCommand: ((cmd: RuntimeCommand) => void | Promise<void>) | null = null
 
   constructor(private client: SanctumClient) {}
 
@@ -41,6 +67,7 @@ export class ControlPlaneSession {
   }
 
   async connect(options: ConnectOptions): Promise<ConnectResult> {
+    const attest = options.attest !== false
     const result = await this.client.request<ConnectResult>('POST', '/v1/runtimes/connect', {
       runtimeName: options.runtimeName,
       organizationId: options.organizationId,
@@ -50,10 +77,14 @@ export class ControlPlaneSession {
       telemetry: options.telemetry,
       activeModel: options.activeModel,
       currentTask: options.currentTask,
+      attestation: attest ? (options.attestation ?? defaultAttestationReport()) : undefined,
+      deploymentGroupId: options.deploymentGroupId,
+      region: options.region,
     })
 
     this.runtimeId = result.runtimeId
     this.organizationId = result.organizationId
+    this.onCommand = options.onCommand ?? null
 
     this.startHeartbeat(options.heartbeatIntervalMs ?? 30_000, {
       telemetry: options.telemetry,
@@ -73,12 +104,13 @@ export class ControlPlaneSession {
     const id = this.runtimeId
     const tick = () => {
       void this.client
-        .request('POST', `/v1/runtimes/${id}/heartbeat`, {
+        .request<HeartbeatResult>('POST', `/v1/runtimes/${id}/heartbeat`, {
           telemetry: patch?.telemetry,
           activeModel: patch?.activeModel,
           currentTask: patch?.currentTask,
           status: 'online',
         })
+        .then((res) => this.handleHeartbeatCommands(res))
         .catch(() => {})
     }
     tick()
@@ -92,6 +124,27 @@ export class ControlPlaneSession {
     }
   }
 
+  private async handleHeartbeatCommands(res: HeartbeatResult) {
+    const cmds = res.commands ?? []
+    if (!cmds.length || !this.runtimeId) return
+    for (const cmd of cmds) {
+      try {
+        if (this.onCommand) await this.onCommand(cmd)
+        await this.ackCommand(cmd.id, true)
+      } catch {
+        await this.ackCommand(cmd.id, false).catch(() => {})
+      }
+    }
+  }
+
+  async ackCommand(commandId: string, ok = true) {
+    if (!this.runtimeId) return
+    await this.client.request('POST', `/v1/commands/${commandId}/ack`, {
+      runtimeId: this.runtimeId,
+      ok,
+    })
+  }
+
   async disconnect() {
     this.stopHeartbeat()
     if (this.runtimeId) {
@@ -101,6 +154,7 @@ export class ControlPlaneSession {
     }
     this.runtimeId = null
     this.organizationId = null
+    this.onCommand = null
   }
 
   async registerAgent(options: RegisterAgentOptions) {

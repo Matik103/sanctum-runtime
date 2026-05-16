@@ -28,6 +28,10 @@ export type FleetRuntime = {
   mode: string
   status: string
   trust_score: number
+  attestation_status: 'verified' | 'unverified' | 'limited'
+  attested_at: string | null
+  region: string | null
+  deployment_group_id: string | null
   current_task: string | null
   active_model: string | null
   telemetry: Record<string, unknown>
@@ -71,6 +75,56 @@ export async function fetchFleetAgents(): Promise<FleetAgent[]> {
   const res = await fetch(`${apiBase}/v1/agents`, { headers: await fleetHeaders() })
   if (!res.ok) throw new Error(`Agents: ${res.status}`)
   return res.json() as Promise<FleetAgent[]>
+}
+
+export type FleetMap = {
+  summary: {
+    runtimes: number
+    online: number
+    offline: number
+    agents: number
+    verified: number
+  }
+  regions: {
+    region: string
+    online: number
+    offline: number
+    total: number
+    runtimes: { id: string; name: string; status: string; mode: string }[]
+  }[]
+  groups: { id: string; name: string; region: string | null; online: number; total: number }[]
+}
+
+export async function fetchFleetMap(orgId: string): Promise<FleetMap> {
+  const res = await fetch(`${apiBase}/v1/fleet/map?org_id=${encodeURIComponent(orgId)}`, {
+    headers: await fleetHeaders(),
+  })
+  if (!res.ok) throw new Error(`Fleet map: ${res.status}`)
+  return res.json() as Promise<FleetMap>
+}
+
+export async function dispatchFleetCommand(input: {
+  organizationId: string
+  command: string
+  payload?: Record<string, unknown>
+  region?: string
+  deploymentGroupId?: string
+  runtimeId?: string
+}): Promise<{ commandIds: string[]; targetCount: number }> {
+  const res = await fetch(`${apiBase}/v1/orchestration/dispatch`, {
+    method: 'POST',
+    headers: await fleetHeaders(),
+    body: JSON.stringify({
+      organizationId: input.organizationId,
+      command: input.command,
+      payload: input.payload ?? {},
+      region: input.region,
+      deploymentGroupId: input.deploymentGroupId,
+      runtimeId: input.runtimeId,
+    }),
+  })
+  if (!res.ok) throw new Error(`Dispatch: ${res.status}`)
+  return res.json() as Promise<{ commandIds: string[]; targetCount: number }>
 }
 
 export async function fetchFleetEvents(limit = 50, orgId?: string): Promise<FleetEvent[]> {

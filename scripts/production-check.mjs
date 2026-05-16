@@ -62,6 +62,21 @@ async function main() {
     }
 
     try {
+      const mapOrg = process.env.SANCTUM_ORG_ID?.trim()
+      if (mapOrg) {
+        const map = await fetch(`${API}/v1/fleet/map?org_id=${encodeURIComponent(mapOrg)}`, {
+          headers: { 'X-Sanctum-Key': KEY },
+        })
+        if (map.ok) {
+          const body = await map.json()
+          ok(`GET /v1/fleet/map (${body.summary?.runtimes ?? 0} runtimes, ${body.regions?.length ?? 0} regions)`)
+        } else bad('GET /v1/fleet/map', map.status)
+      }
+    } catch (e) {
+      bad('GET /v1/fleet/map', e.message)
+    }
+
+    try {
       const root = await get('/')
       const hasRuntimes = root.body?.endpoints?.runtimes
       if (hasRuntimes) ok('control plane routes advertised on GET /')
@@ -74,7 +89,10 @@ async function main() {
       const runtimes = await get('/v1/runtimes', true)
       if (runtimes.status === 200) {
         const n = Array.isArray(runtimes.body) ? runtimes.body.length : 0
-        ok(`GET /v1/runtimes (${n} registered)`)
+        const verified = Array.isArray(runtimes.body)
+          ? runtimes.body.filter((r) => r.attestation_status === 'verified').length
+          : 0
+        ok(`GET /v1/runtimes (${n} registered, ${verified} verified)`)
       } else bad('GET /v1/runtimes', runtimes.status)
     } catch (e) {
       bad('GET /v1/runtimes', e.message)

@@ -43,12 +43,19 @@ const conn = await runtime.connect({
   runtimeName: name,
   organizationId: orgId,
   mode: 'cloud',
+  region: process.env.SANCTUM_REGION ?? 'local',
   activeModel: process.env.SANCTUM_RISK_MODEL ?? 'gpt-4o-mini',
   metadata: { example: 'runtime-connect' },
   telemetry: { cpu: 0.12, memoryMb: 512 },
+  onCommand: async (cmd) => {
+    console.log('Command:', cmd.command, cmd.payload)
+  },
 })
 
 console.log('Connected:', conn)
+if (conn.attestationStatus) {
+  console.log(`Trust: ${conn.trustScore} (${conn.attestationStatus})`)
+}
 
 await runtime.registerAgent({
   id: 'agent_demo',

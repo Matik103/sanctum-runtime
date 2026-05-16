@@ -2,8 +2,19 @@ import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { getSupabaseAuthConfig } from './auth.js'
 import { ControlPlaneStore, defaultFingerprint } from './control-plane-store.js'
+import { OrchestrationStore } from './orchestration-store.js'
 
 const modeSchema = z.enum(['cloud', 'edge', 'airgap', 'hybrid'])
+
+const attestationSchema = z
+  .object({
+    platform: z.string().max(64).optional(),
+    arch: z.string().max(32).optional(),
+    hostname: z.string().max(255).optional(),
+    sdkVersion: z.string().max(32).optional(),
+    runtimeKind: z.string().max(64).optional(),
+  })
+  .optional()
 
 type SanctumReq = FastifyRequest & {
   sanctumUser?: { id: string; email?: string }
@@ -49,6 +60,7 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
     return
   }
   const store = new ControlPlaneStore(cfg)
+  const orch = new OrchestrationStore(cfg)
 
   app.post('/v1/runtimes/connect', async (req, reply) => {
     const body = z
@@ -61,6 +73,7 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
         telemetry: z.record(z.unknown()).optional(),
         activeModel: z.string().optional(),
         currentTask: z.string().optional(),
+        attestation: attestationSchema,
       })
       .parse(req.body)
 
@@ -82,6 +95,9 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
       telemetry: body.telemetry,
       activeModel: body.activeModel,
       currentTask: body.currentTask,
+      attestationReport: body.attestation,
+      deploymentGroupId: body.deploymentGroupId,
+      region: body.region,
     })
 
     return {
@@ -89,7 +105,33 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
       organizationId: runtime.org_id,
       status: runtime.status,
       trustScore: runtime.trust_score,
+      attestationStatus: runtime.attestation_status,
+      attestationToken: runtime.attestation_token,
       connectedAt: runtime.connected_at,
+    }
+  })
+
+  app.post('/v1/runtimes/:runtimeId/attest', async (req, reply) => {
+    const { runtimeId } = req.params as { runtimeId: string }
+    const body = z.object({ attestation: attestationSchema }).parse(req.body ?? {})
+    const scope = await resolveOrgScope(req as SanctumReq, store)
+    const orgId = await store.getRuntimeOrgId(runtimeId)
+    if (!orgId) return reply.status(404).send({ error: 'runtime_not_found' })
+    if (!assertOrgAllowed(scope, orgId, reply)) return
+
+    try {
+      const runtime = await store.reattestRuntime(runtimeId, body.attestation)
+      return {
+        runtimeId: runtime.id,
+        trustScore: runtime.trust_score,
+        attestationStatus: runtime.attestation_status,
+        attestationToken: runtime.attestation_token,
+        attestedAt: runtime.attested_at,
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'attest_failed'
+      if (msg === 'runtime_not_found') return reply.status(404).send({ error: msg })
+      throw e
     }
   })
 
@@ -111,7 +153,22 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
         activeModel: body.activeModel,
         status: body.status,
       })
-      return { ok: true, lastSeenAt: runtime.last_seen_at, status: runtime.status }
+      const commands =
+        body.status === 'offline'
+          ? []
+          : await orch.claimPendingCommands(runtimeId).then((list) =>
+              list.map((c) => ({
+                id: c.id,
+                command: c.command,
+                payload: c.payload,
+              })),
+            )
+      return {
+        ok: true,
+        lastSeenAt: runtime.last_seen_at,
+        status: runtime.status,
+        commands,
+      }
     } catch {
       return reply.status(404).send({ error: 'runtime_not_found' })
     }
@@ -204,6 +261,22 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
     if (!runtime) return reply.status(404).send({ error: 'runtime_not_found' })
     const agents = await store.listAgents(runtimeId)
     return { runtime, agents }
+  })
+
+  app.get('/v1/runtimes/:runtimeId/trust', async (req, reply) => {
+    const { runtimeId } = req.params as { runtimeId: string }
+    const scope = await resolveOrgScope(req as SanctumReq, store)
+    const runtimes = filterByScope(await store.listRuntimes(), scope)
+    const runtime = runtimes.find((r) => r.id === runtimeId)
+    if (!runtime) return reply.status(404).send({ error: 'runtime_not_found' })
+    return {
+      runtimeId: runtime.id,
+      trustScore: runtime.trust_score,
+      attestationStatus: runtime.attestation_status,
+      attestationReport: runtime.attestation_report,
+      attestedAt: runtime.attested_at,
+      verified: runtime.attestation_status === 'verified',
+    }
   })
 
   app.get('/v1/agents', async (req) => {

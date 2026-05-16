@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto'
+import { evaluateAndTokenize, type AttestationReport } from './attestation.js'
 import { createSupabaseAdmin, getSupabaseAuthConfig, type SupabaseAuthConfig } from './auth.js'
 
 export type RuntimeMode = 'cloud' | 'edge' | 'airgap' | 'hybrid'
@@ -11,6 +12,12 @@ export type RegisteredRuntime = {
   mode: RuntimeMode
   status: 'online' | 'offline' | 'degraded'
   trust_score: number
+  attestation_status: 'verified' | 'unverified' | 'limited'
+  attestation_report: Record<string, unknown>
+  attestation_token: string | null
+  attested_at: string | null
+  deployment_group_id: string | null
+  region: string | null
   current_task: string | null
   active_model: string | null
   metadata: Record<string, unknown>
@@ -70,6 +77,9 @@ export class ControlPlaneStore {
     telemetry?: Record<string, unknown>
     activeModel?: string
     currentTask?: string
+    attestationReport?: AttestationReport
+    deploymentGroupId?: string
+    region?: string
   }): Promise<RegisteredRuntime> {
     await this.ensureOrg(input.orgId)
     const now = new Date().toISOString()
@@ -82,6 +92,11 @@ export class ControlPlaneStore {
       .eq('fingerprint', input.fingerprint)
       .maybeSingle()
 
+    const region =
+      input.region?.trim() ||
+      (typeof input.metadata?.region === 'string' ? input.metadata.region.trim() : null) ||
+      null
+
     const row = {
       org_id: input.orgId,
       name: input.name,
@@ -92,6 +107,8 @@ export class ControlPlaneStore {
       telemetry: input.telemetry ?? {},
       active_model: input.activeModel ?? null,
       current_task: input.currentTask ?? null,
+      deployment_group_id: input.deploymentGroupId ?? null,
+      region,
       connected_at: existing?.connected_at ?? now,
       last_seen_at: now,
     }
@@ -103,11 +120,86 @@ export class ControlPlaneStore {
       .single()
 
     if (error) throw new Error(error.message)
+
+    const att = evaluateAndTokenize(data.id as string, {
+      mode: input.mode,
+      fingerprint: input.fingerprint,
+      report: input.attestationReport,
+    })
+
+    const { data: attested, error: attErr } = await admin
+      .from('registered_runtimes')
+      .update({
+        trust_score: att.trustScore,
+        attestation_status: att.status,
+        attestation_report: { ...att.report, reasons: att.reasons },
+        attestation_token: att.token,
+        attested_at: now,
+      })
+      .eq('id', data.id)
+      .select('*')
+      .single()
+
+    if (attErr) throw new Error(attErr.message)
+
     await this.insertEvent({
       orgId: input.orgId,
       runtimeId: data.id,
       eventType: 'runtime.connected',
       payload: { name: input.name, mode: input.mode, fingerprint: input.fingerprint },
+    })
+    await this.insertEvent({
+      orgId: input.orgId,
+      runtimeId: data.id,
+      eventType: 'runtime.attested',
+      payload: {
+        status: att.status,
+        trustScore: att.trustScore,
+        reasons: att.reasons,
+      },
+    })
+    return attested as RegisteredRuntime
+  }
+
+  async reattestRuntime(
+    runtimeId: string,
+    report?: AttestationReport,
+  ): Promise<RegisteredRuntime> {
+    const admin = this.admin()
+    const { data: row, error: fetchErr } = await admin
+      .from('registered_runtimes')
+      .select('*')
+      .eq('id', runtimeId)
+      .maybeSingle()
+    if (fetchErr) throw new Error(fetchErr.message)
+    if (!row) throw new Error('runtime_not_found')
+
+    const now = new Date().toISOString()
+    const att = evaluateAndTokenize(runtimeId, {
+      mode: row.mode as RuntimeMode,
+      fingerprint: row.fingerprint as string,
+      report,
+    })
+
+    const { data, error } = await admin
+      .from('registered_runtimes')
+      .update({
+        trust_score: att.trustScore,
+        attestation_status: att.status,
+        attestation_report: { ...att.report, reasons: att.reasons },
+        attestation_token: att.token,
+        attested_at: now,
+      })
+      .eq('id', runtimeId)
+      .select('*')
+      .single()
+    if (error) throw new Error(error.message)
+
+    await this.insertEvent({
+      orgId: row.org_id as string,
+      runtimeId,
+      eventType: 'runtime.attested',
+      payload: { status: att.status, trustScore: att.trustScore, reasons: att.reasons },
     })
     return data as RegisteredRuntime
   }

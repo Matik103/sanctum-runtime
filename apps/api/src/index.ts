@@ -6,6 +6,7 @@ import { ZodError } from 'zod'
 import { z } from 'zod'
 import { registerApiKeyRoutes } from './api-keys.js'
 import { registerControlPlaneRoutes } from './control-plane-routes.js'
+import { registerOrchestrationRoutes } from './orchestration-routes.js'
 import {
   authenticateRequest,
   getSupabaseAuthConfig,
@@ -116,7 +117,9 @@ app.get('/', async () => ({
     policiesYaml: 'GET /v1/policies/export.yaml · POST /v1/policies/import.yaml',
     webhooks: 'GET /v1/webhooks/status',
     apiKeys: 'GET|POST /v1/api-keys · DELETE /v1/api-keys/:id',
-    runtimes: 'POST /v1/runtimes/connect · GET /v1/runtimes · heartbeat/agents/events',
+    runtimes:
+      'POST /v1/runtimes/connect · POST …/attest · GET …/trust · heartbeat/agents/events',
+    fleet: 'GET /v1/fleet/map · deployment-groups · POST /v1/orchestration/dispatch',
     operatorContext: 'GET /v1/operator/context',
     eventStream: 'GET /v1/events/stream (SSE)',
     analyze: 'POST /analyze-action',
@@ -126,6 +129,7 @@ app.get('/', async () => ({
 if (supabaseAuth) {
   await registerApiKeyRoutes(app, supabaseAuth)
   await registerControlPlaneRoutes(app)
+  await registerOrchestrationRoutes(app)
 }
 
 app.get('/health', async () => {

@@ -32,5 +32,10 @@ export {
   type ConnectOptions,
   type ConnectResult,
   type RegisterAgentOptions,
+  type RuntimeCommand,
   type RuntimeMode,
 } from './control-plane.js'
+export {
+  defaultAttestationReport,
+  type AttestationReport,
+} from './attestation.js'

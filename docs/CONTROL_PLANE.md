@@ -36,10 +36,16 @@
 | Auto `policy.*` on verify | 2 | **Done** | SDK emits when connected |
 | WebSocket (bidirectional) | 2 | Planned | SSE sufficient for MVP |
 | Billing | 4 | Planned | Enterprise |
-| Runtime attestation / trust score | 3 | Schema ready | `trust_score` column |
+| Runtime attestation / trust score | 3 | **Done** | `connect()` + `014_phase3_attestation` |
+| Re-attest + trust API | 3 | **Done** | `POST …/attest`, `GET …/trust` |
+| Fleet verified badge | 3 | **Done** | Fleet runtimes tab |
 | Encrypted memory | 3 | Planned | |
-| Fleet maps / regions | 4 | Planned | |
+| TPM / hardware quotes | 3 | Stub | `stubHardwareQuote()` |
+| Fleet maps / regions | 4 | **Done** | `GET /v1/fleet/map` |
+| Command dispatch | 4 | **Done** | heartbeat delivery + ack |
+| Deployment groups | 4 | **Done** | `deployment_groups` table |
 | Runtime marketplace | 4 | Planned | |
+| Billing | 4 | Planned | Enterprise |
 
 ---
 
@@ -106,7 +112,9 @@ runtime.emit_event("agent.started", {"task": "patrol"}, agent_id="agent_navigati
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| POST | `/v1/runtimes/connect` | Register / reconnect runtime |
+| POST | `/v1/runtimes/connect` | Register / reconnect + attestation |
+| POST | `/v1/runtimes/:id/attest` | Re-evaluate trust |
+| GET | `/v1/runtimes/:id/trust` | Trust score and report |
 | POST | `/v1/runtimes/:id/heartbeat` | Telemetry + online status |
 | POST | `/v1/runtimes/:id/agents` | Register agent on runtime |
 | POST | `/v1/runtimes/:id/events` | Emit event |
@@ -114,6 +122,10 @@ runtime.emit_event("agent.started", {"task": "patrol"}, agent_id="agent_navigati
 | GET | `/v1/agents` | List agents |
 | GET | `/v1/events` | Recent events |
 | GET | `/v1/events/stream` | SSE live stream |
+| GET | `/v1/fleet/map` | Regional fleet overview |
+| GET/POST | `/v1/deployment-groups` | Clusters |
+| POST | `/v1/orchestration/dispatch` | Queue commands to runtimes |
+| POST | `/v1/commands/:id/ack` | Runtime acks delivery |
 
 Auth: `X-Sanctum-Key` (scripts) or Supabase JWT (dashboard).
 
@@ -137,6 +149,7 @@ Pass `mode` on `connect()`.
 | Event | When |
 |-------|------|
 | `runtime.connected` | Auto on connect |
+| `runtime.attested` | Auto after trust evaluation |
 | `agent.registered` | Auto on registerAgent |
 | `agent.started` | Your agent loop |
 | `policy.blocked` | After BLOCKED decision |
@@ -178,6 +191,6 @@ Apply: `npm run db:push`
 2. **Dashboard:** Fleet → see runtime online, agents, events.
 3. **Phase 2:** WebSocket; org filter on Fleet; deployment groups UI.
 4. **Phase 3:** Attestation, hardware fingerprint, trust certification.
-5. **Phase 4:** Multi-agent orchestration, marketplace.
+5. **Phase 4:** Fleet map, dispatch — [PHASE_4_ORCHESTRATION.md](./PHASE_4_ORCHESTRATION.md).
 
-See also [PHASE_3.md](../PHASE_3.md) (operator loop) · [PRODUCTION_OPS.md](../PRODUCTION_OPS.md).
+See also [PHASE_3_TRUST.md](./PHASE_3_TRUST.md) · [PHASE_3.md](../PHASE_3.md) (operator loop) · [PRODUCTION_OPS.md](../PRODUCTION_OPS.md).

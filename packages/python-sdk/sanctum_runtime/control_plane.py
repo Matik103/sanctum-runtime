@@ -1,10 +1,22 @@
 from __future__ import annotations
 
+import platform
+import socket
 import time
 from threading import Event, Thread
 from typing import Any, Callable
 
 from sanctum_runtime.client import SanctumClient
+
+
+def default_attestation_report(sdk_version: str = "0.1.1") -> dict[str, Any]:
+    return {
+        "platform": platform.system().lower(),
+        "arch": platform.machine(),
+        "hostname": socket.gethostname(),
+        "sdkVersion": sdk_version,
+        "runtimeKind": "python",
+    }
 
 RuntimeMode = str  # cloud | edge | airgap | hybrid
 
@@ -33,20 +45,29 @@ class ControlPlaneSession:
         active_model: str | None = None,
         current_task: str | None = None,
         heartbeat_interval_ms: int = 30_000,
+        attestation: dict[str, Any] | None = None,
+        attest: bool = True,
+        deployment_group_id: str | None = None,
+        region: str | None = None,
     ) -> dict[str, Any]:
+        body: dict[str, Any] = {
+            "runtimeName": runtime_name,
+            "organizationId": organization_id,
+            "mode": mode,
+            "fingerprint": fingerprint,
+            "metadata": metadata or {},
+            "telemetry": telemetry or {},
+            "activeModel": active_model,
+            "currentTask": current_task,
+            "deploymentGroupId": deployment_group_id,
+            "region": region,
+        }
+        if attest:
+            body["attestation"] = attestation or default_attestation_report()
         result = self._client.request(
             "POST",
             "/v1/runtimes/connect",
-            {
-                "runtimeName": runtime_name,
-                "organizationId": organization_id,
-                "mode": mode,
-                "fingerprint": fingerprint,
-                "metadata": metadata or {},
-                "telemetry": telemetry or {},
-                "activeModel": active_model,
-                "currentTask": current_task,
-            },
+            body,
         )
         self.runtime_id = result["runtimeId"]
         self.organization_id = result["organizationId"]
