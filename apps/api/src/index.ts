@@ -32,6 +32,7 @@ const app = Fastify({ logger: true })
 
 const corsOrigins = new Set([
   dashboardUrl,
+  'https://sanctum-dashboard.onrender.com',
   'http://127.0.0.1:5174',
   'http://localhost:5174',
 ])
@@ -41,6 +42,8 @@ await app.register(cors, {
     if (!origin) return cb(null, true)
     cb(null, corsOrigins.has(origin))
   },
+  methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Sanctum-Key'],
 })
 
 app.setErrorHandler((err, _req, reply) => {
