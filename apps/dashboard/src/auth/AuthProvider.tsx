@@ -10,6 +10,7 @@ import {
 import type { Session, User } from '@supabase/supabase-js'
 import { getSupabase, isSupabaseConfigured } from '../lib/supabase'
 import { Login } from '../pages/Login'
+import '../styles/auth.css'
 
 type AuthState = {
   user: User | null
@@ -79,8 +80,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   if (loading) {
     return (
-      <div className="shell" style={{ placeItems: 'center', minHeight: '100vh' }}>
-        <p style={{ color: 'var(--muted)' }}>Loading session…</p>
+      <div className="auth-loading">
+        <div className="auth-loading__ring" aria-label="Loading session" />
       </div>
     )
   }
