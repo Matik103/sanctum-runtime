@@ -1,0 +1,47 @@
+# Render Blueprint — Sanctum production stack
+# https://render.com/docs/blueprint-spec
+#
+# Deploy: Render Dashboard → New → Blueprint → connect repo
+# Or add services manually using PRODUCTION_OPS.md
+
+services:
+  - type: web
+    name: sanctum-api
+    runtime: node
+    repo: https://github.com/Matik103/sanctum-runtime
+    branch: main
+    buildCommand: npm ci && npm run build:sdk && npm run build:packages
+    startCommand: npm run start -w @sanctum/api
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: SANCTUM_OFFLINE_MODE
+        value: "true"
+      - key: SANCTUM_RISK_PROVIDER
+        value: "none"
+      - key: SANCTUM_API_KEY
+        generateValue: true
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+      - key: VITE_SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: DASHBOARD_URL
+        sync: false
+
+  - type: web
+    name: sanctum-dashboard
+    runtime: static
+    repo: https://github.com/Matik103/sanctum-runtime
+    branch: main
+    buildCommand: npm ci && npm run build:sdk && npm run build:dashboard
+    staticPublishPath: apps/dashboard/dist
+    envVars:
+      - key: VITE_SANCTUM_API_URL
+        sync: false
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
