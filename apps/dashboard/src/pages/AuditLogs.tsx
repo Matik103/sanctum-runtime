@@ -1,5 +1,6 @@
 import type { ActionResult } from '@sanctum-runtime/sdk'
 import { AuditRecord } from '../components/AuditRecord'
+import { PageActions } from '../components/ui/PageActions'
 import { decisionTone, timeAgo } from '../lib/format'
 import { decisionLabel } from '../lib/labels'
 import { auditRecordText } from '../lib/narrative'
@@ -61,14 +62,14 @@ export function AuditLogs({ audit, onSelect }: Props) {
             decided
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button type="button" className="btn btn-ghost" onClick={exportJson}>
+        <PageActions>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={exportJson}>
             Export JSON
           </button>
-          <button type="button" className="btn btn-ghost" onClick={exportCsv}>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={exportCsv}>
             Export CSV
           </button>
-        </div>
+        </PageActions>
       </header>
 
       <div className="table-wrap">

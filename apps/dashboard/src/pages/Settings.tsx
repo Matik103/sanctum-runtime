@@ -1,4 +1,6 @@
+import { Settings2 } from 'lucide-react'
 import type { RuntimeStatus } from '@sanctum-runtime/sdk'
+import { riskModelMetaLine } from '../lib/risk-label'
 
 type Props = { status: RuntimeStatus | null }
 
@@ -16,47 +18,58 @@ export function Settings({ status }: Props) {
         </div>
       </header>
 
-      <div className="policy-grid">
-        <section className="card">
-          <h3 style={{ marginTop: 0 }}>Runtime</h3>
-          <dl className="detail-list">
-            <div>
-              <dt>Status</dt>
-              <dd>
-                <strong style={{ color: operational ? 'var(--success)' : 'var(--danger)' }}>
+      <section className="section">
+        <div className="section__header">
+          <h2>
+            <Settings2 size={18} style={{ verticalAlign: 'middle', marginRight: '0.4rem' }} />
+            Runtime
+          </h2>
+          <p>{riskModelMetaLine(status)}</p>
+        </div>
+        <div className="section__body">
+          <div className="stat-strip">
+            <div className="stat-strip__item">
+              <p className="stat-strip__label">API status</p>
+              <p className="stat-strip__value">
+                <span style={{ color: operational ? 'var(--success)' : 'var(--danger)' }}>
                   {operational ? 'Operational' : 'Unavailable'}
-                </strong>
-              </dd>
+                </span>
+              </p>
             </div>
-            <div>
-              <dt>Policies loaded</dt>
-              <dd>{status?.policyCount ?? '—'}</dd>
+            <div className="stat-strip__item">
+              <p className="stat-strip__label">Policies</p>
+              <p className="stat-strip__value">{status?.policyCount ?? '—'}</p>
             </div>
-            <div>
-              <dt>Audit entries</dt>
-              <dd>{status?.auditCount ?? '—'}</dd>
+            <div className="stat-strip__item">
+              <p className="stat-strip__label">Audit entries</p>
+              <p className="stat-strip__value">{status?.auditCount ?? '—'}</p>
             </div>
-          </dl>
-        </section>
+          </div>
+        </div>
+      </section>
 
-        <section className="card">
-          <h3 style={{ marginTop: 0 }}>Risk model</h3>
+      <section className="section">
+        <div className="section__header">
+          <h2>Risk model</h2>
+          <p>Configure OPENAI_API_KEY or OLLAMA on the API host for live scoring</p>
+        </div>
+        <div className="section__body">
           <dl className="detail-list">
             <div>
               <dt>Provider</dt>
               <dd>{provider}</dd>
             </div>
             <div>
-              <dt>Status</dt>
+              <dt>Connection</dt>
               <dd>
-                <strong style={{ color: modelReady ? 'var(--success)' : 'var(--muted)' }}>
+                <span className={`badge ${modelReady ? 'success' : 'neutral'}`}>
                   {modelReady ? 'Connected' : provider === 'none' ? 'Not configured' : 'Disconnected'}
-                </strong>
+                </span>
               </dd>
             </div>
             <div>
               <dt>Endpoint</dt>
-              <dd style={{ wordBreak: 'break-all' }}>
+              <dd style={{ wordBreak: 'break-all', fontFamily: 'ui-monospace, monospace', fontSize: '0.85rem' }}>
                 {status?.riskEndpoint ?? status?.ollamaUrl ?? '—'}
               </dd>
             </div>
@@ -65,8 +78,8 @@ export function Settings({ status }: Props) {
               <dd>{status?.riskModel ?? status?.ollamaModel ?? '—'}</dd>
             </div>
           </dl>
-        </section>
-      </div>
+        </div>
+      </section>
     </>
   )
 }
