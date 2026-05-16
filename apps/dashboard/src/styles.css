@@ -994,6 +994,40 @@ table.data td.audit-record-cell {
   margin-top: 0.5rem;
 }
 
+.key-delete-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--muted);
+}
+
+.key-delete-trigger:hover:not(:disabled) {
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.key-delete-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  animation: fadeIn 0.15s ease;
+}
+
+.key-delete-confirm > span {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+tr.key-row--pending {
+  background: rgba(239, 68, 68, 0.06);
+}
+
+tr.key-row--pending td {
+  border-color: rgba(239, 68, 68, 0.15);
+}
+
 /* ——— Responsive layout ——— */
 
 @media (max-width: 1200px) {

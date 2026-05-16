@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
-import { KeyRound, Server } from 'lucide-react'
+import { KeyRound, Server, Trash2 } from 'lucide-react'
 import type { RuntimeStatus } from '@sanctum-runtime/sdk'
 import { Alert } from '../components/ui/Alert'
 import { CopyField } from '../components/ui/CopyField'
 import { EmptyState } from '../components/ui/EmptyState'
 import {
   createApiKey,
+  deleteApiKey,
   listApiKeys,
-  revokeApiKey,
   type ApiKeyRecord,
   type CreateApiKeyResult,
 } from '../lib/api-keys'
@@ -31,6 +31,8 @@ export function Devices({ status }: Props) {
   const [newName, setNewName] = useState('')
   const [created, setCreated] = useState<CreateApiKeyResult | null>(null)
   const [busy, setBusy] = useState(false)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -60,16 +62,17 @@ export function Devices({ status }: Props) {
     }
   }
 
-  const onRevoke = async (id: string) => {
-    if (!window.confirm('Revoke this API key? Scripts using it will stop working.')) return
-    setBusy(true)
+  const onDelete = async (id: string) => {
+    setDeletingId(id)
+    setError(null)
     try {
-      await revokeApiKey(id)
-      await load()
+      await deleteApiKey(id)
+      setKeys((prev) => prev.filter((k) => k.id !== id))
+      setPendingDeleteId(null)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Revoke failed')
+      setError(e instanceof Error ? e.message : 'Delete failed')
     } finally {
-      setBusy(false)
+      setDeletingId(null)
     }
   }
 
@@ -103,7 +106,10 @@ export function Devices({ status }: Props) {
             <KeyRound size={18} style={{ verticalAlign: 'middle', marginRight: '0.4rem' }} />
             API keys
           </h2>
-          <p>Send as <code className="inline-code">X-Sanctum-Key</code> or set <code className="inline-code">SANCTUM_API_KEY</code></p>
+          <p>
+            Send as <code className="inline-code">X-Sanctum-Key</code> or set{' '}
+            <code className="inline-code">SANCTUM_API_KEY</code>
+          </p>
         </div>
 
         <div className="section__body">
@@ -174,7 +180,7 @@ export function Devices({ status }: Props) {
                 </thead>
                 <tbody>
                   {active.map((k) => (
-                    <tr key={k.id}>
+                    <tr key={k.id} className={pendingDeleteId === k.id ? 'key-row--pending' : ''}>
                       <td>
                         <strong>{k.name}</strong>
                       </td>
@@ -186,14 +192,38 @@ export function Devices({ status }: Props) {
                       <td style={{ color: 'var(--muted)' }}>{formatDate(k.created_at)}</td>
                       <td style={{ color: 'var(--muted)' }}>{formatDate(k.last_used_at)}</td>
                       <td style={{ textAlign: 'right' }}>
-                        <button
-                          type="button"
-                          className="btn btn-danger btn-sm"
-                          disabled={busy}
-                          onClick={() => void onRevoke(k.id)}
-                        >
-                          Revoke
-                        </button>
+                        {pendingDeleteId === k.id ? (
+                          <div className="key-delete-confirm">
+                            <span>Delete?</span>
+                            <button
+                              type="button"
+                              className="btn btn-danger btn-sm"
+                              disabled={deletingId === k.id}
+                              onClick={() => void onDelete(k.id)}
+                            >
+                              {deletingId === k.id ? 'Deleting…' : 'Confirm'}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-sm"
+                              disabled={deletingId === k.id}
+                              onClick={() => setPendingDeleteId(null)}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-sm key-delete-trigger"
+                            disabled={busy || deletingId != null}
+                            onClick={() => setPendingDeleteId(k.id)}
+                            aria-label={`Delete API key ${k.name}`}
+                          >
+                            <Trash2 size={15} />
+                            Delete
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}

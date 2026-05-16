@@ -95,31 +95,29 @@ export async function registerApiKeyRoutes(
     }
   })
 
-  /** Revoke = invalidate immediately (OpenAI-style); row kept for audit. */
+  /** Delete key permanently (OpenAI-style — removed from list, auth stops immediately). */
   app.delete('/v1/api-keys/:id', async (req, reply) => {
     const user = (req as { sanctumUser?: { id: string } }).sanctumUser
     if (!user) {
       return reply.status(403).send({ error: 'dashboard_auth_required' })
     }
 
-    const { id } = req.params as { id: string }
+    const id = z.string().uuid().parse((req.params as { id: string }).id)
 
-    const { data, error } = await admin
+    const { error, count } = await admin
       .from('api_keys')
-      .update({ revoked_at: new Date().toISOString() })
+      .delete({ count: 'exact' })
       .eq('id', id)
       .eq('user_id', user.id)
-      .is('revoked_at', null)
-      .select('id')
-      .maybeSingle()
 
     if (error) {
-      return reply.status(500).send({ error: 'api_keys_revoke_failed', detail: error.message })
+      req.log.error({ err: error, keyId: id }, 'api_keys_delete_failed')
+      return reply.status(500).send({ error: 'api_keys_delete_failed', detail: error.message })
     }
-    if (!data) {
-      return reply.status(404).send({ error: 'api_key_not_found_or_already_revoked' })
+    if (!count) {
+      return reply.status(404).send({ error: 'api_key_not_found' })
     }
-    return { ok: true, revoked: true }
+    return { ok: true, deleted: true }
   })
 }
 

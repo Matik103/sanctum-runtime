@@ -43,10 +43,22 @@ export async function createApiKey(name: string): Promise<CreateApiKeyResult> {
   return res.json() as Promise<CreateApiKeyResult>
 }
 
-export async function revokeApiKey(id: string): Promise<void> {
+export async function deleteApiKey(id: string): Promise<void> {
   const res = await fetch(`${apiBase}/v1/api-keys/${id}`, {
     method: 'DELETE',
     headers: await authHeaders(),
   })
-  if (!res.ok) throw new Error(`Failed to revoke API key: ${res.status}`)
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`
+    try {
+      const body = (await res.json()) as { detail?: string; error?: string }
+      detail = body.detail ?? body.error ?? detail
+    } catch {
+      /* ignore */
+    }
+    throw new Error(detail)
+  }
 }
+
+/** @deprecated use deleteApiKey */
+export const revokeApiKey = deleteApiKey
