@@ -1,5 +1,7 @@
 # Production ops — Phase 2 (Track A)
 
+> **Control plane runbook:** [PRODUCTION_RUNBOOK.md](./PRODUCTION_RUNBOOK.md) — deploy, env vars, smoke tests, Fleet/Marketplace ops.
+
 Deploy **API + Supabase + dashboard + marketing site** so developers and operators use Sanctum without your laptop.
 
 | Component | Host | Purpose |

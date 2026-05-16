@@ -196,4 +196,4 @@ Apply: `npm run db:push`
 4. **Phase 3:** Attestation, hardware fingerprint, trust certification.
 5. **Phase 4:** Fleet map, dispatch — [PHASE_4_ORCHESTRATION.md](./PHASE_4_ORCHESTRATION.md).
 
-See also [PHASE_3_TRUST.md](./PHASE_3_TRUST.md) · [PHASE_3.md](../PHASE_3.md) (operator loop) · [PRODUCTION_OPS.md](../PRODUCTION_OPS.md).
+See also [PHASE_3_TRUST.md](./PHASE_3_TRUST.md) · [PRODUCTION_RUNBOOK.md](../PRODUCTION_RUNBOOK.md) · [PRODUCTION_OPS.md](../PRODUCTION_OPS.md).
