@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   fetchDashboard,
   runUnlockDemo,
@@ -19,14 +19,30 @@ export function useDashboard() {
   const [pendingVerification, setPendingVerification] = useState<ActionResult | null>(
     null,
   )
+  const dismissedVerificationIds = useRef<Set<string>>(new Set())
+
+  const dismissVerification = useCallback((entryId?: string) => {
+    if (entryId) dismissedVerificationIds.current.add(entryId)
+    setPendingVerification(null)
+  }, [])
 
   const refresh = useCallback(async () => {
     try {
       const next = await fetchDashboard()
       setData(next)
       setApiError(null)
-      const pending = next.audit.find((e) => e.decision === 'REQUIRE_VERIFICATION')
-      setPendingVerification((cur) => cur ?? pending ?? null)
+
+      const dismissed = dismissedVerificationIds.current
+      const newestPending = next.audit.find(
+        (e) =>
+          e.decision === 'REQUIRE_VERIFICATION' && !dismissed.has(e.id),
+      )
+
+      setPendingVerification((cur) => {
+        if (cur && dismissed.has(cur.id)) return null
+        if (cur) return cur
+        return newestPending ?? null
+      })
     } catch (e) {
       const msg =
         e instanceof Error && e.message.includes('500')
@@ -49,7 +65,10 @@ export function useDashboard() {
     try {
       const result = await runUnlockDemo(offline)
       if (result.decision === 'REQUIRE_VERIFICATION') {
+        dismissedVerificationIds.current.delete(result.id)
         setPendingVerification(result)
+      } else {
+        dismissVerification(result.id)
       }
       await refresh()
       return result
@@ -62,8 +81,6 @@ export function useDashboard() {
     const policies = await updatePolicyResponse(action, response)
     setData((d) => ({ ...d, policies }))
   }
-
-  const dismissVerification = () => setPendingVerification(null)
 
   return {
     ...data,

@@ -1,5 +1,5 @@
 import type { ActionResult } from '@sanctum-runtime/sdk'
-import { actionLabel } from '../lib/api'
+import { actionLabel, actorLabel } from '../lib/labels'
 
 type Props = {
   entry: ActionResult
@@ -29,7 +29,7 @@ export function VerificationModal({
           </div>
           <div style={{ marginBottom: '0.75rem' }}>
             <span className="card-label">Requested by</span>
-            <p style={{ margin: '0.25rem 0 0' }}>{entry.actor}</p>
+            <p style={{ margin: '0.25rem 0 0' }}>{actorLabel(entry.actor)}</p>
           </div>
           <div>
             <span className="card-label">Reason</span>

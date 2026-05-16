@@ -1,7 +1,8 @@
 import { X } from 'lucide-react'
 import type { ActionResult } from '@sanctum-runtime/sdk'
-import { actionLabel } from '../lib/api'
+import { actionLabel, decisionLabel, policyLabel, riskLabel } from '../lib/labels'
 import { decisionTone, timeAgo } from '../lib/format'
+import { ContextDetails } from './ContextDetails'
 
 type Props = {
   entry: ActionResult | null
@@ -25,14 +26,8 @@ export function ActionDrawer({ entry, onClose }: Props) {
         </div>
 
         <section className="drawer-section">
-          <h3>Action details</h3>
-          <pre className="code">
-            {JSON.stringify(
-              { action: entry.action, actor: entry.actor, context: entry.context },
-              null,
-              2,
-            )}
-          </pre>
+          <h3>What happened</h3>
+          <ContextDetails context={entry.context} actor={entry.actor} />
         </section>
 
         <section className="drawer-section">
@@ -44,15 +39,15 @@ export function ActionDrawer({ entry, onClose }: Props) {
             </p>
           )}
           <p style={{ marginTop: '0.5rem' }}>
-            <span className={`badge ${tone}`}>{entry.risk} risk</span>
+            <span className={`badge ${tone}`}>{riskLabel(entry.risk)} risk</span>
           </p>
         </section>
 
         <section className="drawer-section">
-          <h3>Policy result</h3>
-          <p style={{ margin: 0, fontWeight: 500 }}>{entry.policyPath}</p>
+          <h3>Policy</h3>
+          <p style={{ margin: 0, fontWeight: 500 }}>{policyLabel(entry.policyPath)}</p>
           <p style={{ marginTop: '0.5rem' }}>
-            <span className={`badge ${tone}`}>{entry.decision.replace(/_/g, ' ')}</span>
+            <span className={`badge ${tone}`}>{decisionLabel(entry.decision)}</span>
           </p>
         </section>
 
@@ -62,16 +57,10 @@ export function ActionDrawer({ entry, onClose }: Props) {
             <li>Request received · {timeAgo(entry.timestamp)}</li>
             <li>Runtime intercepted</li>
             <li>
-              {entry.modelInvoked ? 'Risk analyzed (Qwen)' : 'Heuristic risk rules applied'}
+              {entry.modelInvoked ? 'Risk analyzed (local model)' : 'Heuristic rules applied'}
             </li>
             <li>Policy checked</li>
-            <li>
-              {entry.decision === 'REQUIRE_VERIFICATION'
-                ? 'Human verification required'
-                : entry.decision === 'BLOCKED'
-                  ? 'Action blocked'
-                  : 'Action approved'}
-            </li>
+            <li>{decisionLabel(entry.decision)}</li>
           </ul>
         </section>
       </aside>

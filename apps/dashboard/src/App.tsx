@@ -74,14 +74,16 @@ export function App() {
         <VerificationModal
           entry={pendingVerification}
           onApproveOnce={() => {
-            dismissVerification()
-            setSelected(pendingVerification)
+            const entry = pendingVerification
+            dismissVerification(entry.id)
+            setSelected(entry)
           }}
           onAlwaysApprove={async () => {
-            await setPolicy(pendingVerification.action, 'approve')
-            dismissVerification()
+            const entry = pendingVerification
+            await setPolicy(entry.action, 'approve')
+            dismissVerification(entry.id)
           }}
-          onDeny={() => dismissVerification()}
+          onDeny={() => dismissVerification(pendingVerification.id)}
         />
       )}
     </div>

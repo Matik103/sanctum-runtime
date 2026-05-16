@@ -1,7 +1,14 @@
 import { useMemo, useState } from 'react'
 import type { ActionResult } from '@sanctum-runtime/sdk'
-import { decisionTone } from '../lib/format'
-import { timeAgo } from '../lib/format'
+import { decisionTone, timeAgo } from '../lib/format'
+import {
+  actionLabel,
+  actorLabel,
+  contextFieldLabel,
+  decisionLabel,
+  formatContextValue,
+  policyLabel,
+} from '../lib/labels'
 
 type Props = {
   audit: ActionResult[]
@@ -87,20 +94,26 @@ export function RuntimeActivity({ audit, onSelect }: Props) {
             ) : (
               rows.map((e) => (
                 <tr key={e.id} onClick={() => onSelect(e)}>
-                  <td>{e.actor}</td>
-                  <td>{e.action}</td>
-                  <td style={{ maxWidth: 140, color: 'var(--muted)' }}>
-                    {JSON.stringify(e.context).slice(0, 48)}…
+                  <td>{actorLabel(e.actor)}</td>
+                  <td>{actionLabel(e.action)}</td>
+                  <td style={{ maxWidth: 160, color: 'var(--muted)' }}>
+                    {Object.entries(e.context)
+                      .slice(0, 2)
+                      .map(
+                        ([k, v]) =>
+                          `${contextFieldLabel(k)}: ${formatContextValue(k, v)}`,
+                      )
+                      .join(' · ') || '—'}
                   </td>
                   <td>
                     <span className={`badge ${e.risk === 'high' ? 'danger' : e.risk === 'medium' ? 'warning' : 'neutral'}`}>
                       {e.risk}
                     </span>
                   </td>
-                  <td style={{ color: 'var(--muted)' }}>{e.policyPath}</td>
+                  <td style={{ color: 'var(--muted)' }}>{policyLabel(e.policyPath)}</td>
                   <td>
                     <span className={`badge ${decisionTone(e.decision)}`}>
-                      {e.decision.replace(/_/g, ' ')}
+                      {decisionLabel(e.decision)}
                     </span>
                   </td>
                   <td style={{ color: 'var(--muted)' }}>{timeAgo(e.timestamp)}</td>

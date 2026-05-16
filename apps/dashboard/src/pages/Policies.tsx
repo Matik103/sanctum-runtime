@@ -33,9 +33,9 @@ export function Policies({ policies, audit, onSetPolicy }: Props) {
 
           return (
             <article key={action} className="policy-card">
-              <h3>{actionLabel(action)} policy</h3>
-              <p style={{ margin: '0.25rem 0', color: 'var(--muted)', fontSize: '0.8rem' }}>
-                Action: <code>{action}</code>
+              <h3>{actionLabel(action)}</h3>
+              <p style={{ margin: '0.25rem 0', color: 'var(--muted)', fontSize: '0.85rem' }}>
+                When an agent requests this action, Sanctum applies the response below.
               </p>
 
               <p className="card-label" style={{ marginTop: '0.75rem' }}>

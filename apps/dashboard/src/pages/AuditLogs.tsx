@@ -1,5 +1,6 @@
 import type { ActionResult } from '@sanctum-runtime/sdk'
 import { decisionTone, timeAgo } from '../lib/format'
+import { actionLabel, decisionLabel, policyLabel } from '../lib/labels'
 
 type Props = { audit: ActionResult[]; onSelect: (e: ActionResult) => void }
 
@@ -77,13 +78,13 @@ export function AuditLogs({ audit, onSelect }: Props) {
                 <td style={{ fontFamily: 'monospace', fontSize: '0.72rem' }}>
                   {e.id.slice(0, 8)}…
                 </td>
-                <td>{e.action}</td>
+                <td>{actionLabel(e.action)}</td>
                 <td>
                   <span className={`badge ${decisionTone(e.decision)}`}>
-                    {e.decision}
+                    {decisionLabel(e.decision)}
                   </span>
                 </td>
-                <td style={{ color: 'var(--muted)' }}>{e.policyPath}</td>
+                <td style={{ color: 'var(--muted)' }}>{policyLabel(e.policyPath)}</td>
                 <td style={{ color: 'var(--muted)' }}>
                   {e.modelInvoked ? 'Model' : 'Heuristic'}
                 </td>

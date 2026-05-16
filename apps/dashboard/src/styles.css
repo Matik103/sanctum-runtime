@@ -463,6 +463,26 @@ table.data tbody tr.feed-row {
   overflow-x: auto;
 }
 
+.detail-list {
+  margin: 0.5rem 0 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.detail-list dt {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin: 0;
+}
+
+.detail-list dd {
+  margin: 0.15rem 0 0;
+  font-size: 0.9rem;
+  color: var(--foreground);
+}
+
 .timeline {
   list-style: none;
   padding: 0;

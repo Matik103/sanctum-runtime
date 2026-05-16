@@ -1,5 +1,11 @@
 import type { ActionResult } from '@sanctum-runtime/sdk'
 import { decisionTone, timeAgo } from '../lib/format'
+import {
+  actionLabel,
+  actorLabel,
+  anomalyLabel,
+  decisionLabel,
+} from '../lib/labels'
 
 const THREAT_TYPES = [
   { id: 'unusual_time_access', label: 'Abnormal timing', severity: 'medium' },
@@ -72,12 +78,16 @@ export function ThreatMonitor({ audit, onSelect }: Props) {
             ) : (
               threats.map((e) => (
                 <tr key={e.id} onClick={() => onSelect(e)}>
-                  <td>{e.anomalyFlags.join(', ') || 'Policy hold'}</td>
-                  <td>{e.actor}</td>
+                  <td>
+                    {e.anomalyFlags.length
+                      ? e.anomalyFlags.map(anomalyLabel).join(', ')
+                      : actionLabel(e.action)}
+                  </td>
+                  <td>{actorLabel(e.actor)}</td>
                   <td style={{ maxWidth: 280 }}>{e.reasoning}</td>
                   <td>
                     <span className={`badge ${decisionTone(e.decision)}`}>
-                      {e.decision.replace(/_/g, ' ')}
+                      {decisionLabel(e.decision)}
                     </span>
                     <span style={{ color: 'var(--muted)', marginLeft: '0.5rem' }}>
                       {timeAgo(e.timestamp)}

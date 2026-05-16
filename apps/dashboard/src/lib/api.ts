@@ -22,12 +22,7 @@ export function responseToPolicy(response: PolicyResponse): Partial<ActionPolicy
   }
 }
 
-export function actionLabel(action: string): string {
-  return action
-    .split('_')
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ')
-}
+export { actionLabel } from './labels'
 
 export async function runUnlockDemo(offline: boolean): Promise<ActionResult> {
   const client = new SanctumClient({ baseUrl: '/api', offlineMode: offline })

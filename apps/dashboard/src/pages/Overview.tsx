@@ -1,5 +1,6 @@
 import type { ActionResult, PolicyMap, RuntimeStatus } from '@sanctum-runtime/sdk'
 import { decisionTone, timeAgo } from '../lib/format'
+import { actionLabel, decisionLabel } from '../lib/labels'
 
 type Props = {
   audit: ActionResult[]
@@ -126,10 +127,10 @@ export function Overview({ audit, policies, status, loading, onRunDemo, onSelect
                       {e.decision === 'APPROVED' ? '●' : e.decision === 'BLOCKED' ? '●' : '●'}
                     </span>
                   </td>
-                  <td>{e.action}</td>
+                  <td>{actionLabel(e.action)}</td>
                   <td>
                     <span className={`badge ${decisionTone(e.decision)}`}>
-                      {e.decision.replace(/_/g, ' ')}
+                      {decisionLabel(e.decision)}
                     </span>
                   </td>
                   <td style={{ color: 'var(--muted)' }}>{timeAgo(e.timestamp)}</td>
