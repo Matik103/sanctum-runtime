@@ -1,6 +1,8 @@
 # Developer guide — everything you can do (OSS)
 
-**Sanctum Runtime** is middleware between AI reasoning and execution: intercept → policy → risk → **approve | verify | block** → audit.
+**Sanctum Runtime** is open-source middleware for **AI agents**, **LLM tool use**, and **automation**: every meaningful action passes through policy checks, optional **Ollama** or **OpenAI-compatible** risk scoring, then **approve · verify · block**, with an audit trail operators can read.
+
+If you are building agent frameworks, MCP tools, robotics commands, or backend workflows — this is the full OSS surface (API, SDK, policies, webhooks, dashboard).
 
 | Start here | Purpose |
 |------------|---------|
@@ -271,3 +273,9 @@ GitHub Actions: [`.github/workflows/ci.yml`](./.github/workflows/ci.yml) — bui
 Fleet orchestration, managed Sanctum Cloud, proprietary threat intel, SIEM packs, webhook DLQ/retry, compliance attestation — [OPEN_CORE.md](./OPEN_CORE.md).
 
 Early access: [GitHub issue template](https://github.com/Matik103/sanctum-runtime/issues/new?template=early-access.md).
+
+---
+
+## Related searches (index)
+
+This guide is meant to answer lookups like: **AI agent security**, **LLM guardrails for tool use**, **function calling safety**, **human-in-the-loop agents**, **agent policy engine**, **Ollama agent safety**, **local LLM risk scoring**, **AI audit log**, **agent middleware Node.js**, **autonomous system verification**, **robotics AI gate**, **MCP tool approval**, **self-hosted AI governance**, **open source agent runtime**.

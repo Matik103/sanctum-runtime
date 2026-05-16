@@ -1,5 +1,6 @@
 {
   "name": "sanctum-runtime",
+  "description": "Open-source AI agent action runtime — verify tool calls and automations before execution (MIT)",
   "packageManager": "npm@10.9.2",
   "private": true,
   "sideEffects": false,

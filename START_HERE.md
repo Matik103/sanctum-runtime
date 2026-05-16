@@ -1,8 +1,11 @@
 # Start here (developers)
 
-**This repository is open source (MIT).** Configure your environment first — hosts and ports are **not** hardcoded in the app.
+**Sanctum Runtime** (MIT) is an **AI agent action gate**: verify tool calls and side effects *before* they run — with policies, human approval, local or cloud LLMs, and audit logs.
 
-**Full reference (API, SDK, policies, models, webhooks, dashboard):** [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md)
+Clone this repo, point the SDK at your API, and gate actions in minutes. No hosted account required.
+
+**Full reference (API, SDK, policies, models, webhooks, dashboard):** [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md)  
+**GitHub topics & About text:** [.github/GITHUB_DISCOVERY.md](./.github/GITHUB_DISCOVERY.md)
 
 ## 1. Configure
 
@@ -203,3 +206,4 @@ Or poll: `sanctum.waitForVerification('run-123')` after `REQUIRE_VERIFICATION`.
 - [DEVELOPMENT.md](./DEVELOPMENT.md) — monorepo map
 - [local-ai/MODELS.md](./local-ai/MODELS.md) — local model setup
 - [CONTRIBUTING.md](./CONTRIBUTING.md)
+- [.github/GITHUB_DISCOVERY.md](./.github/GITHUB_DISCOVERY.md) — GitHub About + topics (maintainers)

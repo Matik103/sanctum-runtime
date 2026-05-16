@@ -1,24 +1,60 @@
 # Sanctum Runtime
 
+**The open-source gate between your AI agent and the real world.**  
+Verify tool calls, API actions, and automations *before* they run — with policies, human approval, local or cloud LLMs, and audit logs developers actually want to read.
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
-[![GitHub](https://img.shields.io/github/stars/Matik103/sanctum-runtime?style=social)](https://github.com/Matik103/sanctum-runtime)
+[![npm @sanctum-runtime/sdk](https://img.shields.io/npm/v/@sanctum-runtime/sdk?label=npm%20sdk)](https://www.npmjs.com/package/@sanctum-runtime/sdk)
+[![GitHub stars](https://img.shields.io/github/stars/Matik103/sanctum-runtime?style=social)](https://github.com/Matik103/sanctum-runtime)
 
-**Open-source (MIT) runtime trust infrastructure for autonomous AI systems** — a layer developers install into agents, backends, and robotics stacks.
+> **First time here?** [START_HERE.md](./START_HERE.md) (5‑minute setup) → [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md) (full API & SDK)  
+> **OSS vs enterprise:** [OPEN_CORE.md](./OPEN_CORE.md)
 
-> **New developer?** [START_HERE.md](./START_HERE.md) → then **[DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md)** (full API, SDK, policies, models, webhooks).  
-> **Scope:** [OPEN_CORE.md](./OPEN_CORE.md) — public vs enterprise.
+---
+
+## Who this is for
+
+You are building **AI agents**, **LLM apps**, **workflow automation**, or **robotics software** and you need a real answer to:
+
+> *“What happens when the model tries to unlock a door, send email, charge a card, or call production?”*
+
+Sanctum is for:
+
+- **Agent builders** — LangChain, CrewAI, custom Node/Python agents, MCP servers, “agentic” SaaS  
+- **Platform engineers** — gate **function calling / tool use** with approve · verify · block  
+- **Security-minded teams** — policy engine + audit trail without locking yourself into a black box  
+- **Local-first devs** — **Ollama**, GGUF, vLLM, or OpenAI-compatible APIs for risk scoring  
+- **Operators** — optional dashboard for human-in-the-loop (HITL) review  
+
+If you only need chat guardrails, look at prompt filters. If you need **execution control**, you are in the right place.
+
+---
+
+## What it does (in one sentence)
+
+**AI proposes an action → Sanctum evaluates policy + risk → approve, pause for a human, or block → you execute (or you don’t).**
+
+```text
+  Before (risky)     AI agent ──────────────────────────► side effects
+  With Sanctum       AI agent ──► Sanctum Runtime ──► decision ──► execution
+```
+
+Decisions: **APPROVED** · **REQUIRE_VERIFICATION** (human review) · **BLOCKED**
+
+---
 
 ## Quick start
 
 ```bash
 git clone https://github.com/Matik103/sanctum-runtime.git
 cd sanctum-runtime
-cp .env.example .env    # required — configure your hosts and ports
+cp .env.example .env
 npm install
-npm run dev:runtime
-npm run smoke
-npm run example:agent
+npm run dev:runtime    # API + dashboard
+npm run smoke          # another terminal — integration check
 ```
+
+**Use it from your app (npm):**
 
 ```bash
 npm install @sanctum-runtime/sdk @sanctum-runtime/adapter-agent-runtime
@@ -29,75 +65,131 @@ import { SanctumRuntime } from "@sanctum-runtime/sdk";
 import { protectAgent, AgentActions } from "@sanctum-runtime/adapter-agent-runtime";
 
 const sanctum = new SanctumRuntime({
-  baseUrl: process.env.SANCTUM_API_URL!, // from your .env
+  baseUrl: process.env.SANCTUM_API_URL!, // e.g. http://127.0.0.1:3001
 });
 
 await protectAgent(sanctum, {
-  actor: "my-agent",
+  actor: "support-bot",
   action: AgentActions.SEND_EMAIL,
-  context: { to: "user@example.com" },
+  context: { to: "user@example.com", heard: "Send them the reset link" },
   execute: async () => sendEmail(),
 });
 ```
 
-Marketing site + docs: configure `SITE_HOST` / `SITE_PORT` in `.env`, then `npm run dev` → `/docs`
+Works **without** the dashboard. Works **with** Ollama off (heuristics + policies). Works **self-hosted** on your infra.
 
-## What you can do (OSS)
+---
 
-| Area | Possibilities |
-|------|----------------|
-| **Gate actions** | `verify` / `block` / `require human approval` on any action name |
-| **Policies** | Unlimited actions; org keys (`acme:transfer`); YAML import/export; per-action `riskPrompt` |
-| **Risk model** | Ollama (any local model), OpenAI-compatible APIs, or heuristics-only |
-| **Agents** | `protectAgent()`, middleware, `awaitVerification` after dashboard approve |
-| **Audit** | JSONL locally; Humans-style `humanRecord`; optional Supabase mirror |
-| **Integrations** | Webhooks on verify/block/resolve; REST API; optional API key / Supabase JWT |
-| **Ops** | Community dashboard, `npm run smoke`, GitHub Actions CI |
+## Why teams pick Sanctum
 
-Full reference: **[DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md)**
+| You want… | Sanctum gives you… |
+|-----------|-------------------|
+| Control **actions**, not just prompts | Intercept layer on `action` + `context`, not chat-only |
+| **Human-in-the-loop** when it matters | Verification queue + `awaitVerification` in agents |
+| **Your** model stack | Ollama, OpenAI, Groq, LiteLLM, vLLM — or no LLM at all |
+| Unlimited product surface | Register any action name; YAML import/export |
+| Compliance-friendly logs | Plain-English `humanRecord` on every decision |
+| Integrations | Webhooks, REST API, optional Supabase audit mirror |
+| Adoption-friendly OSS | MIT, local-first, no account required to try |
 
-## Configuration
+---
 
-All endpoints are set in **`.env`** (see [`.env.example`](./.env.example)). Nothing assumes a fixed IP or port in application code.
+## Features (open source)
+
+| Area | What you can do |
+|------|-----------------|
+| **Action verification** | `POST /v1/actions/verify` — gate tool calls, APIs, robotics commands |
+| **Policies** | Unlimited actions; approve / verify / block; org keys (`acme:payroll`); `riskPrompt` per action |
+| **Risk models** | **Ollama** (Qwen, Llama, Mistral, …), **OpenAI-compatible** APIs, or heuristics-only |
+| **Agent SDK** | `verifyAction`, `middleware()`, `protectAgent()`, `waitForVerification()` |
+| **Audit** | Local JSONL; narrative context (`heard`, `intent`); optional Postgres via Supabase |
+| **Webhooks** | `verification.required`, `action.blocked`, `verification.resolved` |
+| **Dashboard** | Policies, live activity, review queue (optional) |
+| **CI** | GitHub Actions runs build + smoke on every PR |
+
+**Full list:** [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md)
+
+---
+
+## npm packages
+
+| Package | Install | Role |
+|---------|---------|------|
+| [`@sanctum-runtime/sdk`](./packages/sdk) | `npm i @sanctum-runtime/sdk` | Core client — verify, policies, audit |
+| [`@sanctum-runtime/adapter-agent-runtime`](./packages/adapters/agent-runtime) | `npm i @sanctum-runtime/adapter-agent-runtime` | `protectAgent()` helper |
+
+---
+
+## Configuration (`.env`)
+
+Copy [`.env.example`](./.env.example). Nothing is hardcoded to localhost in source — you set hosts and ports.
 
 | Variable | Purpose |
 |----------|---------|
-| `HOST` + `PORT` or `SANCTUM_API_URL` | Runtime API |
-| `DASHBOARD_HOST` + `DASHBOARD_PORT` or `DASHBOARD_URL` | Community dashboard |
-| `SITE_HOST` + `SITE_PORT` | Marketing / docs site |
-| `OLLAMA_URL` + `OLLAMA_MODEL` | Local risk model (or see `SANCTUM_RISK_PROVIDER`) |
-| `SANCTUM_WEBHOOK_URL` | HTTP events on verify/block/resolve |
-| `SANCTUM_API_KEY` | Optional API lockdown |
+| `SANCTUM_API_URL` / `HOST`+`PORT` | Runtime API |
+| `OLLAMA_URL` + `OLLAMA_MODEL` | Local LLM risk scoring |
+| `SANCTUM_RISK_PROVIDER` | `ollama` · `openai` · `none` |
+| `SANCTUM_WEBHOOK_URL` | Notify your app on verify/block |
+| `SANCTUM_API_KEY` | Lock down the API |
+| `DASHBOARD_*` | Operator UI (optional) |
 
-## Open-source map
+Local models: [local-ai/MODELS.md](./local-ai/MODELS.md) · Production: [HOSTED.md](./HOSTED.md)
 
-| Package / app | Purpose |
-|---------------|---------|
-| [`packages/sdk`](./packages/sdk) | `@sanctum-runtime/sdk` SDK |
-| [`packages/adapters/agent-runtime`](./packages/adapters/agent-runtime) | Agent adapter |
-| [`packages/runtime-engine`](./packages/runtime-engine) | Policy + risk + audit + webhooks |
-| [`packages/policy-engine`](./packages/policy-engine) | Policies + YAML I/O |
-| [`services/risk-model`](./services/risk-model) | Pluggable Ollama / OpenAI-compatible scoring |
-| [`apps/api`](./apps/api) | HTTP API |
-| [`apps/dashboard`](./apps/dashboard) | Community dashboard |
-| [`examples/`](./examples/) | Samples |
-| [`examples/policies.example.yaml`](./examples/policies.example.yaml) | Example policy file |
+---
 
-Enterprise features (fleet, cloud, advanced intel) are **not** in this repo — [OPEN_CORE.md](./OPEN_CORE.md).
+## Monorepo map
 
-## Docs
+| Path | What it is |
+|------|------------|
+| [`apps/api`](./apps/api) | HTTP runtime API |
+| [`apps/dashboard`](./apps/dashboard) | Community control plane |
+| [`packages/sdk`](./packages/sdk) | Published SDK |
+| [`packages/runtime-engine`](./packages/runtime-engine) | Policy → risk → audit pipeline |
+| [`packages/policy-engine`](./packages/policy-engine) | Policies + YAML |
+| [`services/risk-model`](./services/risk-model) | Pluggable model providers |
+| [`examples/`](./examples/) | Agent + npm consumer samples |
+| [`examples/policies.example.yaml`](./examples/policies.example.yaml) | Sample policies |
 
-| Doc | Use when |
-|-----|----------|
-| [START_HERE.md](./START_HERE.md) | First run |
-| [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md) | **Full capabilities, API, SDK, env** |
-| [`.env.example`](./.env.example) | All env vars |
-| [OPEN_CORE.md](./OPEN_CORE.md) | OSS vs enterprise |
-| [HOSTED.md](./HOSTED.md) | Deploy API to your infra |
-| [DEVELOPMENT.md](./DEVELOPMENT.md) | Monorepo / local AI |
-| [local-ai/MODELS.md](./local-ai/MODELS.md) | Ollama / GGUF setup |
-| [CONTRIBUTING.md](./CONTRIBUTING.md) | Issues and PRs |
+Fleet orchestration, managed cloud, and proprietary threat intel stay **enterprise** — [OPEN_CORE.md](./OPEN_CORE.md).
 
-## License
+---
 
-[MIT](./LICENSE)
+## Documentation
+
+| Doc | When to read |
+|-----|----------------|
+| [START_HERE.md](./START_HERE.md) | Clone, run, first verify |
+| [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md) | Every endpoint, SDK method, webhook, env var |
+| [OPEN_CORE.md](./OPEN_CORE.md) | Public vs private roadmap |
+| [HOSTED.md](./HOSTED.md) | Deploy on your servers |
+| [DEVELOPMENT.md](./DEVELOPMENT.md) | Contribute to the monorepo |
+| [CONTRIBUTING.md](./CONTRIBUTING.md) | Issues & PRs |
+| [.github/GITHUB_DISCOVERY.md](./.github/GITHUB_DISCOVERY.md) | Repo topics & GitHub About (maintainers) |
+
+---
+
+## Frequently searched problems (does Sanctum fit?)
+
+| You are looking for… | Sanctum approach |
+|----------------------|------------------|
+| AI agent **security** / **safety** layer | Runtime middleware on actions, not chat-only |
+| **Tool use** / **function calling** guardrails | Verify each tool invocation with policy |
+| **Human in the loop** for agents | `REQUIRE_VERIFICATION` + dashboard or API resolve |
+| **LLM guardrails** for physical / financial actions | Heuristic floors + optional model scoring |
+| **Ollama** agent with safety | `OLLAMA_URL` + policies; see [MODELS.md](./local-ai/MODELS.md) |
+| **Audit log** for AI decisions | `humanRecord` + export; optional Supabase |
+| **Policy as code** | YAML import/export, unlimited action keys |
+| **Self-hosted** AI governance | MIT, Docker-friendly API, no vendor lock-in for OSS |
+| **Robotics** / **IoT** command gating | Same `action` + `context` contract; adapters roadmap |
+
+If this matches your search, **star the repo** and open an issue with your stack — we are optimizing for real agent builders.
+
+---
+
+## Community & license
+
+- **Issues:** [github.com/Matik103/sanctum-runtime/issues](https://github.com/Matik103/sanctum-runtime/issues)  
+- **Enterprise / design partners:** [early access template](.github/ISSUE_TEMPLATE/early-access.md)  
+- **License:** [MIT](./LICENSE) — use in commercial products; enterprise features are a separate track.
+
+**Keywords (for search):** AI agent runtime, LLM agent security, autonomous agent policy engine, tool use verification, function calling safety, human-in-the-loop AI, Ollama agent safety, local LLM guardrails, AI action audit log, agent middleware TypeScript, open source AI governance.

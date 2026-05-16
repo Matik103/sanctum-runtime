@@ -1,7 +1,7 @@
 {
   "name": "@sanctum-runtime/adapter-agent-runtime",
   "version": "0.1.0",
-  "description": "Agent adapter — protectAgent() and action helpers for @sanctum-runtime/sdk",
+  "description": "protectAgent() for Sanctum Runtime — verify-before-execute wrapper for AI agents, tool use, and LLM automations.",
   "type": "module",
   "license": "MIT",
   "repository": {
@@ -15,10 +15,21 @@
   },
   "keywords": [
     "ai",
+    "ai-agents",
+    "llm",
+    "agent-security",
+    "guardrails",
+    "protect-agent",
+    "tool-use",
+    "function-calling",
+    "middleware",
     "agents",
     "runtime",
     "security",
-    "middleware"
+    "human-in-the-loop",
+    "verification",
+    "sanctum",
+    "typescript"
   ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

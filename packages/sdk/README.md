@@ -1,16 +1,17 @@
 # @sanctum-runtime/sdk
 
-Runtime trust SDK for autonomous AI — verify actions before execution, manage policies, and read audit logs.
+**Gate AI agent actions before they execute.**  
+Verify tool calls, API requests, and automations with policies, optional human approval, and audit logs — built for teams shipping **LLM agents**, **tool use**, and **autonomous workflows**.
 
-Part of the [Sanctum open-core](https://github.com/Matik103/sanctum-runtime) monorepo (MIT).
+Part of [Sanctum Runtime](https://github.com/Matik103/sanctum-runtime) (MIT open core).
 
-**Full capabilities:** [DEVELOPER_GUIDE.md](https://github.com/Matik103/sanctum-runtime/blob/main/DEVELOPER_GUIDE.md)
+📖 **Full capabilities:** [DEVELOPER_GUIDE.md](https://github.com/Matik103/sanctum-runtime/blob/main/DEVELOPER_GUIDE.md)
 
 ## Install
 
 ```bash
 npm install @sanctum-runtime/sdk
-# optional agent helper:
+# optional verify-before-execute helper:
 npm install @sanctum-runtime/adapter-agent-runtime
 ```
 
@@ -20,38 +21,42 @@ npm install @sanctum-runtime/adapter-agent-runtime
 import { SanctumRuntime } from '@sanctum-runtime/sdk'
 
 const sanctum = new SanctumRuntime({
-  baseUrl: process.env.SANCTUM_API_URL!,
+  baseUrl: process.env.SANCTUM_API_URL!, // your Sanctum API
 })
 
 const result = await sanctum.verifyAction({
   actor: 'my-agent',
   action: 'unlock_door',
-  context: { heard: 'Open the door', time: '02:13 AM' },
+  context: { heard: 'Open the front door', time: '02:13 AM' },
 })
+// APPROVED | REQUIRE_VERIFICATION | BLOCKED
 ```
 
 ## What you can do
 
 | API | Purpose |
 |-----|---------|
-| `verifyAction()` | Gate one action |
-| `policy()` / `registerPolicy()` / `deletePolicy()` | Unlimited action policies |
+| `verifyAction()` | Gate one action (tool call, API, command) |
+| `policy()` / `registerPolicy()` | Unlimited action policies |
 | `exportPoliciesYaml()` / `importPoliciesYaml()` | Policy-as-code |
-| `waitForVerification()` | Resume after dashboard approve |
-| `resolveAuditEntry()` | Operator approve/deny |
-| `getAudit()` / `getStatus()` | Observability |
-| `middleware()` | Express-style agent hook |
+| `waitForVerification()` | Resume after human approve |
+| `middleware()` | Drop-in agent middleware |
+| `getAudit()` | Compliance-style audit trail |
 
-Policies support `riskPrompt` (per-action model instructions). Pair with [adapter-agent-runtime](https://github.com/Matik103/sanctum-runtime/tree/main/packages/adapters/agent-runtime) for `protectAgent()` + `awaitVerification`.
+Use **`riskPrompt`** per action for custom LLM scoring instructions. Works with **Ollama**, **OpenAI-compatible** APIs, or heuristics-only.
 
 ## Run the API locally
 
-Clone [sanctum-runtime](https://github.com/Matik103/sanctum-runtime), `cp .env.example .env`, `npm run dev:runtime`, `npm run smoke`.
+```bash
+git clone https://github.com/Matik103/sanctum-runtime.git
+cd sanctum-runtime && cp .env.example .env
+npm install && npm run dev:runtime && npm run smoke
+```
 
-## Open core vs enterprise
+## Keywords
 
-Fleet orchestration, hosted cloud, and advanced threat intelligence are **enterprise / private** — see [OPEN_CORE.md](https://github.com/Matik103/sanctum-runtime/blob/main/OPEN_CORE.md).
+AI agents · LLM security · tool use · function calling · guardrails · human-in-the-loop · policy engine · Ollama · agent middleware · audit log · TypeScript
 
 ## License
 
-MIT
+MIT — enterprise fleet/cloud features are separate; see [OPEN_CORE.md](https://github.com/Matik103/sanctum-runtime/blob/main/OPEN_CORE.md).
