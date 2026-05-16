@@ -4,7 +4,14 @@ One-time setup, then releases are automated.
 
 ## 1. npm — `@sanctum/runtime`
 
-Create an npm account and the **`@sanctum`** organization (or use your user scope and adjust the package name).
+Create an npm account and the **`@sanctum`** organization — **required** for `@sanctum/runtime`:
+
+1. Open [npm → Create Organization](https://www.npmjs.com/org/create)
+2. Name: **`sanctum`** (must match the package scope)
+3. Add your user (`matik103`) as owner
+4. Recreate `NPM_TOKEN` with publish access to the **sanctum** org
+
+If publish fails with `404 Not Found` on `@sanctum/runtime`, the org does not exist yet.
 
 ```bash
 npm login
@@ -38,6 +45,8 @@ Add repo secrets:
 
 - `CLOUDFLARE_API_TOKEN` — Workers deploy
 - `CLOUDFLARE_ACCOUNT_ID` — from Cloudflare dashboard
+
+**One-time:** Register a **workers.dev** subdomain (Cloudflare dashboard → **Workers & Pages** → onboarding, or the link Wrangler prints on first deploy). Without this, deploy uploads the worker but cannot assign a public URL.
 
 Push to `main` runs [`.github/workflows/deploy-site.yml`](./.github/workflows/deploy-site.yml), or locally:
 
