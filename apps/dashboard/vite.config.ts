@@ -42,6 +42,13 @@ export default defineConfig(({ mode }) => {
           target: apiProxyTarget(env),
           changeOrigin: true,
           rewrite: (p) => p.replace(/^\/api/, ''),
+          configure: (proxy) => {
+            const key = env.SANCTUM_API_KEY?.trim()
+            if (!key) return
+            proxy.on('proxyReq', (proxyReq) => {
+              proxyReq.setHeader('X-Sanctum-Key', key)
+            })
+          },
         },
       },
     },
