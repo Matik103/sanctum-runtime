@@ -1,20 +1,34 @@
 /**
  * External-app smoke test — only published npm packages (no monorepo paths).
- * Prereq: npm run dev:runtime in repo root, SANCTUM_API_URL set.
+ * Prereq: npm run dev:api (or dev:runtime) in repo root.
  *
- *   npm install @sanctum-runtime/sdk @sanctum-runtime/adapter-agent-runtime
- *   SANCTUM_API_URL=http://127.0.0.1:3001 node examples/npm-consumer/run.mjs
+ * From repo (loads .env):  npm run example:npm
+ * Standalone:             SANCTUM_API_URL=http://127.0.0.1:3001 node run.mjs
  */
+import { config } from 'dotenv'
+import { existsSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { SanctumRuntime } from '@sanctum-runtime/sdk'
 import { protectAgent, AgentActions } from '@sanctum-runtime/adapter-agent-runtime'
 
-const baseUrl = process.env.SANCTUM_API_URL
+const repoEnv = resolve(dirname(fileURLToPath(import.meta.url)), '../../.env')
+if (existsSync(repoEnv)) config({ path: repoEnv })
+
+const baseUrl =
+  process.env.SANCTUM_API_URL ??
+  (process.env.HOST && process.env.PORT
+    ? `http://${process.env.HOST}:${process.env.PORT}`
+    : undefined)
 if (!baseUrl) {
-  console.error('Set SANCTUM_API_URL (e.g. http://127.0.0.1:3001)')
+  console.error('Set SANCTUM_API_URL or HOST+PORT in .env (see START_HERE.md)')
   process.exit(1)
 }
 
-const sanctum = new SanctumRuntime({ baseUrl })
+const sanctum = new SanctumRuntime({
+  baseUrl,
+  apiKey: process.env.SANCTUM_API_KEY,
+})
 
 const health = await fetch(`${baseUrl}/health`)
 if (!health.ok) {

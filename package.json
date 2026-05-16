@@ -39,6 +39,7 @@
     "monitor": "tsx scripts/live-monitor.ts",
     "premonitor": "node scripts/ensure-env.mjs",
     "example:agent": "tsx examples/agent-gate/run.ts",
+    "preexample:npm": "node scripts/ensure-env.mjs",
     "example:npm": "node examples/npm-consumer/run.mjs",
     "build:sdk": "npm run build -w @sanctum-runtime/sdk",
     "build:adapter": "npm run build -w @sanctum-runtime/adapter-agent-runtime",
