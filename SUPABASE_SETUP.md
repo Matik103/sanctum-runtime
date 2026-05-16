@@ -46,15 +46,30 @@ This creates `profiles` + RLS + a trigger on new users.
 
 ## Step 5 — Add keys to `.env`
 
-In the repo root (`sanctum-runtime/.env`):
+**Recommended** (after `supabase login`):
 
 ```bash
-SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
-SUPABASE_ANON_KEY=eyJhbG...   # anon public
-SUPABASE_SERVICE_ROLE_KEY=eyJhbG...   # service_role — keep secret
+npm run env:pull
 ```
 
-You can use the same names with `VITE_` prefix for the dashboard; the dev server maps `SUPABASE_*` automatically.
+This writes `VITE_SUPABASE_*` plus `SUPABASE_*` server aliases into `.env` from your Supabase project API keys.
+
+**Manual** (repo root `.env`):
+
+```bash
+# Project root URL only — NOT https://xxx.supabase.co/rest/v1/
+VITE_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbG...
+VITE_SUPABASE_SERVICE_ROLE_KEY=eyJhbG...   # server only — never dashboard build
+
+SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...
+```
+
+The API maps `VITE_*` → `SUPABASE_*` automatically when server vars are unset.
+
+**Note:** Keys under **Edge Functions → Secrets** are for Edge Functions only. Sanctum API/dashboard use **Settings → API** keys (`env:pull` fetches those). Do not put `/rest/v1/` in the project URL.
 
 **Optional:** If you still use `SANCTUM_API_KEY` for scripts, both JWT (dashboard) and API key (CLI) work on the API.
 

@@ -70,13 +70,24 @@ Add `http://127.0.0.1:5174/**` for local dev.
 
 ### 2.3 API keys → Render (sanctum-api)
 
-**Project Settings** → **API** → copy to Render **Environment** (not the dashboard static site):
+**Project Settings** → **API** (or local `npm run env:pull` then copy from `.env`).
+
+**Project URL must be** `https://YOUR_REF.supabase.co` — **not** `.../rest/v1/`.
+
+On **sanctum-api** (not the dashboard static site):
 
 ```bash
+VITE_SUPABASE_URL=https://xxxx.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJ...
+VITE_SUPABASE_SERVICE_ROLE_KEY=eyJ...   # secret — API only
+
+# Or non-prefixed (same values):
 SUPABASE_URL=https://xxxx.supabase.co
-SUPABASE_ANON_KEY=eyJ...          # anon public
-SUPABASE_SERVICE_ROLE_KEY=eyJ...  # secret — never in browser/build
+SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
 ```
+
+The API accepts either `VITE_*` or `SUPABASE_*` names.
 
 Redeploy API. Logs should show Supabase JWT auth enabled.
 
@@ -116,10 +127,10 @@ These are baked into the static bundle:
 | Key | Value |
 |-----|--------|
 | `VITE_SANCTUM_API_URL` | `https://YOUR-API.onrender.com` |
-| `VITE_SUPABASE_URL` | Same as `SUPABASE_URL` |
-| `VITE_SUPABASE_ANON_KEY` | Same as `SUPABASE_ANON_KEY` |
+| `VITE_SUPABASE_URL` | `https://YOUR_REF.supabase.co` (no `/rest/v1/`) |
+| `VITE_SUPABASE_ANON_KEY` | Anon public key |
 
-Do **not** put `SUPABASE_SERVICE_ROLE_KEY` on the static site.
+Do **not** put `VITE_SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_SERVICE_ROLE_KEY` on the static site.
 
 ### 3.3 Wire API CORS
 

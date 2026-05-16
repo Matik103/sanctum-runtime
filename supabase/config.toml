@@ -1,0 +1,4 @@
+# Sanctum — linked Supabase project (remote DB + auth)
+# https://supabase.com/docs/guides/cli/config
+
+project_id = "nimvcudvrhanxlcpiizz"

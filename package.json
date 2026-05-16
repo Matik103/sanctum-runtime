@@ -47,6 +47,7 @@
     "build:packages": "npm run build:sdk && npm run build:adapter",
     "build:dashboard": "npm run build:sdk && npm run build -w @sanctum/dashboard",
     "production:check": "node scripts/production-check.mjs",
+    "env:pull": "node scripts/pull-supabase-env.mjs",
     "predev:runtime": "node scripts/ensure-env.mjs && npm run build:sdk",
     "predev": "node scripts/ensure-env.mjs",
     "presmoke": "node scripts/ensure-env.mjs",

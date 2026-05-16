@@ -4,6 +4,7 @@
 import { config } from 'dotenv'
 import { existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
+import { applyViteSupabaseAliases } from './supabase-env.ts'
 
 function repoRootFromCwd(): string {
   let dir = process.cwd()
@@ -27,6 +28,7 @@ export function loadRepoEnv(): void {
   if (existsSync(envPath)) {
     config({ path: envPath })
   }
+  applyViteSupabaseAliases()
   // Cloud hosts (Render, etc.) inject env vars — no .env file required.
   loaded = true
 }
