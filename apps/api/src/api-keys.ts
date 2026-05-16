@@ -8,6 +8,7 @@ import {
   verifyApiKey,
 } from './api-key-crypto.js'
 import { createSupabaseAdmin, type SupabaseAuthConfig } from './auth.js'
+import { ControlPlaneStore } from './control-plane-store.js'
 
 export type ApiKeyRow = {
   id: string
@@ -73,12 +74,16 @@ export async function registerApiKeyRoutes(
       const { prefix, suffix } = keyDisplayParts(secret)
       const keyHash = await hashApiKeyV1(secret)
 
+      const store = new ControlPlaneStore(supabase)
+      const userOrgIds = await store.getUserOrgIds(user.id)
+      const orgId = parsed.data.org_id ?? userOrgIds[0] ?? null
+
       const { data, error } = await admin
         .from('api_keys')
         .insert({
           user_id: user.id,
           name: parsed.data.name.trim(),
-          org_id: parsed.data.org_id ?? null,
+          org_id: orgId,
           key_prefix: prefix,
           key_suffix: suffix,
           key_hash: keyHash,

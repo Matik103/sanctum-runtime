@@ -31,10 +31,7 @@ export function Fleet() {
   const [orgId, setOrgId] = useState<string>('')
 
   useEffect(() => {
-    void fetchMyOrgs().then((list) => {
-      setOrgs(list)
-      if (list.length === 1) setOrgId(list[0].org_id)
-    })
+    void fetchMyOrgs().then((list) => setOrgs(list))
   }, [])
 
   const refresh = useCallback(async () => {
@@ -119,10 +116,14 @@ export function Fleet() {
         <>
           {runtimes.length === 0 ? (
             <div className="section__body">
-              <EmptyState
-                title="No runtimes registered"
-                description="Boot an SDK host with connect() — then it appears here with live telemetry."
-              />
+            <EmptyState
+              title="No runtimes in this view"
+              description={
+                orgId
+                  ? 'Try “All organizations”, or connect with your workspace org id (Devices → API key, then SANCTUM_ORG_ID).'
+                  : 'Connect a host with runtime.connect() using your workspace organization id — not demo-org.'
+              }
+            />
             </div>
           ) : (
             <div className="policy-grid">

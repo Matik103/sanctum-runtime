@@ -65,10 +65,16 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
       .parse(req.body)
 
     const scope = await resolveOrgScope(req as SanctumReq, store)
-    if (!assertOrgAllowed(scope, body.organizationId, reply)) return
+    let orgId = body.organizationId
+    const key = headerKey(req)
+    if (key?.startsWith('sk_sanctum_')) {
+      const keyOrg = await store.getApiKeyOrgId(key)
+      if (keyOrg) orgId = keyOrg
+    }
+    if (!assertOrgAllowed(scope, orgId, reply)) return
 
     const runtime = await store.connectRuntime({
-      orgId: body.organizationId,
+      orgId,
       name: body.runtimeName,
       fingerprint: body.fingerprint ?? defaultFingerprint(),
       mode: body.mode,
@@ -166,10 +172,28 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
     const scope = await resolveOrgScope(req as SanctumReq, store)
     if (orgId && scope && !scope.includes(orgId)) return []
     await store.markStaleOffline()
-    const effectiveOrg =
-      orgId ?? (scope?.length === 1 ? scope[0] : undefined)
-    const runtimes = await store.listRuntimes(effectiveOrg)
+    const runtimes = await store.listRuntimes(orgId || undefined)
     return filterByScope(runtimes, scope)
+  })
+
+  app.get('/v1/operator/context', async (req, reply) => {
+    const user = (req as SanctumReq).sanctumUser
+    if (user) {
+      const organizationIds = await store.getUserOrgIds(user.id)
+      return {
+        defaultOrganizationId: organizationIds[0] ?? null,
+        organizationIds,
+      }
+    }
+    const key = headerKey(req)
+    if (key?.startsWith('sk_sanctum_')) {
+      const keyOrg = await store.getApiKeyOrgId(key)
+      return {
+        defaultOrganizationId: keyOrg,
+        organizationIds: keyOrg ? [keyOrg] : [],
+      }
+    }
+    return reply.status(401).send({ error: 'unauthorized' })
   })
 
   app.get('/v1/runtimes/:runtimeId', async (req, reply) => {
@@ -197,7 +221,7 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
     const q = req.query as { org_id?: string; limit?: string }
     const scope = await resolveOrgScope(req as SanctumReq, store)
     if (q.org_id && scope && !scope.includes(q.org_id)) return []
-    const orgId = q.org_id ?? (scope?.length === 1 ? scope[0] : undefined)
+    const orgId = q.org_id || undefined
     const events = await store.listEvents({
       orgId,
       limit: q.limit ? Number(q.limit) : 100,
@@ -212,7 +236,7 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
     if (q.org_id && scope && !scope.includes(q.org_id)) {
       return reply.status(403).send({ error: 'org_forbidden' })
     }
-    const orgId = q.org_id ?? (scope?.length === 1 ? scope[0] : undefined)
+    const orgId = q.org_id || undefined
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',

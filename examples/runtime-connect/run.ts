@@ -18,10 +18,26 @@ if (!KEY) {
 
 const runtime = new SanctumRuntime({ baseUrl: API, apiKey: KEY })
 
-const orgId = process.env.SANCTUM_ORG_ID ?? 'demo-org'
+async function resolveOrgId(): Promise<string> {
+  if (process.env.SANCTUM_ORG_ID?.trim()) return process.env.SANCTUM_ORG_ID.trim()
+  try {
+    const res = await fetch(`${API}/v1/operator/context`, {
+      headers: { 'X-Sanctum-Key': KEY! },
+    })
+    if (res.ok) {
+      const ctx = (await res.json()) as { defaultOrganizationId?: string | null }
+      if (ctx.defaultOrganizationId) return ctx.defaultOrganizationId
+    }
+  } catch {
+    /* fallback */
+  }
+  return 'demo-org'
+}
+
+const orgId = await resolveOrgId()
 const name = process.env.SANCTUM_RUNTIME_NAME ?? 'demo-runtime-01'
 
-console.log(`Connecting ${name} → ${API}\n`)
+console.log(`Connecting ${name} → ${API} (org: ${orgId})\n`)
 
 const conn = await runtime.connect({
   runtimeName: name,

@@ -117,6 +117,7 @@ app.get('/', async () => ({
     webhooks: 'GET /v1/webhooks/status',
     apiKeys: 'GET|POST /v1/api-keys · DELETE /v1/api-keys/:id',
     runtimes: 'POST /v1/runtimes/connect · GET /v1/runtimes · heartbeat/agents/events',
+    operatorContext: 'GET /v1/operator/context',
     eventStream: 'GET /v1/events/stream (SSE)',
     analyze: 'POST /analyze-action',
   },
