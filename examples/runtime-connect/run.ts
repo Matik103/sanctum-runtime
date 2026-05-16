@@ -61,7 +61,7 @@ await runtime.emitEvent('agent.started', { task: 'control-plane-demo' }, 'agent_
 const result = await runtime.verifyAction({
   actor: 'agent_demo',
   action: 'read_calendar',
-  context: { intent: 'Phase 3 operator loop' },
+  context: { intent: 'Phase 3 operator loop', org_id: orgId },
   offlineMode: true,
 })
 

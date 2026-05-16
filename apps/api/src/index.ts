@@ -197,10 +197,7 @@ app.get('/v1/webhooks/status', async () => runtime.getWebhookStatus())
 app.get('/v1/audit', async (req) => {
   const limit = Number((req.query as { limit?: string }).limit ?? 50)
   const orgId = (req.query as { org_id?: string }).org_id
-  if (orgId) {
-    return runtime.getAuditStore().listByOrg(orgId, limit)
-  }
-  return runtime.getAuditStore().list(limit)
+  return runtime.listAudit(limit, orgId)
 })
 
 app.get('/v1/verifications/:correlationId', async (req) => {

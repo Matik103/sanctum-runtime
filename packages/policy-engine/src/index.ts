@@ -100,6 +100,11 @@ export class PolicyEngine {
     this.policies = { ...map }
   }
 
+  /** Write current policies to local disk (keeps data/ in sync with Supabase). */
+  async persistToDisk(): Promise<void> {
+    await savePoliciesToDisk(this.policies, this.dataDir)
+  }
+
   /** Defaults + cloud/dashboard overrides. */
   applySupabasePolicies(overlay: PolicyMap): void {
     this.policies = { ...DEFAULT_POLICIES, ...overlay }

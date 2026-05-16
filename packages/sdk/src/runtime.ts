@@ -53,7 +53,14 @@ export class SanctumRuntime {
     request: ActionRequest,
     options?: { offlineMode?: boolean; correlationId?: string },
   ): Promise<ActionResult> {
-    const result = await this.client.verifyAction(request, options)
+    const enriched: ActionRequest =
+      this.control.organizationId != null
+        ? {
+            ...request,
+            context: { ...request.context, org_id: this.control.organizationId },
+          }
+        : request
+    const result = await this.client.verifyAction(enriched, options)
     if (this.control.connected) {
       const type =
         result.decision === 'BLOCKED'
@@ -65,6 +72,7 @@ export class SanctumRuntime {
         action: request.action,
         decision: result.decision,
         correlationId: result.correlationId,
+        org_id: this.control.organizationId,
       }, request.actor)
     }
     return result

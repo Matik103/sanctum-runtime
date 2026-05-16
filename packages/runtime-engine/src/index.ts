@@ -20,7 +20,11 @@ import {
   verificationStateFromDecision,
   type VerificationStatus,
 } from '@sanctum-runtime/sdk'
-import { maybeSyncAuditToSupabase } from './supabase-audit.js'
+import {
+  fetchAuditById,
+  loadAuditFromSupabase,
+  maybeSyncAuditToSupabase,
+} from './supabase-audit.js'
 import { isSupabaseConfigured } from './supabase-client.js'
 import { buildPolicyReasoning } from './policy-reasoning.js'
 import {
@@ -103,11 +107,34 @@ export class RuntimeEngine {
       const fromDb = await loadPoliciesFromSupabase()
       if (fromDb && Object.keys(fromDb).length > 0) {
         this.policyEngine.applySupabasePolicies(fromDb)
+        await this.policyEngine.persistToDisk()
       } else {
         await seedPoliciesToSupabaseIfEmpty(this.policyEngine.getPolicies())
       }
     }
     await this.auditStore.loadFromDisk()
+    await this.hydrateAuditFromSupabase()
+  }
+
+  /** Reload audit from Supabase into memory (call after redeploy or before list). */
+  async hydrateAuditFromSupabase(limit = 200, orgId?: string): Promise<void> {
+    if (!isSupabaseConfigured()) return
+    const fromDb = await loadAuditFromSupabase(limit, orgId)
+    if (fromDb.length > 0) {
+      this.auditStore.hydrate(fromDb, limit)
+    }
+  }
+
+  async listAudit(limit = 50, orgId?: string): Promise<ActionResult[]> {
+    if (isSupabaseConfigured()) {
+      const fromDb = await loadAuditFromSupabase(Math.max(limit, 100), orgId)
+      if (fromDb.length > 0) {
+        this.auditStore.hydrate(fromDb, 500)
+        return fromDb.slice(0, limit)
+      }
+    }
+    if (orgId) return this.auditStore.listByOrg(orgId, limit)
+    return this.auditStore.list(limit)
   }
 
   async resolveAuditEntry(
@@ -118,7 +145,14 @@ export class RuntimeEngine {
       note?: string
     },
   ): Promise<ActionResult | null> {
-    const existing = this.auditStore.getById(id)
+    let existing = this.auditStore.getById(id)
+    if (!existing && isSupabaseConfigured()) {
+      const fromDb = await fetchAuditById(id)
+      if (fromDb) {
+        this.auditStore.hydrate([fromDb], 500)
+        existing = fromDb
+      }
+    }
     if (!existing) return null
     if (existing.decision !== 'REQUIRE_VERIFICATION') {
       return existing

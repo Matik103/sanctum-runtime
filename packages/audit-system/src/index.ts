@@ -76,4 +76,14 @@ export class AuditStore {
       this.entries = []
     }
   }
+
+  /** Merge cloud rows (newer wins per id); keeps newest-first order. */
+  hydrate(entries: AuditEntry[], maxEntries = 500): void {
+    const byId = new Map<string, AuditEntry>()
+    for (const e of this.entries) byId.set(e.id, e)
+    for (const e of entries) byId.set(e.id, e)
+    this.entries = [...byId.values()]
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, maxEntries)
+  }
 }
