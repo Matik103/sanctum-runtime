@@ -56,8 +56,8 @@ export function Sidebar({ page, onPage, status }: Props) {
             className={`nav-item ${page === id ? 'active' : ''}`}
             onClick={() => onPage(id)}
           >
-            <Icon size={17} strokeWidth={1.75} />
-            {label}
+            <Icon size={17} strokeWidth={1.75} aria-hidden />
+            <span className="nav-label">{label}</span>
           </button>
         ))}
       </nav>

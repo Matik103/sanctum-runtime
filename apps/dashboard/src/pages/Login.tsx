@@ -36,7 +36,7 @@ export function Login() {
     setMessage(null)
     const sb = getSupabase()
     if (!sb) {
-      setError('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.')
+      setError('Authentication is not configured on this deployment.')
       return
     }
 
@@ -62,7 +62,7 @@ export function Login() {
     setError(null)
     const sb = getSupabase()
     if (!sb) {
-      setError('Supabase is not configured.')
+      setError('Authentication is not configured on this deployment.')
       return
     }
 
@@ -131,7 +131,7 @@ export function Login() {
             </li>
             <li className="auth-feature">
               <Cpu size={16} strokeWidth={2} />
-              Policies stored in Supabase — survive redeploys
+              Policies persist across deploys
             </li>
             <li className="auth-feature">
               <Zap size={16} strokeWidth={2} />
@@ -263,8 +263,7 @@ export function Login() {
               <>
                 <h2 className="auth-form-title">Enterprise SSO</h2>
                 <p className="auth-form-sub">
-                  Sign in with your organization identity provider. Configure providers in
-                  Supabase → Authentication.
+                  Sign in with your organization&apos;s identity provider.
                 </p>
 
                 {error && <div className="auth-alert auth-alert--error">{error}</div>}
@@ -298,10 +297,6 @@ export function Login() {
                   Use email & password
                 </button>
 
-                <p className="auth-sso-note">
-                  SAML / Okta / custom IdP — enable in your Supabase project and add redirect URL{' '}
-                  <code style={{ color: '#93b4ff' }}>{window.location.origin}</code>
-                </p>
               </>
             )}
           </div>
