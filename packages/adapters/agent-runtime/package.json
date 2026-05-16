@@ -7,7 +7,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@sanctum/runtime": "*",
+    "@sanctum-runtime/sdk": "*",
     "zod": "^3.24.2"
   }
 }

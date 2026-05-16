@@ -10,7 +10,7 @@
   "dependencies": {
     "@fastify/cors": "^11.0.1",
     "@sanctum/runtime-engine": "*",
-    "@sanctum/runtime": "*",
+    "@sanctum-runtime/sdk": "*",
     "fastify": "^5.3.3",
     "zod": "^3.24.2"
   },

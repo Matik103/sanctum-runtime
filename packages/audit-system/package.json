@@ -7,6 +7,6 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@sanctum/runtime": "*"
+    "@sanctum-runtime/sdk": "*"
   }
 }

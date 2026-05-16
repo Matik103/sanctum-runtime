@@ -1,5 +1,5 @@
-import type { ActionResult, Decision, EvaluationMode, RiskLevel } from '@sanctum/runtime'
-import { evaluationModeLabel } from '@sanctum/runtime'
+import type { ActionResult, Decision, EvaluationMode, RiskLevel } from '@sanctum-runtime/sdk'
+import { evaluationModeLabel } from '@sanctum-runtime/sdk'
 
 export function timeAgo(iso: string): string {
   const sec = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)

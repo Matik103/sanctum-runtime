@@ -1,4 +1,4 @@
-import type { ActionRequest } from '@sanctum/runtime'
+import type { ActionRequest } from '@sanctum-runtime/sdk'
 
 export function detectAnomalies(request: ActionRequest): string[] {
   const flags: string[] = []

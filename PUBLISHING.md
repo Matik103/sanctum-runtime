@@ -2,16 +2,18 @@
 
 One-time setup, then releases are automated.
 
-## 1. npm — `@sanctum/runtime`
+## 1. npm — `@sanctum-runtime/sdk`
 
-Create an npm account and the **`@sanctum`** organization — **required** for `@sanctum/runtime`:
+Create an npm organization (the name **`sanctum`** is taken on npm):
 
 1. Open [npm → Create Organization](https://www.npmjs.com/org/create)
-2. Name: **`sanctum`** (must match the package scope)
+2. Name: **`sanctum-runtime`** (matches this GitHub repo; scope `@sanctum-runtime`)
 3. Add your user (`matik103`) as owner
-4. Recreate `NPM_TOKEN` with publish access to the **sanctum** org
+4. Recreate `NPM_TOKEN` with publish access to the **sanctum-runtime** org
 
-If publish fails with `404 Not Found` on `@sanctum/runtime`, the org does not exist yet.
+Published package: **`@sanctum-runtime/sdk`** (`npm install @sanctum-runtime/sdk`).
+
+If publish fails with `404 Not Found`, the org does not exist yet or the token lacks scope access.
 
 ```bash
 npm login
@@ -28,7 +30,7 @@ Pushing a GitHub Release runs [`.github/workflows/release.yml`](./.github/workfl
 Verify:
 
 ```bash
-npm view @sanctum/runtime version
+npm view @sanctum-runtime/sdk version
 ```
 
 ## 2. GitHub Release

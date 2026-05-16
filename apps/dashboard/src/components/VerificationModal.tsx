@@ -1,4 +1,4 @@
-import type { ActionResult } from '@sanctum/runtime'
+import type { ActionResult } from '@sanctum-runtime/sdk'
 import { actionLabel } from '../lib/api'
 
 type Props = {

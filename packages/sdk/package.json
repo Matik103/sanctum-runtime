@@ -1,5 +1,5 @@
 {
-  "name": "@sanctum/runtime",
+  "name": "@sanctum-runtime/sdk",
   "version": "0.1.0",
   "description": "Runtime trust SDK — verify AI actions before execution (open core)",
   "type": "module",

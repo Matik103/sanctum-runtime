@@ -1,5 +1,5 @@
 import { X } from 'lucide-react'
-import type { ActionResult } from '@sanctum/runtime'
+import type { ActionResult } from '@sanctum-runtime/sdk'
 import { actionLabel } from '../lib/api'
 import { decisionTone, timeAgo } from '../lib/format'
 

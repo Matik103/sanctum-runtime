@@ -1,6 +1,6 @@
-import type { ActionRequest, ActionResult, Decision } from '@sanctum/runtime'
-import { ActionRequestSchema, SanctumActionBlockedError, SanctumVerificationRequiredError } from '@sanctum/runtime'
-import type { SanctumRuntime } from '@sanctum/runtime'
+import type { ActionRequest, ActionResult, Decision } from '@sanctum-runtime/sdk'
+import { ActionRequestSchema, SanctumActionBlockedError, SanctumVerificationRequiredError } from '@sanctum-runtime/sdk'
+import type { SanctumRuntime } from '@sanctum-runtime/sdk'
 import type { AgentAction } from './actions.js'
 
 export type AgentRuntimeAdapterOptions = {
@@ -19,10 +19,10 @@ export type AgentProtectOptions<T> = {
   execute: () => Promise<T>
 }
 
-/** @deprecated Use SanctumActionBlockedError from @sanctum/runtime */
+/** @deprecated Use SanctumActionBlockedError from @sanctum-runtime/sdk */
 export class AgentActionBlockedError extends SanctumActionBlockedError {}
 
-/** @deprecated Use SanctumVerificationRequiredError from @sanctum/runtime */
+/** @deprecated Use SanctumVerificationRequiredError from @sanctum-runtime/sdk */
 export class AgentVerificationRequiredError extends SanctumVerificationRequiredError {}
 
 /** Normalizes agent-layer calls into Sanctum {@link ActionRequest}. */

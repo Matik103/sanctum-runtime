@@ -610,7 +610,7 @@ function DocsPage() {
                   Runs <strong>inside</strong> your agent, backend, or robotics stack. This is the
                   core experience.
                 </p>
-                <Code lang="bash" code={`npm install @sanctum/runtime`} />
+                <Code lang="bash" code={`npm install @sanctum-runtime/sdk`} />
 
                 <H3>B — Local runtime service (roadmap)</H3>
                 <p>
@@ -661,7 +661,7 @@ npm run smoke`}
                 />
 
                 <H3>2. Install the SDK</H3>
-                <Code lang="bash" code={`npm install @sanctum/runtime`} />
+                <Code lang="bash" code={`npm install @sanctum-runtime/sdk`} />
 
                 <H3>3. Run the agent example (monorepo)</H3>
                 <Code lang="bash" code={`npm run example:agent`} />
@@ -669,7 +669,7 @@ npm run smoke`}
                 <H3>4. Initialize and gate actions</H3>
                 <Code
                   lang="typescript"
-                  code={`import { SanctumRuntime } from "@sanctum/runtime"
+                  code={`import { SanctumRuntime } from "@sanctum-runtime/sdk"
 import { protectAgent, AgentActions } from "@sanctum/adapter-agent-runtime"
 
 const sanctum = new SanctumRuntime({ baseUrl: process.env.SANCTUM_API_URL! })

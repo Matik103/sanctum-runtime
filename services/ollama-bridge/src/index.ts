@@ -1,4 +1,4 @@
-import type { ActionRequest, RiskAssessment, RiskLevel } from '@sanctum/runtime'
+import type { ActionRequest, RiskAssessment, RiskLevel } from '@sanctum-runtime/sdk'
 
 export type OllamaBridgeOptions = {
   baseUrl?: string

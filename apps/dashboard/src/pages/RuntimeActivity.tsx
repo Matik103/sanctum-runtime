@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { ActionResult } from '@sanctum/runtime'
+import type { ActionResult } from '@sanctum-runtime/sdk'
 import { decisionTone } from '../lib/format'
 import { timeAgo } from '../lib/format'
 

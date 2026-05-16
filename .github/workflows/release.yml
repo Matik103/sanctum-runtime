@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   publish-sdk:
-    name: Publish @sanctum/runtime to npm
+    name: Publish @sanctum-runtime/sdk to npm
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,9 +25,9 @@ jobs:
         run: npm ci
 
       - name: Build SDK
-        run: npm run build -w @sanctum/runtime
+        run: npm run build -w @sanctum-runtime/sdk
 
       - name: Publish to npm
-        run: npm publish -w @sanctum/runtime --access public --provenance
+        run: npm publish -w @sanctum-runtime/sdk --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

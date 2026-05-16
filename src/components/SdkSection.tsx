@@ -3,7 +3,7 @@ import { Check } from "lucide-react";
 const code = `cp .env.example .env  # set SANCTUM_API_URL
 npm run dev:runtime
 
-import { SanctumRuntime } from "@sanctum/runtime";
+import { SanctumRuntime } from "@sanctum-runtime/sdk";
 import { protectAgent, AgentActions } from "@sanctum/adapter-agent-runtime";
 
 const sanctum = new SanctumRuntime({

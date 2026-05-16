@@ -21,7 +21,7 @@ npm run dev:runtime
 npm run smoke
 ```
 
-SDK in your own app: `npm install @sanctum/runtime` and set `baseUrl` to your API URL.
+SDK in your own app: `npm install @sanctum-runtime/sdk` and set `baseUrl` to your API URL.
 
 Docs: configure `SITE_*` in `.env`, then `npm run dev` → `/docs#quickstart`
 
@@ -29,7 +29,7 @@ Docs: configure `SITE_*` in `.env`, then `npm run dev` → `/docs#quickstart`
 
 | Capability | Included |
 |------------|----------|
-| `@sanctum/runtime` SDK | Verify, policy hooks, middleware, audit client |
+| `@sanctum-runtime/sdk` SDK | Verify, policy hooks, middleware, audit client |
 | Runtime API (`apps/api`) | `POST /v1/actions/verify`, policies, audit |
 | Policy engine | Approve · Verify · Block per action |
 | Local risk (Ollama) | Optional online scoring via local Qwen |

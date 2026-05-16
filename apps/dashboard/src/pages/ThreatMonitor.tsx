@@ -1,4 +1,4 @@
-import type { ActionResult } from '@sanctum/runtime'
+import type { ActionResult } from '@sanctum-runtime/sdk'
 import { decisionTone, timeAgo } from '../lib/format'
 
 const THREAT_TYPES = [

@@ -10,6 +10,6 @@
     "@sanctum/audit-system": "*",
     "@sanctum/ollama-bridge": "*",
     "@sanctum/policy-engine": "*",
-    "@sanctum/runtime": "*"
+    "@sanctum-runtime/sdk": "*"
   }
 }

@@ -36,7 +36,7 @@ Monorepo layout:
 ```text
 apps/api              — Fastify runtime API (HOST:PORT from .env)
 apps/dashboard        — Trust dashboard UI (DASHBOARD_* from .env)
-packages/sdk          — npm `@sanctum/runtime` (SanctumClient / SanctumRuntime / middleware)
+packages/sdk          — npm `@sanctum-runtime/sdk` (SanctumClient / SanctumRuntime / middleware)
 packages/runtime-engine — Intercept → policy → risk → audit
 packages/policy-engine
 packages/audit-system
@@ -47,7 +47,7 @@ services/ollama-bridge — Local Qwen risk analysis
 **Agent adapter (verify before execute):**
 
 ```ts
-import { SanctumRuntime } from '@sanctum/runtime'
+import { SanctumRuntime } from '@sanctum-runtime/sdk'
 import { protectAgent, AgentActions } from '@sanctum/adapter-agent-runtime'
 
 const sanctum = new SanctumRuntime()

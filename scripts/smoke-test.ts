@@ -82,7 +82,7 @@ async function main() {
     })
     ok('SanctumRuntime.middleware()')
   } catch (e) {
-    fail('SDK @sanctum/runtime', e)
+    fail('SDK @sanctum-runtime/sdk', e)
   }
 
   try {

@@ -26,7 +26,7 @@ Health check: `{SANCTUM_API_URL or http://HOST:PORT}/health`
 
 | Path | What it is |
 |------|------------|
-| [`packages/sdk`](./packages/sdk) | `@sanctum/runtime` — embed in your agent or backend |
+| [`packages/sdk`](./packages/sdk) | `@sanctum-runtime/sdk` — embed in your agent or backend |
 | [`packages/adapters/agent-runtime`](./packages/adapters/agent-runtime) | `protectAgent()` — verify before execute |
 | [`apps/api`](./apps/api) | Runtime API server |
 | [`apps/dashboard`](./apps/dashboard) | Community control plane UI |
@@ -38,7 +38,7 @@ Health check: `{SANCTUM_API_URL or http://HOST:PORT}/health`
 ## Embed in your project
 
 ```ts
-import { SanctumRuntime } from '@sanctum/runtime'
+import { SanctumRuntime } from '@sanctum-runtime/sdk'
 
 // Pass your API URL (from .env SANCTUM_API_URL, or explicit in production)
 const sanctum = new SanctumRuntime({ baseUrl: process.env.SANCTUM_API_URL! })

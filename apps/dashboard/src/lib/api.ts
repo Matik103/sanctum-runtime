@@ -1,5 +1,5 @@
-import { SanctumClient } from '@sanctum/runtime'
-import type { ActionPolicy, ActionRequest, ActionResult, PolicyMap, RuntimeStatus } from '@sanctum/runtime'
+import { SanctumClient } from '@sanctum-runtime/sdk'
+import type { ActionPolicy, ActionRequest, ActionResult, PolicyMap, RuntimeStatus } from '@sanctum-runtime/sdk'
 
 export const api = new SanctumClient({ baseUrl: '/api' })
 

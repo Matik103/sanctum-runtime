@@ -82,7 +82,7 @@ As AI becomes embodied (robots, humanoids, industrial systems, smart environment
 
 ```text
 sanctum-runtime    — core runtime (this repo: apps/api, packages/runtime-engine, …)
-sanctum-sdk          — @sanctum/runtime (packages/sdk in monorepo)
+sanctum-sdk          — @sanctum-runtime/sdk (packages/sdk in monorepo)
 sanctum-docs         — public documentation (may mirror /docs route until split)
 sanctum-examples     — example apps, agents, policies
 sanctum-ros2         — ROS2 integration (Phase 2)
@@ -199,7 +199,7 @@ Canonical implementation: marketing **`/docs`** route (**§6.3**) until a dedica
 
 | Path | Phase | What it is |
 |------|-------|------------|
-| **A — Local SDK** | **Phase 1 (primary)** | `npm install @sanctum/runtime` — runs **inside** the agent, robotics stack, or backend. **Not** a separate app. |
+| **A — Local SDK** | **Phase 1 (primary)** | `npm install @sanctum-runtime/sdk` — runs **inside** the agent, robotics stack, or backend. **Not** a separate app. |
 | **B — Local runtime service** | Phase 2 | `npx sanctum init` — optional daemon on device (Jetson, Pi, dev machine): intercepts actions, Ollama, policies. “Docker daemon for AI trust.” |
 | **C — Cloud dashboard** | Optional control plane | Policy UI, logs, threats, team controls — **visibility only**; **not** the runtime itself. |
 
@@ -220,13 +220,13 @@ Decisions: **approve** · **verify** · **block** (see **§5.1**, Policy Manager
 
 #### 4.6.4 Developer onboarding (target UX)
 
-1. `npm install @sanctum/runtime`  
+1. `npm install @sanctum-runtime/sdk`  
 2. `const sanctum = new SanctumRuntime({ offlineMode: true })` (or `baseUrl` to local API)  
 3. Wrap agent: `agent.use(sanctum.middleware())` **or** robotics: `robot.attach(sanctum.runtime())`  
 4. Policies: `await sanctum.policy("unlock_door", "verify")`  
 5. Run — every material action flows through Sanctum  
 
-**Monorepo note:** package lives at `packages/sdk`; npm name **`@sanctum/runtime`**.
+**Monorepo note:** package lives at `packages/sdk`; npm name **`@sanctum-runtime/sdk`**.
 
 #### 4.6.5 What operators see (when runtime is active)
 
@@ -243,7 +243,7 @@ Users do **not** live inside Sanctum. They see **signals** in the optional dashb
 
 #### 4.6.7 Phase 1 build order (concrete)
 
-**Must have:** `@sanctum/runtime`, action interceptor, policy engine (approve/verify/block), Ollama bridge, audit logs, simple dashboard.  
+**Must have:** `@sanctum-runtime/sdk`, action interceptor, policy engine (approve/verify/block), Ollama bridge, audit logs, simple dashboard.  
 **Not yet:** full robotics integrations, enterprise cloud, complex distributed architecture.
 
 ---
@@ -351,11 +351,11 @@ Enterprises require **observability**; this is non-negotiable for MVP credibilit
 **Quick start contract (canonical packages):**
 
 ```bash
-npm install @sanctum/runtime @sanctum/adapter-agent-runtime
+npm install @sanctum-runtime/sdk @sanctum/adapter-agent-runtime
 ```
 
 ```ts
-import { SanctumRuntime } from '@sanctum/runtime'
+import { SanctumRuntime } from '@sanctum-runtime/sdk'
 import { protectAgent, AgentActions } from '@sanctum/adapter-agent-runtime'
 
 const sanctum = new SanctumRuntime({ baseUrl: 'http://127.0.0.1:3001' })

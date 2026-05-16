@@ -6,7 +6,7 @@ All notable changes to the public Sanctum open-core runtime are documented here.
 
 ### Added
 
-- **@sanctum/runtime** on npm — `SanctumRuntime`, `SanctumClient`, middleware, policy helpers
+- **@sanctum-runtime/sdk** on npm — `SanctumRuntime`, `SanctumClient`, middleware, policy helpers
 - Runtime API (`apps/api`) — verify, policies, audit, status, health
 - Policy engine — approve / verify / block per action
 - Runtime engine — intercept → policy → Ollama/heuristics → decision → audit

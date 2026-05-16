@@ -1,4 +1,4 @@
-# @sanctum/runtime
+# @sanctum-runtime/sdk
 
 Runtime trust SDK for autonomous AI — verify actions before execution, manage policies, and read audit logs.
 
@@ -7,7 +7,7 @@ Part of the [Sanctum open-core](https://github.com/Matik103/sanctum-runtime) mon
 ## Install
 
 ```bash
-npm install @sanctum/runtime
+npm install @sanctum-runtime/sdk
 ```
 
 ## Quick start
@@ -15,7 +15,7 @@ npm install @sanctum/runtime
 Point at **your** Sanctum API URL (no default host/port in the SDK):
 
 ```ts
-import { SanctumRuntime } from '@sanctum/runtime'
+import { SanctumRuntime } from '@sanctum-runtime/sdk'
 
 const sanctum = new SanctumRuntime({
   baseUrl: process.env.SANCTUM_API_URL!, // or explicit URL in production

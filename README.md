@@ -21,7 +21,7 @@ npm run example:agent
 ```
 
 ```ts
-import { SanctumRuntime } from "@sanctum/runtime";
+import { SanctumRuntime } from "@sanctum-runtime/sdk";
 
 const sanctum = new SanctumRuntime({
   baseUrl: process.env.SANCTUM_API_URL!, // from your .env
@@ -52,7 +52,7 @@ All endpoints are set in **`.env`** (see [`.env.example`](./.env.example)). Noth
 
 | Package / app | Purpose |
 |---------------|---------|
-| [`packages/sdk`](./packages/sdk) | `@sanctum/runtime` SDK |
+| [`packages/sdk`](./packages/sdk) | `@sanctum-runtime/sdk` SDK |
 | [`packages/adapters/agent-runtime`](./packages/adapters/agent-runtime) | Agent adapter |
 | [`apps/api`](./apps/api) | HTTP API |
 | [`apps/dashboard`](./apps/dashboard) | Community dashboard |
