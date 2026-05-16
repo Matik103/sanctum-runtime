@@ -53,6 +53,16 @@ Add repo secrets:
 - `CLOUDFLARE_API_TOKEN` — Workers deploy
 - `CLOUDFLARE_ACCOUNT_ID` — from Cloudflare dashboard
 
+**Cloudflare Workers → Build (Git):** this repo uses **npm** (`package-lock.json`), not Bun. If you connect Git in the dashboard, set:
+
+| Setting | Value |
+|---------|--------|
+| Build command | `npm run build` |
+| Deploy command | `npx wrangler deploy` |
+| Root directory | `/` |
+
+Do **not** keep `bun.lock` in the repo — Cloudflare auto-runs `bun install --frozen-lockfile` when it exists and the build will fail if it is out of sync.
+
 **One-time:** Register a **workers.dev** subdomain (Cloudflare dashboard → **Workers & Pages** → onboarding, or the link Wrangler prints on first deploy). Without this, deploy uploads the worker but cannot assign a public URL.
 
 Push to `main` runs [`.github/workflows/deploy-site.yml`](./.github/workflows/deploy-site.yml), or locally:
