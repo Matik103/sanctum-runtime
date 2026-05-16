@@ -27,6 +27,7 @@ export function App() {
     markVerificationsDismissed,
     openNextPendingReview,
     apiError,
+    lastRefreshed,
   } = useDashboard()
 
   const onSelect = (e: ActionResult) => setSelected(e)
@@ -82,6 +83,7 @@ export function App() {
             loading={loading}
             onRunDemo={runDemo}
             onSelect={onSelect}
+            lastRefreshed={lastRefreshed}
           />
         )}
         {page === 'activity' && <RuntimeActivity audit={audit} onSelect={onSelect} />}

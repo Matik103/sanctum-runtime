@@ -9,9 +9,18 @@ type Props = {
   loading: boolean
   onRunDemo: (offline: boolean) => void
   onSelect: (e: ActionResult) => void
+  lastRefreshed: Date | null
 }
 
-export function Overview({ audit, policies, status, loading, onRunDemo, onSelect }: Props) {
+export function Overview({
+  audit,
+  policies,
+  status,
+  loading,
+  onRunDemo,
+  onSelect,
+  lastRefreshed,
+}: Props) {
   const approved = audit.filter((e) => e.decision === 'APPROVED').length
   const blocked = audit.filter((e) => e.decision === 'BLOCKED').length
   const verify = audit.filter((e) => e.decision === 'REQUIRE_VERIFICATION').length
@@ -32,8 +41,10 @@ export function Overview({ audit, policies, status, loading, onRunDemo, onSelect
           <span className="pill" title="Fleet, cloud, advanced intel — enterprise track">
             OSS v0.1
           </span>
-          <span className="pill">
-            {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          <span className="pill" title="Auto-refreshes every 5s">
+            {lastRefreshed
+              ? `Updated ${lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`
+              : 'Connecting…'}
           </span>
         </div>
       </header>

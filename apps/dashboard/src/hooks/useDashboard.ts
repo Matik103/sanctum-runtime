@@ -33,6 +33,8 @@ export function useDashboard() {
   })
   const [loading, setLoading] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null)
+  const [, bumpDismissed] = useState(0)
   const [pendingVerification, setPendingVerification] = useState<ActionResult | null>(
     null,
   )
@@ -59,6 +61,7 @@ export function useDashboard() {
       if ('id' in scope) dismissed.add(scope.id)
       saveDismissedIds(dismissed)
       setPendingVerification(null)
+      bumpDismissed((n) => n + 1)
     },
     [],
   )
@@ -73,6 +76,7 @@ export function useDashboard() {
       const next = await fetchDashboard()
       auditRef.current = next.audit
       setData(next)
+      setLastRefreshed(new Date())
       setApiError(null)
 
       const dismissed = dismissedVerificationIds.current
@@ -137,6 +141,7 @@ export function useDashboard() {
   return {
     ...data,
     loading,
+    lastRefreshed,
     apiError,
     refresh,
     runDemo,
