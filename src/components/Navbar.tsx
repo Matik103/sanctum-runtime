@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import { docsPath, enterpriseAccessUrl, quickstartPath } from "@/lib/site-links";
+import { docsPath, enterpriseAccessUrl, githubUrl, quickstartPath } from "@/lib/site-links";
 import logo from "@/assets/sanctum-logo.png";
 
 export function Navbar() {
@@ -21,6 +21,11 @@ export function Navbar() {
         <div className="flex items-center gap-2">
           <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex text-muted-foreground hover:text-foreground">
             <Link to={docsPath}>Docs</Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm" className="hidden md:inline-flex text-muted-foreground hover:text-foreground">
+            <a href={githubUrl} target="_blank" rel="noopener noreferrer">
+              GitHub
+            </a>
           </Button>
           <Button asChild size="sm" className="bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90">
             <Link to={quickstartPath}>Start</Link>

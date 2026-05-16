@@ -2,7 +2,11 @@
 
 Sanctum uses an **open-core** model (PRD §4.3): this repository is the **public adoption layer**. Enterprise intelligence and hosted control plane ship separately when built.
 
+**Repository:** [github.com/Matik103/sanctum-runtime](https://github.com/Matik103/sanctum-runtime) — **public**, **MIT license**, visible to all developers.
+
 **Status (v0.1):** The runtime is **ready for developers** to clone, run locally, embed the SDK, and gate agent actions. It is a **preview** — not a hosted SaaS yet.
+
+New here? → [START_HERE.md](./START_HERE.md)
 
 ---
 

@@ -1,24 +1,12 @@
 # Sanctum Runtime
 
-**Runtime trust infrastructure for autonomous AI systems** — a layer developers install into agents, backends, and robotics stacks (not a standalone app users open).
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+[![GitHub](https://img.shields.io/github/stars/Matik103/sanctum-runtime?style=social)](https://github.com/Matik103/sanctum-runtime)
 
-**v0.1 preview — ready to use.** Clone, run locally, embed the SDK. MIT licensed.
+**Open-source (MIT) runtime trust infrastructure for autonomous AI systems** — a layer developers install into agents, backends, and robotics stacks.
 
-[Quick start](#quick-start) · [Open core vs enterprise](./OPEN_CORE.md) · [Examples](./examples/README.md) · [Contributing](./CONTRIBUTING.md)
-
-## What this repo is (public / open source)
-
-This repository is the **open-core adoption layer** (PRD §4.3.1):
-
-| Included (public) | Not in this repo (private / future) |
-|-------------------|-------------------------------------|
-| `@sanctum/runtime` SDK | Advanced threat intelligence & proprietary risk models |
-| Runtime API + policy engine (approve / verify / block) | Fleet orchestration & enterprise policy sync |
-| Ollama / local verification bridge | Hosted Sanctum Cloud, compliance packs, TPM attestation |
-| Community dashboard (basic) | Advanced analytics, trust scoring, behavioral intelligence |
-| Agent adapter + docs | `sanctum-enterprise`, `sanctum-cloud`, `sanctum-intelligence` repos |
-
-**License:** MIT (see [LICENSE](./LICENSE)) — enterprise features may be separately licensed later (PRD §4.3).
+> **Developers:** start with **[START_HERE.md](./START_HERE.md)** → clone, run, embed the SDK.  
+> **Scope:** what's public vs enterprise → **[OPEN_CORE.md](./OPEN_CORE.md)**
 
 ## Quick start
 
@@ -31,52 +19,47 @@ npm run smoke         # health + SDK checks
 npm run example:agent # verify → execute demo
 ```
 
-Marketing site + public docs:
-
-```bash
-npm run dev           # http://localhost:8080 · /docs
-```
-
-Full OSS vs enterprise boundaries: **[OPEN_CORE.md](./OPEN_CORE.md)**.
-
 ```ts
 import { SanctumRuntime } from "@sanctum/runtime";
 
-const sanctum = new SanctumRuntime({
-  baseUrl: "http://127.0.0.1:3001",
-  offlineMode: true,
-});
+const sanctum = new SanctumRuntime({ baseUrl: "http://127.0.0.1:3001" });
 
 await sanctum.middleware()({
   action: "send_email",
   context: { to: "user@example.com" },
+  offlineMode: true,
   execute: async () => sendEmail(),
 });
 ```
 
-See [DEVELOPMENT.md](./DEVELOPMENT.md) and [PRD.md](./PRD.md) for scope and architecture.
+Marketing site + docs locally: `npm run dev` → http://localhost:8080/docs
 
-## Making open source public on GitHub
+## Open-source map (this repo)
 
-1. **Keep this repo public** — everything here is intended to be OSS (runtime, SDK, basic dashboard, docs content in `src/routes/docs.tsx`).
-2. **Do not commit private code** — enterprise orchestration, advanced detection, or cloud control plane live in **separate private repositories** when you build them (`sanctum-enterprise`, `sanctum-cloud`, `sanctum-intelligence`).
-3. **Publish from `main`** — tag `v0.1.0` + GitHub Release; CI publishes `@sanctum/runtime` to npm when `NPM_TOKEN` is set in repo secrets.
-4. **Optional GitHub settings:** Issues + Discussions for community; **Early access** via issue template (`.github/ISSUE_TEMPLATE/early-access.md`) or an external form URL in marketing env (`VITE_EARLY_ACCESS_URL`).
+Everything below is **public MIT code** in this repository:
 
-## Open core vs enterprise
+| Package / app | npm / path | Purpose |
+|---------------|------------|---------|
+| **SDK** | `@sanctum/runtime` · [`packages/sdk`](./packages/sdk) | Verify, policies, middleware |
+| **Agent adapter** | [`packages/adapters/agent-runtime`](./packages/adapters/agent-runtime) | `protectAgent()` |
+| **Runtime API** | [`apps/api`](./apps/api) | HTTP verify / audit / policies |
+| **Dashboard** | [`apps/dashboard`](./apps/dashboard) | Community control plane |
+| **Engine** | [`packages/runtime-engine`](./packages/runtime-engine) | Intercept → policy → risk → audit |
+| **Examples** | [`examples/`](./examples/) | Runnable agent-gate sample |
 
-| Public (this repo) | Private (later) |
-|--------------------|-----------------|
-| How Sanctum works — SDK, policies, local runtime, examples | How Sanctum gets smarter — fleet AI, enterprise analytics, cloud |
+**Not in this repo** (enterprise / private, separate repos later): fleet orchestration, hosted Sanctum Cloud, proprietary threat intelligence, compliance packs. See [OPEN_CORE.md](./OPEN_CORE.md).
 
-Details: [PRD §4.3](./PRD.md).
+## Docs for developers
 
-## Marketing site links
+| Doc | Use when |
+|-----|----------|
+| [START_HERE.md](./START_HERE.md) | First clone — 60s path |
+| [OPEN_CORE.md](./OPEN_CORE.md) | Public vs private boundary |
+| [DEVELOPMENT.md](./DEVELOPMENT.md) | Monorepo layout, local AI |
+| [CONTRIBUTING.md](./CONTRIBUTING.md) | Issues and PRs |
+| [CHANGELOG.md](./CHANGELOG.md) | Releases |
+| [PUBLISHING.md](./PUBLISHING.md) | Maintainers (npm, deploy) |
 
-| CTA | Should point to |
-|-----|-----------------|
-| **Start with Runtime** | `/docs#quickstart` — clone & run (primary) |
-| **Docs** | `/docs` on the marketing site |
-| **Enterprise** | Waitlist (`VITE_EARLY_ACCESS_URL`) or GitHub enterprise issue — **not** required for OSS |
+## License
 
-Configure in `.env` (see `.env.example`).
+[MIT](./LICENSE) — enterprise features may be separately licensed when shipped outside this repo.

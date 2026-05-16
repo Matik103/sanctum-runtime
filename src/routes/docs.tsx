@@ -170,12 +170,20 @@ function DocsPage() {
                   execution — for agents, robotics, automation, and embodied systems.
                 </p>
                 <div className="mt-8 rounded-xl border border-primary/30 bg-primary/5 px-5 py-4 text-sm text-foreground/90">
-                  <strong className="text-foreground">v0.1 — ready to use (open source).</strong>{" "}
-                  Clone this repo, run <code className="font-mono text-primary">npm run dev:runtime</code>
-                  , embed the SDK. Fleet orchestration, hosted cloud, and advanced threat
-                  intelligence are{" "}
+                  <strong className="text-foreground">v0.1 — open source (MIT).</strong>{" "}
+                  Source:{" "}
+                  <a
+                    href="https://github.com/Matik103/sanctum-runtime"
+                    className="text-primary hover:underline"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    github.com/Matik103/sanctum-runtime
+                  </a>
+                  {" "}— clone, run <code className="font-mono text-primary">npm run dev:runtime</code>
+                  , embed the SDK. Fleet / cloud / advanced intel:{" "}
                   <a href="#open-core" className="text-primary hover:underline">
-                    enterprise / private
+                    enterprise track
                   </a>
                   .
                 </div>

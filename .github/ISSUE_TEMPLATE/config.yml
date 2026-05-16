@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Developer quick start
+    url: https://github.com/Matik103/sanctum-runtime/blob/main/START_HERE.md
+    about: Clone, run the runtime, and embed the SDK (open source)
+  - name: Open core vs enterprise
+    url: https://github.com/Matik103/sanctum-runtime/blob/main/OPEN_CORE.md
+    about: What is public MIT code vs private enterprise features
+  - name: Documentation
+    url: https://github.com/Matik103/sanctum-runtime#quick-start
+    about: README and DEVELOPMENT.md in the repo
