@@ -81,9 +81,9 @@ npm run dev:dashboard  # DASHBOARD_HOST:DASHBOARD_PORT from .env
 
 **SDK:** `new SanctumRuntime({ baseUrl: process.env.SANCTUM_API_URL })` — or pass `baseUrl` explicitly. Node scripts read `.env` via `scripts/env.ts`.
 
-**Demo flow:** Dashboard → “Demo: Unlock door” (online vs offline). Expect `REQUIRE_VERIFICATION` or `BLOCKED` for `unlock_door` at 2 AM with policy + anomaly rules.
+**Integration flow:** Wire the SDK or call the API from your agent. Events appear on the dashboard Overview and in the audit log. Run `npm run example:agent` for a minimal offline gate example, or `npm run smoke` for a CI health check.
 
-**OSS adoption:** See [OPEN_CORE.md](./OPEN_CORE.md) for public vs enterprise boundaries. `npm run smoke` and `npm run example:agent` for developer onboarding checks.
+**OSS adoption:** See [OPEN_CORE.md](./OPEN_CORE.md) for public vs enterprise boundaries.
 
 **API (examples):**
 
@@ -104,7 +104,7 @@ Models share **Hugging Face cache** weights with **llama.cpp** and **Ollama** (i
 
 | Role | Model | Ollama | llama.cpp |
 |------|--------|--------|-----------|
-| **Primary** (agent / scenario demos) | Qwen2.5-**3B**-Instruct Q4_K_M (~2 GB) | `ollama run qwen2.5-3b-instruct` | `llama-cli -hf Qwen/Qwen2.5-3B-Instruct-GGUF:Q4_K_M` |
+| **Primary** (agent / production-like local runs) | Qwen2.5-**3B**-Instruct Q4_K_M (~2 GB) | `ollama run qwen2.5-3b-instruct` | `llama-cli -hf Qwen/Qwen2.5-3B-Instruct-GGUF:Q4_K_M` |
 | **Fast** (plumbing, quick checks) | Qwen2.5-**0.5B**-Instruct Q4_K_M (~0.5 GB) | `ollama run qwen2.5-0.5b-instruct` | `llama-cli -hf Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M` |
 
 **On 8 GB:** use **3B** for realistic local agent behavior; keep **0.5B** when speed matters. Close heavy browser tabs before 3B runs. Keep `num_ctx` at **2048** (see Modelfiles).

@@ -306,7 +306,7 @@ function DocsPage() {
                 <List
                   items={[
                     "create real deployments",
-                    "build safer demos",
+                    "build safer agent deployments",
                     "establish trust with users",
                     "reduce operational risk",
                     "and prepare for the next generation of robotics systems",

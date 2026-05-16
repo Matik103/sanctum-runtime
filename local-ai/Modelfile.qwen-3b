@@ -11,4 +11,4 @@ TEMPLATE """{{- if .System }}<|im_start|>system
 {{ end }}<|im_start|>assistant
 """
 
-SYSTEM You are a local AI agent for Sanctum demos. Propose actions clearly; follow instructions precisely.
+SYSTEM You are a local AI agent for the Sanctum runtime. Evaluate proposed actions for risk; respond with structured, concise reasoning.

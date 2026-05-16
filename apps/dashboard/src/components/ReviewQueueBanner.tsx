@@ -29,7 +29,7 @@ export function ReviewQueueBanner({
         <strong>one at a time</strong> — not all at once. {summary}
       </p>
       <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: 'var(--muted)' }}>
-        These are historical records from demos and tests, not 20 live threats happening now.
+        These are audit log entries awaiting your decision — not simultaneous live incidents.
       </p>
       <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.85rem', flexWrap: 'wrap' }}>
         <button type="button" className="btn btn-primary" onClick={onReviewNext}>

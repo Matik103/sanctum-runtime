@@ -24,19 +24,6 @@ export function responseToPolicy(response: PolicyResponse): Partial<ActionPolicy
 
 export { actionLabel } from './labels'
 
-export async function runUnlockDemo(offline: boolean): Promise<ActionResult> {
-  const client = new SanctumClient({ baseUrl: '/api', offlineMode: offline })
-  return client.verifyAction({
-    actor: 'local-agent',
-    action: 'unlock_door',
-    context: {
-      location: 'front_door',
-      time: '02:13 AM',
-      owner_sleeping: true,
-    },
-  })
-}
-
 export type DashboardData = {
   audit: ActionResult[]
   policies: PolicyMap

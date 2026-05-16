@@ -12,4 +12,4 @@ export {
   type AttachableRuntime,
   type SanctumMiddlewareContext,
 } from './middleware.js'
-export { evaluationModeLabel, formatDemoResult } from './labels.js'
+export { evaluationModeLabel, formatActionResult, formatDemoResult } from './labels.js'

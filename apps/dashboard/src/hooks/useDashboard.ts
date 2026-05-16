@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   fetchDashboard,
-  runUnlockDemo,
   updatePolicyResponse,
   type DashboardData,
   type PolicyResponse,
@@ -31,7 +30,6 @@ export function useDashboard() {
     policies: {},
     status: null,
   })
-  const [loading, setLoading] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null)
   const [, bumpDismissed] = useState(0)
@@ -102,22 +100,6 @@ export function useDashboard() {
     return () => clearInterval(id)
   }, [refresh])
 
-  const runDemo = async (offline: boolean) => {
-    setLoading(true)
-    try {
-      const result = await runUnlockDemo(offline)
-      if (result.decision === 'REQUIRE_VERIFICATION') {
-        showVerification(result)
-      } else {
-        markVerificationsDismissed({ id: result.id })
-      }
-      await refresh()
-      return result
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const setPolicy = async (action: string, response: PolicyResponse) => {
     const policies = await updatePolicyResponse(action, response)
     setData((d) => ({ ...d, policies }))
@@ -164,11 +146,9 @@ export function useDashboard() {
 
   return {
     ...data,
-    loading,
     lastRefreshed,
     apiError,
     refresh,
-    runDemo,
     setPolicy,
     pendingVerification,
     pendingReviewCount,

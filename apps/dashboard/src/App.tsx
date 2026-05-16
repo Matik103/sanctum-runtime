@@ -20,8 +20,6 @@ export function App() {
     audit,
     policies,
     status,
-    loading,
-    runDemo,
     setPolicy,
     pendingVerification,
     pendingReviewCount,
@@ -71,8 +69,6 @@ export function App() {
             audit={audit}
             policies={policies}
             status={status}
-            loading={loading}
-            onRunDemo={runDemo}
             onSelect={onSelect}
             lastRefreshed={lastRefreshed}
           />

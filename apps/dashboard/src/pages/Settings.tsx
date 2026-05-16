@@ -16,8 +16,8 @@ export function Settings({ status }: Props) {
         <section className="card">
           <h3 style={{ marginTop: 0 }}>Runtime</h3>
           <p style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
-            Offline demos skip the model. Heuristic fallback activates when Ollama is
-            unreachable.
+            When <code>offlineMode</code> is set or Ollama is unreachable, the runtime uses
+            heuristics and policy rules without calling the local model.
           </p>
           <ul style={{ color: 'var(--muted)', fontSize: '0.85rem', paddingLeft: '1.2rem' }}>
             <li>Local-only mode: active (Phase 1)</li>

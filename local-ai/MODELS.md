@@ -1,6 +1,6 @@
 # Local AI models (Sanctum development)
 
-This document describes the **local inference stack** used for Sanctum Phase 1 work (PRD §9): offline-capable demos, simulated agents, and runtime integration tests. Weights are **not** committed to git; this file explains what to install and how both runtimes share the same files.
+This document describes the **local inference stack** used for Sanctum Phase 1 work (PRD §9): offline-capable agents, integration tests, and local risk scoring. Weights are **not** committed to git; this file explains what to install and how both runtimes share the same files.
 
 ---
 
@@ -8,7 +8,7 @@ This document describes the **local inference stack** used for Sanctum Phase 1 w
 
 | Ollama name | Base model | Quantization | Disk (approx.) | Role |
 |-------------|------------|--------------|----------------|------|
-| `qwen2.5-3b-instruct` | [Qwen2.5-3B-Instruct](https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF) | **Q4_K_M** | ~2.0–2.1 GB | **Primary** — realistic local agent, structured prompts, scenario demos |
+| `qwen2.5-3b-instruct` | [Qwen2.5-3B-Instruct](https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF) | **Q4_K_M** | ~2.0–2.1 GB | **Primary** — realistic local agent, structured prompts, production-like runs |
 | `qwen2.5-0.5b-instruct` | [Qwen2.5-0.5B-Instruct](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF) | **Q4_K_M** | ~0.5 GB | **Fast** — plumbing, quick smoke tests |
 
 **Runtimes**
@@ -128,9 +128,9 @@ For non-interactive / scripts, prefer **`llama-completion`** over `llama-cli` (s
 | Parameter | 3B | 0.5B | Why |
 |-----------|-----|------|-----|
 | `num_ctx` | 2048 | 2048 | Limits RAM on 8 GB systems |
-| `temperature` | 0.2 | 0 | 3B: slight flexibility for demos; 0.5B: deterministic smoke tests |
+| `temperature` | 0.2 | 0 | 3B: slight flexibility for risk reasoning; 0.5B: deterministic smoke tests |
 | `TEMPLATE` | Qwen2.5 ChatML | same | Matches instruct format |
-| `SYSTEM` | Sanctum demo agent | generic assistant | 3B: action-oriented demo tone |
+| `SYSTEM` | Sanctum runtime agent | generic assistant | 3B: action risk evaluation |
 
 Files: [`Modelfile.qwen-3b`](./Modelfile.qwen-3b), [`Modelfile.qwen-0.5b`](./Modelfile.qwen-0.5b).
 

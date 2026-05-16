@@ -29,7 +29,7 @@ export function riskLabel(risk: string): string {
   return risk.charAt(0).toUpperCase() + risk.slice(1)
 }
 
-/** developer-test → Developer test */
+/** workflow-agent → Workflow agent */
 export function actorLabel(actor: string): string {
   return actor
     .split(/[-_]/)

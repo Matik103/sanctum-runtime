@@ -13,8 +13,11 @@ export function evaluationModeLabel(mode: EvaluationMode): string {
   }
 }
 
-export function formatDemoResult(result: ActionResult): string {
+export function formatActionResult(result: ActionResult): string {
   const mode = evaluationModeLabel(result.evaluationMode)
-  const model = result.modelInvoked ? 'Qwen invoked' : 'No model call'
+  const model = result.modelInvoked ? 'Model invoked' : 'No model call'
   return `${mode} · ${model}\n${result.decision}: ${result.reasoning}`
 }
+
+/** @deprecated Use {@link formatActionResult} */
+export const formatDemoResult = formatActionResult

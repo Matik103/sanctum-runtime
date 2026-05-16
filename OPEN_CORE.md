@@ -35,7 +35,7 @@ Docs: configure `SITE_*` in `.env`, then `npm run dev` → `/docs#quickstart`
 | Local risk (Ollama) | Optional online scoring via local Qwen |
 | Offline mode | Heuristics + policy when `offlineMode: true` |
 | Agent adapter | `protectAgent()` — verify before execute |
-| Community dashboard | Logs, policies, demos — basic control plane |
+| Community dashboard | Logs, policies, verification queue — local control plane |
 | Examples + smoke test | `examples/`, `npm run smoke` |
 
 ### OSS limitations (by design)
@@ -51,7 +51,7 @@ These stay **out of this repo** so adoption stays open and the moat stays privat
 | Compliance packs, signed attestation, TPM identity | Enterprise security sales |
 | SIEM connectors, fleet deployment orchestration | Enterprise integrations |
 
-**Transparency:** OSS includes **basic** heuristics, policy rules, and optional **local** Ollama calls for demos — not the full proprietary scoring stack described in PRD §4.3.2.
+**Transparency:** OSS includes **basic** heuristics, policy rules, and optional **local** Ollama scoring — not the full proprietary intelligence stack described in PRD §4.3.2.
 
 ---
 

@@ -1,13 +1,13 @@
 import type { ActionResult, PolicyMap, RuntimeStatus } from '@sanctum-runtime/sdk'
+import { IntegrateQuickstart } from '../components/IntegrateQuickstart'
 import { decisionTone, timeAgo } from '../lib/format'
 import { actionLabel, decisionLabel } from '../lib/labels'
+import { sparkBars } from '../lib/spark'
 
 type Props = {
   audit: ActionResult[]
   policies: PolicyMap
   status: RuntimeStatus | null
-  loading: boolean
-  onRunDemo: (offline: boolean) => void
   onSelect: (e: ActionResult) => void
   lastRefreshed: Date | null
 }
@@ -16,8 +16,6 @@ export function Overview({
   audit,
   policies,
   status,
-  loading,
-  onRunDemo,
   onSelect,
   lastRefreshed,
 }: Props) {
@@ -28,18 +26,19 @@ export function Overview({
     (e) => e.decision !== 'APPROVED' || e.anomalyFlags.length > 0,
   ).length
   const hasThreat = threats > 0
+  const bars = sparkBars(audit)
 
   return (
     <>
       <header className="page-header">
         <div>
           <h1>Sanctum Runtime</h1>
-          <p>Community edition — mission control (OSS)</p>
+          <p>Local control plane — verify agent actions before they execute</p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <span className="pill ok">Local runtime active</span>
-          <span className="pill" title="Fleet, cloud, advanced intel — enterprise track">
-            OSS v0.1
+          <span className="pill" title="Open-source runtime preview">
+            v0.1
           </span>
           <span className="pill" title="Auto-refreshes every 5s">
             {lastRefreshed
@@ -49,24 +48,7 @@ export function Overview({
         </div>
       </header>
 
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem' }}>
-        <button
-          type="button"
-          className="btn btn-primary"
-          disabled={loading}
-          onClick={() => onRunDemo(false)}
-        >
-          Demo: unlock door (online)
-        </button>
-        <button
-          type="button"
-          className="btn btn-ghost"
-          disabled={loading}
-          onClick={() => onRunDemo(true)}
-        >
-          Demo: unlock door (offline)
-        </button>
-      </div>
+      {audit.length === 0 && <IntegrateQuickstart />}
 
       <div className="grid-4">
         <div className="card glow-success">
@@ -89,7 +71,7 @@ export function Overview({
             {approved} approved · {blocked} blocked · {verify} verify
           </div>
           <div className="spark">
-            {[4, 7, 5, 9, 6, 8, 4].map((h, i) => (
+            {bars.map((h, i) => (
               <span key={i} style={{ height: `${h * 4}px` }} />
             ))}
           </div>
@@ -127,7 +109,8 @@ export function Overview({
             {audit.length === 0 ? (
               <tr>
                 <td colSpan={4} className="empty">
-                  No events yet — run a demo
+                  Waiting for agent traffic — integrate the SDK or run{' '}
+                  <code>npm run example:agent</code>
                 </td>
               </tr>
             ) : (
