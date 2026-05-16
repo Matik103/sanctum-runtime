@@ -32,7 +32,7 @@ export function Settings({ status }: Props) {
             <strong>{status?.ollamaConnected ? 'Connected' : 'Disconnected'}</strong>
           </p>
           <p style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>
-            Endpoint: http://127.0.0.1:11434
+            Endpoint: {status?.ollamaUrl ?? 'Set OLLAMA_URL in .env'}
           </p>
           <p style={{ fontSize: '0.85rem' }}>Active model: {status?.ollamaModel ?? '—'}</p>
         </section>

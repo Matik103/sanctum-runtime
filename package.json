@@ -18,7 +18,10 @@
     "smoke": "tsx scripts/smoke-test.ts",
     "example:agent": "tsx examples/agent-gate/run.ts",
     "build:sdk": "npm run build -w @sanctum/runtime",
-    "predev:runtime": "npm run build:sdk",
+    "predev:runtime": "node scripts/ensure-env.mjs && npm run build:sdk",
+    "predev": "node scripts/ensure-env.mjs",
+    "presmoke": "node scripts/ensure-env.mjs",
+    "preexample:agent": "node scripts/ensure-env.mjs",
     "publish:sdk": "npm publish -w @sanctum/runtime --access public",
     "build": "vite build",
     "deploy": "npm run build && npx wrangler deploy",
@@ -89,6 +92,8 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.0.4",
+    "concurrently": "^9.1.2",
+    "dotenv": "^16.6.1",
     "eslint": "^9.32.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-prettier": "^5.2.6",
@@ -96,10 +101,9 @@
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",
     "prettier": "^3.7.3",
+    "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
-    "vite": "^7.3.1",
-    "concurrently": "^9.1.2",
-    "tsx": "^4.19.4"
+    "vite": "^7.3.1"
   }
 }

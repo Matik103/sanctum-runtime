@@ -1,0 +1,103 @@
+/**
+ * Load repo-root `.env` and resolve endpoints (no hardcoded hosts/ports in app code).
+ */
+import { config } from 'dotenv'
+import { existsSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+
+function repoRootFromCwd(): string {
+  let dir = process.cwd()
+  for (let i = 0; i < 10; i++) {
+    if (existsSync(resolve(dir, 'package.json')) && existsSync(resolve(dir, '.env.example'))) {
+      return dir
+    }
+    const parent = dirname(dir)
+    if (parent === dir) break
+    dir = parent
+  }
+  return process.cwd()
+}
+
+let loaded = false
+
+export function loadRepoEnv(): void {
+  if (loaded) return
+  const root = repoRootFromCwd()
+  const envPath = resolve(root, '.env')
+  if (!existsSync(envPath)) {
+    throw new Error(
+      'Missing .env — copy .env.example to .env and set your hosts/ports (see START_HERE.md).',
+    )
+  }
+  config({ path: envPath })
+  loaded = true
+}
+
+function stripSlash(url: string): string {
+  return url.replace(/\/$/, '')
+}
+
+export function resolveSanctumApiUrl(): string {
+  loadRepoEnv()
+  if (process.env.SANCTUM_API_URL) return stripSlash(process.env.SANCTUM_API_URL)
+  const { HOST, PORT } = process.env
+  if (HOST && PORT) return `http://${HOST}:${PORT}`
+  throw new Error('Set SANCTUM_API_URL or both HOST and PORT in .env')
+}
+
+export function resolveApiListenTarget(): { host: string; port: number } {
+  loadRepoEnv()
+  if (process.env.SANCTUM_API_URL) {
+    const u = new URL(process.env.SANCTUM_API_URL)
+    const port = u.port
+      ? Number(u.port)
+      : u.protocol === 'https:'
+        ? 443
+        : 80
+    return { host: u.hostname, port }
+  }
+  const { HOST, PORT } = process.env
+  if (HOST && PORT) return { host: HOST, port: Number(PORT) }
+  throw new Error('Set SANCTUM_API_URL or both HOST and PORT in .env')
+}
+
+export function resolveDashboardUrl(): string {
+  loadRepoEnv()
+  if (process.env.DASHBOARD_URL) return stripSlash(process.env.DASHBOARD_URL)
+  const { DASHBOARD_HOST, DASHBOARD_PORT } = process.env
+  if (DASHBOARD_HOST && DASHBOARD_PORT) {
+    return `http://${DASHBOARD_HOST}:${DASHBOARD_PORT}`
+  }
+  throw new Error('Set DASHBOARD_URL or both DASHBOARD_HOST and DASHBOARD_PORT in .env')
+}
+
+export function resolveDashboardServer(): { host: string; port: number } {
+  loadRepoEnv()
+  const { DASHBOARD_HOST, DASHBOARD_PORT } = process.env
+  if (DASHBOARD_HOST && DASHBOARD_PORT) {
+    return { host: DASHBOARD_HOST, port: Number(DASHBOARD_PORT) }
+  }
+  if (process.env.DASHBOARD_URL) {
+    const u = new URL(process.env.DASHBOARD_URL)
+    const port = u.port
+      ? Number(u.port)
+      : u.protocol === 'https:'
+        ? 443
+        : 80
+    return { host: u.hostname, port }
+  }
+  throw new Error('Set DASHBOARD_URL or both DASHBOARD_HOST and DASHBOARD_PORT in .env')
+}
+
+export function resolveOllamaUrl(): string {
+  loadRepoEnv()
+  if (!process.env.OLLAMA_URL) throw new Error('Set OLLAMA_URL in .env')
+  return stripSlash(process.env.OLLAMA_URL)
+}
+
+export function resolveMarketingServer(): { host: string; port: number } {
+  loadRepoEnv()
+  const { SITE_HOST, SITE_PORT } = process.env
+  if (SITE_HOST && SITE_PORT) return { host: SITE_HOST, port: Number(SITE_PORT) }
+  throw new Error('Set SITE_HOST and SITE_PORT in .env for the marketing site')
+}

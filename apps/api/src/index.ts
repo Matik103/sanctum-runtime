@@ -3,9 +3,15 @@ import { RuntimeEngine } from '@sanctum/runtime-engine'
 import { ActionRequestSchema } from '@sanctum/runtime'
 import Fastify from 'fastify'
 import { z } from 'zod'
+import {
+  loadRepoEnv,
+  resolveApiListenTarget,
+  resolveDashboardUrl,
+} from '../../../scripts/env.ts'
 
-const port = Number(process.env.PORT ?? 3001)
-const host = process.env.HOST ?? '127.0.0.1'
+loadRepoEnv()
+const { host, port } = resolveApiListenTarget()
+const dashboardUrl = resolveDashboardUrl()
 const forceOffline = process.env.SANCTUM_OFFLINE_MODE === 'true'
 
 const runtime = new RuntimeEngine({
@@ -24,7 +30,7 @@ app.get('/', async () => ({
   name: 'Sanctum Runtime API',
   version: '0.1.0',
   docs: 'See DEVELOPMENT.md in the repo',
-  dashboard: 'http://localhost:5174',
+  dashboard: dashboardUrl,
   endpoints: {
     health: 'GET /health',
     status: 'GET /v1/status',

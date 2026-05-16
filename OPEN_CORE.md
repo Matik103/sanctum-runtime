@@ -13,19 +13,17 @@ New here? → [START_HERE.md](./START_HERE.md)
 ## Start using (public / MIT)
 
 ```bash
-# SDK only (your app + self-hosted or local API)
-npm install @sanctum/runtime
-
-# Full stack (API + dashboard + examples)
 git clone https://github.com/Matik103/sanctum-runtime.git
 cd sanctum-runtime
+cp .env.example .env   # set your hosts/ports — required
 npm install
-npm run dev:runtime    # API :3001 · dashboard :5174
-npm run smoke          # automated health check
-npm run example:agent  # verify → execute example
+npm run dev:runtime
+npm run smoke
 ```
 
-Docs: run `npm run dev` → [http://localhost:8080/docs#quickstart](http://localhost:8080/docs#quickstart)
+SDK in your own app: `npm install @sanctum/runtime` and set `baseUrl` to your API URL.
+
+Docs: configure `SITE_*` in `.env`, then `npm run dev` → `/docs#quickstart`
 
 ### What you get in this repo (OSS)
 

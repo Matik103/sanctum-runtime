@@ -8,8 +8,9 @@ import {
   SanctumActionBlockedError,
   SanctumVerificationRequiredError,
 } from '../../packages/sdk/src/index.ts'
+import { resolveSanctumApiUrl } from '../../scripts/env.ts'
 
-const API = process.env.SANCTUM_API_URL ?? 'http://127.0.0.1:3001'
+const API = resolveSanctumApiUrl()
 
 async function gate(
   label: string,

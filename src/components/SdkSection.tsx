@@ -1,12 +1,14 @@
 import { Check } from "lucide-react";
 
-const code = `git clone github.com/Matik103/sanctum-runtime
-npm install && npm run dev:runtime
+const code = `cp .env.example .env  # set SANCTUM_API_URL
+npm run dev:runtime
 
 import { SanctumRuntime } from "@sanctum/runtime";
 import { protectAgent, AgentActions } from "@sanctum/adapter-agent-runtime";
 
-const sanctum = new SanctumRuntime({ baseUrl: "http://127.0.0.1:3001" });
+const sanctum = new SanctumRuntime({
+  baseUrl: process.env.SANCTUM_API_URL,
+});
 
 await protectAgent(sanctum, {
   action: AgentActions.SEND_EMAIL,

@@ -4,8 +4,9 @@
  */
 import { protectAgent, AgentActions } from '../packages/adapters/agent-runtime/src/index.ts'
 import { SanctumRuntime } from '../packages/sdk/src/index.ts'
+import { resolveSanctumApiUrl } from './env.ts'
 
-const API = process.env.SANCTUM_API_URL ?? 'http://127.0.0.1:3001'
+const API = resolveSanctumApiUrl()
 
 async function fetchJson(path: string, init?: RequestInit) {
   const res = await fetch(`${API}${path}`, init)

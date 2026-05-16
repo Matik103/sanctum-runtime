@@ -187,6 +187,7 @@ export class RuntimeEngine {
   async getStatus(): Promise<{
     runtimeOnline: boolean
     ollamaConnected: boolean
+    ollamaUrl?: string
     ollamaModel?: string
     systemOfflineCapable: boolean
     policyCount: number
@@ -196,6 +197,7 @@ export class RuntimeEngine {
     return {
       runtimeOnline: true,
       ollamaConnected,
+      ollamaUrl: this.ollamaBridge.getBaseUrl(),
       ollamaModel: ollamaConnected ? this.ollamaBridge.getModel() : undefined,
       systemOfflineCapable: this.forceOfflineMode || !ollamaConnected,
       policyCount: Object.keys(this.policyEngine.getPolicies()).length,

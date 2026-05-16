@@ -17,9 +17,21 @@ export class OllamaBridge {
   private timeoutMs: number
 
   constructor(options: OllamaBridgeOptions = {}) {
-    this.baseUrl = options.baseUrl ?? process.env.OLLAMA_URL ?? 'http://127.0.0.1:11434'
-    this.model = options.model ?? process.env.OLLAMA_MODEL ?? 'qwen2.5-3b-instruct'
+    const baseUrl = options.baseUrl ?? process.env.OLLAMA_URL
+    if (!baseUrl) {
+      throw new Error('OllamaBridge requires baseUrl or OLLAMA_URL in environment (.env)')
+    }
+    this.baseUrl = baseUrl.replace(/\/$/, '')
+    const model = options.model ?? process.env.OLLAMA_MODEL
+    if (!model) {
+      throw new Error('OllamaBridge requires model option or OLLAMA_MODEL in environment (.env)')
+    }
+    this.model = model
     this.timeoutMs = options.timeoutMs ?? 120_000
+  }
+
+  getBaseUrl(): string {
+    return this.baseUrl
   }
 
   async isConnected(): Promise<boolean> {

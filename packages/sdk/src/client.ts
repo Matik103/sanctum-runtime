@@ -10,7 +10,15 @@ export class SanctumClient {
   private offlineMode: boolean
 
   constructor(options: SanctumClientOptions = {}) {
-    this.baseUrl = options.baseUrl ?? 'http://127.0.0.1:3001'
+    const fromEnv =
+      typeof process !== 'undefined' ? process.env.SANCTUM_API_URL : undefined
+    const base = options.baseUrl ?? fromEnv
+    if (!base) {
+      throw new Error(
+        'SanctumClient requires baseUrl (or SANCTUM_API_URL in Node). Copy .env.example → .env and set your API URL.',
+      )
+    }
+    this.baseUrl = base.replace(/\/$/, '')
     this.offlineMode = options.offlineMode ?? false
   }
 

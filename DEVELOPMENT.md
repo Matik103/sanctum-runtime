@@ -34,8 +34,8 @@ Do not treat messaging or stack choices as informal — if it affects product be
 Monorepo layout:
 
 ```text
-apps/api              — Fastify runtime API (port 3001)
-apps/dashboard        — Trust dashboard UI (port 5174)
+apps/api              — Fastify runtime API (HOST:PORT from .env)
+apps/dashboard        — Trust dashboard UI (DASHBOARD_* from .env)
 packages/sdk          — npm `@sanctum/runtime` (SanctumClient / SanctumRuntime / middleware)
 packages/runtime-engine — Intercept → policy → risk → audit
 packages/policy-engine
@@ -59,6 +59,13 @@ await protectAgent(sanctum, {
 })
 ```
 
+**Configure first** (required — no hardcoded hosts/ports in code):
+
+```bash
+cp .env.example .env
+# Edit HOST, PORT, DASHBOARD_*, OLLAMA_URL, SITE_* for your environment
+```
+
 **Start the runtime stack** (API + dashboard; keep Ollama running for online risk calls):
 
 ```bash
@@ -68,9 +75,11 @@ npm run dev:runtime
 Or separately:
 
 ```bash
-npm run dev:api        # http://127.0.0.1:3001
-npm run dev:dashboard  # http://127.0.0.1:5174
+npm run dev:api        # listens on HOST:PORT from .env
+npm run dev:dashboard  # DASHBOARD_HOST:DASHBOARD_PORT from .env
 ```
+
+**SDK:** `new SanctumRuntime({ baseUrl: process.env.SANCTUM_API_URL })` — or pass `baseUrl` explicitly. Node scripts read `.env` via `scripts/env.ts`.
 
 **Demo flow:** Dashboard → “Demo: Unlock door” (online vs offline). Expect `REQUIRE_VERIFICATION` or `BLOCKED` for `unlock_door` at 2 AM with policy + anomaly rules.
 
@@ -79,14 +88,13 @@ npm run dev:dashboard  # http://127.0.0.1:5174
 **API (examples):**
 
 ```bash
-curl -X POST http://127.0.0.1:3001/v1/actions/verify \
+# Use your SANCTUM_API_URL from .env
+curl -X POST "$SANCTUM_API_URL/v1/actions/verify" \
   -H 'Content-Type: application/json' \
   -d '{"actor":"local-agent","action":"unlock_door","context":{"time":"02:13 AM","owner_sleeping":true},"offlineMode":true}'
 ```
 
-Copy [`.env.example`](./.env.example) to `.env` to tune `OLLAMA_MODEL`, `SANCTUM_OFFLINE_MODE`, etc.
-
-Marketing site (root): `npm run dev` → port 8080.
+Marketing site (root): `npm run dev` → `SITE_HOST`:`SITE_PORT` from `.env`.
 
 ## Local AI (dev / PRD §9)
 

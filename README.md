@@ -5,24 +5,27 @@
 
 **Open-source (MIT) runtime trust infrastructure for autonomous AI systems** — a layer developers install into agents, backends, and robotics stacks.
 
-> **Developers:** start with **[START_HERE.md](./START_HERE.md)** → clone, run, embed the SDK.  
-> **Scope:** what's public vs enterprise → **[OPEN_CORE.md](./OPEN_CORE.md)**
+> **Developers:** [START_HERE.md](./START_HERE.md) — copy `.env.example` → `.env`, set your hosts/ports, then run.  
+> **Scope:** [OPEN_CORE.md](./OPEN_CORE.md) — public vs enterprise.
 
 ## Quick start
 
 ```bash
 git clone https://github.com/Matik103/sanctum-runtime.git
 cd sanctum-runtime
+cp .env.example .env    # required — configure your hosts and ports
 npm install
-npm run dev:runtime   # API http://127.0.0.1:3001 · dashboard http://127.0.0.1:5174
-npm run smoke         # health + SDK checks
-npm run example:agent # verify → execute demo
+npm run dev:runtime
+npm run smoke
+npm run example:agent
 ```
 
 ```ts
 import { SanctumRuntime } from "@sanctum/runtime";
 
-const sanctum = new SanctumRuntime({ baseUrl: "http://127.0.0.1:3001" });
+const sanctum = new SanctumRuntime({
+  baseUrl: process.env.SANCTUM_API_URL!, // from your .env
+});
 
 await sanctum.middleware()({
   action: "send_email",
@@ -32,34 +35,41 @@ await sanctum.middleware()({
 });
 ```
 
-Marketing site + docs locally: `npm run dev` → http://localhost:8080/docs
+Marketing site + docs: configure `SITE_HOST` / `SITE_PORT` in `.env`, then `npm run dev` → `/docs`
 
-## Open-source map (this repo)
+## Configuration
 
-Everything below is **public MIT code** in this repository:
+All endpoints are set in **`.env`** (see [`.env.example`](./.env.example)). Nothing assumes a fixed IP or port in application code.
 
-| Package / app | npm / path | Purpose |
-|---------------|------------|---------|
-| **SDK** | `@sanctum/runtime` · [`packages/sdk`](./packages/sdk) | Verify, policies, middleware |
-| **Agent adapter** | [`packages/adapters/agent-runtime`](./packages/adapters/agent-runtime) | `protectAgent()` |
-| **Runtime API** | [`apps/api`](./apps/api) | HTTP verify / audit / policies |
-| **Dashboard** | [`apps/dashboard`](./apps/dashboard) | Community control plane |
-| **Engine** | [`packages/runtime-engine`](./packages/runtime-engine) | Intercept → policy → risk → audit |
-| **Examples** | [`examples/`](./examples/) | Runnable agent-gate sample |
+| Variable | Purpose |
+|----------|---------|
+| `HOST` + `PORT` or `SANCTUM_API_URL` | Runtime API |
+| `DASHBOARD_HOST` + `DASHBOARD_PORT` or `DASHBOARD_URL` | Community dashboard |
+| `SITE_HOST` + `SITE_PORT` | Marketing / docs site |
+| `OLLAMA_URL` + `OLLAMA_MODEL` | Local risk model |
 
-**Not in this repo** (enterprise / private, separate repos later): fleet orchestration, hosted Sanctum Cloud, proprietary threat intelligence, compliance packs. See [OPEN_CORE.md](./OPEN_CORE.md).
+## Open-source map
 
-## Docs for developers
+| Package / app | Purpose |
+|---------------|---------|
+| [`packages/sdk`](./packages/sdk) | `@sanctum/runtime` SDK |
+| [`packages/adapters/agent-runtime`](./packages/adapters/agent-runtime) | Agent adapter |
+| [`apps/api`](./apps/api) | HTTP API |
+| [`apps/dashboard`](./apps/dashboard) | Community dashboard |
+| [`examples/`](./examples/) | Samples |
+
+Enterprise features (fleet, cloud, advanced intel) are **not** in this repo — [OPEN_CORE.md](./OPEN_CORE.md).
+
+## Docs
 
 | Doc | Use when |
 |-----|----------|
-| [START_HERE.md](./START_HERE.md) | First clone — 60s path |
-| [OPEN_CORE.md](./OPEN_CORE.md) | Public vs private boundary |
-| [DEVELOPMENT.md](./DEVELOPMENT.md) | Monorepo layout, local AI |
+| [START_HERE.md](./START_HERE.md) | First run |
+| [`.env.example`](./.env.example) | All env vars |
+| [OPEN_CORE.md](./OPEN_CORE.md) | OSS vs enterprise |
+| [DEVELOPMENT.md](./DEVELOPMENT.md) | Monorepo / local AI |
 | [CONTRIBUTING.md](./CONTRIBUTING.md) | Issues and PRs |
-| [CHANGELOG.md](./CHANGELOG.md) | Releases |
-| [PUBLISHING.md](./PUBLISHING.md) | Maintainers (npm, deploy) |
 
 ## License
 
-[MIT](./LICENSE) — enterprise features may be separately licensed when shipped outside this repo.
+[MIT](./LICENSE)

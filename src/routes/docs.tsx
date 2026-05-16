@@ -171,7 +171,6 @@ function DocsPage() {
                 </p>
                 <div className="mt-8 rounded-xl border border-primary/30 bg-primary/5 px-5 py-4 text-sm text-foreground/90">
                   <strong className="text-foreground">v0.1 — open source (MIT).</strong>{" "}
-                  Source:{" "}
                   <a
                     href="https://github.com/Matik103/sanctum-runtime"
                     className="text-primary hover:underline"
@@ -180,10 +179,11 @@ function DocsPage() {
                   >
                     github.com/Matik103/sanctum-runtime
                   </a>
-                  {" "}— clone, run <code className="font-mono text-primary">npm run dev:runtime</code>
-                  , embed the SDK. Fleet / cloud / advanced intel:{" "}
+                  {" "}— copy <code className="font-mono text-primary">.env.example</code> to{" "}
+                  <code className="font-mono text-primary">.env</code>, set your hosts/ports, then{" "}
+                  <code className="font-mono text-primary">npm run dev:runtime</code>. Enterprise:{" "}
                   <a href="#open-core" className="text-primary hover:underline">
-                    enterprise track
+                    open core boundary
                   </a>
                   .
                 </div>
@@ -654,9 +654,10 @@ function DocsPage() {
                   lang="bash"
                   code={`git clone https://github.com/Matik103/sanctum-runtime.git
 cd sanctum-runtime
+cp .env.example .env   # edit HOST, PORT, DASHBOARD_*, OLLAMA_URL, SITE_*
 npm install
-npm run dev:runtime   # API :3001 · dashboard :5174
-npm run smoke         # optional health check`}
+npm run dev:runtime
+npm run smoke`}
                 />
 
                 <H3>2. Install the SDK</H3>
@@ -671,7 +672,7 @@ npm run smoke         # optional health check`}
                   code={`import { SanctumRuntime } from "@sanctum/runtime"
 import { protectAgent, AgentActions } from "@sanctum/adapter-agent-runtime"
 
-const sanctum = new SanctumRuntime({ baseUrl: "http://127.0.0.1:3001" })
+const sanctum = new SanctumRuntime({ baseUrl: process.env.SANCTUM_API_URL! })
 
 await protectAgent(sanctum, {
   actor: "workflow-agent",

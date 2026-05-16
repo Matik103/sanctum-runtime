@@ -70,6 +70,7 @@ export type PolicyMap = Record<string, ActionPolicy>
 export const RuntimeStatusSchema = z.object({
   runtimeOnline: z.boolean(),
   ollamaConnected: z.boolean(),
+  ollamaUrl: z.string().optional(),
   ollamaModel: z.string().optional(),
   /** Global: Ollama unreachable or SANCTUM_OFFLINE_MODE=true */
   systemOfflineCapable: z.boolean(),
