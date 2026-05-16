@@ -16,10 +16,21 @@ export function keyDisplayParts(secret: string): { prefix: string; suffix: strin
 }
 
 function getPepper(): string {
-  const pepper = process.env.SANCTUM_API_KEY_PEPPER?.trim()
-  if (pepper && pepper.length >= 16) return pepper
+  const explicit = process.env.SANCTUM_API_KEY_PEPPER?.trim()
+  if (explicit && explicit.length >= 16) return explicit
+
+  // Derive from service role when pepper unset (Render already has this env var)
+  const serviceKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
+    process.env.VITE_SUPABASE_SERVICE_ROLE_KEY?.trim()
+  if (serviceKey && serviceKey.length >= 32) {
+    return createHash('sha256').update(`sanctum-api-key-pepper-v1:${serviceKey}`).digest('hex')
+  }
+
   if (process.env.NODE_ENV === 'production') {
-    throw new Error('SANCTUM_API_KEY_PEPPER must be set in production (min 16 chars)')
+    throw new Error(
+      'Set SANCTUM_API_KEY_PEPPER (recommended) or SUPABASE_SERVICE_ROLE_KEY for API key hashing',
+    )
   }
   return 'sanctum-dev-pepper-change-in-production'
 }

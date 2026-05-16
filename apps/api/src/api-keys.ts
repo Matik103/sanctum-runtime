@@ -52,46 +52,61 @@ export async function registerApiKeyRoutes(
   })
 
   app.post('/v1/api-keys', async (req, reply) => {
-    const user = (req as { sanctumUser?: { id: string } }).sanctumUser
-    if (!user) {
-      return reply.status(403).send({ error: 'dashboard_auth_required' })
-    }
+    try {
+      const user = (req as { sanctumUser?: { id: string } }).sanctumUser
+      if (!user) {
+        return reply.status(403).send({ error: 'dashboard_auth_required' })
+      }
 
-    const body = z
-      .object({
-        name: z.string().min(1).max(120),
-        org_id: z.string().optional(),
-      })
-      .parse(req.body)
+      const parsed = z
+        .object({
+          name: z.string().min(1).max(120),
+          org_id: z.string().optional(),
+        })
+        .safeParse(req.body)
 
-    const secret = generateApiKeySecret()
-    const { prefix, suffix } = keyDisplayParts(secret)
-    const keyHash = await hashApiKeyV1(secret)
+      if (!parsed.success) {
+        return reply.status(400).send({ error: 'validation_error', details: parsed.error.flatten() })
+      }
 
-    const { data, error } = await admin
-      .from('api_keys')
-      .insert({
-        user_id: user.id,
-        name: body.name.trim(),
-        org_id: body.org_id ?? null,
-        key_prefix: prefix,
-        key_suffix: suffix,
-        key_hash: keyHash,
-        hash_version: 'bcrypt_v1',
-        scopes: ['api'],
-      })
-      .select('id, name, key_prefix, key_suffix, org_id, created_at')
-      .single()
+      const secret = generateApiKeySecret()
+      const { prefix, suffix } = keyDisplayParts(secret)
+      const keyHash = await hashApiKeyV1(secret)
 
-    if (error) {
-      return reply.status(500).send({ error: 'api_keys_create_failed', detail: error.message })
-    }
+      const { data, error } = await admin
+        .from('api_keys')
+        .insert({
+          user_id: user.id,
+          name: parsed.data.name.trim(),
+          org_id: parsed.data.org_id ?? null,
+          key_prefix: prefix,
+          key_suffix: suffix,
+          key_hash: keyHash,
+          hash_version: 'bcrypt_v1',
+          scopes: ['api'],
+        })
+        .select('id, name, key_prefix, key_suffix, org_id, created_at')
+        .single()
 
-    return {
-      ...data,
-      secret,
-      display_key: formatDisplayKey(prefix, suffix),
-      hint: 'Copy this secret now. You will not be able to see it again.',
+      if (error) {
+        req.log.error({ err: error }, 'api_keys_create_failed')
+        return reply.status(500).send({ error: 'api_keys_create_failed', detail: error.message })
+      }
+
+      return {
+        ...data,
+        secret,
+        display_key: formatDisplayKey(prefix, suffix),
+        hint: 'Copy this secret now. You will not be able to see it again.',
+      }
+    } catch (e) {
+      req.log.error(e, 'api_keys_create_exception')
+      const detail = e instanceof Error ? e.message : 'create_failed'
+      const code =
+        detail.includes('PEPPER') || detail.includes('SERVICE_ROLE')
+          ? 'pepper_not_configured'
+          : 'api_keys_create_failed'
+      return reply.status(500).send({ error: code, detail })
     }
   })
 

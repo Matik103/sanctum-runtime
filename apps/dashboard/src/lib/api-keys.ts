@@ -34,13 +34,25 @@ export async function listApiKeys(): Promise<ApiKeyRecord[]> {
   return res.json() as Promise<ApiKeyRecord[]>
 }
 
+async function parseApiError(res: Response, fallback: string): Promise<never> {
+  let detail = `${fallback} (${res.status})`
+  try {
+    const body = (await res.json()) as { detail?: string; error?: string }
+    if (body.detail) detail = body.detail
+    else if (body.error) detail = body.error.replace(/_/g, ' ')
+  } catch {
+    /* ignore */
+  }
+  throw new Error(detail)
+}
+
 export async function createApiKey(name: string): Promise<CreateApiKeyResult> {
   const res = await fetch(`${apiBase}/v1/api-keys`, {
     method: 'POST',
     headers: await authHeaders(true),
     body: JSON.stringify({ name }),
   })
-  if (!res.ok) throw new Error(`Failed to create API key: ${res.status}`)
+  if (!res.ok) await parseApiError(res, 'Could not create API key')
   return res.json() as Promise<CreateApiKeyResult>
 }
 
@@ -49,16 +61,7 @@ export async function deleteApiKey(id: string): Promise<void> {
     method: 'DELETE',
     headers: await authHeaders(),
   })
-  if (!res.ok) {
-    let detail = `HTTP ${res.status}`
-    try {
-      const body = (await res.json()) as { detail?: string; error?: string }
-      detail = body.detail ?? body.error ?? detail
-    } catch {
-      /* ignore */
-    }
-    throw new Error(detail)
-  }
+  if (!res.ok) await parseApiError(res, 'Could not delete API key')
 }
 
 /** @deprecated use deleteApiKey */

@@ -298,11 +298,13 @@ try {
   if (supabaseAuth) {
     const pepper = process.env.SANCTUM_API_KEY_PEPPER?.trim()
     if (pepper && pepper.length >= 16) {
-      console.log('Dashboard API keys: bcrypt + pepper (OpenAI-style)')
+      console.log('Dashboard API keys: bcrypt + SANCTUM_API_KEY_PEPPER')
+    } else if (process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
+      console.log('Dashboard API keys: bcrypt + pepper derived from SUPABASE_SERVICE_ROLE_KEY')
     } else if (process.env.NODE_ENV === 'production') {
-      console.warn('WARN: Set SANCTUM_API_KEY_PEPPER (32+ chars) to create sk_sanctum_* keys')
+      console.warn('WARN: Set SANCTUM_API_KEY_PEPPER or SUPABASE_SERVICE_ROLE_KEY for sk_sanctum_* keys')
     } else {
-      console.log('Dashboard API keys: dev pepper (set SANCTUM_API_KEY_PEPPER in production)')
+      console.log('Dashboard API keys: dev pepper')
     }
   }
 } catch (err) {
