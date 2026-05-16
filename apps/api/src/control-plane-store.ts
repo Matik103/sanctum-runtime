@@ -246,7 +246,7 @@ export class ControlPlaneStore {
   }
 
   async markStaleOffline(staleMs = 120_000): Promise<number> {
-    const cutoff = new Date(Date.now() - staleMs).toISOISOString()
+    const cutoff = new Date(Date.now() - staleMs).toISOString()
     const admin = this.admin()
     const { data, error } = await admin
       .from('registered_runtimes')
