@@ -57,9 +57,13 @@ Add repo secrets:
 
 | Setting | Value |
 |---------|--------|
-| Build command | `npm run build` |
+| Build command | `npm run cf:build` (or `npm ci && npm run build`) |
 | Deploy command | `npx wrangler deploy` |
 | Root directory | `/` |
+
+Click **Update**, then **Retry build** on the latest `main` commit (after `bun.lock` was removed).
+
+If install still runs `bun install`, add a build variable: `SKIP_DEPENDENCY_INSTALL` = `true`, and keep build command as `npm run cf:build`.
 
 Do **not** keep `bun.lock` in the repo — Cloudflare auto-runs `bun install --frozen-lockfile` when it exists and the build will fail if it is out of sync.
 

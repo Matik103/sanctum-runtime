@@ -29,6 +29,7 @@
     "publish:sdk": "npm publish -w @sanctum-runtime/sdk --access public",
     "publish:adapter": "npm publish -w @sanctum-runtime/adapter-agent-runtime --access public",
     "build": "vite build",
+    "cf:build": "npm ci && npm run build",
     "deploy": "npm run build && npx wrangler deploy",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
