@@ -12,7 +12,11 @@ cd packages/sdk
 npm publish --access public
 ```
 
-**CI (recommended):** Add repo secret `NPM_TOKEN` (Automation token with publish). Pushing a GitHub Release runs [`.github/workflows/release.yml`](./.github/workflows/release.yml).
+**CI (recommended):** Add repo secret `NPM_TOKEN` (granular or automation token with **publish** permission).
+
+**2FA / OTP:** If npm publish fails with `EOTP`, recreate the token and enable **“Bypass two-factor authentication for automation”** on the granular token (npm → Access Tokens → generate new). CI cannot type an OTP code.
+
+Pushing a GitHub Release runs [`.github/workflows/release.yml`](./.github/workflows/release.yml).
 
 Verify:
 

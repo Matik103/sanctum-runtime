@@ -27,6 +27,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify Cloudflare secrets
+        run: |
+          if [ -z "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ]; then
+            echo "::error::Missing GitHub secret CLOUDFLARE_ACCOUNT_ID — copy Account ID from Cloudflare dashboard → Profile → copy from right sidebar"
+            exit 1
+          fi
+
       - name: Build site
         run: npm run build
 
