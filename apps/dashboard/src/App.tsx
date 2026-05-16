@@ -23,7 +23,9 @@ export function App() {
     runDemo,
     setPolicy,
     pendingVerification,
-    dismissVerification,
+    pendingReviewCount,
+    markVerificationsDismissed,
+    openNextPendingReview,
     apiError,
   } = useDashboard()
 
@@ -48,6 +50,30 @@ export function App() {
             <p style={{ margin: '0.5rem 0 0', color: 'var(--muted)' }}>{apiError}</p>
           </div>
         )}
+
+        {!pendingVerification && pendingReviewCount > 0 && (
+          <div
+            className="card"
+            style={{
+              marginBottom: '1rem',
+              borderColor: 'var(--warning)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '1rem',
+              flexWrap: 'wrap',
+            }}
+          >
+            <p style={{ margin: 0, fontSize: '0.9rem' }}>
+              <strong>{pendingReviewCount}</strong> action
+              {pendingReviewCount === 1 ? '' : 's'} waiting for your review (from audit log).
+            </p>
+            <button type="button" className="btn btn-ghost" onClick={openNextPendingReview}>
+              Review next
+            </button>
+          </div>
+        )}
+
         {page === 'overview' && (
           <Overview
             audit={audit}
@@ -75,15 +101,15 @@ export function App() {
           entry={pendingVerification}
           onApproveOnce={() => {
             const entry = pendingVerification
-            dismissVerification(entry.id)
+            markVerificationsDismissed('all')
             setSelected(entry)
           }}
           onAlwaysApprove={async () => {
             const entry = pendingVerification
             await setPolicy(entry.action, 'approve')
-            dismissVerification(entry.id)
+            markVerificationsDismissed({ action: entry.action })
           }}
-          onDeny={() => dismissVerification(pendingVerification.id)}
+          onDeny={() => markVerificationsDismissed('all')}
         />
       )}
     </div>
