@@ -7,7 +7,7 @@
 | **Quick start** | [START_HERE.md](./START_HERE.md) |
 | **Full docs** | [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md) |
 | **12 categories** | [CATEGORIES.md](./CATEGORIES.md) |
-| **npm SDK** | [@sanctum-runtime/sdk](https://www.npmjs.com/package/@sanctum-runtime/sdk) |
+| **npm SDK** | [@sanctum-runtime/sdk](https://www.npmjs.com/package/@sanctum-runtime/sdk) (`npm i @sanctum-runtime/sdk` — v0.1.0 on npm) |
 | **Bug reports & questions** | [GitHub Issues](https://github.com/Matik103/sanctum-runtime/issues/new?template=runtime-help.md) |
 | **Discussions** | [GitHub Discussions](https://github.com/Matik103/sanctum-runtime/discussions) |
 | **Security** | [SECURITY.md](./SECURITY.md) (private report — no public issues) |

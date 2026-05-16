@@ -38,6 +38,26 @@ npm view @sanctum-runtime/sdk version
 npm view @sanctum-runtime/adapter-agent-runtime version
 ```
 
+### Why GitHub says “No packages published”
+
+That sidebar means **GitHub Packages** (packages hosted *on* GitHub), not “nothing on npm.”
+
+Your SDK **is on the public npm registry** (`@sanctum-runtime/sdk@0.1.0`) — developers install with:
+
+```bash
+npm install @sanctum-runtime/sdk
+```
+
+To show packages in the repo **Packages** box, link npm to GitHub (one-time per package):
+
+1. Open [npmjs.com/package/@sanctum-runtime/sdk](https://www.npmjs.com/package/@sanctum-runtime/sdk) → **Settings** (if you own the org)
+2. **Repository** / **Repository link** → `Matik103/sanctum-runtime`
+3. Repeat for `@sanctum-runtime/adapter-agent-runtime`
+
+Or publish via the [Release workflow](./.github/workflows/release.yml) with `NPM_TOKEN` and **provenance** (already configured) after linking the org on npm.
+
+**Releases** (v0.1.0) are separate: source tags on GitHub. **npm** is where the installable SDK lives.
+
 ## 2. GitHub Release
 
 ```bash
