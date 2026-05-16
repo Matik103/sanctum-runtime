@@ -24,12 +24,10 @@ export function loadRepoEnv(): void {
   if (loaded) return
   const root = repoRootFromCwd()
   const envPath = resolve(root, '.env')
-  if (!existsSync(envPath)) {
-    throw new Error(
-      'Missing .env — copy .env.example to .env and set your hosts/ports (see START_HERE.md).',
-    )
+  if (existsSync(envPath)) {
+    config({ path: envPath })
   }
-  config({ path: envPath })
+  // Cloud hosts (Render, etc.) inject env vars — no .env file required.
   loaded = true
 }
 
@@ -66,9 +64,13 @@ export function resolveApiListenTarget(): { host: string; port: number } {
         : 80
     return { host: u.hostname, port }
   }
+  const port = process.env.PORT
+  if (port) {
+    return { host: process.env.HOST?.trim() || '0.0.0.0', port: Number(port) }
+  }
   const { HOST, PORT } = process.env
   if (HOST && PORT) return { host: HOST, port: Number(PORT) }
-  throw new Error('Set SANCTUM_API_URL or both HOST and PORT in .env')
+  throw new Error('Set SANCTUM_API_URL, or PORT (cloud), or both HOST and PORT')
 }
 
 export function resolveDashboardUrl(): string {
@@ -78,7 +80,8 @@ export function resolveDashboardUrl(): string {
   if (DASHBOARD_HOST && DASHBOARD_PORT) {
     return `http://${DASHBOARD_HOST}:${DASHBOARD_PORT}`
   }
-  throw new Error('Set DASHBOARD_URL or both DASHBOARD_HOST and DASHBOARD_PORT in .env')
+  // API-only deploys (Render, etc.) — CORS placeholder until dashboard is hosted
+  return 'http://127.0.0.1:5174'
 }
 
 export function resolveDashboardServer(): { host: string; port: number } {
