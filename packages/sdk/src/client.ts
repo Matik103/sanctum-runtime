@@ -5,12 +5,15 @@ export type SanctumClientOptions = {
   offlineMode?: boolean
   /** Sent as X-Sanctum-Key when SANCTUM_API_KEY is configured on the server. */
   apiKey?: string
+  /** Supabase session access token → Authorization: Bearer (dashboard). */
+  getAccessToken?: () => Promise<string | undefined>
 }
 
 export class SanctumClient {
   private baseUrl: string
   private offlineMode: boolean
   private apiKey?: string
+  private getAccessToken?: () => Promise<string | undefined>
 
   constructor(options: SanctumClientOptions = {}) {
     const fromEnv =
@@ -26,12 +29,15 @@ export class SanctumClient {
     this.apiKey =
       options.apiKey ??
       (typeof process !== 'undefined' ? process.env.SANCTUM_API_KEY : undefined)
+    this.getAccessToken = options.getAccessToken
   }
 
-  private headers(json = true): HeadersInit {
+  private async headers(json = true): Promise<HeadersInit> {
     const h: Record<string, string> = {}
     if (json) h['Content-Type'] = 'application/json'
-    if (this.apiKey) h['X-Sanctum-Key'] = this.apiKey
+    const token = this.getAccessToken ? await this.getAccessToken() : undefined
+    if (token) h['Authorization'] = `Bearer ${token}`
+    else if (this.apiKey) h['X-Sanctum-Key'] = this.apiKey
     return h
   }
 
@@ -41,7 +47,7 @@ export class SanctumClient {
   ): Promise<ActionResult> {
     const res = await fetch(`${this.baseUrl}/v1/actions/verify`, {
       method: 'POST',
-      headers: this.headers(),
+      headers: await this.headers(),
       body: JSON.stringify({
         ...request,
         offlineMode: options.offlineMode ?? this.offlineMode,
@@ -57,14 +63,16 @@ export class SanctumClient {
 
   async getAudit(limit = 50): Promise<ActionResult[]> {
     const res = await fetch(`${this.baseUrl}/v1/audit?limit=${limit}`, {
-      headers: this.headers(false),
+      headers: await this.headers(false),
     })
     if (!res.ok) throw new Error(`Sanctum audit failed: ${res.status}`)
     return res.json() as Promise<ActionResult[]>
   }
 
   async getPolicies(): Promise<PolicyMap> {
-    const res = await fetch(`${this.baseUrl}/v1/policies`, { headers: this.headers(false) })
+    const res = await fetch(`${this.baseUrl}/v1/policies`, {
+      headers: await this.headers(false),
+    })
     if (!res.ok) throw new Error(`Sanctum policies failed: ${res.status}`)
     return res.json() as Promise<PolicyMap>
   }
@@ -72,7 +80,7 @@ export class SanctumClient {
   async updatePolicy(action: string, patch: Partial<PolicyMap[string]>): Promise<PolicyMap> {
     const res = await fetch(`${this.baseUrl}/v1/policies/${encodeURIComponent(action)}`, {
       method: 'PATCH',
-      headers: this.headers(),
+      headers: await this.headers(),
       body: JSON.stringify(patch),
     })
     if (!res.ok) throw new Error(`Sanctum policy update failed: ${res.status}`)
@@ -80,7 +88,9 @@ export class SanctumClient {
   }
 
   async getStatus(): Promise<RuntimeStatus> {
-    const res = await fetch(`${this.baseUrl}/v1/status`, { headers: this.headers(false) })
+    const res = await fetch(`${this.baseUrl}/v1/status`, {
+      headers: await this.headers(false),
+    })
     if (!res.ok) throw new Error(`Sanctum status failed: ${res.status}`)
     return res.json() as Promise<RuntimeStatus>
   }
@@ -95,7 +105,7 @@ export class SanctumClient {
   ): Promise<ActionResult> {
     const res = await fetch(`${this.baseUrl}/v1/audit/${encodeURIComponent(id)}/resolve`, {
       method: 'POST',
-      headers: this.headers(),
+      headers: await this.headers(),
       body: JSON.stringify(body),
     })
     if (!res.ok) {

@@ -33,6 +33,16 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    envDir: repoRoot,
+    envPrefix: ['VITE_', 'SUPABASE_'],
+    define: {
+      'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(
+        env.VITE_SUPABASE_URL ?? env.SUPABASE_URL ?? '',
+      ),
+      'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(
+        env.VITE_SUPABASE_ANON_KEY ?? env.SUPABASE_ANON_KEY ?? '',
+      ),
+    },
     server: {
       host,
       port,
@@ -45,7 +55,8 @@ export default defineConfig(({ mode }) => {
           configure: (proxy) => {
             const key = env.SANCTUM_API_KEY?.trim()
             if (!key) return
-            proxy.on('proxyReq', (proxyReq) => {
+            proxy.on('proxyReq', (proxyReq, req) => {
+              if (req.headers.authorization) return
               proxyReq.setHeader('X-Sanctum-Key', key)
             })
           },

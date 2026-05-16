@@ -1,7 +1,11 @@
 import { SanctumClient } from '@sanctum-runtime/sdk'
 import type { ActionPolicy, ActionRequest, ActionResult, PolicyMap, RuntimeStatus } from '@sanctum-runtime/sdk'
+import { getAccessToken } from './supabase'
 
-export const api = new SanctumClient({ baseUrl: '/api' })
+export const api = new SanctumClient({
+  baseUrl: '/api',
+  getAccessToken,
+})
 
 export type PolicyResponse = 'approve' | 'verify' | 'block'
 

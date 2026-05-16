@@ -5,6 +5,11 @@ import Fastify from 'fastify'
 import { ZodError } from 'zod'
 import { z } from 'zod'
 import {
+  authenticateRequest,
+  getSupabaseAuthConfig,
+  isSupabaseAuthEnabled,
+} from './auth.js'
+import {
   loadRepoEnv,
   resolveApiListenTarget,
   resolveDashboardUrl,
@@ -15,6 +20,7 @@ const { host, port } = resolveApiListenTarget()
 const dashboardUrl = resolveDashboardUrl()
 const forceOffline = process.env.SANCTUM_OFFLINE_MODE === 'true'
 const apiKey = process.env.SANCTUM_API_KEY?.trim() || undefined
+const supabaseAuth = getSupabaseAuthConfig()
 
 const runtime = new RuntimeEngine({
   forceOfflineMode: forceOffline,
@@ -47,11 +53,28 @@ app.setErrorHandler((err, _req, reply) => {
 })
 
 app.addHook('onRequest', async (req, reply) => {
-  if (!apiKey) return
-  if (req.url === '/health' || req.url === '/') return
-  const key = req.headers['x-sanctum-key']
-  if (key !== apiKey) {
-    return reply.status(401).send({ error: 'unauthorized' })
+  const path = req.url.split('?')[0]
+  if (path === '/health' || path === '/') return
+
+  const auth = await authenticateRequest(req.headers, {
+    supabase: supabaseAuth,
+    apiKey,
+  })
+
+  if (!auth.ok) {
+    return reply.status(401).send({
+      error: 'unauthorized',
+      hint: isSupabaseAuthEnabled()
+        ? 'Sign in via the dashboard (Bearer JWT) or send X-Sanctum-Key for scripts'
+        : 'Set X-Sanctum-Key or configure Supabase auth',
+    })
+  }
+
+  if (auth.method === 'supabase') {
+    ;(req as { sanctumUser?: { id: string; email?: string } }).sanctumUser = {
+      id: auth.user.id,
+      email: auth.user.email,
+    }
   }
 })
 
@@ -62,7 +85,11 @@ app.get('/', async () => ({
   version: '0.1.0',
   docs: 'See DEVELOPMENT.md in the repo',
   dashboard: dashboardUrl,
-  auth: apiKey ? 'X-Sanctum-Key required' : 'none (local dev)',
+  auth: supabaseAuth
+    ? 'Supabase JWT (Bearer) or X-Sanctum-Key'
+    : apiKey
+      ? 'X-Sanctum-Key required'
+      : 'none (local dev)',
   endpoints: {
     health: 'GET /health',
     status: 'GET /v1/status',
@@ -183,6 +210,7 @@ app.post('/analyze-action', async (req) => {
 try {
   await app.listen({ port, host })
   console.log(`Sanctum API listening on http://${host}:${port}`)
+  if (supabaseAuth) console.log('Supabase JWT auth enabled')
   if (apiKey) console.log('API key auth enabled (X-Sanctum-Key)')
 } catch (err) {
   app.log.error(err)

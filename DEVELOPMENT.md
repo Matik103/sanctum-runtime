@@ -94,6 +94,8 @@ npm run dev:dashboard  # DASHBOARD_HOST:DASHBOARD_PORT from .env
 
 The runtime stores a `humanRecord` on each audit entry; the dashboard renders it in **Audit logs** and exports.
 
+**Supabase auth (optional):** See [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) for dashboard login + JWT on the API.
+
 **OSS adoption:** See [OPEN_CORE.md](./OPEN_CORE.md) for public vs enterprise boundaries.
 
 **API (examples):**

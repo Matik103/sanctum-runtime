@@ -8,6 +8,8 @@ import {
   ShieldAlert,
 } from 'lucide-react'
 import type { RuntimeStatus } from '@sanctum-runtime/sdk'
+import { useAuth } from '../auth/AuthProvider'
+import { isSupabaseConfigured } from '../lib/supabase'
 
 export type PageId =
   | 'overview'
@@ -35,6 +37,7 @@ type Props = {
 }
 
 export function Sidebar({ page, onPage, status }: Props) {
+  const { user, signOut } = useAuth()
   const ollamaOk = status?.ollamaConnected ?? false
   const offline = status?.systemOfflineCapable ?? false
 
@@ -70,6 +73,24 @@ export function Sidebar({ page, onPage, status }: Props) {
         {offline && (
           <div style={{ marginTop: '0.35rem', color: 'var(--warning)' }}>
             Heuristic fallback ready
+          </div>
+        )}
+        {isSupabaseConfigured && user && (
+          <div style={{ marginTop: '0.75rem', fontSize: '0.78rem', color: 'var(--muted)' }}>
+            {user.email}
+            <button
+              type="button"
+              className="btn btn-ghost"
+              style={{
+                display: 'block',
+                marginTop: '0.35rem',
+                padding: '0.25rem 0',
+                fontSize: '0.78rem',
+              }}
+              onClick={() => signOut()}
+            >
+              Sign out
+            </button>
           </div>
         )}
       </div>

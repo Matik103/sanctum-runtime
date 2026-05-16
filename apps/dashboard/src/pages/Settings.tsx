@@ -1,8 +1,11 @@
 import type { RuntimeStatus } from '@sanctum-runtime/sdk'
+import { useAuth } from '../auth/AuthProvider'
+import { isSupabaseConfigured } from '../lib/supabase'
 
 type Props = { status: RuntimeStatus | null }
 
 export function Settings({ status }: Props) {
+  const { user } = useAuth()
   return (
     <>
       <header className="page-header">
@@ -38,10 +41,25 @@ export function Settings({ status }: Props) {
         </section>
 
         <section className="card">
-          <h3 style={{ marginTop: 0 }}>Security</h3>
-          <p style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
-            JWT, API keys, and device attestation — Phase 2 (Supabase auth per PRD).
-          </p>
+          <h3 style={{ marginTop: 0 }}>Authentication</h3>
+          {isSupabaseConfigured ? (
+            <>
+              <p style={{ fontSize: '0.85rem' }}>
+                Supabase: <strong style={{ color: 'var(--success)' }}>Connected</strong>
+              </p>
+              <p style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
+                Signed in as {user?.email ?? '—'}. JWT is sent to the runtime API on each request.
+              </p>
+              <p style={{ color: 'var(--muted)', fontSize: '0.8rem', marginTop: '0.5rem' }}>
+                Setup guide: <code>SUPABASE_SETUP.md</code> in the repo root.
+              </p>
+            </>
+          ) : (
+            <p style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
+              Supabase not configured — dashboard is open without login. Add{' '}
+              <code>SUPABASE_URL</code> and keys to <code>.env</code> (see SUPABASE_SETUP.md).
+            </p>
+          )}
         </section>
       </div>
     </>
