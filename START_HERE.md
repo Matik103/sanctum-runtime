@@ -118,6 +118,7 @@ Before you ship or move to the next product stage, confirm:
 - [ ] (Optional) Ollama running for online model path
 - [ ] (Optional) Dashboard at `DASHBOARD_URL` for operators
 - [ ] (Optional) [HOSTED.md](./HOSTED.md) if deploying API to your infra
+- [ ] (Production) [PRODUCTION_OPS.md](./PRODUCTION_OPS.md) — Render + Supabase + dashboard + marketing
 - [ ] `awaitVerification` on `protectAgent` if operators approve in dashboard
 
 ## Your model, your policies (adoption)

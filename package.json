@@ -45,6 +45,8 @@
     "build:sdk": "npm run build -w @sanctum-runtime/sdk",
     "build:adapter": "npm run build -w @sanctum-runtime/adapter-agent-runtime",
     "build:packages": "npm run build:sdk && npm run build:adapter",
+    "build:dashboard": "npm run build:sdk && npm run build -w @sanctum/dashboard",
+    "production:check": "node scripts/production-check.mjs",
     "predev:runtime": "node scripts/ensure-env.mjs && npm run build:sdk",
     "predev": "node scripts/ensure-env.mjs",
     "presmoke": "node scripts/ensure-env.mjs",

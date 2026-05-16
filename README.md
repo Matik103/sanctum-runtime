@@ -12,6 +12,7 @@ One runtime for **agents, robots, smart home, industrial systems, and workflows*
 | | |
 |---|---|
 | **Start** | [START_HERE.md](./START_HERE.md) · [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md) · [Sanctum vs guardrails](./DEVELOPER_GUIDE.md#sanctum-vs-guardrails) · [CATEGORIES.md](./CATEGORIES.md) |
+| **Production** | [PRODUCTION_OPS.md](./PRODUCTION_OPS.md) · [RENDER.md](./RENDER.md) · [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) |
 | **Install** | `npm install @sanctum-runtime/sdk` · [adapter](https://www.npmjs.com/package/@sanctum-runtime/adapter-agent-runtime) |
 | **Help** | [SUPPORT.md](./SUPPORT.md) · [Issues](https://github.com/Matik103/sanctum-runtime/issues) · [Discussions](https://github.com/Matik103/sanctum-runtime/discussions) |
 | **Scope** | [OPEN_CORE.md](./OPEN_CORE.md) (OSS vs enterprise) |

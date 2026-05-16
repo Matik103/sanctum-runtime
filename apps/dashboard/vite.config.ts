@@ -27,11 +27,11 @@ function dashboardServer(env: Record<string, string>): { host: string; port: num
   throw new Error('Set DASHBOARD_URL or DASHBOARD_HOST+DASHBOARD_PORT in repo .env')
 }
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode, command }) => {
   const env = loadEnv(mode, repoRoot, '')
-  const { host, port } = dashboardServer(env)
+  const isServe = command === 'serve'
 
-  return {
+  const config: import('vite').UserConfig = {
     plugins: [react()],
     envDir: repoRoot,
     envPrefix: ['VITE_', 'SUPABASE_'],
@@ -42,8 +42,15 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(
         env.VITE_SUPABASE_ANON_KEY ?? env.SUPABASE_ANON_KEY ?? '',
       ),
+      'import.meta.env.VITE_SANCTUM_API_URL': JSON.stringify(
+        env.VITE_SANCTUM_API_URL ?? env.SANCTUM_API_URL ?? '',
+      ),
     },
-    server: {
+  }
+
+  if (isServe) {
+    const { host, port } = dashboardServer(env)
+    config.server = {
       host,
       port,
       strictPort: true,
@@ -62,6 +69,8 @@ export default defineConfig(({ mode }) => {
           },
         },
       },
-    },
+    }
   }
+
+  return config
 })

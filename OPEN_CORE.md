@@ -8,6 +8,8 @@ Sanctum uses an **open-core** model: this repository is the **public adoption la
 
 New here? → [START_HERE.md](./START_HERE.md) · [CATEGORIES.md](./CATEGORIES.md) · [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md)
 
+**Production deploy:** [PRODUCTION_OPS.md](./PRODUCTION_OPS.md) (Render API + Supabase + dashboard + marketing site)
+
 ---
 
 ## Start using (public / MIT)

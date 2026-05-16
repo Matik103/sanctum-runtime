@@ -1,0 +1,90 @@
+/**
+ * Quick production readiness check (API + optional webhooks + Supabase hint).
+ *
+ *   SANCTUM_API_URL=... SANCTUM_API_KEY=... npm run production:check
+ */
+const API = process.env.SANCTUM_API_URL?.replace(/\/$/, '')
+const KEY = process.env.SANCTUM_API_KEY?.trim()
+const DASHBOARD = process.env.DASHBOARD_URL?.replace(/\/$/, '')
+
+if (!API) {
+  console.error('Set SANCTUM_API_URL')
+  process.exit(1)
+}
+
+let failed = 0
+function ok(m) {
+  console.log(`✓ ${m}`)
+}
+function bad(m, d) {
+  failed++
+  console.error(`✗ ${m}${d ? ` — ${d}` : ''}`)
+}
+
+async function get(path, auth = false) {
+  const headers = {}
+  if (auth && KEY) headers['X-Sanctum-Key'] = KEY
+  const res = await fetch(`${API}${path}`, { headers })
+  const text = await res.text()
+  return { status: res.status, body: text ? JSON.parse(text) : null }
+}
+
+async function main() {
+  console.log(`Production check → ${API}\n`)
+
+  try {
+    const health = await get('/health')
+    if (health.status === 200 && health.body?.ok) {
+      ok(`GET /health (policies=${health.body.policyCount}, audit=${health.body.auditCount})`)
+    } else bad('GET /health', health.status)
+  } catch (e) {
+    bad('GET /health', e.message)
+  }
+
+  if (KEY) {
+    try {
+      const status = await get('/v1/status', true)
+      if (status.status === 200) ok('GET /v1/status (authenticated)')
+      else bad('GET /v1/status', status.status)
+    } catch (e) {
+      bad('GET /v1/status', e.message)
+    }
+
+    try {
+      const hooks = await get('/v1/webhooks/status', true)
+      if (hooks.status === 200) {
+        ok(
+          `webhooks configured=${hooks.body?.configured} urls=${hooks.body?.urlCount ?? 0}`,
+        )
+      } else bad('GET /v1/webhooks/status', hooks.status)
+    } catch (e) {
+      bad('webhooks status', e.message)
+    }
+  } else {
+    console.log('○ Set SANCTUM_API_KEY to test authenticated routes')
+  }
+
+  if (DASHBOARD) {
+    try {
+      const res = await fetch(DASHBOARD, { method: 'HEAD' })
+      if (res.ok) ok(`dashboard reachable (${DASHBOARD})`)
+      else bad('dashboard HEAD', res.status)
+    } catch (e) {
+      bad('dashboard reachable', e.message)
+    }
+  } else {
+    console.log('○ Set DASHBOARD_URL to probe hosted dashboard')
+  }
+
+  console.log(
+    '\nSupabase: confirm audit_events rows in Table Editor after a verify call.',
+  )
+  console.log('Full checklist: PRODUCTION_OPS.md §6\n')
+
+  process.exit(failed ? 1 : 0)
+}
+
+main().catch((e) => {
+  console.error(e)
+  process.exit(1)
+})

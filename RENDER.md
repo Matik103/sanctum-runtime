@@ -2,6 +2,8 @@
 
 Small **Web Service** to run the Sanctum Runtime API for end-to-end testing. Dashboard and Ollama are optional (see below).
 
+**Full production stack (API + Supabase + dashboard + marketing):** [PRODUCTION_OPS.md](./PRODUCTION_OPS.md)
+
 ---
 
 ## What you will get
@@ -202,8 +204,19 @@ curl -s -H "X-Sanctum-Key: $SANCTUM_API_KEY" "$SANCTUM_API_URL/v1/verifications/
 
 ---
 
+## Part 2 — Dashboard static site
+
+See [PRODUCTION_OPS.md §3](./PRODUCTION_OPS.md#3-dashboard-static-site-on-render):
+
+- **Build:** `npm ci && npm run build:sdk && npm run build:dashboard`
+- **Publish:** `apps/dashboard/dist`
+- **Build env:** `VITE_SANCTUM_API_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+- **API env:** `DASHBOARD_URL=https://your-dashboard.onrender.com`
+
+---
+
 ## Next after Render passes
 
 - [ ] Teammate repeats Steps 6–7 without your help  
-- [ ] Optional: Supabase audit mirror ([SUPABASE_SETUP.md](./SUPABASE_SETUP.md))  
-- [ ] Move to next product phase per [OPEN_CORE.md](./OPEN_CORE.md)
+- [ ] [PRODUCTION_OPS.md](./PRODUCTION_OPS.md) — Supabase + dashboard + marketing  
+- [ ] `npm run production:check` against your URLs

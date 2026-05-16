@@ -100,8 +100,19 @@ API log should include: `Supabase JWT auth enabled`
 
 ---
 
+## Production (Render API + hosted dashboard)
+
+1. Run migrations (Step 4) on your Supabase project.
+2. Add **API** env on Render: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
+3. **Authentication** → **URL configuration** → set **Site URL** and **Redirect URLs** to your hosted dashboard (e.g. `https://sanctum-dashboard.onrender.com/**`).
+4. Build dashboard with `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` (see [PRODUCTION_OPS.md](./PRODUCTION_OPS.md)).
+
+Audit entries sync to `audit_events` when the API runs with service role configured.
+
+---
+
 ## Security
 
 - Never commit `.env` or paste **service_role** in chat/screenshots
-- Never put `SUPABASE_SERVICE_ROLE_KEY` in the dashboard or marketing site
-- For production, use RLS on all user tables and restrict API `HOST` to private networks or add API key + JWT together
+- Never put `SUPABASE_SERVICE_ROLE_KEY` in the dashboard static build or marketing site
+- For production, use RLS on all user tables; keep `SANCTUM_API_KEY` for scripts and JWT for dashboard operators
