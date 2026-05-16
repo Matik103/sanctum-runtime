@@ -52,6 +52,7 @@
     "seed:production": "node scripts/seed-production-demo.mjs",
     "example:connect": "tsx examples/runtime-connect/run.ts",
     "example:memory": "tsx examples/agent-memory/run.ts",
+    "example:memory-rotate": "tsx examples/agent-memory/rotate.ts",
     "example:marketplace": "tsx examples/marketplace-connect/run.ts",
     "smoke:control-plane": "node scripts/smoke-control-plane.mjs",
     "env:pull": "node scripts/pull-supabase-env.mjs",

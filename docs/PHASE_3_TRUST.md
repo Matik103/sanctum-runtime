@@ -67,4 +67,4 @@ Optional `SANCTUM_ATTESTATION_SECRET` (≥16 chars) for HMAC tokens. If unset, d
 
 - Hardware attestation (TPM quote verification)
 - Policy gates on `attestation_status === 'verified'`
-- Key rotation / re-wrap API
+- Key rotation | **Done** | `rotateAgentMemoryKeys()` client-side re-wrap |

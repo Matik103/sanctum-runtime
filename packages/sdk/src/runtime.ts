@@ -78,6 +78,34 @@ export class SanctumRuntime {
    * Encrypted memory vault for an agent. Ciphertext is stored in the control plane;
    * decryption keys never leave the host (SANCTUM_MEMORY_KEY).
    */
+  /**
+   * Re-wrap all encrypted memory for an agent under a new SANCTUM_MEMORY_KEY.
+   */
+  async rotateAgentMemoryKeys(
+    agentId: string,
+    newEncryptionKey: string,
+    options?: { oldEncryptionKey?: string; salt?: string },
+  ) {
+    if (!this.control.runtimeId) throw new Error('Call connect() before rotateAgentMemoryKeys()')
+    const oldKey = options?.oldEncryptionKey ?? resolveMemoryKey()
+    const vault = this.memory(agentId, {
+      encryptionKey: oldKey,
+      salt: options?.salt,
+    })
+    const result = await vault.rotateKey(newEncryptionKey, {
+      oldEncryptionKey: oldKey,
+    })
+    if (this.control.connected) {
+      void this.emitEvent('memory.key_rotated', {
+        agentId,
+        rotated: result.rotated,
+        failed: result.failed.length,
+        newKeyHint: result.newKeyHint,
+      })
+    }
+    return result
+  }
+
   memory(
     agentId: string,
     options?: Pick<AgentMemoryVaultOptions, 'encryptionKey' | 'salt'>,

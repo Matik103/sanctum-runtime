@@ -157,6 +157,7 @@ Pass `mode` on `connect()`.
 | `operator.override` | Manual dashboard resolve |
 | `memory.updated` | Encrypted memory PUT |
 | `memory.deleted` | Encrypted memory DELETE |
+| `memory.key_rotated` | After `rotateAgentMemoryKeys()` |
 
 Emit custom types with `emitEvent()`.
 

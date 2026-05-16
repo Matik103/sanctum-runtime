@@ -52,6 +52,7 @@ export {
   memoryKeyHint,
   resolveMemoryKey,
   type AgentMemoryVaultOptions,
+  type MemoryRotateResult,
 } from './agent-memory.js'
 export {
   MarketplaceClient,

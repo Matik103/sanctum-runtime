@@ -8,7 +8,7 @@ Zero-knowledge memory vault: the control plane stores **ciphertext only**. Decry
 export SANCTUM_MEMORY_KEY="your-long-local-secret-at-least-16-chars"
 ```
 
-Never commit this key. Rotate by re-encrypting entries with a new key (future: key rotation API).
+Never commit this key.
 
 ## SDK
 
@@ -37,7 +37,23 @@ Encryption: **AES-256-GCM**, key derived via scrypt from `SANCTUM_MEMORY_KEY` + 
 | PUT | `…/memory/:key` — body `{ ciphertext, iv, algorithm?, keyHint? }` |
 | DELETE | `…/memory/:key` |
 
-Events: `memory.updated`, `memory.deleted`.
+Events: `memory.updated`, `memory.deleted`, `memory.key_rotated`.
+
+## Key rotation
+
+Re-wrap all entries under a new key on the **client** (plaintext never leaves the host):
+
+```ts
+await runtime.rotateAgentMemoryKeys('agent_nav', newKey, {
+  oldEncryptionKey: process.env.SANCTUM_OLD_MEMORY_KEY,
+})
+```
+
+```bash
+SANCTUM_OLD_MEMORY_KEY=... SANCTUM_MEMORY_KEY=... npm run example:memory-rotate
+```
+
+Skips entries whose `keyHint` does not match the old key. Check mismatches with `runtime.memory(agentId).listKeyMismatch()`.
 
 ## Database
 
