@@ -33,6 +33,30 @@ export class SanctumClient {
     this.getAccessToken = options.getAccessToken
   }
 
+  getBaseUrl(): string {
+    return this.baseUrl
+  }
+
+  async request<T = unknown>(
+    method: string,
+    path: string,
+    body?: unknown,
+  ): Promise<T> {
+    const res = await fetch(`${this.baseUrl}${path}`, {
+      method,
+      headers: await this.headers(body != null),
+      body: body != null ? JSON.stringify(body) : undefined,
+    })
+    if (!res.ok) {
+      throw new Error(`Sanctum ${method} ${path} failed: ${res.status} ${await res.text()}`)
+    }
+    if (res.status === 204 || !res.headers.get('content-length')) {
+      return undefined as T
+    }
+    const text = await res.text()
+    return text ? (JSON.parse(text) as T) : (undefined as T)
+  }
+
   private async headers(json = true): Promise<HeadersInit> {
     const h: Record<string, string> = {}
     if (json) h['Content-Type'] = 'application/json'

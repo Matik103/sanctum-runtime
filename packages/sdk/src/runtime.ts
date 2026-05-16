@@ -1,4 +1,10 @@
 import { SanctumClient, type SanctumClientOptions } from './client.js'
+import {
+  ControlPlaneSession,
+  type ConnectOptions,
+  type ConnectResult,
+  type RegisterAgentOptions,
+} from './control-plane.js'
 import { attachSanctumRuntime, createSanctumMiddleware } from './middleware.js'
 import type { ActionPolicy, ActionRequest, ActionResult, PolicyMap } from './types.js'
 import type { VerificationStatus } from './verification.js'
@@ -19,16 +25,49 @@ function policyModeToPatch(mode: PolicyMode): Partial<ActionPolicy> {
 /** Runtime entry — embed in agents, backends, robotics hosts. */
 export class SanctumRuntime {
   private client: SanctumClient
+  readonly control: ControlPlaneSession
 
   constructor(options: SanctumClientOptions = {}) {
     this.client = new SanctumClient(options)
+    this.control = new ControlPlaneSession(this.client)
   }
 
-  verifyAction(
+  /** Register this host with the Sanctum control plane (telemetry + heartbeat). */
+  connect(options: ConnectOptions): Promise<ConnectResult> {
+    return this.control.connect(options)
+  }
+
+  disconnect(): Promise<void> {
+    return this.control.disconnect()
+  }
+
+  registerAgent(options: RegisterAgentOptions) {
+    return this.control.registerAgent(options)
+  }
+
+  emitEvent(eventType: string, payload?: Record<string, unknown>, agentId?: string) {
+    return this.control.emitEvent(eventType, payload, agentId)
+  }
+
+  async verifyAction(
     request: ActionRequest,
     options?: { offlineMode?: boolean; correlationId?: string },
   ): Promise<ActionResult> {
-    return this.client.verifyAction(request, options)
+    const result = await this.client.verifyAction(request, options)
+    if (this.control.connected) {
+      const type =
+        result.decision === 'BLOCKED'
+          ? 'policy.blocked'
+          : result.decision === 'REQUIRE_VERIFICATION'
+            ? 'policy.verification_required'
+            : 'policy.approved'
+      void this.control.emitEvent(type, {
+        action: request.action,
+        decision: result.decision,
+        correlationId: result.correlationId,
+      }, request.actor)
+    }
+    return result
   }
 
   getPolicies(): Promise<PolicyMap> {

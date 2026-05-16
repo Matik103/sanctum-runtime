@@ -5,6 +5,7 @@ import Fastify from 'fastify'
 import { ZodError } from 'zod'
 import { z } from 'zod'
 import { registerApiKeyRoutes } from './api-keys.js'
+import { registerControlPlaneRoutes } from './control-plane-routes.js'
 import {
   authenticateRequest,
   getSupabaseAuthConfig,
@@ -108,12 +109,15 @@ app.get('/', async () => ({
     policiesYaml: 'GET /v1/policies/export.yaml · POST /v1/policies/import.yaml',
     webhooks: 'GET /v1/webhooks/status',
     apiKeys: 'GET|POST /v1/api-keys · DELETE /v1/api-keys/:id',
+    runtimes: 'POST /v1/runtimes/connect · GET /v1/runtimes · heartbeat/agents/events',
+    eventStream: 'GET /v1/events/stream (SSE)',
     analyze: 'POST /analyze-action',
   },
 }))
 
 if (supabaseAuth) {
   await registerApiKeyRoutes(app, supabaseAuth)
+  await registerControlPlaneRoutes(app)
 }
 
 app.get('/health', async () => {

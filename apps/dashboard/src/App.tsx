@@ -7,6 +7,7 @@ import { useDashboard } from './hooks/useDashboard'
 import { Sidebar, type PageId } from './layout/Sidebar'
 import { AuditLogs } from './pages/AuditLogs'
 import { Devices } from './pages/Devices'
+import { Fleet } from './pages/Fleet'
 import { Overview } from './pages/Overview'
 import { Policies } from './pages/Policies'
 import { RuntimeActivity } from './pages/RuntimeActivity'
@@ -87,6 +88,7 @@ export function App() {
           />
         )}
         {page === 'devices' && <Devices status={status} />}
+        {page === 'fleet' && <Fleet />}
         {page === 'audit' && <AuditLogs audit={audit} onSelect={onSelect} />}
         {page === 'settings' && <Settings status={status} />}
       </main>

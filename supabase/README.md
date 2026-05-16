@@ -13,6 +13,7 @@
 | `007_views_and_audit_fixes.sql` | indexes, `pending_verifications` view |
 | `008_auth_portal.sql` | `portal_type`, enterprise domains, org bootstrap, `my_profile` |
 | `009_api_keys.sql` | Operator API key registry (hash + prefix) |
+| `010_control_plane.sql` | Runtime registry, agents, event stream |
 
 ## Deploy to linked project
 

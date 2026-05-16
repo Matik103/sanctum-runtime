@@ -2,6 +2,7 @@ import {
   Activity,
   LayoutDashboard,
   Monitor,
+  Radio,
   ScrollText,
   Settings,
   Shield,
@@ -18,6 +19,7 @@ export type PageId =
   | 'threats'
   | 'policies'
   | 'devices'
+  | 'fleet'
   | 'audit'
   | 'settings'
 
@@ -27,6 +29,7 @@ const NAV: { id: PageId; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'threats', label: 'Threat Monitor', icon: ShieldAlert },
   { id: 'policies', label: 'Policies', icon: Shield },
   { id: 'devices', label: 'Devices', icon: Monitor },
+  { id: 'fleet', label: 'Fleet', icon: Radio },
   { id: 'audit', label: 'Audit Logs', icon: ScrollText },
   { id: 'settings', label: 'Settings', icon: Settings },
 ]

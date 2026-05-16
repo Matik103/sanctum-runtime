@@ -27,3 +27,10 @@ export {
   type VerificationState,
   type VerificationStatus,
 } from './verification.js'
+export {
+  ControlPlaneSession,
+  type ConnectOptions,
+  type ConnectResult,
+  type RegisterAgentOptions,
+  type RuntimeMode,
+} from './control-plane.js'

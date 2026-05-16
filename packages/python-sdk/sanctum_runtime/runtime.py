@@ -3,7 +3,12 @@ from __future__ import annotations
 from typing import Literal
 
 from sanctum_runtime.client import SanctumClient
-from sanctum_runtime.errors import SanctumActionBlockedError, SanctumVerificationRequiredError
+from sanctum_runtime.control_plane import ControlPlaneSession
+from sanctum_runtime.errors import (
+  SanctumActionBlockedError,
+  SanctumApiError,
+  SanctumVerificationRequiredError,
+)
 from sanctum_runtime.types import ActionPolicy, ActionRequest, ActionResult, PolicyMap, PolicyMode
 
 PolicyMode = Literal["approve", "verify", "block"]
@@ -22,6 +27,19 @@ class SanctumRuntime:
 
   def __init__(self, client: SanctumClient | None = None, **client_kwargs: object) -> None:
     self._client = client or SanctumClient(**client_kwargs)  # type: ignore[arg-type]
+    self.control = ControlPlaneSession(self._client)
+
+  def connect(self, **kwargs: object) -> dict:
+    return self.control.connect(**kwargs)  # type: ignore[arg-type]
+
+  def disconnect(self) -> None:
+    self.control.disconnect()
+
+  def register_agent(self, **kwargs: object) -> object:
+    return self.control.register_agent(**kwargs)  # type: ignore[arg-type]
+
+  def emit_event(self, event_type: str, payload: dict | None = None, *, agent_id: str | None = None) -> object:
+    return self.control.emit_event(event_type, payload, agent_id=agent_id)
 
   @property
   def client(self) -> SanctumClient:
@@ -37,6 +55,23 @@ class SanctumRuntime:
   ) -> ActionResult:
     result = self._client.verify_action(request, **kwargs)  # type: ignore[arg-type]
     decision = result.get("decision")
+    if self.control.connected:
+      event_type = (
+        "policy.blocked"
+        if decision == "BLOCKED"
+        else "policy.verification_required"
+        if decision == "REQUIRE_VERIFICATION"
+        else "policy.approved"
+      )
+      self.control.emit_event(
+        event_type,
+        {
+          "action": request.get("action"),
+          "decision": decision,
+          "correlationId": result.get("correlationId"),
+        },
+        agent_id=request.get("actor"),
+      )
     if raise_on_block and decision == "BLOCKED":
       raise SanctumActionBlockedError(result)
     if raise_on_verify and decision == "REQUIRE_VERIFICATION":

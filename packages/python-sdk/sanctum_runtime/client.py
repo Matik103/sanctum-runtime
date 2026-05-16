@@ -57,6 +57,16 @@ class SanctumClient:
       headers["X-Sanctum-Key"] = self._api_key
     return headers
 
+  def request(
+    self,
+    method: str,
+    path: str,
+    body: dict[str, Any] | None = None,
+    *,
+    text_response: bool = False,
+  ) -> Any:
+    return self._request(method, path, json=body, text_response=text_response)
+
   def _request(
     self,
     method: str,
