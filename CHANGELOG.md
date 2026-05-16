@@ -13,6 +13,9 @@ All notable changes to the public Sanctum open-core runtime are documented here.
 
 - `npm run example:agent` handles `REQUIRE_VERIFICATION` correctly (SDK error imports from `@sanctum-runtime/sdk`)
 - Docs and marketing samples use `@sanctum-runtime/adapter-agent-runtime` instead of unpublished `@sanctum/adapter-agent-runtime`
+- Dashboard waits for API before Vite starts (`scripts/wait-for-api.mjs`); shows banner when API is down (avoids proxy 500 spam)
+- Cloudflare Workers Git builds use npm (`bun.lock` removed); `npm run cf:build` for dashboard deploy
+- `START_HERE.md` clarifies repo root, dashboard URL (5174) vs API (3001)
 
 ## [0.1.0] - 2026-05-15
 

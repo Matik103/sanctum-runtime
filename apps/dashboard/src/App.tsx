@@ -24,6 +24,7 @@ export function App() {
     setPolicy,
     pendingVerification,
     dismissVerification,
+    apiError,
   } = useDashboard()
 
   const onSelect = (e: ActionResult) => setSelected(e)
@@ -33,6 +34,20 @@ export function App() {
       <Sidebar page={page} onPage={setPage} status={status} />
 
       <main className="main">
+        {apiError && (
+          <div
+            className="card"
+            style={{
+              marginBottom: '1rem',
+              borderColor: 'var(--danger)',
+              color: 'var(--foreground)',
+              fontSize: '0.9rem',
+            }}
+          >
+            <strong>API unreachable</strong>
+            <p style={{ margin: '0.5rem 0 0', color: 'var(--muted)' }}>{apiError}</p>
+          </div>
+        )}
         {page === 'overview' && (
           <Overview
             audit={audit}

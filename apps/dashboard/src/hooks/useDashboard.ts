@@ -15,20 +15,32 @@ export function useDashboard() {
     status: null,
   })
   const [loading, setLoading] = useState(false)
+  const [apiError, setApiError] = useState<string | null>(null)
   const [pendingVerification, setPendingVerification] = useState<ActionResult | null>(
     null,
   )
 
   const refresh = useCallback(async () => {
-    const next = await fetchDashboard()
-    setData(next)
-    const pending = next.audit.find((e) => e.decision === 'REQUIRE_VERIFICATION')
-    setPendingVerification((cur) => cur ?? pending ?? null)
+    try {
+      const next = await fetchDashboard()
+      setData(next)
+      setApiError(null)
+      const pending = next.audit.find((e) => e.decision === 'REQUIRE_VERIFICATION')
+      setPendingVerification((cur) => cur ?? pending ?? null)
+    } catch (e) {
+      const msg =
+        e instanceof Error && e.message.includes('500')
+          ? 'Runtime API is not running. From the repo root run: npm run dev:runtime (or npm run dev:api in another terminal).'
+          : e instanceof Error
+            ? e.message
+            : 'Failed to reach runtime API'
+      setApiError(msg)
+    }
   }, [])
 
   useEffect(() => {
-    refresh().catch(console.error)
-    const id = setInterval(() => refresh().catch(console.error), 5000)
+    refresh()
+    const id = setInterval(() => refresh(), 5000)
     return () => clearInterval(id)
   }, [refresh])
 
@@ -56,6 +68,7 @@ export function useDashboard() {
   return {
     ...data,
     loading,
+    apiError,
     refresh,
     runDemo,
     setPolicy,

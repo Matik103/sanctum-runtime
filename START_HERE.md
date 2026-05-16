@@ -13,7 +13,11 @@ See [`.env.example`](./.env.example) for every variable.
 
 ## 2. Run
 
+**Run all commands from the repo root** (`sanctum-runtime/`, where `package.json` lives).  
+If you see `ENOENT ... package.json` in your home folder, run `cd` into the clone first.
+
 ```bash
+cd sanctum-runtime   # if you are not already here
 npm install
 npm run dev:runtime
 npm run smoke
@@ -28,8 +32,10 @@ export SANCTUM_API_URL=http://127.0.0.1:3001   # your API from .env
 node examples/npm-consumer/run.mjs             # from a clone, or copy run.mjs into your app
 ```
 
-Open the dashboard at the URL from your `DASHBOARD_URL` (or `DASHBOARD_HOST` + `DASHBOARD_PORT`).  
-Health check: `{SANCTUM_API_URL or http://HOST:PORT}/health`
+- **Dashboard UI:** `http://127.0.0.1:5174` (from `DASHBOARD_*` in `.env`) — mission control  
+- **API only (JSON):** `http://127.0.0.1:3001` — not the dashboard; use `/health` to probe the API  
+
+If the dashboard shows blank / MIME errors, stop dev servers, run `rm -rf apps/dashboard/node_modules/.vite`, then `npm run dev:runtime` again and hard-refresh the browser.
 
 ## What is open source here?
 

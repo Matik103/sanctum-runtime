@@ -14,7 +14,7 @@
     "dev": "vite dev",
     "dev:api": "npm run dev -w @sanctum/api",
     "dev:dashboard": "npm run dev -w @sanctum/dashboard",
-    "dev:runtime": "concurrently -n api,dash -c blue,magenta \"npm run dev:api\" \"npm run dev:dashboard\"",
+    "dev:runtime": "concurrently -n api,dash -c blue,magenta \"npm run dev:api\" \"node scripts/wait-for-api.mjs && npm run dev:dashboard\"",
     "dev:all": "concurrently -n api,dash,site -c blue,magenta,green \"npm run dev:api\" \"npm run dev:dashboard\" \"npm run dev\"",
     "smoke": "tsx scripts/smoke-test.ts",
     "example:agent": "tsx examples/agent-gate/run.ts",
