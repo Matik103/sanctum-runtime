@@ -15,6 +15,11 @@ export type AgentProtectOptions<T> = {
   actor?: string
   correlationId?: string
   offlineMode?: boolean
+  /**
+   * After REQUIRE_VERIFICATION, poll until approved/blocked (uses correlationId).
+   * Approve in the dashboard, then the agent continues without a second verify call.
+   */
+  awaitVerification?: { timeoutMs?: number; pollIntervalMs?: number }
   /** Called only when decision is APPROVED. */
   execute: () => Promise<T>
 }
@@ -66,14 +71,24 @@ export class AgentRuntimeAdapter {
    * PRD integration north star: `sanctum.protect(agent)` style flows.
    */
   async protect<T>(options: AgentProtectOptions<T>): Promise<{ result: ActionResult; value: T }> {
-    const result = await this.verifyAction(
+    const correlationId = options.correlationId ?? crypto.randomUUID()
+    let result = await this.verifyAction(
       {
         actor: options.actor,
         action: options.action,
         context: options.context,
       },
-      { offlineMode: options.offlineMode, correlationId: options.correlationId },
+      { offlineMode: options.offlineMode, correlationId },
     )
+
+    if (result.decision === 'REQUIRE_VERIFICATION' && options.awaitVerification) {
+      const status = await this.runtime.waitForVerification(correlationId, options.awaitVerification)
+      if (status.status === 'blocked' || !status.entry) {
+        throw new SanctumActionBlockedError(status.entry ?? result)
+      }
+      result = status.entry
+    }
+
     assertExecutable(result.decision, result)
     const value = await options.execute()
     return { result, value }

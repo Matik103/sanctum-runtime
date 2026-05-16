@@ -1,9 +1,31 @@
 import { randomUUID } from 'node:crypto'
 import { AuditStore } from '@sanctum/audit-system'
+import {
+  createRiskModelFromEnv,
+  type RiskModelProvider,
+} from '@sanctum/risk-model'
 import { OllamaBridge } from '@sanctum/ollama-bridge'
 import { PolicyEngine } from '@sanctum/policy-engine'
-import type { ActionRequest, ActionResult, Decision, EvaluationMode, RiskLevel } from '@sanctum-runtime/sdk'
-import { buildHumanAuditRecord } from '@sanctum-runtime/sdk'
+import type {
+  ActionPolicy,
+  ActionRequest,
+  ActionResult,
+  Decision,
+  EvaluationMode,
+  PolicyMap,
+  RiskLevel,
+} from '@sanctum-runtime/sdk'
+import {
+  buildHumanAuditRecord,
+  verificationStateFromDecision,
+  type VerificationStatus,
+} from '@sanctum-runtime/sdk'
+import { maybeSyncAuditToSupabase } from './supabase-audit.js'
+import {
+  dispatchWebhooks,
+  getWebhookStatus,
+  webhookEventForDecision,
+} from './webhooks.js'
 import { detectAnomalies } from './anomaly.js'
 import { decisionReasoningSuffix, resolveDecision } from './decision.js'
 import { heuristicRiskFloor, heuristicRiskReason, mergeRisk } from './risk-heuristics.js'
@@ -11,6 +33,9 @@ import { heuristicRiskFloor, heuristicRiskReason, mergeRisk } from './risk-heuri
 export type RuntimeEngineOptions = {
   policyEngine?: PolicyEngine
   auditStore?: AuditStore
+  /** Pluggable risk model (Ollama, OpenAI-compatible, etc.). */
+  riskModel?: RiskModelProvider | null
+  /** @deprecated Use `riskModel` or env `SANCTUM_RISK_PROVIDER`. */
   ollamaBridge?: OllamaBridge
   forceOfflineMode?: boolean
 }
@@ -18,14 +43,34 @@ export type RuntimeEngineOptions = {
 export class RuntimeEngine {
   private policyEngine: PolicyEngine
   private auditStore: AuditStore
-  private ollamaBridge: OllamaBridge
+  private riskModel: RiskModelProvider | null
   private forceOfflineMode: boolean
 
   constructor(options: RuntimeEngineOptions = {}) {
     this.policyEngine = options.policyEngine ?? new PolicyEngine(undefined, undefined)
     this.auditStore = options.auditStore ?? new AuditStore()
-    this.ollamaBridge = options.ollamaBridge ?? new OllamaBridge()
+    if (options.riskModel !== undefined) {
+      this.riskModel = options.riskModel
+    } else if (options.ollamaBridge) {
+      const bridge = options.ollamaBridge
+      this.riskModel = {
+        providerId: 'ollama',
+        getInfo: () => ({
+          provider: 'ollama',
+          model: bridge.getModel(),
+          endpoint: bridge.getBaseUrl(),
+        }),
+        isConnected: () => bridge.isConnected(),
+        analyzeAction: (req, opts) => bridge.analyzeAction(req, opts),
+      }
+    } else {
+      this.riskModel = createRiskModelFromEnv()
+    }
     this.forceOfflineMode = options.forceOfflineMode ?? false
+  }
+
+  getRiskModel(): RiskModelProvider | null {
+    return this.riskModel
   }
 
   getPolicyEngine(): PolicyEngine {
@@ -73,7 +118,47 @@ export class RuntimeEngine {
       }),
     }
 
-    return (await this.auditStore.updateEntry(id, updated)) ?? null
+    const saved = (await this.auditStore.updateEntry(id, updated)) ?? null
+    if (saved) {
+      void dispatchWebhooks('verification.resolved', saved)
+      await maybeSyncAuditToSupabase(saved)
+    }
+    return saved
+  }
+
+  exportPoliciesYaml(): string {
+    return this.policyEngine.exportPoliciesYaml()
+  }
+
+  async importPoliciesYaml(yaml: string, merge = true): Promise<PolicyMap> {
+    return this.policyEngine.importPoliciesYaml(yaml, merge)
+  }
+
+  getWebhookStatus() {
+    return getWebhookStatus()
+  }
+
+  getVerificationStatus(correlationId: string): VerificationStatus {
+    const entry = this.auditStore.findLatestByCorrelationId(correlationId)
+    if (!entry) {
+      return { correlationId, status: 'not_found' }
+    }
+    return {
+      correlationId,
+      status: verificationStateFromDecision(entry.decision),
+      entry,
+    }
+  }
+
+  getPoliciesForOrg(orgId: string): PolicyMap {
+    const prefix = `${orgId}:`
+    const scoped: PolicyMap = {}
+    for (const [key, policy] of Object.entries(this.policyEngine.getPolicies())) {
+      if (key.startsWith(prefix)) {
+        scoped[key.slice(prefix.length)] = policy as ActionPolicy
+      }
+    }
+    return scoped
   }
 
   async verifyAction(
@@ -83,13 +168,15 @@ export class RuntimeEngine {
     const correlationId = options.correlationId ?? randomUUID()
     const id = randomUUID()
     const forceOffline = options.offlineMode === true
-    const ollamaConnected = await this.ollamaBridge.isConnected()
+    const riskModelConnected = this.riskModel
+      ? await this.riskModel.isConnected()
+      : false
     const useHeuristicsOnly =
-      forceOffline || this.forceOfflineMode || !ollamaConnected
+      forceOffline || this.forceOfflineMode || !riskModelConnected
 
     let evaluationMode: EvaluationMode = 'online_model'
     if (forceOffline) evaluationMode = 'offline_forced'
-    else if (!ollamaConnected) evaluationMode = 'offline_no_ollama'
+    else if (!riskModelConnected) evaluationMode = 'offline_no_ollama'
 
     const anomalyFlags = detectAnomalies(request)
     const riskFloor = heuristicRiskFloor(request, anomalyFlags)
@@ -117,8 +204,10 @@ export class RuntimeEngine {
       decision = 'BLOCKED'
       risk = 'high'
       reasoning = 'Blocked: suspicious prompt / injection pattern detected.'
-    } else if (!useHeuristicsOnly) {
-      const { assessment, error } = await this.ollamaBridge.analyzeAction(request)
+    } else if (!useHeuristicsOnly && this.riskModel) {
+      const { assessment, error } = await this.riskModel.analyzeAction(request, {
+        riskPrompt: policyEval.policy.riskPrompt,
+      })
 
       if (assessment) {
         modelInvoked = true
@@ -218,11 +307,16 @@ export class RuntimeEngine {
       offlineMode: evaluationMode !== 'online_model',
       evaluationMode,
       modelInvoked,
-      ollamaConnected,
+      ollamaConnected: riskModelConnected,
       humanRecord: buildHumanAuditRecord(partial),
     }
 
     await this.auditStore.append(result)
+    await maybeSyncAuditToSupabase(result)
+
+    const hookEvent = webhookEventForDecision(result.decision, false)
+    if (hookEvent) void dispatchWebhooks(hookEvent, result)
+
     return result
   }
 
@@ -231,17 +325,30 @@ export class RuntimeEngine {
     ollamaConnected: boolean
     ollamaUrl?: string
     ollamaModel?: string
+    riskProvider: 'ollama' | 'openai' | 'none'
+    riskModel?: string
+    riskModelConnected: boolean
+    riskEndpoint?: string
     systemOfflineCapable: boolean
     policyCount: number
     auditCount: number
   }> {
-    const ollamaConnected = await this.ollamaBridge.isConnected()
+    const info = this.riskModel?.getInfo()
+    const riskModelConnected = this.riskModel
+      ? await this.riskModel.isConnected()
+      : false
+    const provider = info?.provider ?? 'none'
     return {
       runtimeOnline: true,
-      ollamaConnected,
-      ollamaUrl: this.ollamaBridge.getBaseUrl(),
-      ollamaModel: ollamaConnected ? this.ollamaBridge.getModel() : undefined,
-      systemOfflineCapable: this.forceOfflineMode || !ollamaConnected,
+      ollamaConnected: provider === 'ollama' && riskModelConnected,
+      ollamaUrl: provider === 'ollama' ? info?.endpoint : undefined,
+      ollamaModel:
+        provider === 'ollama' && riskModelConnected ? info?.model : undefined,
+      riskProvider: provider,
+      riskModel: info?.model,
+      riskModelConnected,
+      riskEndpoint: info?.endpoint,
+      systemOfflineCapable: this.forceOfflineMode || !riskModelConnected,
       policyCount: Object.keys(this.policyEngine.getPolicies()).length,
       auditCount: this.auditStore.count(),
     }

@@ -8,8 +8,9 @@
   },
   "dependencies": {
     "@sanctum/audit-system": "*",
-    "@sanctum/ollama-bridge": "*",
+    "@sanctum/risk-model": "*",
     "@sanctum/policy-engine": "*",
-    "@sanctum-runtime/sdk": "*"
+    "@sanctum-runtime/sdk": "*",
+    "@supabase/supabase-js": "^2.105.4"
   }
 }

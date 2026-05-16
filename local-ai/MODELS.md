@@ -160,8 +160,30 @@ This downloads **separate** blobs into `~/.ollama` (extra disk). Prefer **Modelf
 
 ---
 
+## Connect to Sanctum Runtime
+
+Point the API at your Ollama model (any name you created):
+
+```bash
+# .env
+OLLAMA_URL=http://127.0.0.1:11434
+OLLAMA_MODEL=qwen2.5-3b-instruct   # or qwen2.5-0.5b-instruct, llama3.2, …
+# optional override:
+# SANCTUM_RISK_PROVIDER=ollama
+# SANCTUM_RISK_MODEL=qwen2.5-3b-instruct
+```
+
+Use **heuristics only** (no LLM): `SANCTUM_RISK_PROVIDER=none`.
+
+Use a **cloud/gateway** model instead: `SANCTUM_RISK_PROVIDER=openai` + `OPENAI_API_KEY` + `OPENAI_BASE_URL` — see [DEVELOPER_GUIDE.md](../DEVELOPER_GUIDE.md).
+
+Verify the runtime sees your model: `curl http://127.0.0.1:3001/v1/status` → `riskModelConnected: true`.
+
+---
+
 ## Related docs
 
+- [`DEVELOPER_GUIDE.md`](../DEVELOPER_GUIDE.md) — full OSS capabilities  
 - [`DEVELOPMENT.md`](../DEVELOPMENT.md) — repo dev entry point  
 - [`PRD.md`](../PRD.md) §9 — product direction for local AI  
 - PRD §5 — MVP trust features (policy / audit; not model-dependent)

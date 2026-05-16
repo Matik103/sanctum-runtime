@@ -62,4 +62,23 @@ export async function updatePolicyResponse(
   return api.updatePolicy(action, responseToPolicy(response))
 }
 
+export async function createPolicyResponse(
+  action: string,
+  response: PolicyResponse,
+): Promise<PolicyMap> {
+  return api.createPolicy(action, responseToPolicy(response))
+}
+
+export async function deletePolicyAction(action: string): Promise<PolicyMap> {
+  return api.deletePolicy(action)
+}
+
+export async function exportPoliciesYaml(): Promise<string> {
+  return api.exportPoliciesYaml()
+}
+
+export async function importPoliciesYaml(yaml: string, merge = true): Promise<PolicyMap> {
+  return api.importPoliciesYaml(yaml, merge)
+}
+
 export { type ActionRequest, type ActionResult, type PolicyMap, type RuntimeStatus }

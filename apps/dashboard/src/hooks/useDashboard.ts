@@ -106,6 +106,10 @@ export function useDashboard() {
     setData((d) => ({ ...d, policies }))
   }
 
+  const replacePolicies = (policies: DashboardData['policies']) => {
+    setData((d) => ({ ...d, policies }))
+  }
+
   const getPendingReviewQueue = useCallback(() => {
     return auditRef.current.filter(
       (e) =>
@@ -162,6 +166,7 @@ export function useDashboard() {
     apiError,
     refresh,
     setPolicy,
+    replacePolicies,
     pendingVerification,
     pendingReviewCount,
     pendingReviewQueue,

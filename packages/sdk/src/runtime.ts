@@ -1,6 +1,7 @@
 import { SanctumClient, type SanctumClientOptions } from './client.js'
 import { attachSanctumRuntime, createSanctumMiddleware } from './middleware.js'
 import type { ActionPolicy, ActionRequest, ActionResult, PolicyMap } from './types.js'
+import type { VerificationStatus } from './verification.js'
 
 export type PolicyMode = 'approve' | 'verify' | 'block'
 
@@ -42,6 +43,17 @@ export class SanctumRuntime {
     return this.client.getAudit(limit)
   }
 
+  getVerificationStatus(correlationId: string): Promise<VerificationStatus> {
+    return this.client.getVerificationStatus(correlationId)
+  }
+
+  waitForVerification(
+    correlationId: string,
+    options?: { timeoutMs?: number; pollIntervalMs?: number },
+  ): Promise<VerificationStatus> {
+    return this.client.waitForVerification(correlationId, options)
+  }
+
   resolveAuditEntry(
     id: string,
     body: {
@@ -56,6 +68,32 @@ export class SanctumRuntime {
   /** Set policy mode for an action — approve | verify | block. */
   policy(action: string, mode: PolicyMode): Promise<PolicyMap> {
     return this.client.updatePolicy(action, policyModeToPatch(mode))
+  }
+
+  /** Register any action name with optional policy fields (unlimited policies). */
+  registerPolicy(
+    action: string,
+    modeOrPatch: PolicyMode | Partial<ActionPolicy> = 'approve',
+  ): Promise<PolicyMap> {
+    const patch =
+      typeof modeOrPatch === 'string' ? policyModeToPatch(modeOrPatch) : modeOrPatch
+    return this.client.createPolicy(action, patch)
+  }
+
+  deletePolicy(action: string): Promise<PolicyMap> {
+    return this.client.deletePolicy(action)
+  }
+
+  exportPoliciesYaml(): Promise<string> {
+    return this.client.exportPoliciesYaml()
+  }
+
+  importPoliciesYaml(yaml: string, merge = true): Promise<PolicyMap> {
+    return this.client.importPoliciesYaml(yaml, merge)
+  }
+
+  getWebhookStatus() {
+    return this.client.getWebhookStatus()
   }
 
   /** Agent middleware: `agent.use(sanctum.middleware())` pattern. */

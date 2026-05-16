@@ -22,3 +22,8 @@ export {
   NARRATIVE_CONTEXT_KEYS,
 } from './narrative.js'
 export { humanizeContextValue, humanizeToken } from './humanize.js'
+export {
+  verificationStateFromDecision,
+  type VerificationState,
+  type VerificationStatus,
+} from './verification.js'

@@ -21,6 +21,7 @@ export function App() {
     policies,
     status,
     setPolicy,
+    replacePolicies,
     pendingVerification,
     pendingReviewCount,
     pendingReviewQueue,
@@ -77,7 +78,12 @@ export function App() {
         {page === 'activity' && <RuntimeActivity audit={audit} onSelect={onSelect} />}
         {page === 'threats' && <ThreatMonitor audit={audit} onSelect={onSelect} />}
         {page === 'policies' && (
-          <Policies policies={policies} audit={audit} onSetPolicy={setPolicy} />
+          <Policies
+            policies={policies}
+            audit={audit}
+            onSetPolicy={setPolicy}
+            onPoliciesChange={replacePolicies}
+          />
         )}
         {page === 'devices' && <Devices status={status} />}
         {page === 'audit' && <AuditLogs audit={audit} onSelect={onSelect} />}

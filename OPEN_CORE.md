@@ -6,7 +6,7 @@ Sanctum uses an **open-core** model (PRD §4.3): this repository is the **public
 
 **Status (v0.1):** The runtime is **ready for developers** to clone, run locally, embed the SDK, and gate agent actions. It is a **preview** — not a hosted SaaS yet.
 
-New here? → [START_HERE.md](./START_HERE.md)
+New here? → [START_HERE.md](./START_HERE.md) · Full OSS reference → [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md)
 
 ---
 
@@ -31,12 +31,34 @@ Docs: configure `SITE_*` in `.env`, then `npm run dev` → `/docs#quickstart`
 |------------|----------|
 | `@sanctum-runtime/sdk` SDK | Verify, policy hooks, middleware, audit client |
 | Runtime API (`apps/api`) | `POST /v1/actions/verify`, policies, audit |
-| Policy engine | Approve · Verify · Block per action |
+| Policy engine | Unlimited action policies — approve · verify · block per action |
+| Pluggable risk model | Ollama, OpenAI-compatible APIs, or heuristics-only (`SANCTUM_RISK_PROVIDER`) |
+| Per-action risk prompts | `riskPrompt` on each policy — custom model instructions (OSS) |
+| Policy YAML I/O | `GET /v1/policies/export.yaml`, `POST /v1/policies/import.yaml` |
+| Webhooks | HTTP POST on verify / block / resolve (`SANCTUM_WEBHOOK_URL`) |
 | Local risk (Ollama) | Optional online scoring via local Qwen |
 | Offline mode | Heuristics + policy when `offlineMode: true` |
 | Agent adapter | `protectAgent()` — verify before execute |
 | Community dashboard | Logs, policies, verification queue — local control plane |
 | Examples + smoke test | `examples/`, `npm run smoke` |
+| Verification resume | `GET /v1/verifications/:correlationId`, `waitForVerification`, `protectAgent` + `awaitVerification` |
+| CI on pull requests | [`.github/workflows/ci.yml`](./.github/workflows/ci.yml) — build + `npm run smoke` |
+| Optional cloud audit | Supabase `audit_events` mirror when `SUPABASE_*` is set — [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) |
+| Org-scoped policies | `context.org_id` + keys like `acme:unlock_door` — [HOSTED.md](./HOSTED.md) |
+| Self-hosted deployment | [HOSTED.md](./HOSTED.md) — run API on your infra |
+
+### Enterprise / next stage (OSS v0.1 is complete for adoption)
+
+**Clone → API → SDK → gate actions → optional dashboard** is fully supported. See [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md) for everything in OSS.
+
+| Capability | OSS (this repo) | Enterprise (later) |
+|------------|-----------------|---------------------|
+| Verification resume | `awaitVerification`, `waitForVerification` | Workflow orchestration, signed attestations |
+| CI | GitHub Actions smoke | Release gates, E2E dashboard |
+| Audit | Local JSONL + optional Supabase mirror | Multi-tenant cloud control plane |
+| Policies | Unlimited + YAML + org keys | Fleet-wide sync, policy DSL |
+| Hosting | [HOSTED.md](./HOSTED.md) self-host | Managed Sanctum Cloud |
+| Webhooks | HTTP POST + HMAC | DLQ, retry, multi-tenant routing |
 
 ### OSS limitations (by design)
 
@@ -49,7 +71,8 @@ These stay **out of this repo** so adoption stays open and the moat stays privat
 | Hosted Sanctum Cloud / multi-tenant control plane | Revenue + managed service |
 | Advanced analytics, trust scoring, behavioral graphs | Private telemetry & models |
 | Compliance packs, signed attestation, TPM identity | Enterprise security sales |
-| SIEM connectors, fleet deployment orchestration | Enterprise integrations |
+| SIEM connectors, signed attestation packs, fleet deployment orchestration | Enterprise integrations |
+| Advanced webhook routing, retry DLQ, multi-tenant signing | Enterprise control plane |
 
 **Transparency:** OSS includes **basic** heuristics, policy rules, and optional **local** Ollama scoring — not the full proprietary intelligence stack described in PRD §4.3.2.
 

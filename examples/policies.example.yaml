@@ -1,0 +1,21 @@
+# Example Sanctum policies — import via POST /v1/policies/import.yaml or dashboard Export/Import
+version: 1
+policies:
+  unlock_door:
+    requiresVerification: true
+    blockWhenOffline: false
+    riskPrompt: |
+      Focus on physical access: night time, owner sleeping, or unknown visitors = high risk.
+  deploy_model:
+    requiresVerification: true
+    autoBlock: false
+    riskPrompt: |
+      Evaluate model deployment: production traffic, data exfiltration, and resource cost.
+  acme:wire_transfer:
+    requiresVerification: true
+    autoBlock: false
+    blockWhenOffline: true
+    allowedActors:
+      - treasury-bot
+    riskPrompt: |
+      Financial transfer — flag unusual amounts, destinations, or off-hours activity.

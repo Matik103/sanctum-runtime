@@ -36,6 +36,19 @@ export class AuditStore {
     return this.entries.find((e) => e.id === id)
   }
 
+  findLatestByCorrelationId(correlationId: string): AuditEntry | undefined {
+    return this.entries.find((e) => e.correlationId === correlationId)
+  }
+
+  listByOrg(orgId: string, limit = 50): AuditEntry[] {
+    return this.entries
+      .filter((e) => {
+        const ctx = e.context as Record<string, unknown>
+        return ctx?.org_id === orgId || ctx?.orgId === orgId
+      })
+      .slice(0, limit)
+  }
+
   async updateEntry(id: string, patch: Partial<AuditEntry>): Promise<AuditEntry | null> {
     const idx = this.entries.findIndex((e) => e.id === id)
     if (idx < 0) return null

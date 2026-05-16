@@ -41,7 +41,8 @@ packages/runtime-engine — Intercept → policy → risk → audit
 packages/policy-engine
 packages/audit-system
 packages/adapters/agent-runtime — Category 1 adapter (PRD §17)
-services/ollama-bridge — Local Qwen risk analysis
+services/risk-model     — Pluggable risk scoring (Ollama, OpenAI-compatible)
+services/ollama-bridge  — Legacy wrapper → risk-model Ollama provider
 ```
 
 **Agent adapter (verify before execute):**
@@ -98,6 +99,8 @@ The runtime stores a `humanRecord` on each audit entry; the dashboard renders it
 
 **OSS adoption:** See [OPEN_CORE.md](./OPEN_CORE.md) for public vs enterprise boundaries.
 
+**API surface:** See [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md) for the full endpoint and SDK list.
+
 **API (examples):**
 
 ```bash
@@ -105,7 +108,19 @@ The runtime stores a `humanRecord` on each audit entry; the dashboard renders it
 curl -X POST "$SANCTUM_API_URL/v1/actions/verify" \
   -H 'Content-Type: application/json' \
   -d '{"actor":"local-agent","action":"unlock_door","context":{"time":"02:13 AM","owner_sleeping":true},"offlineMode":true}'
+
+# Export policies
+curl "$SANCTUM_API_URL/v1/policies/export.yaml"
+
+# Webhook status
+curl "$SANCTUM_API_URL/v1/webhooks/status"
 ```
+
+**Policies as code:** Import [examples/policies.example.yaml](./examples/policies.example.yaml) via dashboard or `POST /v1/policies/import.yaml`.
+
+**Risk model:** Set `OLLAMA_URL` + `OLLAMA_MODEL`, or `SANCTUM_RISK_PROVIDER=openai` + `OPENAI_*`. Per-action `riskPrompt` on policies.customizes model instructions.
+
+**Webhooks:** `SANCTUM_WEBHOOK_URL` — events `verification.required`, `action.blocked`, `verification.resolved`.
 
 Marketing site (root): `npm run dev` → `SITE_HOST`:`SITE_PORT` from `.env`.
 

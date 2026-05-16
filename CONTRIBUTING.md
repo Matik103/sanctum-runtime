@@ -6,6 +6,7 @@ Thanks for helping build Sanctum’s **open-core** runtime.
 
 1. Read [OPEN_CORE.md](./OPEN_CORE.md) — stay within the public layer unless PRD is updated.
 2. Map changes to [PRD.md](./PRD.md) sections (see [DEVELOPMENT.md](./DEVELOPMENT.md)).
+3. If you add developer-facing behavior, update [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md).
 3. Run checks locally:
 
 ```bash

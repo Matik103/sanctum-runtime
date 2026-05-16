@@ -1,5 +1,5 @@
 {
-  "name": "@sanctum/policy-engine",
+  "name": "@sanctum/risk-model",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -7,7 +7,6 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@sanctum-runtime/sdk": "*",
-    "yaml": "^2.8.1"
+    "@sanctum-runtime/sdk": "*"
   }
 }

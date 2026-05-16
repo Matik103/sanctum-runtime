@@ -1,4 +1,5 @@
 import type { ActionRequest, ActionResult, PolicyMap, RuntimeStatus } from './types.js'
+import type { VerificationStatus } from './verification.js'
 
 export type SanctumClientOptions = {
   baseUrl?: string
@@ -87,12 +88,95 @@ export class SanctumClient {
     return res.json() as Promise<PolicyMap>
   }
 
+  async createPolicy(
+    action: string,
+    patch: Partial<PolicyMap[string]> = {},
+  ): Promise<PolicyMap> {
+    const res = await fetch(`${this.baseUrl}/v1/policies`, {
+      method: 'POST',
+      headers: await this.headers(),
+      body: JSON.stringify({ action, ...patch }),
+    })
+    if (!res.ok) throw new Error(`Sanctum policy create failed: ${res.status}`)
+    return res.json() as Promise<PolicyMap>
+  }
+
+  async deletePolicy(action: string): Promise<PolicyMap> {
+    const res = await fetch(`${this.baseUrl}/v1/policies/${encodeURIComponent(action)}`, {
+      method: 'DELETE',
+      headers: await this.headers(false),
+    })
+    if (!res.ok) throw new Error(`Sanctum policy delete failed: ${res.status}`)
+    return res.json() as Promise<PolicyMap>
+  }
+
+  async exportPoliciesYaml(): Promise<string> {
+    const res = await fetch(`${this.baseUrl}/v1/policies/export.yaml`, {
+      headers: await this.headers(false),
+    })
+    if (!res.ok) throw new Error(`Sanctum policy export failed: ${res.status}`)
+    return res.text()
+  }
+
+  async importPoliciesYaml(yaml: string, merge = true): Promise<PolicyMap> {
+    const res = await fetch(`${this.baseUrl}/v1/policies/import.yaml`, {
+      method: 'POST',
+      headers: await this.headers(),
+      body: JSON.stringify({ yaml, merge }),
+    })
+    if (!res.ok) throw new Error(`Sanctum policy import failed: ${res.status}`)
+    return res.json() as Promise<PolicyMap>
+  }
+
+  async getWebhookStatus(): Promise<{
+    configured: boolean
+    urlCount: number
+    events: string[]
+  }> {
+    const res = await fetch(`${this.baseUrl}/v1/webhooks/status`, {
+      headers: await this.headers(false),
+    })
+    if (!res.ok) throw new Error(`Sanctum webhook status failed: ${res.status}`)
+    return res.json() as Promise<{ configured: boolean; urlCount: number; events: string[] }>
+  }
+
   async getStatus(): Promise<RuntimeStatus> {
     const res = await fetch(`${this.baseUrl}/v1/status`, {
       headers: await this.headers(false),
     })
     if (!res.ok) throw new Error(`Sanctum status failed: ${res.status}`)
     return res.json() as Promise<RuntimeStatus>
+  }
+
+  async getVerificationStatus(correlationId: string): Promise<VerificationStatus> {
+    const res = await fetch(
+      `${this.baseUrl}/v1/verifications/${encodeURIComponent(correlationId)}`,
+      { headers: await this.headers(false) },
+    )
+    if (!res.ok) throw new Error(`Sanctum verification status failed: ${res.status}`)
+    return res.json() as Promise<VerificationStatus>
+  }
+
+  async waitForVerification(
+    correlationId: string,
+    options: { timeoutMs?: number; pollIntervalMs?: number } = {},
+  ): Promise<VerificationStatus> {
+    const timeoutMs = options.timeoutMs ?? 120_000
+    const pollIntervalMs = options.pollIntervalMs ?? 2_000
+    const deadline = Date.now() + timeoutMs
+
+    while (Date.now() < deadline) {
+      const status = await this.getVerificationStatus(correlationId)
+      if (status.status === 'approved' || status.status === 'blocked') {
+        return status
+      }
+      if (status.status === 'not_found') {
+        throw new Error(`No audit entry for correlationId ${correlationId}`)
+      }
+      await new Promise((r) => setTimeout(r, pollIntervalMs))
+    }
+
+    throw new Error(`Verification timed out after ${timeoutMs}ms (${correlationId})`)
   }
 
   async resolveAuditEntry(

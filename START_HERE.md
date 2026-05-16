@@ -2,6 +2,8 @@
 
 **This repository is open source (MIT).** Configure your environment first — hosts and ports are **not** hardcoded in the app.
 
+**Full reference (API, SDK, policies, models, webhooks, dashboard):** [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md)
+
 ## 1. Configure
 
 ```bash
@@ -95,7 +97,9 @@ Or use `sanctum.middleware()` directly. In Node, the SDK reads `SANCTUM_API_URL`
 | `DASHBOARD_*` | Only for UI | `npm run dev:runtime` / dashboard |
 | `SITE_*` | Only for marketing site | `npm run dev` |
 | `SANCTUM_API_KEY` | Optional | Lock down API; scripts send it automatically |
-| `SUPABASE_*` | Optional | Dashboard sign-in only |
+| `SUPABASE_*` | Optional | Dashboard login + audit mirror |
+| `SANCTUM_RISK_PROVIDER` | No | `ollama` \| `openai` \| `none` |
+| `SANCTUM_WEBHOOK_URL` | No | Webhooks on verify/block/resolve |
 
 ## Developer readiness checklist
 
@@ -108,9 +112,94 @@ Before you ship or move to the next product stage, confirm:
 - [ ] Your app: `npm install @sanctum-runtime/sdk` + `baseUrl` to your API
 - [ ] (Optional) Ollama running for online model path
 - [ ] (Optional) Dashboard at `DASHBOARD_URL` for operators
+- [ ] (Optional) [HOSTED.md](./HOSTED.md) if deploying API to your infra
+- [ ] `awaitVerification` on `protectAgent` if operators approve in dashboard
+
+## Your model, your policies (adoption)
+
+Sanctum is designed so **you** bring the stack — not the other way around.
+
+### Risk model (pick one)
+
+| Provider | `.env` | Use when |
+|----------|--------|----------|
+| **Ollama** (default local) | `OLLAMA_URL` + `OLLAMA_MODEL` | Any GGUF model you pull (`llama3`, `mistral`, `qwen2.5-3b-instruct`, …) |
+| **OpenAI-compatible** | `SANCTUM_RISK_PROVIDER=openai`, `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL` | OpenAI, vLLM, LiteLLM, Groq, Together, local gateways |
+| **None** | `SANCTUM_RISK_PROVIDER=none` | Policy + heuristics only (no LLM calls) |
+
+Set `SANCTUM_RISK_MODEL` to override the model name for either provider. See [local-ai/MODELS.md](./local-ai/MODELS.md) for local weight setup.
+
+### Unlimited action policies
+
+Register **any** action name — there is no fixed catalog:
+
+```ts
+await sanctum.registerPolicy('deploy_model', 'verify')
+await sanctum.registerPolicy('acme:wire_transfer', 'block')
+await sanctum.registerPolicy('read_calendar', {
+  requiresVerification: false,
+  blockWhenOffline: true,
+  allowedActors: ['scheduler-bot'],
+})
+```
+
+- **API:** `POST /v1/policies`, `PATCH /v1/policies/:action`, `DELETE /v1/policies/:action`
+- **Dashboard:** Policies → **Add policy**
+- **Org scope:** pass `org_id` in context; use keys like `acme:unlock_door`
+
+Unknown actions still run with a permissive default until you define a policy.
+
+### Custom risk prompts (per action)
+
+```ts
+await sanctum.registerPolicy('unlock_door', {
+  requiresVerification: true,
+  riskPrompt: 'Treat night-time access while owner is asleep as high risk.',
+})
+```
+
+The runtime passes `riskPrompt` to your configured risk model when scoring that action.
+
+### Policy YAML import / export
+
+```bash
+curl -H "X-Sanctum-Key: $SANCTUM_API_KEY" http://127.0.0.1:3001/v1/policies/export.yaml
+```
+
+```ts
+await sanctum.importPoliciesYaml(await fs.readFile('policies.yaml', 'utf8'))
+```
+
+Example file: [examples/policies.example.yaml](./examples/policies.example.yaml). Dashboard: Policies → **Export YAML** / **Import YAML**.
+
+### Webhooks (verify / block / resolve)
+
+```bash
+SANCTUM_WEBHOOK_URL=https://your-app.com/sanctum/events
+# optional: SANCTUM_WEBHOOK_SECRET=...  → X-Sanctum-Signature: sha256=...
+```
+
+Events: `verification.required`, `action.blocked`, `verification.resolved`. Payload: `{ event, timestamp, entry }` (full audit entry).
+
+## Verification resume (agents)
+
+```ts
+await protectAgent(sanctum, {
+  correlationId: 'run-123',
+  action: 'unlock_door',
+  context: { heard: 'Open the door' },
+  awaitVerification: { timeoutMs: 120_000 },
+  execute: async () => { /* runs after dashboard approve */ },
+})
+```
+
+Or poll: `sanctum.waitForVerification('run-123')` after `REQUIRE_VERIFICATION`.
 
 ## More
 
+- [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md) — **complete OSS capabilities reference**
 - [OPEN_CORE.md](./OPEN_CORE.md) — public vs enterprise
+- [HOSTED.md](./HOSTED.md) — production self-host
 - [DEVELOPMENT.md](./DEVELOPMENT.md) — monorepo map
+- [local-ai/MODELS.md](./local-ai/MODELS.md) — local model setup
 - [CONTRIBUTING.md](./CONTRIBUTING.md)

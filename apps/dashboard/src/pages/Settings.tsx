@@ -4,7 +4,8 @@ type Props = { status: RuntimeStatus | null }
 
 export function Settings({ status }: Props) {
   const operational = status?.runtimeOnline !== false
-  const modelReady = status?.ollamaConnected ?? false
+  const provider = status?.riskProvider ?? (status?.ollamaConnected ? 'ollama' : 'none')
+  const modelReady = status?.riskModelConnected ?? status?.ollamaConnected ?? false
 
   return (
     <>
@@ -43,23 +44,33 @@ export function Settings({ status }: Props) {
         </section>
 
         <section className="card">
-          <h3 style={{ marginTop: 0 }}>Models</h3>
+          <h3 style={{ marginTop: 0 }}>Risk model</h3>
           <dl className="detail-list">
             <div>
-              <dt>Ollama</dt>
+              <dt>Provider</dt>
+              <dd>{provider}</dd>
+            </div>
+            <div>
+              <dt>Status</dt>
               <dd>
                 <strong style={{ color: modelReady ? 'var(--success)' : 'var(--muted)' }}>
-                  {modelReady ? 'Connected' : 'Disconnected'}
+                  {modelReady
+                    ? 'Connected'
+                    : provider === 'none'
+                      ? 'Heuristics only'
+                      : 'Disconnected'}
                 </strong>
               </dd>
             </div>
             <div>
               <dt>Endpoint</dt>
-              <dd style={{ wordBreak: 'break-all' }}>{status?.ollamaUrl ?? '—'}</dd>
+              <dd style={{ wordBreak: 'break-all' }}>
+                {status?.riskEndpoint ?? status?.ollamaUrl ?? '—'}
+              </dd>
             </div>
             <div>
               <dt>Active model</dt>
-              <dd>{status?.ollamaModel ?? '—'}</dd>
+              <dd>{status?.riskModel ?? status?.ollamaModel ?? '—'}</dd>
             </div>
           </dl>
         </section>

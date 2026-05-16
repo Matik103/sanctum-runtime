@@ -96,7 +96,12 @@ app.get('/', async () => ({
     verify: 'POST /v1/actions/verify',
     audit: 'GET /v1/audit',
     resolve: 'POST /v1/audit/:id/resolve',
-    policies: 'GET /v1/policies',
+    verification: 'GET /v1/verifications/:correlationId',
+    orgPolicies: 'GET /v1/orgs/:orgId/policies',
+    policies: 'GET|POST /v1/policies',
+    policyByAction: 'PATCH|DELETE /v1/policies/:action',
+    policiesYaml: 'GET /v1/policies/export.yaml · POST /v1/policies/import.yaml',
+    webhooks: 'GET /v1/webhooks/status',
     analyze: 'POST /analyze-action',
   },
 }))
@@ -115,21 +120,75 @@ app.get('/v1/status', async () => runtime.getStatus())
 
 app.get('/v1/policies', async () => runtime.getPolicyEngine().getPolicies())
 
-app.patch('/v1/policies/:action', async (req) => {
-  const action = (req.params as { action: string }).action
+const policyPatchSchema = z.object({
+  requiresVerification: z.boolean().optional(),
+  autoBlock: z.boolean().optional(),
+  blockWhenOffline: z.boolean().optional(),
+  allowedActors: z.array(z.string()).optional(),
+  riskPrompt: z.string().max(8000).optional(),
+})
+
+const policyActionSchema = z
+  .string()
+  .min(1)
+  .max(256)
+  .regex(/^[a-zA-Z0-9_.:@/-]+$/)
+
+app.post('/v1/policies', async (req) => {
   const body = z
     .object({
-      requiresVerification: z.boolean().optional(),
-      autoBlock: z.boolean().optional(),
-      blockWhenOffline: z.boolean().optional(),
+      action: policyActionSchema,
     })
+    .merge(policyPatchSchema)
     .parse(req.body)
+  const { action, ...patch } = body
+  return runtime.getPolicyEngine().createPolicy(action, patch)
+})
+
+app.patch('/v1/policies/:action', async (req) => {
+  const action = policyActionSchema.parse((req.params as { action: string }).action)
+  const body = policyPatchSchema.parse(req.body)
   return await runtime.getPolicyEngine().updatePolicy(action, body)
 })
 
+app.delete('/v1/policies/:action', async (req) => {
+  const action = policyActionSchema.parse((req.params as { action: string }).action)
+  return runtime.getPolicyEngine().deletePolicy(action)
+})
+
+app.get('/v1/policies/export.yaml', async (_req, reply) => {
+  return reply.type('text/yaml; charset=utf-8').send(runtime.exportPoliciesYaml())
+})
+
+app.post('/v1/policies/import.yaml', async (req) => {
+  const body = z
+    .object({
+      yaml: z.string().min(1),
+      merge: z.boolean().optional().default(true),
+    })
+    .parse(req.body)
+  return runtime.importPoliciesYaml(body.yaml, body.merge)
+})
+
+app.get('/v1/webhooks/status', async () => runtime.getWebhookStatus())
+
 app.get('/v1/audit', async (req) => {
   const limit = Number((req.query as { limit?: string }).limit ?? 50)
+  const orgId = (req.query as { org_id?: string }).org_id
+  if (orgId) {
+    return runtime.getAuditStore().listByOrg(orgId, limit)
+  }
   return runtime.getAuditStore().list(limit)
+})
+
+app.get('/v1/verifications/:correlationId', async (req) => {
+  const { correlationId } = req.params as { correlationId: string }
+  return runtime.getVerificationStatus(correlationId)
+})
+
+app.get('/v1/orgs/:orgId/policies', async (req) => {
+  const { orgId } = req.params as { orgId: string }
+  return runtime.getPoliciesForOrg(orgId)
 })
 
 app.post('/v1/audit/:id/resolve', async (req, reply) => {

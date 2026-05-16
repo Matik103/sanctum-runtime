@@ -67,6 +67,8 @@ export const ActionPolicySchema = z.object({
   autoBlock: z.boolean().default(false),
   blockWhenOffline: z.boolean().default(false),
   allowedActors: z.array(z.string()).optional(),
+  /** Custom instructions for the risk model when scoring this action (OSS). */
+  riskPrompt: z.string().max(8000).optional(),
 })
 
 export type ActionPolicy = z.infer<typeof ActionPolicySchema>
@@ -75,10 +77,15 @@ export type PolicyMap = Record<string, ActionPolicy>
 
 export const RuntimeStatusSchema = z.object({
   runtimeOnline: z.boolean(),
+  /** True when an Ollama-backed risk model is connected (legacy field). */
   ollamaConnected: z.boolean(),
   ollamaUrl: z.string().optional(),
   ollamaModel: z.string().optional(),
-  /** Global: Ollama unreachable or SANCTUM_OFFLINE_MODE=true */
+  riskProvider: z.enum(['ollama', 'openai', 'none']).optional(),
+  riskModel: z.string().optional(),
+  riskModelConnected: z.boolean().optional(),
+  riskEndpoint: z.string().optional(),
+  /** Global: risk model unreachable or SANCTUM_OFFLINE_MODE=true */
   systemOfflineCapable: z.boolean(),
   policyCount: z.number(),
   auditCount: z.number(),

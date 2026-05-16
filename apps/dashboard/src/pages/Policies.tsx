@@ -1,13 +1,91 @@
+import { useState } from 'react'
 import type { PolicyMap } from '@sanctum-runtime/sdk'
-import { actionLabel, policyToResponse, type PolicyResponse } from '../lib/api'
+import {
+  actionLabel,
+  createPolicyResponse,
+  deletePolicyAction,
+  exportPoliciesYaml,
+  importPoliciesYaml,
+  policyToResponse,
+  type PolicyResponse,
+} from '../lib/api'
 
 type Props = {
   policies: PolicyMap
   audit: { action: string; timestamp: string }[]
   onSetPolicy: (action: string, response: PolicyResponse) => void
+  onPoliciesChange: (policies: PolicyMap) => void
 }
 
-export function Policies({ policies, audit, onSetPolicy }: Props) {
+export function Policies({ policies, audit, onSetPolicy, onPoliciesChange }: Props) {
+  const [newAction, setNewAction] = useState('')
+  const [newMode, setNewMode] = useState<PolicyResponse>('verify')
+  const [adding, setAdding] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [yamlBusy, setYamlBusy] = useState(false)
+
+  const exportYaml = async () => {
+    setYamlBusy(true)
+    setError(null)
+    try {
+      const yaml = await exportPoliciesYaml()
+      const blob = new Blob([yaml], { type: 'text/yaml' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'sanctum-policies.yaml'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Export failed')
+    } finally {
+      setYamlBusy(false)
+    }
+  }
+
+  const importYamlFile = async (file: File) => {
+    setYamlBusy(true)
+    setError(null)
+    try {
+      const yaml = await file.text()
+      const next = await importPoliciesYaml(yaml, true)
+      onPoliciesChange(next)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Import failed')
+    } finally {
+      setYamlBusy(false)
+    }
+  }
+
+  const addPolicy = async () => {
+    const action = newAction.trim()
+    if (!action) {
+      setError('Enter an action name (e.g. deploy_model, acme:transfer_funds)')
+      return
+    }
+    setAdding(true)
+    setError(null)
+    try {
+      const next = await createPolicyResponse(action, newMode)
+      onPoliciesChange(next)
+      setNewAction('')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to add policy')
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  const removePolicy = async (action: string) => {
+    if (!confirm(`Remove policy for "${action}"?`)) return
+    try {
+      const next = await deletePolicyAction(action)
+      onPoliciesChange(next)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to remove policy')
+    }
+  }
+
   return (
     <>
       <header className="page-header">
@@ -15,15 +93,89 @@ export function Policies({ policies, audit, onSetPolicy }: Props) {
           <h1>Policies</h1>
           <p>Define trust boundaries — not programming rules</p>
         </div>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="response-btn"
+            disabled={yamlBusy}
+            onClick={() => void exportYaml()}
+          >
+            Export YAML
+          </button>
+          <label className="response-btn" style={{ cursor: yamlBusy ? 'wait' : 'pointer' }}>
+            Import YAML
+            <input
+              type="file"
+              accept=".yaml,.yml,text/yaml"
+              hidden
+              disabled={yamlBusy}
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) void importYamlFile(file)
+                e.target.value = ''
+              }}
+            />
+          </label>
+        </div>
       </header>
 
       <div className="card" style={{ marginBottom: '1.25rem' }}>
         <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--muted)', lineHeight: 1.6 }}>
-          Each policy sets how Sanctum responds when an AI requests an action.{' '}
+          Add as many action policies as your product needs. Each policy sets how Sanctum responds
+          when an AI requests that action.{' '}
           <strong style={{ color: 'var(--success)' }}>Approve</strong> runs automatically,{' '}
           <strong style={{ color: 'var(--warning)' }}>Verify</strong> pauses for you,{' '}
           <strong style={{ color: '#fca5a5' }}>Block</strong> denies immediately.
         </p>
+      </div>
+
+      <div className="card" style={{ marginBottom: '1.25rem' }}>
+        <p className="card-label" style={{ marginTop: 0 }}>
+          Add policy
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+          <input
+            type="text"
+            placeholder="action_name or org:action"
+            value={newAction}
+            onChange={(e) => setNewAction(e.target.value)}
+            style={{
+              flex: '1 1 12rem',
+              minWidth: '12rem',
+              padding: '0.5rem 0.75rem',
+              borderRadius: 8,
+              border: '1px solid var(--border)',
+              background: 'var(--surface)',
+              color: 'var(--text)',
+            }}
+          />
+          <select
+            value={newMode}
+            onChange={(e) => setNewMode(e.target.value as PolicyResponse)}
+            style={{
+              padding: '0.5rem 0.75rem',
+              borderRadius: 8,
+              border: '1px solid var(--border)',
+              background: 'var(--surface)',
+              color: 'var(--text)',
+            }}
+          >
+            <option value="approve">Approve</option>
+            <option value="verify">Verify</option>
+            <option value="block">Block</option>
+          </select>
+          <button
+            type="button"
+            className="response-btn active approve"
+            disabled={adding}
+            onClick={() => void addPolicy()}
+          >
+            {adding ? 'Adding…' : 'Add'}
+          </button>
+        </div>
+        {error && (
+          <p style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: '#fca5a5' }}>{error}</p>
+        )}
       </div>
 
       <div className="policy-grid">
@@ -33,7 +185,17 @@ export function Policies({ policies, audit, onSetPolicy }: Props) {
 
           return (
             <article key={action} className="policy-card">
-              <h3>{actionLabel(action)}</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>
+                <h3 style={{ margin: 0 }}>{actionLabel(action)}</h3>
+                <button
+                  type="button"
+                  className="response-btn"
+                  style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem' }}
+                  onClick={() => void removePolicy(action)}
+                >
+                  Remove
+                </button>
+              </div>
               <p style={{ margin: '0.25rem 0', color: 'var(--muted)', fontSize: '0.85rem' }}>
                 When an agent requests this action, Sanctum applies the response below.
               </p>

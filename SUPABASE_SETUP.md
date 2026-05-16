@@ -35,8 +35,10 @@ Auth is **optional**: if Supabase env vars are unset, the dashboard works withou
 ## Step 4 — Run the database migration
 
 1. **SQL Editor** → **New query**
-2. Paste contents of [`supabase/migrations/001_profiles.sql`](./supabase/migrations/001_profiles.sql)
-3. **Run**
+2. Paste and run, in order:
+   - [`supabase/migrations/001_profiles.sql`](./supabase/migrations/001_profiles.sql)
+   - [`supabase/migrations/002_audit_events.sql`](./supabase/migrations/002_audit_events.sql) (audit mirror from API)
+3. **Run** each script
 
 This creates `profiles` + RLS + a trigger on new users.
 
