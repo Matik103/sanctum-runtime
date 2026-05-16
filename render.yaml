@@ -38,10 +38,14 @@ services:
     branch: main
     buildCommand: npm ci && npm run build:sdk && npm run build:dashboard
     staticPublishPath: apps/dashboard/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
     envVars:
       - key: VITE_SANCTUM_API_URL
-        sync: false
+        value: https://sanctum-api-6zgy.onrender.com
       - key: VITE_SUPABASE_URL
-        sync: false
+        value: https://nimvcudvrhanxlcpiizz.supabase.co
       - key: VITE_SUPABASE_ANON_KEY
         sync: false

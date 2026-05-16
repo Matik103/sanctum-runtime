@@ -110,7 +110,9 @@ Check **Table Editor** → `audit_events` in Supabase.
 
 ### 3.1 Create static site
 
-**Option A — Blueprint:** Render → **New** → **Blueprint** → connect repo (uses [`render.yaml`](./render.yaml)).
+**Quick guide:** [RENDER_DASHBOARD.md](./RENDER_DASHBOARD.md)
+
+**Option A — Blueprint:** Render → **New** → **Blueprint** → connect repo (uses [`render.yaml`](./render.yaml)). Skip if `sanctum-api` already exists — use Option B for dashboard only.
 
 **Option B — Manual:**
 
