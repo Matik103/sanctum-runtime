@@ -1,3 +1,4 @@
+import { humanizeContextValue } from './humanize.js'
 import type { ActionResult, Decision } from './types.js'
 
 /** Context fields rendered in the narrative body, not as duplicate table rows. */
@@ -115,11 +116,15 @@ function anomalyPhrase(flags: string[]): string {
 function sceneDetails(ctx: Record<string, unknown>, action: string): string[] {
   const lines: string[] = []
   const time = str(ctx, 'time', 'timestamp')
-  const location = str(ctx, 'location', 'zone', 'path')
+  const locationRaw = str(ctx, 'location')
+  const zoneRaw = str(ctx, 'zone')
+  const pathRaw = str(ctx, 'path')
   const channel = extractChannel(ctx)
 
   if (time) lines.push(`Time: ${time}.`)
-  if (location) lines.push(`Location: ${location}.`)
+  if (locationRaw) lines.push(`Location: ${humanizeContextValue('location', locationRaw)}.`)
+  else if (zoneRaw) lines.push(`Zone: ${humanizeContextValue('zone', zoneRaw)}.`)
+  else if (pathRaw) lines.push(`Path: ${pathRaw}.`)
   if (channel) lines.push(`Channel: ${channel}.`)
 
   if (action === 'send_email') {
@@ -198,7 +203,11 @@ export function auditRecordHeadline(entry: NarrativeInput & { humanRecord?: stri
   return `${who} — ${actionDisplay(entry.action).toLowerCase()}`
 }
 
-/** Full narrative for drawer / export (uses stored field when present). */
+/** Full narrative for drawer / export (always rebuilt so humanization stays current). */
 export function auditRecordText(entry: ActionResult): string {
-  return entry.humanRecord ?? buildHumanAuditRecord(entry)
+  const base = buildHumanAuditRecord(entry)
+  if (entry.humanResolution) {
+    return `${base}\n\nHuman review: ${entry.humanResolution}`
+  }
+  return base
 }

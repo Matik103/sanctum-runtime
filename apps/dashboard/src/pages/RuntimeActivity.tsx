@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import type { ActionResult } from '@sanctum-runtime/sdk'
 import { decisionTone, timeAgo } from '../lib/format'
 import { AuditRecord } from '../components/AuditRecord'
-import { actionLabel, decisionLabel } from '../lib/labels'
+import { actionLabel, decisionLabel, riskLabel } from '../lib/labels'
 import { auditRecordText } from '../lib/narrative'
 
 type Props = {
@@ -94,7 +94,7 @@ export function RuntimeActivity({ audit, onSelect }: Props) {
                   <td>{actionLabel(e.action)}</td>
                   <td>
                     <span className={`badge ${e.risk === 'high' ? 'danger' : e.risk === 'medium' ? 'warning' : 'neutral'}`}>
-                      {e.risk}
+                      {riskLabel(e.risk)}
                     </span>
                   </td>
                   <td>

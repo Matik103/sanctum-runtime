@@ -42,6 +42,17 @@ export class SanctumRuntime {
     return this.client.getAudit(limit)
   }
 
+  resolveAuditEntry(
+    id: string,
+    body: {
+      decision: 'APPROVED' | 'BLOCKED'
+      resolvedBy?: string
+      note?: string
+    },
+  ) {
+    return this.client.resolveAuditEntry(id, body)
+  }
+
   /** Set policy mode for an action — approve | verify | block. */
   policy(action: string, mode: PolicyMode): Promise<PolicyMap> {
     return this.client.updatePolicy(action, policyModeToPatch(mode))

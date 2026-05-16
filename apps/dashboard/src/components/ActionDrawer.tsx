@@ -29,6 +29,18 @@ export function ActionDrawer({ entry, onClose }: Props) {
           </button>
         </div>
 
+        {entry.humanResolution && (
+          <section className="drawer-section">
+            <h3>Human review</h3>
+            <p style={{ margin: 0, fontSize: '0.9rem' }}>{entry.humanResolution}</p>
+            {entry.resolvedAt && (
+              <p style={{ margin: '0.35rem 0 0', fontSize: '0.8rem', color: 'var(--muted)' }}>
+                {entry.resolvedBy ?? 'Operator'} · {timeAgo(entry.resolvedAt)}
+              </p>
+            )}
+          </section>
+        )}
+
         <section className="drawer-section">
           <h3>Audit record</h3>
           <div className="audit-record audit-record--drawer">

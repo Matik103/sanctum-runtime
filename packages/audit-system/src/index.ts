@@ -1,4 +1,4 @@
-import { appendFile, mkdir, readFile } from 'node:fs/promises'
+import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { AuditEntry } from '@sanctum-runtime/sdk'
 
@@ -30,6 +30,25 @@ export class AuditStore {
 
   count(): number {
     return this.entries.length
+  }
+
+  getById(id: string): AuditEntry | undefined {
+    return this.entries.find((e) => e.id === id)
+  }
+
+  async updateEntry(id: string, patch: Partial<AuditEntry>): Promise<AuditEntry | null> {
+    const idx = this.entries.findIndex((e) => e.id === id)
+    if (idx < 0) return null
+    this.entries[idx] = { ...this.entries[idx], ...patch }
+    await this.persist()
+    return this.entries[idx]
+  }
+
+  private async persist(): Promise<void> {
+    await mkdir(dirname(this.logPath), { recursive: true })
+    const lines = [...this.entries].reverse().map((e) => JSON.stringify(e))
+    const body = lines.length ? `${lines.join('\n')}\n` : ''
+    await writeFile(this.logPath, body, 'utf8')
   }
 
   async loadFromDisk(): Promise<void> {

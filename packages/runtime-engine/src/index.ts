@@ -37,7 +37,43 @@ export class RuntimeEngine {
   }
 
   async init(): Promise<void> {
+    await this.policyEngine.load()
     await this.auditStore.loadFromDisk()
+  }
+
+  async resolveAuditEntry(
+    id: string,
+    resolution: {
+      decision: 'APPROVED' | 'BLOCKED'
+      resolvedBy?: string
+      note?: string
+    },
+  ): Promise<ActionResult | null> {
+    const existing = this.auditStore.getById(id)
+    if (!existing) return null
+    if (existing.decision !== 'REQUIRE_VERIFICATION') {
+      return existing
+    }
+
+    const who = resolution.resolvedBy ?? 'operator'
+    const verb = resolution.decision === 'APPROVED' ? 'Approved' : 'Denied'
+    const humanResolution = `${verb} by ${who}${resolution.note ? ` — ${resolution.note}` : ''}`
+
+    const updated: ActionResult = {
+      ...existing,
+      decision: resolution.decision,
+      humanResolution,
+      resolvedAt: new Date().toISOString(),
+      resolvedBy: who,
+      reasoning: `${existing.reasoning} ${humanResolution}.`,
+      humanRecord: buildHumanAuditRecord({
+        ...existing,
+        decision: resolution.decision,
+        reasoning: `${existing.reasoning} ${humanResolution}.`,
+      }),
+    }
+
+    return (await this.auditStore.updateEntry(id, updated)) ?? null
   }
 
   async verifyAction(

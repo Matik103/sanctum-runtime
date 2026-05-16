@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   fetchDashboard,
+  resolveVerification,
   updatePolicyResponse,
   type DashboardData,
   type PolicyResponse,
@@ -144,6 +145,17 @@ export function useDashboard() {
     [markVerificationsDismissed, getPendingReviewQueue, showVerification],
   )
 
+  const resolveVerificationEntry = useCallback(
+    async (entryId: string, decision: 'APPROVED' | 'BLOCKED') => {
+      await resolveVerification(entryId, decision)
+      markVerificationsDismissed({ id: entryId })
+      await refresh()
+      const next = getPendingReviewQueue()[0]
+      if (next) showVerification(next)
+    },
+    [markVerificationsDismissed, getPendingReviewQueue, showVerification, refresh],
+  )
+
   return {
     ...data,
     lastRefreshed,
@@ -157,5 +169,6 @@ export function useDashboard() {
     markVerificationsDismissed,
     openNextPendingReview,
     dismissCurrentAndAdvance,
+    resolveVerificationEntry,
   }
 }

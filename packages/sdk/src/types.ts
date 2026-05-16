@@ -51,6 +51,10 @@ export const ActionResultSchema = z.object({
   ollamaConnected: z.boolean(),
   /** Plain-language audit record (Humans-style compliance log). */
   humanRecord: z.string().optional(),
+  /** Operator decision after REQUIRE_VERIFICATION (e.g. "Approved by operator"). */
+  humanResolution: z.string().optional(),
+  resolvedAt: z.string().optional(),
+  resolvedBy: z.string().optional(),
 })
 
 export type ActionResult = z.infer<typeof ActionResultSchema>

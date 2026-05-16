@@ -1,4 +1,5 @@
 import type { Decision } from '@sanctum-runtime/sdk'
+import { humanizeContextValue, humanizeToken } from '@sanctum-runtime/sdk'
 import { NARRATIVE_CONTEXT_KEYS } from './narrative'
 
 /** unlock_door → Unlock door */
@@ -68,20 +69,8 @@ export function anomalyLabel(flag: string): string {
   return ANOMALY_LABELS[flag] ?? humanizeToken(flag)
 }
 
-function humanizeToken(token: string): string {
-  return token
-    .split(/[._-]/)
-    .filter(Boolean)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ')
-}
-
-export function formatContextValue(_key: string, value: unknown): string {
-  if (value === true) return 'Yes'
-  if (value === false) return 'No'
-  if (value == null) return '—'
-  if (typeof value === 'object') return JSON.stringify(value)
-  return String(value)
+export function formatContextValue(key: string, value: unknown): string {
+  return humanizeContextValue(key, value)
 }
 
 export type ContextRow = { label: string; value: string }

@@ -28,6 +28,7 @@ export function App() {
     markVerificationsDismissed,
     openNextPendingReview,
     dismissCurrentAndAdvance,
+    resolveVerificationEntry,
     apiError,
     lastRefreshed,
   } = useDashboard()
@@ -89,17 +90,20 @@ export function App() {
         <VerificationModal
           entry={pendingVerification}
           queuePosition={getQueuePosition(pendingVerification.id)}
-          onApproveOnce={() => {
+          onApproveOnce={async () => {
             const entry = pendingVerification
-            dismissCurrentAndAdvance(entry.id)
+            await resolveVerificationEntry(entry.id, 'APPROVED')
             setSelected(entry)
           }}
           onAlwaysApprove={async () => {
             const entry = pendingVerification
             await setPolicy(entry.action, 'approve')
+            await resolveVerificationEntry(entry.id, 'APPROVED')
             markVerificationsDismissed({ action: entry.action })
           }}
-          onDeny={() => dismissCurrentAndAdvance(pendingVerification.id)}
+          onDeny={async () => {
+            await resolveVerificationEntry(pendingVerification.id, 'BLOCKED')
+          }}
         />
       )}
     </div>

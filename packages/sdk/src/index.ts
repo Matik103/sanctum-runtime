@@ -21,3 +21,4 @@ export {
   extractIntent,
   NARRATIVE_CONTEXT_KEYS,
 } from './narrative.js'
+export { humanizeContextValue, humanizeToken } from './humanize.js'

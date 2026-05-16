@@ -5,6 +5,7 @@ import {
   actorLabel,
   anomalyLabel,
   decisionLabel,
+  riskLabel,
 } from '../lib/labels'
 
 const THREAT_TYPES = [
@@ -38,7 +39,7 @@ export function ThreatMonitor({ audit, onSelect }: Props) {
             <div key={t.id} className="threat-type-card">
               <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{t.label}</div>
               <div style={{ color: 'var(--muted)', fontSize: '0.75rem', marginTop: '0.25rem' }}>
-                {count} detections · {t.severity}
+                {count} detections · {riskLabel(t.severity)}
               </div>
             </div>
           )

@@ -18,7 +18,7 @@ export function responseToPolicy(response: PolicyResponse): Partial<ActionPolicy
     case 'verify':
       return { requiresVerification: true, autoBlock: false }
     case 'block':
-      return { requiresVerification: true, autoBlock: true }
+      return { requiresVerification: false, autoBlock: true }
   }
 }
 
@@ -28,6 +28,18 @@ export type DashboardData = {
   audit: ActionResult[]
   policies: PolicyMap
   status: RuntimeStatus | null
+}
+
+export async function resolveVerification(
+  id: string,
+  decision: 'APPROVED' | 'BLOCKED',
+  note?: string,
+): Promise<ActionResult> {
+  return api.resolveAuditEntry(id, {
+    decision,
+    resolvedBy: 'dashboard-operator',
+    note,
+  })
 }
 
 export async function fetchDashboard(): Promise<DashboardData> {
