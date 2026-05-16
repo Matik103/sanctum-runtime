@@ -11,7 +11,7 @@ One runtime for **agents, robots, smart home, industrial systems, and workflows*
 
 | | |
 |---|---|
-| **Start** | [START_HERE.md](./START_HERE.md) · [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md) · [CATEGORIES.md](./CATEGORIES.md) |
+| **Start** | [START_HERE.md](./START_HERE.md) · [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md) · [Sanctum vs guardrails](./DEVELOPER_GUIDE.md#sanctum-vs-guardrails) · [CATEGORIES.md](./CATEGORIES.md) |
 | **Install** | `npm install @sanctum-runtime/sdk` · [adapter](https://www.npmjs.com/package/@sanctum-runtime/adapter-agent-runtime) |
 | **Help** | [SUPPORT.md](./SUPPORT.md) · [Issues](https://github.com/Matik103/sanctum-runtime/issues) · [Discussions](https://github.com/Matik103/sanctum-runtime/discussions) |
 | **Scope** | [OPEN_CORE.md](./OPEN_CORE.md) (OSS vs enterprise) |
@@ -33,6 +33,51 @@ Sanctum is for:
 - **Operators** — optional dashboard for human-in-the-loop (HITL) review  
 
 If you only need chat guardrails, look at prompt filters. If you need **execution control**, you are in the right place.
+
+---
+
+## Sanctum vs guardrails
+
+Most AI **guardrails** protect **what the model says** (prompts and replies). Sanctum protects **what the system does** (tools, APIs, robots, workflows) *before* side effects happen.
+
+```text
+  User / sensor input
+        │
+        ▼
+  ┌─────────────────────────┐
+  │ Content guardrails       │  jailbreak, toxicity, PII in chat,
+  │ (moderation, NeMo, etc.) │  structured output, prompt shields
+  └───────────┬─────────────┘
+              ▼
+        Model plans an action
+              │
+              ▼
+  ┌─────────────────────────┐
+  │ Sanctum Runtime          │  policy + risk → APPROVE · VERIFY · BLOCK
+  │ (this repo)              │  audit, webhooks, human approval, resume
+  └───────────┬─────────────┘
+              ▼
+        Real execution (email, door, DB, robot, …)
+```
+
+| Layer | Typical tools | What they control |
+|-------|----------------|-----------------|
+| **Input / output guardrails** | OpenAI moderation, Llama Guard, Guardrails AI, NeMo, Azure Content Safety | Toxic or policy-violating **text** |
+| **Tool/schema guardrails** | JSON schema, static allowlists | Shape of a tool call, not *whether it should run now* |
+| **Sanctum Runtime** | This project | **Action + context** — approve, hold for a human, or block; durable audit |
+
+**Use both.** Guardrails on chat; Sanctum on anything that changes the world.
+
+| You are building… | Guardrails alone | + Sanctum |
+|-------------------|------------------|-----------|
+| Chat-only assistant | Often enough | Optional for dangerous tools |
+| Agent with tools (email, files, APIs) | Not enough | **Recommended** |
+| Robotics, smart home, industrial commands | Not applicable to motion/access | **Essential** |
+| Finance, healthcare, infra automation | Partial | **Essential** for approval + audit on actions |
+
+**Why prompts are not enough:** telling the model “ask before deleting” is not enforcement. Sanctum evaluates **server-side** policies, emits webhooks (`verification.required`, `action.blocked`, `verification.resolved`), and lets operators **resume** after approval — without rebuilding a state machine per action.
+
+**Production:** self-host or deploy the API ([HOSTED.md](./HOSTED.md), [RENDER.md](./RENDER.md)); use `X-Sanctum-Key`, webhooks to your app, and persistent audit (optional Supabase). Details: [DEVELOPER_GUIDE.md § Sanctum vs guardrails](./DEVELOPER_GUIDE.md#sanctum-vs-guardrails).
 
 ---
 

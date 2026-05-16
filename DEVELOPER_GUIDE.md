@@ -16,6 +16,89 @@ If you are building agent frameworks, MCP tools, robotics commands, or backend w
 
 ---
 
+## Sanctum vs guardrails
+
+### What guardrails usually mean
+
+In 2024–2026 “AI guardrails” most often refers to **content safety** on the LLM boundary:
+
+- Block jailbreaks, toxicity, and policy violations in **user prompts** and **model outputs**
+- PII detection, topic restrictions, structured JSON / schema validation
+- Vendors and libraries: moderation APIs, **NeMo Guardrails**, **Guardrails AI**, **Llama Guard**, cloud “prompt shields,” etc.
+
+That stack is **necessary** for customer-facing chat and copilots. It does **not** replace a gate on **execution**: *unlock door*, *transfer funds*, *delete production data*, *run shell command*.
+
+### What Sanctum adds (action layer)
+
+Sanctum is **middleware on actions**, not chat tokens:
+
+| Capability | Sanctum OSS |
+|------------|-------------|
+| Evaluate `action` + `context` before side effects | `POST /v1/actions/verify`, SDK `verifyAction()` |
+| Per-action policies (unlimited names) | `POST /v1/policies`, YAML import/export, `riskPrompt` |
+| Human-in-the-loop | `REQUIRE_VERIFICATION` → dashboard or API resolve → `GET /v1/verifications/:correlationId` |
+| Integrate with your ops stack | Webhooks + optional Supabase audit mirror |
+| Risk scoring | Ollama, OpenAI-compatible APIs, or heuristics-only (`SANCTUM_OFFLINE_MODE`) |
+| Agent convenience | `protectAgent()`, `waitForVerification()` |
+
+```text
+  guardrails (chat)     →  safe language
+  Sanctum (actions)     →  safe execution
+```
+
+### Comparison table
+
+| Question | Content guardrails | Sanctum Runtime |
+|----------|-------------------|-----------------|
+| Stops harmful **text**? | Primary focus | No (use moderation alongside) |
+| Stops harmful **tool / API / robot** calls? | Indirect (prompts, coarse allowlists) | **Primary focus** |
+| Human approval with resume? | Rarely built-in | Yes (`correlationId`, resolve, webhooks) |
+| Audit trail for compliance? | Often trace-only | `humanRecord` + audit API + webhooks |
+| Works without a cloud LLM? | Varies | Yes (policies + offline heuristics) |
+| Self-host, MIT OSS? | Varies | Yes |
+
+### When developers need Sanctum
+
+| Importance | Use case |
+|------------|----------|
+| **Essential** | Agents with privileged tools, robotics / physical access, payments, healthcare, infra automation |
+| **High** | Platform teams standardizing “verify before execute” across products |
+| **Medium** | Internal copilots that can run terminal, delete files, or call admin APIs |
+| **Lower** | Read-only chat with no tools (guardrails may suffice) |
+
+### Recommended stack
+
+1. **Input/output guardrails** on the model (your existing vendor or OSS choice).
+2. **Sanctum** immediately before calling external systems, databases, devices, or privileged APIs.
+3. **Webhooks** (`SANCTUM_WEBHOOK_URL`) into Slack, PagerDuty, or your approval UI when `verification.required` fires.
+
+```ts
+// Pattern: guardrails on messages; Sanctum on execution
+const reply = await model.chat(userMessage) // + your content guardrails
+
+await sanctum.verifyAction({
+  actor: 'billing-agent',
+  action: 'transfer_funds',
+  context: { amount: 50000, currency: 'USD', destination: acct },
+  offlineMode: false,
+})
+// only call transfer() if APPROVED or after human resolve
+```
+
+### Production checklist
+
+| Item | Notes |
+|------|--------|
+| Deploy API | [HOSTED.md](./HOSTED.md), [RENDER.md](./RENDER.md) — set `SANCTUM_API_KEY` |
+| Persistence | Render free disk is ephemeral; use Supabase mirror or your DB for long-lived audit |
+| Webhooks | Point `SANCTUM_WEBHOOK_URL` at your app (not a test inbox) |
+| Uptime | Paid plan or self-host if cold starts are unacceptable |
+| Secrets | Rotate `SANCTUM_API_KEY` and `SANCTUM_WEBHOOK_SECRET` regularly |
+
+**Positioning line:** *Content guardrails keep the model polite; Sanctum keeps the agent from doing the wrong thing in the real world.*
+
+---
+
 ## Minimum path (5 minutes)
 
 ```bash
@@ -279,4 +362,4 @@ Early access: [GitHub issue template](https://github.com/Matik103/sanctum-runtim
 
 ## Related searches (index)
 
-This guide is meant to answer lookups like: **AI agent security**, **robotics action safety**, **smart home AI control**, **industrial automation gate**, **humanoid command policy**, **LLM tool use**, **ROS2 verification**, **human-in-the-loop**, **Ollama guardrails**, **AI audit log**, **self-hosted governance**, **open source autonomous runtime**. Category examples: [CATEGORIES.md](./CATEGORIES.md).
+This guide is meant to answer lookups like: **AI agent security**, **Sanctum vs guardrails**, **action authorization for LLM agents**, **robotics action safety**, **smart home AI control**, **industrial automation gate**, **humanoid command policy**, **LLM tool use**, **ROS2 verification**, **human-in-the-loop**, **Ollama guardrails**, **AI audit log**, **self-hosted governance**, **open source autonomous runtime**. Category examples: [CATEGORIES.md](./CATEGORIES.md).

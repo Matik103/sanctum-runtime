@@ -36,6 +36,7 @@
     "dev:runtime": "concurrently -n api,dash -c blue,magenta \"npm run dev:api\" \"node scripts/wait-for-api.mjs && npm run dev:dashboard\"",
     "dev:all": "concurrently -n api,dash,site -c blue,magenta,green \"npm run dev:api\" \"npm run dev:dashboard\" \"npm run dev\"",
     "smoke": "tsx scripts/smoke-test.ts",
+    "test:webhook": "node scripts/test-render-webhook.mjs",
     "monitor": "tsx scripts/live-monitor.ts",
     "premonitor": "node scripts/ensure-env.mjs",
     "example:agent": "tsx examples/agent-gate/run.ts",
