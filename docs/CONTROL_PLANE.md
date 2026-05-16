@@ -46,8 +46,6 @@
 | Command dispatch | 4 | **Done** | heartbeat delivery + ack |
 | Deployment groups | 4 | **Done** | `deployment_groups` table |
 | Runtime marketplace | 4 | **Done** | Catalog + install + `connectFromPackage` |
-| Usage metering | 4 | **Done** | `GET /v1/usage` |
-| Billing (Stripe) | 4 | Planned | Enterprise |
 
 ---
 
