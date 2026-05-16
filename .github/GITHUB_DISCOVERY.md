@@ -7,7 +7,7 @@ Use this so the repo ranks well on **GitHub search**, **Google**, and **npm** �
 **Description** (max 350 chars — paste as-is):
 
 ```text
-Open-source runtime that gates AI agent actions before they run — policies, human approval, Ollama/OpenAI risk scoring, audit logs. MIT. npm: @sanctum-runtime/sdk. For LangChain-style agents, tool use, robotics, automation.
+Open-source trust layer for autonomous AI — gate agent, robot, smart home, and industrial actions before they run. Policies, HITL, Ollama/OpenAI, audit. MIT. npm @sanctum-runtime/sdk
 ```
 
 **Website:** `https://github.com/Matik103/sanctum-runtime#readme`  
@@ -38,7 +38,9 @@ robotics
 ai-runtime
 ```
 
-Optional replacements if a topic is taken: `agent-framework`, `llm-guardrails`, `ai-middleware`, `supabase`, `fastify`
+If swapping topics for category reach, prefer: `smart-home`, `iot`, `industrial-automation`, `humanoid-robotics`, `embodied-ai`, `ros2`
+
+Do **not** mention enterprise fleet, proprietary intel, or hosted cloud as if they ship in this repo.
 
 ## Social preview
 

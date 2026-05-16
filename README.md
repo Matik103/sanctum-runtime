@@ -1,7 +1,7 @@
 # Sanctum Runtime
 
-**The open-source gate between your AI agent and the real world.**  
-Verify tool calls, API actions, and automations *before* they run — with policies, human approval, local or cloud LLMs, and audit logs developers actually want to read.
+**The open-source gate between autonomous AI and the real world.**  
+One runtime for **agents, robots, smart home, industrial systems, and workflows** — verify every action *before* it runs, with policies, human approval, local or cloud LLMs, and audit logs developers actually want to read.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 [![npm @sanctum-runtime/sdk](https://img.shields.io/npm/v/@sanctum-runtime/sdk?label=npm%20sdk)](https://www.npmjs.com/package/@sanctum-runtime/sdk)
@@ -35,8 +35,8 @@ If you only need chat guardrails, look at prompt filters. If you need **executio
 **AI proposes an action → Sanctum evaluates policy + risk → approve, pause for a human, or block → you execute (or you don’t).**
 
 ```text
-  Before (risky)     AI agent ──────────────────────────► side effects
-  With Sanctum       AI agent ──► Sanctum Runtime ──► decision ──► execution
+  Before (risky)     AI / robot / automation ─────────────────► side effects
+  With Sanctum       your stack ──► Sanctum Runtime ──► decision ──► execution
 ```
 
 Decisions: **APPROVED** · **REQUIRE_VERIFICATION** (human review) · **BLOCKED**
@@ -77,6 +77,25 @@ await protectAgent(sanctum, {
 ```
 
 Works **without** the dashboard. Works **with** Ollama off (heuristics + policies). Works **self-hosted** on your infra.
+
+---
+
+## One runtime — 12 categories (not agents-only)
+
+The **same** `verifyAction()` API gates software and physical actions. Category adapters add convenience; the core is shared.
+
+| Category | Example actions you can gate today |
+|----------|----------------------------------|
+| AI agents | `send_email`, `execute_terminal`, tool / MCP calls |
+| Humanoids & embodied AI | `unlock_door`, `move_robot`, `move_to_location` |
+| Smart home | `disable_alarm`, locks, device commands |
+| Robotics (ROS / AMR) | `navigate`, `dock`, any custom motion command |
+| AI OS / desktop agents | `delete_file`, `install_package` |
+| Workflow automation | `run_workflow`, integrations, CRM updates |
+| Industrial | `emergency_stop`, `start_line`, setpoints |
+| Mobility, healthcare, companions, … | Your `action` string + policies |
+
+**Agent adapter** ships now (`protectAgent`). Every other row uses the SDK directly — see **[CATEGORIES.md](./CATEGORIES.md)** for examples and search terms per segment.
 
 ---
 
@@ -159,6 +178,7 @@ Fleet orchestration, managed cloud, and proprietary threat intel stay **enterpri
 | Doc | When to read |
 |-----|----------------|
 | [START_HERE.md](./START_HERE.md) | Clone, run, first verify |
+| [CATEGORIES.md](./CATEGORIES.md) | **12 categories** — robots, smart home, industrial, agents, … |
 | [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md) | Every endpoint, SDK method, webhook, env var |
 | [OPEN_CORE.md](./OPEN_CORE.md) | Public vs private roadmap |
 | [HOSTED.md](./HOSTED.md) | Deploy on your servers |
@@ -180,7 +200,8 @@ Fleet orchestration, managed cloud, and proprietary threat intel stay **enterpri
 | **Audit log** for AI decisions | `humanRecord` + export; optional Supabase |
 | **Policy as code** | YAML import/export, unlimited action keys |
 | **Self-hosted** AI governance | MIT, Docker-friendly API, no vendor lock-in for OSS |
-| **Robotics** / **IoT** command gating | Same `action` + `context` contract; adapters roadmap |
+| **Robotics** / **smart home** / **industrial** | Same `action` + `context` — see [CATEGORIES.md](./CATEGORIES.md) |
+| **Humanoid** / **embodied** command safety | `unlock_door`, `move_robot`, custom motion policies |
 
 If this matches your search, **star the repo** and open an issue with your stack — we are optimizing for real agent builders.
 
@@ -192,4 +213,6 @@ If this matches your search, **star the repo** and open an issue with your stack
 - **Enterprise / design partners:** [early access template](.github/ISSUE_TEMPLATE/early-access.md)  
 - **License:** [MIT](./LICENSE) — use in commercial products; enterprise features are a separate track.
 
-**Keywords (for search):** AI agent runtime, LLM agent security, autonomous agent policy engine, tool use verification, function calling safety, human-in-the-loop AI, Ollama agent safety, local LLM guardrails, AI action audit log, agent middleware TypeScript, open source AI governance.
+**Keywords (for search):** AI agent runtime, robotics safety, smart home AI, industrial automation gate, humanoid robot policy, embodied AI security, LLM tool use, ROS2 action verification, autonomous systems, human-in-the-loop, Ollama guardrails, open source AI governance.
+
+Enterprise fleet and hosted control plane are a **separate track** — [OPEN_CORE.md](./OPEN_CORE.md).

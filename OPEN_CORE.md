@@ -4,9 +4,9 @@ Sanctum uses an **open-core** model (PRD §4.3): this repository is the **public
 
 **Repository:** [github.com/Matik103/sanctum-runtime](https://github.com/Matik103/sanctum-runtime) — **public**, **MIT license**, visible to all developers.
 
-**Status (v0.1):** The runtime is **ready for developers** to clone, run locally, embed the SDK, and gate agent actions. It is a **preview** — not a hosted SaaS yet.
+**Status (v0.1):** The runtime is **ready for developers** to clone, run locally, embed the SDK, and gate **any action** (agents, robots, smart home, industrial, workflows). Agent adapter ships first; all categories use the same core. It is a **preview** — not a hosted SaaS.
 
-New here? → [START_HERE.md](./START_HERE.md) · Full OSS reference → [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md)
+New here? → [START_HERE.md](./START_HERE.md) · [CATEGORIES.md](./CATEGORIES.md) · [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md)
 
 ---
 
@@ -38,7 +38,7 @@ Docs: configure `SITE_*` in `.env`, then `npm run dev` → `/docs#quickstart`
 | Webhooks | HTTP POST on verify / block / resolve (`SANCTUM_WEBHOOK_URL`) |
 | Local risk (Ollama) | Optional online scoring via local Qwen |
 | Offline mode | Heuristics + policy when `offlineMode: true` |
-| Agent adapter | `protectAgent()` — verify before execute |
+| Agent adapter | `protectAgent()` — verify before execute (category 1; others use SDK — [CATEGORIES.md](./CATEGORIES.md)) |
 | Community dashboard | Logs, policies, verification queue — local control plane |
 | Examples + smoke test | `examples/`, `npm run smoke` |
 | Verification resume | `GET /v1/verifications/:correlationId`, `waitForVerification`, `protectAgent` + `awaitVerification` |

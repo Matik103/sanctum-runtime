@@ -1,6 +1,8 @@
 # Start here (developers)
 
-**Sanctum Runtime** (MIT) is an **AI agent action gate**: verify tool calls and side effects *before* they run — with policies, human approval, local or cloud LLMs, and audit logs.
+**Sanctum Runtime** (MIT) is an **action gate for autonomous systems**: agents, robots, smart home, industrial lines, and workflows. Same API — verify side effects *before* they run, with policies, human approval, models, and audit logs.
+
+**Not agents-only:** [CATEGORIES.md](./CATEGORIES.md) lists all 12 supported segments and example actions.
 
 Clone this repo, point the SDK at your API, and gate actions in minutes. No hosted account required.
 

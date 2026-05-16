@@ -12,6 +12,7 @@ If you are building agent frameworks, MCP tools, robotics commands, or backend w
 | [HOSTED.md](./HOSTED.md) | Self-host API in production |
 | [local-ai/MODELS.md](./local-ai/MODELS.md) | Local Ollama / GGUF setup |
 | [examples/policies.example.yaml](./examples/policies.example.yaml) | Sample policies for YAML import |
+| [CATEGORIES.md](./CATEGORIES.md) | 12 categories (agents, robotics, smart home, …) |
 
 ---
 
@@ -278,4 +279,4 @@ Early access: [GitHub issue template](https://github.com/Matik103/sanctum-runtim
 
 ## Related searches (index)
 
-This guide is meant to answer lookups like: **AI agent security**, **LLM guardrails for tool use**, **function calling safety**, **human-in-the-loop agents**, **agent policy engine**, **Ollama agent safety**, **local LLM risk scoring**, **AI audit log**, **agent middleware Node.js**, **autonomous system verification**, **robotics AI gate**, **MCP tool approval**, **self-hosted AI governance**, **open source agent runtime**.
+This guide is meant to answer lookups like: **AI agent security**, **robotics action safety**, **smart home AI control**, **industrial automation gate**, **humanoid command policy**, **LLM tool use**, **ROS2 verification**, **human-in-the-loop**, **Ollama guardrails**, **AI audit log**, **self-hosted governance**, **open source autonomous runtime**. Category examples: [CATEGORIES.md](./CATEGORIES.md).
