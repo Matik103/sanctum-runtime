@@ -16,13 +16,25 @@ See [`.env.example`](./.env.example) for every variable.
 **Run all commands from the repo root** (`sanctum-runtime/`, where `package.json` lives).  
 If you see `ENOENT ... package.json` in your home folder, run `cd` into the clone first.
 
+### API + SDK only (no dashboard, no Supabase)
+
 ```bash
-cd sanctum-runtime   # if you are not already here
 npm install
-npm run dev:runtime
+npm run dev:api          # API at http://127.0.0.1:3001
+npm run smoke            # in another terminal
+npm run example:agent
+```
+
+### Full stack (API + dashboard UI)
+
+```bash
+npm install
+npm run dev:runtime      # API + dashboard
 npm run smoke
 npm run example:agent
 ```
+
+Optional: [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) for dashboard login (not required for OSS).
 
 **npm-only app** (after packages are on npm):
 
@@ -76,12 +88,26 @@ Or use `sanctum.middleware()` directly. In Node, the SDK reads `SANCTUM_API_URL`
 
 ## Configuration reference
 
-| Variable | Used by |
-|----------|---------|
-| `HOST` + `PORT` or `SANCTUM_API_URL` | API, SDK, smoke tests, dashboard proxy |
-| `DASHBOARD_HOST` + `DASHBOARD_PORT` or `DASHBOARD_URL` | Dashboard dev server |
-| `SITE_HOST` + `SITE_PORT` | Marketing site (`npm run dev`) |
-| `OLLAMA_URL` + `OLLAMA_MODEL` | Local risk analysis |
+| Variable | Required? | Used by |
+|----------|-----------|---------|
+| `HOST` + `PORT` or `SANCTUM_API_URL` | **Yes** | API, SDK, smoke tests |
+| `OLLAMA_URL` + `OLLAMA_MODEL` | Recommended | Online risk scoring (offline still works) |
+| `DASHBOARD_*` | Only for UI | `npm run dev:runtime` / dashboard |
+| `SITE_*` | Only for marketing site | `npm run dev` |
+| `SANCTUM_API_KEY` | Optional | Lock down API; scripts send it automatically |
+| `SUPABASE_*` | Optional | Dashboard sign-in only |
+
+## Developer readiness checklist
+
+Before you ship or move to the next product stage, confirm:
+
+- [ ] `npm run build:sdk` succeeds
+- [ ] `npm run dev:api` → `curl http://127.0.0.1:3001/health` returns `"ok": true`
+- [ ] `npm run smoke` — all checks pass
+- [ ] `npm run example:agent` completes
+- [ ] Your app: `npm install @sanctum-runtime/sdk` + `baseUrl` to your API
+- [ ] (Optional) Ollama running for online model path
+- [ ] (Optional) Dashboard at `DASHBOARD_URL` for operators
 
 ## More
 

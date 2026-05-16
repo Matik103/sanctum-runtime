@@ -2,7 +2,7 @@
  * Live dashboard exercise — run while watching http://127.0.0.1:5174
  * Usage: npm run monitor
  */
-import { resolveSanctumApiUrl } from './env.ts'
+import { apiRequestHeaders, resolveSanctumApiUrl } from './env.ts'
 
 const API = resolveSanctumApiUrl()
 
@@ -147,7 +147,7 @@ async function verify(s: Scenario) {
   const t0 = Date.now()
   const res = await fetch(`${API}/v1/actions/verify`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: apiRequestHeaders(),
     body: JSON.stringify(s.body),
   })
   const ms = Date.now() - t0
@@ -171,7 +171,12 @@ async function main() {
   console.log(`\nSanctum live monitor → ${API}`)
   console.log(`Dashboard → check DASHBOARD_URL in .env (default :5174)\n`)
 
-  const status = await fetch(`${API}/v1/status`).then((r) => r.json())
+  const statusRes = await fetch(`${API}/v1/status`, { headers: apiRequestHeaders(false) })
+  if (!statusRes.ok) {
+    console.error(`API unreachable (${statusRes.status}). Is npm run dev:api running?`)
+    process.exit(1)
+  }
+  const status = await statusRes.json()
   console.log(
     `Runtime: ollama=${status.ollamaConnected} model=${status.ollamaModel} audit=${status.auditCount}\n`,
   )

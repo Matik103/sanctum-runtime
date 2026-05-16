@@ -4,12 +4,16 @@
  */
 import { protectAgent, AgentActions } from '../packages/adapters/agent-runtime/src/index.ts'
 import { SanctumRuntime } from '../packages/sdk/src/index.ts'
-import { resolveSanctumApiUrl } from './env.ts'
+import { apiRequestHeaders, resolveSanctumApiUrl } from './env.ts'
 
 const API = resolveSanctumApiUrl()
 
 async function fetchJson(path: string, init?: RequestInit) {
-  const res = await fetch(`${API}${path}`, init)
+  const headers = {
+    ...apiRequestHeaders(init?.body != null),
+    ...(init?.headers as Record<string, string> | undefined),
+  }
+  const res = await fetch(`${API}${path}`, { ...init, headers })
   if (!res.ok) throw new Error(`${path} → ${res.status} ${await res.text()}`)
   return res.json()
 }
@@ -52,7 +56,6 @@ async function main() {
   try {
     const result = await fetchJson('/v1/actions/verify', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         actor: 'smoke-test',
         action: 'unlock_door',
@@ -67,6 +70,13 @@ async function main() {
     }
   } catch (e) {
     fail('POST /v1/actions/verify', e)
+  }
+
+  try {
+    const audit = await fetchJson('/v1/audit?limit=5')
+    ok(`GET /v1/audit (${Array.isArray(audit) ? audit.length : 0} entries)`)
+  } catch (e) {
+    fail('GET /v1/audit', e)
   }
 
   try {

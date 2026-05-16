@@ -45,6 +45,16 @@ export function resolveSanctumApiUrl(): string {
   throw new Error('Set SANCTUM_API_URL or both HOST and PORT in .env')
 }
 
+/** Headers for scripts calling the runtime API (respects SANCTUM_API_KEY when set). */
+export function apiRequestHeaders(json = true): Record<string, string> {
+  loadRepoEnv()
+  const h: Record<string, string> = {}
+  if (json) h['Content-Type'] = 'application/json'
+  const key = process.env.SANCTUM_API_KEY?.trim()
+  if (key) h['X-Sanctum-Key'] = key
+  return h
+}
+
 export function resolveApiListenTarget(): { host: string; port: number } {
   loadRepoEnv()
   if (process.env.SANCTUM_API_URL) {
