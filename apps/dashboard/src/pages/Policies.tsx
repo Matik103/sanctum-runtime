@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { PolicyMap } from '@sanctum-runtime/sdk'
+import type { PolicyMap } from '@sanctum-runtime/sdk/browser'
 import {
   actionLabel,
   createPolicyResponse,

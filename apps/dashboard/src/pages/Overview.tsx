@@ -1,4 +1,4 @@
-import type { ActionResult, PolicyMap, RuntimeStatus } from '@sanctum-runtime/sdk'
+import type { ActionResult, PolicyMap, RuntimeStatus } from '@sanctum-runtime/sdk/browser'
 import { IntegrateQuickstart } from '../components/IntegrateQuickstart'
 import { Phase3Onboarding } from '../components/Phase3Onboarding'
 import { decisionTone, timeAgo } from '../lib/format'

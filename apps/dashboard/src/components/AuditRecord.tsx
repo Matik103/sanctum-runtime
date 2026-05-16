@@ -1,4 +1,4 @@
-import type { ActionResult } from '@sanctum-runtime/sdk'
+import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 import { auditRecordHeadline, auditRecordText } from '../lib/narrative'
 
 type Props = {

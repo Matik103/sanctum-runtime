@@ -39,7 +39,7 @@ export function Fleet() {
   const [agents, setAgents] = useState<FleetAgent[]>([])
   const [events, setEvents] = useState<FleetEvent[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [tab, setTab] = useState<'runtimes' | 'map' | 'agents' | 'events'>('runtimes')
+  const [tab, setTab] = useState<'runtimes' | 'map' | 'agents' | 'events'>('map')
   const [orgs, setOrgs] = useState<FleetOrg[]>([])
   const [orgId, setOrgId] = useState<string>('')
   const [fleetMap, setFleetMap] = useState<FleetMap | null>(null)
@@ -53,39 +53,60 @@ export function Fleet() {
   const [groupMsg, setGroupMsg] = useState<string | null>(null)
 
   useEffect(() => {
-    void fetchMyOrgs().then((list) => setOrgs(list))
+    void fetchMyOrgs().then((list) => {
+      setOrgs(list)
+      if (list.length === 1) {
+        setOrgId(list[0].org_id)
+      }
+    })
   }, [])
 
   const refresh = useCallback(async () => {
+    const filter = orgId || undefined
+    const mapOrg = filter ?? orgs[0]?.org_id
+    let mapError: string | null = null
+
     try {
-      const filter = orgId || undefined
-      const [rt, ev] = await Promise.all([
+      const [rt, ev, ag] = await Promise.all([
         fetchRuntimes(filter),
         fetchFleetEvents(80, filter),
+        fetchFleetAgents(),
       ])
       setRuntimes(rt)
       setEvents(ev)
-      setAgents(await fetchFleetAgents())
-      const mapOrg = filter ?? orgs[0]?.org_id
-      if (mapOrg) {
+      setAgents(ag)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Fleet data unavailable')
+      return
+    }
+
+    if (mapOrg) {
+      try {
         const [map, gr] = await Promise.all([
           fetchFleetMap(mapOrg),
           fetchDeploymentGroups(mapOrg),
         ])
         setFleetMap(map)
         setGroups(gr)
-      } else if (orgs.length > 0) {
-        setFleetMap(null)
-        const all = await Promise.all(orgs.map((o) => fetchDeploymentGroups(o.org_id)))
-        setGroups(all.flat())
-      } else {
+      } catch (e) {
+        mapError = e instanceof Error ? e.message : 'Fleet map unavailable'
         setFleetMap(null)
         setGroups([])
       }
-      setError(null)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Fleet data unavailable')
+    } else if (orgs.length > 0) {
+      setFleetMap(null)
+      try {
+        const all = await Promise.all(orgs.map((o) => fetchDeploymentGroups(o.org_id)))
+        setGroups(all.flat())
+      } catch {
+        setGroups([])
+      }
+    } else {
+      setFleetMap(null)
+      setGroups([])
     }
+
+    setError(mapError)
   }, [orgId, orgs])
 
   useEffect(() => {

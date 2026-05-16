@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { ActionResult } from '@sanctum-runtime/sdk'
+import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 import { ActionDrawer } from './components/ActionDrawer'
 import { ReviewQueueBanner, summarizePendingActions } from './components/ReviewQueueBanner'
 import { VerificationModal } from './components/VerificationModal'

@@ -1,5 +1,5 @@
-import type { Decision } from '@sanctum-runtime/sdk'
-import { humanizeContextValue, humanizeToken } from '@sanctum-runtime/sdk'
+import type { Decision } from '@sanctum-runtime/sdk/browser'
+import { humanizeContextValue, humanizeToken } from '@sanctum-runtime/sdk/browser'
 import { NARRATIVE_CONTEXT_KEYS } from './narrative'
 
 /** unlock_door → Unlock door */

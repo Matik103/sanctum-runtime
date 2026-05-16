@@ -9,7 +9,7 @@ import {
   Shield,
   ShieldAlert,
 } from 'lucide-react'
-import type { RuntimeStatus } from '@sanctum-runtime/sdk'
+import type { RuntimeStatus } from '@sanctum-runtime/sdk/browser'
 import { useAuth } from '../auth/AuthProvider'
 import { riskModelStatusLine } from '../lib/risk-label'
 import { isSupabaseConfigured } from '../lib/supabase'

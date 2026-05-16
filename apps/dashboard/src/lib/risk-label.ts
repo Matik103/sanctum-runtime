@@ -1,4 +1,4 @@
-import type { RuntimeStatus } from '@sanctum-runtime/sdk'
+import type { RuntimeStatus } from '@sanctum-runtime/sdk/browser'
 
 /** Sidebar / status copy for connected risk provider (no heuristic-fallback messaging). */
 export function riskModelStatusLine(status: RuntimeStatus | null): {

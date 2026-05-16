@@ -5,4 +5,4 @@ export {
   extractHeardPhrase,
   extractIntent,
   NARRATIVE_CONTEXT_KEYS,
-} from '@sanctum-runtime/sdk'
+} from '@sanctum-runtime/sdk/browser'

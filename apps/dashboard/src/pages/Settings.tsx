@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { BarChart3, Settings2 } from 'lucide-react'
-import type { RuntimeStatus } from '@sanctum-runtime/sdk'
+import type { RuntimeStatus } from '@sanctum-runtime/sdk/browser'
 import { fetchMyOrgs, type FleetOrg } from '../lib/fleet'
 import { riskModelMetaLine } from '../lib/risk-label'
 import { fetchUsage, usageMetricLabel, type UsageSummary } from '../lib/usage'

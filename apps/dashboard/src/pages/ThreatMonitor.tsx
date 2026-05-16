@@ -1,4 +1,4 @@
-import type { ActionResult } from '@sanctum-runtime/sdk'
+import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 import { decisionTone, timeAgo } from '../lib/format'
 import {
   actionLabel,

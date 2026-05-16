@@ -1,5 +1,5 @@
 import { X } from 'lucide-react'
-import type { ActionResult } from '@sanctum-runtime/sdk'
+import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 import { actionLabel, anomalyLabel, decisionLabel, policyLabel, riskLabel } from '../lib/labels'
 import { decisionTone, timeAgo } from '../lib/format'
 import { extractHeardPhrase, extractIntent } from '../lib/narrative'

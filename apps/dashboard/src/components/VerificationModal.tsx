@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import type { ActionResult } from '@sanctum-runtime/sdk'
+import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 import { actionLabel, actorLabel } from '../lib/labels'
 import { extractHeardPhrase, extractIntent } from '../lib/narrative'
 

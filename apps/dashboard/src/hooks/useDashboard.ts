@@ -6,7 +6,7 @@ import {
   type DashboardData,
   type PolicyResponse,
 } from '../lib/api'
-import type { ActionResult } from '@sanctum-runtime/sdk'
+import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 
 const DISMISSED_KEY = 'sanctum-dismissed-verifications'
 

@@ -1,4 +1,4 @@
-import type { ActionResult } from '@sanctum-runtime/sdk'
+import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 import { AuditRecord } from '../components/AuditRecord'
 import { PageActions } from '../components/ui/PageActions'
 import { decisionTone, timeAgo } from '../lib/format'

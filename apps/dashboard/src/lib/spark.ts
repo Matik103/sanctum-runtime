@@ -1,4 +1,4 @@
-import type { ActionResult } from '@sanctum-runtime/sdk'
+import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 
 /** Last N hourly buckets of audit volume for the overview spark chart. */
 export function sparkBars(audit: ActionResult[], bars = 7): number[] {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { KeyRound, Server, Trash2 } from 'lucide-react'
-import type { RuntimeStatus } from '@sanctum-runtime/sdk'
+import type { RuntimeStatus } from '@sanctum-runtime/sdk/browser'
 import { Alert } from '../components/ui/Alert'
 import { CopyField } from '../components/ui/CopyField'
 import { EmptyState } from '../components/ui/EmptyState'
