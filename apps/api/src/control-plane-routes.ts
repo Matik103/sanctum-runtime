@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { getSupabaseAuthConfig } from './auth.js'
 import { ControlPlaneStore, defaultFingerprint } from './control-plane-store.js'
 import { OrchestrationStore } from './orchestration-store.js'
+import { runtimeWsHub } from './runtime-ws-hub.js'
 
 const modeSchema = z.enum(['cloud', 'edge', 'airgap', 'hybrid'])
 
@@ -154,7 +155,7 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
         status: body.status,
       })
       const commands =
-        body.status === 'offline'
+        body.status === 'offline' || runtimeWsHub.isConnected(runtimeId)
           ? []
           : await orch.claimPendingCommands(runtimeId).then((list) =>
               list.map((c) => ({
@@ -167,6 +168,7 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
         ok: true,
         lastSeenAt: runtime.last_seen_at,
         status: runtime.status,
+        wsConnected: runtimeWsHub.isConnected(runtimeId),
         commands,
       }
     } catch {

@@ -34,7 +34,7 @@
 | **Fleet dashboard** | 1 | **Done** | Fleet page (runtimes/agents/events) |
 | Live SSE | 1 | **Done** | `GET /v1/events/stream` |
 | Auto `policy.*` on verify | 2 | **Done** | SDK emits when connected |
-| WebSocket (bidirectional) | 2 | Planned | SSE sufficient for MVP |
+| WebSocket (bidirectional) | 2 | **Done** | `WS /v1/runtimes/ws` + SDK auto-connect |
 | Billing | 4 | Planned | Enterprise |
 | Runtime attestation / trust score | 3 | **Done** | `connect()` + `014_phase3_attestation` |
 | Re-attest + trust API | 3 | **Done** | `POST …/attest`, `GET …/trust` |

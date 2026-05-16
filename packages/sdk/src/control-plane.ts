@@ -1,5 +1,6 @@
 import type { SanctumClient } from './client.js'
 import { defaultAttestationReport, type AttestationReport } from './attestation.js'
+import { connectRuntimeWebSocket } from './runtime-ws.js'
 
 export type { AttestationReport } from './attestation.js'
 export { defaultAttestationReport } from './attestation.js'
@@ -24,6 +25,8 @@ export type ConnectOptions = {
   region?: string
   /** Invoked when the control plane delivers a command on heartbeat. */
   onCommand?: (cmd: RuntimeCommand) => void | Promise<void>
+  /** Use WebSocket for instant command delivery (default true in Node). */
+  useWebSocket?: boolean
 }
 
 export type RuntimeCommand = {
@@ -59,6 +62,7 @@ export class ControlPlaneSession {
   organizationId: string | null = null
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null
   private onCommand: ((cmd: RuntimeCommand) => void | Promise<void>) | null = null
+  private wsDisconnect: (() => void) | null = null
 
   constructor(private client: SanctumClient) {}
 
@@ -91,6 +95,25 @@ export class ControlPlaneSession {
       activeModel: options.activeModel,
       currentTask: options.currentTask,
     })
+
+    const useWs = options.useWebSocket !== false && typeof process !== 'undefined'
+    if (useWs) {
+      void connectRuntimeWebSocket({
+        baseUrl: this.client.getBaseUrl(),
+        runtimeId: result.runtimeId,
+        apiKey: this.client.getApiKey(),
+        onCommand: async (cmd) => {
+          if (this.onCommand) await this.onCommand(cmd)
+        },
+        onAck: (id, ok) => this.ackCommand(id, ok),
+      })
+        .then((close) => {
+          this.wsDisconnect = close
+        })
+        .catch(() => {
+          /* heartbeat fallback */
+        })
+    }
 
     return result
   }
@@ -147,6 +170,10 @@ export class ControlPlaneSession {
 
   async disconnect() {
     this.stopHeartbeat()
+    if (this.wsDisconnect) {
+      this.wsDisconnect()
+      this.wsDisconnect = null
+    }
     if (this.runtimeId) {
       await this.client
         .request('POST', `/v1/runtimes/${this.runtimeId}/heartbeat`, { status: 'offline' })

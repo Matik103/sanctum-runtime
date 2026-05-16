@@ -70,9 +70,11 @@
     "registry": "https://registry.npmjs.org"
   },
   "dependencies": {
+    "ws": "^8.18.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/ws": "^8.18.1",
     "tsup": "^8.5.0",
     "typescript": "^5.8.3"
   },

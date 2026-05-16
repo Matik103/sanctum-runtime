@@ -164,7 +164,7 @@ export async function dispatchFleetCommand(input: {
   region?: string
   deploymentGroupId?: string
   runtimeId?: string
-}): Promise<{ commandIds: string[]; targetCount: number }> {
+}): Promise<{ commandIds: string[]; targetCount: number; wsDelivered?: number }> {
   const res = await fetch(`${apiBase}/v1/orchestration/dispatch`, {
     method: 'POST',
     headers: await fleetHeaders(),
@@ -178,7 +178,7 @@ export async function dispatchFleetCommand(input: {
     }),
   })
   if (!res.ok) throw new Error(`Dispatch: ${res.status}`)
-  return res.json() as Promise<{ commandIds: string[]; targetCount: number }>
+  return res.json() as Promise<{ commandIds: string[]; targetCount: number; wsDelivered?: number }>
 }
 
 export async function fetchFleetEvents(limit = 50, orgId?: string): Promise<FleetEvent[]> {

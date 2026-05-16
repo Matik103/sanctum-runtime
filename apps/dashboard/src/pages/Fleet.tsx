@@ -147,7 +147,11 @@ export function Fleet() {
         region: dispatchRegion.trim() || undefined,
         deploymentGroupId: dispatchGroupId || undefined,
       })
-      setDispatchMsg(`Dispatched to ${res.targetCount} runtime(s)`)
+      const viaWs =
+        res.wsDelivered != null && res.wsDelivered > 0
+          ? ` (${res.wsDelivered} via WebSocket)`
+          : ''
+      setDispatchMsg(`Dispatched to ${res.targetCount} runtime(s)${viaWs}`)
     } catch (e) {
       setDispatchMsg(e instanceof Error ? e.message : 'Dispatch failed')
     }

@@ -1,4 +1,5 @@
 import cors from '@fastify/cors'
+import websocket from '@fastify/websocket'
 import { RuntimeEngine } from '@sanctum/runtime-engine'
 import { ActionRequestSchema } from '@sanctum-runtime/sdk'
 import Fastify from 'fastify'
@@ -7,6 +8,8 @@ import { z } from 'zod'
 import { registerApiKeyRoutes } from './api-keys.js'
 import { registerControlPlaneRoutes } from './control-plane-routes.js'
 import { registerOrchestrationRoutes } from './orchestration-routes.js'
+import { registerRuntimeWsRoutes } from './runtime-ws-routes.js'
+import { runtimeWsHub } from './runtime-ws-hub.js'
 import {
   authenticateRequest,
   getSupabaseAuthConfig,
@@ -38,6 +41,7 @@ const corsOrigins = new Set([
   'http://localhost:5174',
 ])
 
+await app.register(websocket)
 await app.register(cors, {
   origin: (origin, cb) => {
     if (!origin) return cb(null, true)
@@ -122,6 +126,7 @@ app.get('/', async () => ({
     fleet: 'GET /v1/fleet/map · deployment-groups · POST /v1/orchestration/dispatch',
     operatorContext: 'GET /v1/operator/context',
     eventStream: 'GET /v1/events/stream (SSE)',
+    runtimeWs: 'WS /v1/runtimes/ws?runtimeId=',
     analyze: 'POST /analyze-action',
   },
 }))
@@ -130,6 +135,7 @@ if (supabaseAuth) {
   await registerApiKeyRoutes(app, supabaseAuth)
   await registerControlPlaneRoutes(app)
   await registerOrchestrationRoutes(app)
+  await registerRuntimeWsRoutes(app)
 }
 
 app.get('/health', async () => {
@@ -139,6 +145,7 @@ app.get('/health', async () => {
     ollama: status.ollamaConnected,
     auditCount: status.auditCount,
     policyCount: status.policyCount,
+    wsConnections: runtimeWsHub.connectedCount(),
   }
 })
 

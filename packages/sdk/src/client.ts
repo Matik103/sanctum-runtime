@@ -37,6 +37,10 @@ export class SanctumClient {
     return this.baseUrl
   }
 
+  getApiKey(): string | undefined {
+    return this.apiKey
+  }
+
   async request<T = unknown>(
     method: string,
     path: string,

@@ -1,4 +1,5 @@
 import { createSupabaseAdmin, type SupabaseAuthConfig } from './auth.js'
+import { runtimeWsHub } from './runtime-ws-hub.js'
 import type { RegisteredRuntime } from './control-plane-store.js'
 
 export type DeploymentGroup = {
@@ -100,7 +101,7 @@ export class OrchestrationStore {
     runtimeId?: string
     deploymentGroupId?: string
     region?: string
-  }): Promise<{ commandIds: string[]; targetCount: number }> {
+  }): Promise<{ commandIds: string[]; targetCount: number; wsDelivered: number }> {
     if (!input.runtimeId && !input.deploymentGroupId && !input.region) {
       throw new Error('dispatch_target_required')
     }
@@ -119,7 +120,7 @@ export class OrchestrationStore {
       runtimeIds = (data ?? []).map((r: { id: string }) => r.id)
     }
 
-    if (runtimeIds.length === 0) return { commandIds: [], targetCount: 0 }
+    if (runtimeIds.length === 0) return { commandIds: [], targetCount: 0, wsDelivered: 0 }
 
     const rows = runtimeIds.map((runtimeId) => ({
       org_id: input.orgId,
@@ -131,15 +132,39 @@ export class OrchestrationStore {
       status: 'pending',
     }))
 
-    const { data, error } = await admin.from('runtime_commands').insert(rows).select('id')
+    const { data, error } = await admin
+      .from('runtime_commands')
+      .insert(rows)
+      .select('id, runtime_id')
     if (error) throw new Error(error.message)
+
+    const now = new Date().toISOString()
+    let wsDelivered = 0
+    for (const row of data ?? []) {
+      const pushed = runtimeWsHub.push(row.runtime_id as string, {
+        type: 'command',
+        id: row.id as string,
+        command: input.command,
+        payload: input.payload ?? {},
+      })
+      if (pushed) {
+        wsDelivered++
+        await admin
+          .from('runtime_commands')
+          .update({ status: 'delivered', delivered_at: now })
+          .eq('id', row.id)
+      }
+    }
+
     return {
       commandIds: (data ?? []).map((r: { id: string }) => r.id),
       targetCount: runtimeIds.length,
+      wsDelivered,
     }
   }
 
   async claimPendingCommands(runtimeId: string, limit = 10): Promise<RuntimeCommand[]> {
+    if (runtimeWsHub.isConnected(runtimeId)) return []
     const admin = this.admin()
     const now = new Date().toISOString()
     const { data: pending, error } = await admin

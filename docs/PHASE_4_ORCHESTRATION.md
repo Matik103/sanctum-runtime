@@ -52,8 +52,12 @@ Targets: `runtimeId`, `deploymentGroupId`, or `region` (at least one required).
 
 Migration `015_phase4_orchestration.sql` — apply with `npm run db:push`.
 
-## Planned later
+## WebSocket (instant delivery)
 
-- WebSocket push (heartbeat polling is MVP)
+After `connect()`, the SDK opens `WS /v1/runtimes/ws?runtimeId=…` with `X-Sanctum-Key`. Commands are pushed immediately; heartbeat polling is the fallback when WS is unavailable.
+
+Disable: `connect({ useWebSocket: false })`.
+
+## Planned later
 - Runtime marketplace
 - Billing / usage metering
