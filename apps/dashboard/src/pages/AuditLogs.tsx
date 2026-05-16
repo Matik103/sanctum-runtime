@@ -111,7 +111,7 @@ export function AuditLogs({ audit, onSelect }: Props) {
                     </span>
                   </td>
                   <td style={{ color: 'var(--muted)', verticalAlign: 'top' }}>
-                    {e.modelInvoked ? 'Model' : 'Heuristic'}
+                    {e.modelInvoked ? 'AI model' : 'Policy'}
                   </td>
                   <td style={{ color: 'var(--muted)', verticalAlign: 'top' }}>
                     {timeAgo(e.timestamp)}

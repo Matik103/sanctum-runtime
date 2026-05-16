@@ -118,7 +118,7 @@ export function ActionDrawer({ entry, onClose }: Props) {
             <li>Request received · {timeAgo(entry.timestamp)}</li>
             <li>Runtime intercepted</li>
             <li>
-              {entry.modelInvoked ? 'Risk analyzed (local model)' : 'Heuristic rules applied'}
+              {entry.modelInvoked ? 'Risk analyzed (AI model)' : 'Policy evaluation'}
             </li>
             <li>Policy checked</li>
             <li>{decisionLabel(entry.decision)}</li>

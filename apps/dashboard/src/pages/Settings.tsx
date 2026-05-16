@@ -36,10 +36,6 @@ export function Settings({ status }: Props) {
               <dt>Audit entries</dt>
               <dd>{status?.auditCount ?? '—'}</dd>
             </div>
-            <div>
-              <dt>Fallback when model offline</dt>
-              <dd>{status?.systemOfflineCapable ? 'Enabled' : 'Disabled'}</dd>
-            </div>
           </dl>
         </section>
 
@@ -54,11 +50,7 @@ export function Settings({ status }: Props) {
               <dt>Status</dt>
               <dd>
                 <strong style={{ color: modelReady ? 'var(--success)' : 'var(--muted)' }}>
-                  {modelReady
-                    ? 'Connected'
-                    : provider === 'none'
-                      ? 'Heuristics only'
-                      : 'Disconnected'}
+                  {modelReady ? 'Connected' : provider === 'none' ? 'Not configured' : 'Disconnected'}
                 </strong>
               </dd>
             </div>

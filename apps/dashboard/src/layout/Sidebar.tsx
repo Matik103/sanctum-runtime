@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import type { RuntimeStatus } from '@sanctum-runtime/sdk'
 import { useAuth } from '../auth/AuthProvider'
+import { riskModelStatusLine } from '../lib/risk-label'
 import { isSupabaseConfigured } from '../lib/supabase'
 
 export type PageId =
@@ -38,8 +39,7 @@ type Props = {
 
 export function Sidebar({ page, onPage, status }: Props) {
   const { user, signOut } = useAuth()
-  const ollamaOk = status?.ollamaConnected ?? false
-  const offline = status?.systemOfflineCapable ?? false
+  const risk = riskModelStatusLine(status)
 
   return (
     <aside className="sidebar">
@@ -64,17 +64,12 @@ export function Sidebar({ page, onPage, status }: Props) {
 
       <div className="sidebar-footer">
         <div style={{ marginBottom: '0.5rem' }}>
-          <span className={`status-dot ${ollamaOk ? 'ok' : 'warn'}`} />
-          {ollamaOk ? 'Ollama connected' : 'Ollama offline'}
+          <span className={`status-dot ${risk.dot}`} />
+          {risk.label}
         </div>
         <div>
-          Local runtime <strong style={{ color: 'var(--success)' }}>active</strong>
+          Runtime <strong style={{ color: 'var(--success)' }}>active</strong>
         </div>
-        {offline && (
-          <div style={{ marginTop: '0.35rem', color: 'var(--warning)' }}>
-            Heuristic fallback ready
-          </div>
-        )}
         {isSupabaseConfigured && user && (
           <div style={{ marginTop: '0.75rem', fontSize: '0.78rem', color: 'var(--muted)' }}>
             {user.email}

@@ -7,6 +7,7 @@ import {
   type ApiKeyRecord,
   type CreateApiKeyResult,
 } from '../lib/api-keys'
+import { riskModelMetaLine } from '../lib/risk-label'
 
 type Props = { status: RuntimeStatus | null }
 
@@ -79,9 +80,7 @@ export function Devices({ status }: Props) {
         <div className="policy-card">
           <h3>Local runtime</h3>
           <p style={{ color: 'var(--muted)', fontSize: '0.85rem', margin: '0.35rem 0' }}>
-            {status?.riskProvider === 'openai'
-              ? `OpenAI-compatible · ${status.riskModel ?? 'model'}`
-              : status?.ollamaModel ?? 'Heuristic / offline mode'}
+            {riskModelMetaLine(status)}
           </p>
           <p style={{ marginTop: '0.75rem' }}>
             <span className={`badge ${connected || status?.riskModelConnected ? 'success' : 'neutral'}`}>

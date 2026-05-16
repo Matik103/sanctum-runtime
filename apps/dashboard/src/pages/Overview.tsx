@@ -4,6 +4,7 @@ import { Phase3Onboarding } from '../components/Phase3Onboarding'
 import { decisionTone, timeAgo } from '../lib/format'
 import { actionLabel, decisionLabel } from '../lib/labels'
 import { auditRecordHeadline } from '../lib/narrative'
+import { riskModelMetaLine } from '../lib/risk-label'
 import { sparkBars } from '../lib/spark'
 
 type Props = {
@@ -67,12 +68,7 @@ export function Overview({
             {status?.riskModelConnected || status?.ollamaConnected ? 'Operational' : 'Degraded'}
           </div>
           <div className="card-meta">
-            {status?.riskProvider === 'openai'
-              ? `OpenAI · ${status.riskModel ?? 'model'}`
-              : status?.ollamaModel ?? status?.riskProvider === 'none'
-                ? 'Heuristics / offline'
-                : 'No model'}{' '}
-            · {Object.keys(policies).length} policies
+            {riskModelMetaLine(status)} · {Object.keys(policies).length} policies
           </div>
         </div>
 
