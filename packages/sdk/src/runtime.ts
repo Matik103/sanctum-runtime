@@ -4,6 +4,7 @@ import {
   resolveMemoryKey,
   type AgentMemoryVaultOptions,
 } from './agent-memory.js'
+import { MarketplaceClient } from './marketplace.js'
 import {
   ControlPlaneSession,
   type ConnectOptions,
@@ -31,10 +32,29 @@ function policyModeToPatch(mode: PolicyMode): Partial<ActionPolicy> {
 export class SanctumRuntime {
   private client: SanctumClient
   readonly control: ControlPlaneSession
+  readonly marketplace: MarketplaceClient
 
   constructor(options: SanctumClientOptions = {}) {
     this.client = new SanctumClient(options)
     this.control = new ControlPlaneSession(this.client)
+    this.marketplace = new MarketplaceClient(this.client)
+  }
+
+  /**
+   * Install a marketplace package and connect using its template defaults.
+   */
+  async connectFromPackage(
+    packageSlug: string,
+    organizationId: string,
+    overrides?: Partial<ConnectOptions>,
+  ) {
+    const { connect } = await this.marketplace.install(packageSlug, organizationId)
+    const opts = this.marketplace.toConnectOptions(connect, organizationId)
+    const result = await this.connect({ ...opts, ...overrides })
+    for (const agent of connect.agents ?? []) {
+      await this.registerAgent(agent)
+    }
+    return { ...result, packageSlug, packageVersion: connect.packageVersion }
   }
 
   /** Register this host with the Sanctum control plane (telemetry + heartbeat). */

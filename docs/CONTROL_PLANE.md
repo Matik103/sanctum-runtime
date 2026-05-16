@@ -44,7 +44,7 @@
 | Fleet maps / regions | 4 | **Done** | `GET /v1/fleet/map` |
 | Command dispatch | 4 | **Done** | heartbeat delivery + ack |
 | Deployment groups | 4 | **Done** | `deployment_groups` table |
-| Runtime marketplace | 4 | Planned | |
+| Runtime marketplace | 4 | **Done** | Catalog + install + `connectFromPackage` |
 | Billing | 4 | Planned | Enterprise |
 
 ---

@@ -2,6 +2,7 @@ import {
   Activity,
   LayoutDashboard,
   Monitor,
+  Package,
   Radio,
   ScrollText,
   Settings,
@@ -20,6 +21,7 @@ export type PageId =
   | 'policies'
   | 'devices'
   | 'fleet'
+  | 'marketplace'
   | 'audit'
   | 'settings'
 
@@ -30,6 +32,7 @@ const NAV: { id: PageId; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'policies', label: 'Policies', icon: Shield },
   { id: 'devices', label: 'Devices', icon: Monitor },
   { id: 'fleet', label: 'Fleet', icon: Radio },
+  { id: 'marketplace', label: 'Marketplace', icon: Package },
   { id: 'audit', label: 'Audit Logs', icon: ScrollText },
   { id: 'settings', label: 'Settings', icon: Settings },
 ]

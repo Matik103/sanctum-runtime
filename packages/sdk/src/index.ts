@@ -45,3 +45,8 @@ export {
   resolveMemoryKey,
   type AgentMemoryVaultOptions,
 } from './agent-memory.js'
+export {
+  MarketplaceClient,
+  type MarketplaceConnectHints,
+  type MarketplacePackage,
+} from './marketplace.js'

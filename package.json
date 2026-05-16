@@ -52,6 +52,7 @@
     "seed:production": "node scripts/seed-production-demo.mjs",
     "example:connect": "tsx examples/runtime-connect/run.ts",
     "example:memory": "tsx examples/agent-memory/run.ts",
+    "example:marketplace": "tsx examples/marketplace-connect/run.ts",
     "env:pull": "node scripts/pull-supabase-env.mjs",
     "db:push": "supabase db push",
     "db:status": "supabase migration list",
