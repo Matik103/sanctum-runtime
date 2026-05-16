@@ -35,11 +35,14 @@ export function Overview({
     <>
       <header className="page-header">
         <div>
-          <h1>Sanctum Runtime</h1>
-          <p>Local control plane — verify agent actions before they execute</p>
+          <h1>Mission control</h1>
+          <p>Verify agent actions, fleet telemetry, and audit — before they execute</p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <span className="pill ok">Local runtime active</span>
+          <span className="pill ok">
+            <span className="status-dot ok" style={{ marginRight: 0 }} aria-hidden />
+            Runtime online
+          </span>
           <span className="pill" title="Open-source runtime preview">
             v0.1
           </span>

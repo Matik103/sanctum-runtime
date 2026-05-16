@@ -4,6 +4,7 @@ import { ActionDrawer } from './components/ActionDrawer'
 import { ReviewQueueBanner, summarizePendingActions } from './components/ReviewQueueBanner'
 import { VerificationModal } from './components/VerificationModal'
 import { useDashboard } from './hooks/useDashboard'
+import { MainCanvas } from './layout/MainCanvas'
 import { Sidebar, type PageId } from './layout/Sidebar'
 import { AuditLogs } from './pages/AuditLogs'
 import { Devices } from './pages/Devices'
@@ -42,19 +43,13 @@ export function App() {
     <div className="shell">
       <Sidebar page={page} onPage={setPage} status={status} />
 
-      <main className="main">
+      <MainCanvas>
         {apiError && (
-          <div
-            className="card"
-            style={{
-              marginBottom: '1rem',
-              borderColor: 'var(--danger)',
-              color: 'var(--foreground)',
-              fontSize: '0.9rem',
-            }}
-          >
-            <strong>API unreachable</strong>
-            <p style={{ margin: '0.5rem 0 0', color: 'var(--muted)' }}>{apiError}</p>
+          <div className="alert alert--error" role="alert">
+            <div className="alert__body">
+              <strong>API unreachable</strong>
+              <p style={{ margin: '0.5rem 0 0' }}>{apiError}</p>
+            </div>
           </div>
         )}
 
@@ -93,7 +88,7 @@ export function App() {
         {page === 'marketplace' && <Marketplace />}
         {page === 'audit' && <AuditLogs audit={audit} onSelect={onSelect} />}
         {page === 'settings' && <Settings status={status} />}
-      </main>
+      </MainCanvas>
 
       <ActionDrawer entry={selected} onClose={() => setSelected(null)} />
 

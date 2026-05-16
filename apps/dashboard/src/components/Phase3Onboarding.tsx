@@ -4,14 +4,7 @@ export function Phase3Onboarding() {
     'https://sanctum-api-6zgy.onrender.com'
 
   return (
-    <section
-      className="card"
-      style={{
-        marginBottom: '1.25rem',
-        borderColor: 'rgba(79, 124, 255, 0.35)',
-        background: 'rgba(79, 124, 255, 0.06)',
-      }}
-    >
+    <section className="card panel-glass alert--info" style={{ marginBottom: '1.25rem' }}>
       <h3 style={{ margin: '0 0 0.35rem', fontSize: '0.95rem' }}>Phase 3 — populate the control plane</h3>
       <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.85rem', lineHeight: 1.55 }}>
         The runtime is connected. Seed demo audit events from your machine, then review verifications in

@@ -101,7 +101,7 @@ export function Marketplace() {
       ) : (
         <div className="policy-grid">
           {packages.map((pkg) => (
-            <article key={pkg.id} className="policy-card">
+            <article key={pkg.id} className="policy-card marketplace-card">
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
                 <Package size={20} style={{ flexShrink: 0, marginTop: '0.15rem' }} />
                 <div style={{ flex: 1 }}>

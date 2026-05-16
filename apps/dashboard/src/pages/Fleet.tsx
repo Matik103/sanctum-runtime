@@ -306,7 +306,7 @@ export function Fleet() {
       )}
 
       {tab === 'map' && (
-        <div className="section__body">
+        <div className="section__body panel-glass">
           {!mapOrgId ? (
             <EmptyState
               title="Select an organization"
@@ -316,23 +316,21 @@ export function Fleet() {
             <p className="hint-line">Loading fleet map…</p>
           ) : (
             <>
-              <div className="policy-grid" style={{ marginBottom: '1.25rem' }}>
+              <div className="kpi-grid">
                 {[
                   ['Runtimes', fleetMap.summary.runtimes],
                   ['Online', fleetMap.summary.online],
                   ['Agents', fleetMap.summary.agents],
                   ['Verified', fleetMap.summary.verified],
                 ].map(([label, n]) => (
-                  <article key={label as string} className="policy-card">
-                    <p className="hint-line" style={{ margin: 0 }}>
-                      {label}
-                    </p>
-                    <p style={{ margin: '0.25rem 0 0', fontSize: '1.5rem', fontWeight: 600 }}>{n}</p>
+                  <article key={label as string} className="kpi-card">
+                    <p className="kpi-card__label">{label}</p>
+                    <p className="kpi-card__value">{n}</p>
                   </article>
                 ))}
               </div>
 
-              <h2 style={{ fontSize: '1rem', margin: '0 0 0.75rem' }}>By region</h2>
+              <h2 className="section-title">By region</h2>
               {fleetMap.regions.length === 0 ? (
                 <EmptyState
                   title="No regions"
@@ -358,8 +356,8 @@ export function Fleet() {
                 </div>
               )}
 
-              <h2 style={{ fontSize: '1rem', margin: '0 0 0.75rem' }}>Deployment groups</h2>
-              <div className="policy-card" style={{ maxWidth: '28rem', marginBottom: '1rem' }}>
+              <h2 className="section-title">Deployment groups</h2>
+              <div className="policy-card panel-glass" style={{ maxWidth: '28rem', marginBottom: '1rem' }}>
                 <label className="hint-line" style={{ display: 'block', marginBottom: '0.35rem' }}>
                   New group name
                   <input
@@ -422,8 +420,8 @@ export function Fleet() {
                 </p>
               )}
 
-              <h2 style={{ fontSize: '1rem', margin: '0 0 0.75rem' }}>Dispatch command</h2>
-              <div className="policy-card" style={{ maxWidth: '28rem' }}>
+              <h2 className="section-title">Dispatch command</h2>
+              <div className="policy-card panel-glass" style={{ maxWidth: '28rem' }}>
                 <label className="hint-line" style={{ display: 'block', marginBottom: '0.35rem' }}>
                   Command
                   <input

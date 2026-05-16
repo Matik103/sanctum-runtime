@@ -50,6 +50,10 @@ export function Sidebar({ page, onPage, status }: Props) {
   return (
     <aside className="sidebar">
       <div className="brand-block">
+        <div className="mc-badge">
+          <span className="mc-badge__dot" aria-hidden />
+          Control plane
+        </div>
         <div className="brand-title">Sanctum</div>
         <div className="brand-sub">Runtime Trust Layer</div>
       </div>

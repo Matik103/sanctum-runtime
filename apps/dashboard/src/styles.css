@@ -120,10 +120,7 @@ h3 {
   background: var(--warning);
 }
 
-.main {
-  padding: 1.5rem 2rem 2.5rem;
-  overflow-x: hidden;
-}
+/* Main layout padding lives in .main__content (styles/shell.css) */
 
 .page-header {
   display: flex;
@@ -1098,8 +1095,6 @@ tr.key-row--pending td {
   .main {
     order: 1;
     flex: 1;
-    padding: 1rem 1rem 5.5rem;
-    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
     min-width: 0;
   }
 
@@ -1175,10 +1170,6 @@ tr.key-row--pending td {
 }
 
 @media (max-width: 480px) {
-  .main {
-    padding: 0.85rem 0.85rem 5.25rem;
-    padding-bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
-  }
 
   .threat-grid {
     grid-template-columns: 1fr;
