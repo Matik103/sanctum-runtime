@@ -85,8 +85,15 @@ export function useDashboard() {
         return cur
       })
     } catch (e) {
-      const msg =
-        e instanceof Error && e.message.includes('500')
+      const isProd =
+        typeof window !== 'undefined' &&
+        !window.location.hostname.includes('localhost') &&
+        !window.location.hostname.includes('127.0.0.1')
+      const missingApiUrl =
+        isProd && !(import.meta.env.VITE_SANCTUM_API_URL as string | undefined)?.trim()
+      const msg = missingApiUrl
+        ? 'Dashboard was built without VITE_SANCTUM_API_URL. Set it on Render and redeploy the static site.'
+        : e instanceof Error && e.message.includes('500')
           ? 'Runtime API is not running. From the repo root run: npm run dev:runtime (or npm run dev:api in another terminal).'
           : e instanceof Error
             ? e.message

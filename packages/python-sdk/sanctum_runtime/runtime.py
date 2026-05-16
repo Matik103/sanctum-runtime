@@ -1,0 +1,74 @@
+from __future__ import annotations
+
+from typing import Literal
+
+from sanctum_runtime.client import SanctumClient
+from sanctum_runtime.errors import SanctumActionBlockedError, SanctumVerificationRequiredError
+from sanctum_runtime.types import ActionPolicy, ActionRequest, ActionResult, PolicyMap, PolicyMode
+
+PolicyMode = Literal["approve", "verify", "block"]
+
+
+def _mode_to_policy(mode: PolicyMode) -> ActionPolicy:
+  if mode == "approve":
+    return {"requiresVerification": False, "autoBlock": False}
+  if mode == "verify":
+    return {"requiresVerification": True, "autoBlock": False}
+  return {"requiresVerification": False, "autoBlock": True}
+
+
+class SanctumRuntime:
+  """High-level wrapper — mirrors SanctumRuntime in the Node SDK."""
+
+  def __init__(self, client: SanctumClient | None = None, **client_kwargs: object) -> None:
+    self._client = client or SanctumClient(**client_kwargs)  # type: ignore[arg-type]
+
+  @property
+  def client(self) -> SanctumClient:
+    return self._client
+
+  def verify_action(
+    self,
+    request: ActionRequest,
+    *,
+    raise_on_block: bool = True,
+    raise_on_verify: bool = False,
+    **kwargs: object,
+  ) -> ActionResult:
+    result = self._client.verify_action(request, **kwargs)  # type: ignore[arg-type]
+    decision = result.get("decision")
+    if raise_on_block and decision == "BLOCKED":
+      raise SanctumActionBlockedError(result)
+    if raise_on_verify and decision == "REQUIRE_VERIFICATION":
+      raise SanctumVerificationRequiredError(result)
+    return result
+
+  def get_policies(self) -> PolicyMap:
+    return self._client.get_policies()
+
+  def get_status(self):
+    return self._client.get_status()
+
+  def get_audit(self, limit: int = 50) -> list[ActionResult]:
+    return self._client.get_audit(limit)
+
+  def policy(self, action: str, mode: PolicyMode) -> PolicyMap:
+    return self._client.update_policy(action, _mode_to_policy(mode))
+
+  def register_policy(self, action: str, mode: PolicyMode | ActionPolicy) -> PolicyMap:
+    patch = _mode_to_policy(mode) if isinstance(mode, str) else mode
+    try:
+      return self._client.update_policy(action, patch)
+    except SanctumApiError as e:
+      if e.status_code == 404:
+        return self._client.create_policy(action, patch)
+      raise
+
+  def delete_policy(self, action: str) -> PolicyMap:
+    return self._client.delete_policy(action)
+
+  def export_policies_yaml(self) -> str:
+    return self._client.export_policies_yaml()
+
+  def import_policies_yaml(self, yaml: str, merge: bool = True) -> PolicyMap:
+    return self._client.import_policies_yaml(yaml, merge=merge)

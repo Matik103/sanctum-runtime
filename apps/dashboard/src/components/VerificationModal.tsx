@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import type { ActionResult } from '@sanctum-runtime/sdk'
 import { actionLabel, actorLabel } from '../lib/labels'
 import { extractHeardPhrase, extractIntent } from '../lib/narrative'
@@ -19,6 +20,25 @@ export function VerificationModal({
 }: Props) {
   const heard = extractHeardPhrase(entry.context)
   const intent = extractIntent(entry.context)
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if (e.key === 'a' || e.key === 'A') {
+        e.preventDefault()
+        if (e.shiftKey) onAlwaysApprove()
+        else onApproveOnce()
+      } else if (e.key === 'd' || e.key === 'D') {
+        e.preventDefault()
+        onDeny()
+      } else if (e.key === 'Escape') {
+        e.preventDefault()
+        onDeny()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onApproveOnce, onAlwaysApprove, onDeny])
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
@@ -77,6 +97,10 @@ export function VerificationModal({
             </p>
           </div>
         </div>
+
+        <p style={{ margin: '0.75rem 0 0', fontSize: '0.75rem', color: 'var(--muted)' }}>
+          Shortcuts: <kbd>A</kbd> approve · <kbd>Shift+A</kbd> always approve · <kbd>D</kbd> deny
+        </p>
 
         <div className="modal-actions">
           <button type="button" className="btn btn-primary" onClick={onApproveOnce}>

@@ -1,6 +1,6 @@
 {
   "name": "@sanctum-runtime/sdk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Sanctum Runtime SDK — gate AI agent tool use and actions (approve, verify, block) before execution. Policies, audit, Ollama/OpenAI risk scoring.",
   "type": "module",
   "license": "MIT",

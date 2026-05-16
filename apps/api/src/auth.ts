@@ -62,6 +62,13 @@ export async function authenticateRequest(
     return { ok: true, method: 'api_key' }
   }
 
+  if (options.supabase && key?.startsWith('sk_sanctum_')) {
+    const { validateStoredApiKey } = await import('./api-keys.js')
+    if (await validateStoredApiKey(options.supabase, key)) {
+      return { ok: true, method: 'api_key' }
+    }
+  }
+
   if (options.supabase || options.apiKey) {
     return { ok: false, reason: 'missing' }
   }

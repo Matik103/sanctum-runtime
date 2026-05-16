@@ -1,0 +1,33 @@
+{
+  "name": "@sanctum-runtime/cli",
+  "version": "0.1.1",
+  "description": "Sanctum CLI — verify actions, export policies, check runtime status against the API.",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "sanctum": "./dist/cli.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Matik103/sanctum-runtime.git",
+    "directory": "packages/cli"
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsup src/cli.ts --format esm --target node18 --out-dir dist --clean",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@sanctum-runtime/sdk": "0.1.1"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.0",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

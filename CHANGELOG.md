@@ -4,7 +4,26 @@ All notable changes to the public Sanctum open-core runtime are documented here.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-05-16
+
 ### Added
+
+- **Python SDK** (`sanctum-runtime` on PyPI path: `packages/python-sdk`) — parity with `@sanctum-runtime/sdk`
+- **`@sanctum-runtime/cli`** — `sanctum status`, `sanctum verify`, `sanctum policies export`
+- **Integration guides** — [docs/integrations](./docs/integrations/) (LangChain, CrewAI, MCP)
+- **API key registry** — `api_keys` table, `/v1/api-keys`, dashboard **Devices** create/revoke
+- **Supabase auth portal** — `portal_type` operator/enterprise, org bootstrap (`008_auth_portal.sql`)
+- **Mission-control auth UI** — operator/enterprise, SSO, responsive layout
+- **Verification shortcuts** — `A` / `Shift+A` / `D` in review modal
+- **ROS 2 starter** — [examples/ros2-starter](./examples/ros2-starter/)
+
+### Changed
+
+- `@sanctum-runtime/sdk` and adapter bumped to **0.1.1** (public API locked for adopters)
+- Dashboard quickstart snippet uses configured `VITE_SANCTUM_API_URL`
+- Clearer error when production dashboard missing API URL env at build time
+
+### Added (prior unreleased, now in 0.1.1 release notes context)
 
 - **[DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md)** — complete OSS reference (API, SDK, policies, models, webhooks)
 - **Pluggable risk model** (`services/risk-model`) — Ollama, OpenAI-compatible APIs, or `SANCTUM_RISK_PROVIDER=none`

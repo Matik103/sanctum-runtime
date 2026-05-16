@@ -4,6 +4,7 @@ import { ActionRequestSchema } from '@sanctum-runtime/sdk'
 import Fastify from 'fastify'
 import { ZodError } from 'zod'
 import { z } from 'zod'
+import { registerApiKeyRoutes } from './api-keys.js'
 import {
   authenticateRequest,
   getSupabaseAuthConfig,
@@ -106,9 +107,14 @@ app.get('/', async () => ({
     policyByAction: 'PATCH|DELETE /v1/policies/:action',
     policiesYaml: 'GET /v1/policies/export.yaml · POST /v1/policies/import.yaml',
     webhooks: 'GET /v1/webhooks/status',
+    apiKeys: 'GET|POST /v1/api-keys · DELETE /v1/api-keys/:id',
     analyze: 'POST /analyze-action',
   },
 }))
+
+if (supabaseAuth) {
+  await registerApiKeyRoutes(app, supabaseAuth)
+}
 
 app.get('/health', async () => {
   const status = await runtime.getStatus()

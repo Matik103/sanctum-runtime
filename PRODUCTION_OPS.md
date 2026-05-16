@@ -206,6 +206,21 @@ In Cloudflare **Workers** → **Settings** → **Variables**, or build-time in `
 
 ---
 
+## 4.5 OpenAI-compatible risk on Render (optional)
+
+Better than heuristics-only when Ollama is not on the API host:
+
+| Key | Value |
+|-----|--------|
+| `SANCTUM_RISK_PROVIDER` | `openai` |
+| `SANCTUM_RISK_BASE_URL` | `https://api.openai.com/v1` (or compatible proxy) |
+| `SANCTUM_RISK_MODEL` | e.g. `gpt-4o-mini` |
+| `OPENAI_API_KEY` | Your provider key |
+
+Redeploy **sanctum-api**. Dashboard **Devices** shows `OpenAI-compatible` when active.
+
+---
+
 ## 5. End-to-end verification
 
 ```bash

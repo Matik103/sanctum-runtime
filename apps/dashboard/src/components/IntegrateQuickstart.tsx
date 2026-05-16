@@ -1,4 +1,8 @@
 export function IntegrateQuickstart() {
+  const apiUrl =
+    (import.meta.env.VITE_SANCTUM_API_URL as string | undefined)?.replace(/\/$/, '') ||
+    'http://127.0.0.1:3001'
+
   return (
     <section
       className="card"
@@ -24,7 +28,7 @@ export function IntegrateQuickstart() {
 
 import { SanctumClient } from '@sanctum-runtime/sdk'
 
-const sanctum = new SanctumClient({ baseUrl: 'http://127.0.0.1:3001' })
+const sanctum = new SanctumClient({ baseUrl: '${apiUrl}' })
 const result = await sanctum.verifyAction({
   actor: 'my-agent',
   action: 'unlock_door',
@@ -38,10 +42,16 @@ const result = await sanctum.verifyAction({
 })`}
       </pre>
       <p style={{ margin: '0.65rem 0 0', fontSize: '0.8rem', color: 'var(--muted)' }}>
-        From the repo: <code>npm run example:agent</code> · <code>npm run smoke</code> · see{' '}
-        <a href="https://github.com/Matik103/sanctum-runtime#readme" target="_blank" rel="noreferrer">
-          README
+        Python: <code>pip install sanctum-runtime</code> · guides in{' '}
+        <a
+          href="https://github.com/Matik103/sanctum-runtime/tree/main/docs/integrations"
+          target="_blank"
+          rel="noreferrer"
+        >
+          docs/integrations
         </a>
+        {' · '}
+        <code>npm run example:agent</code> · <code>npm run smoke</code>
       </p>
     </section>
   )
