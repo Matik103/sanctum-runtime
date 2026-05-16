@@ -7,6 +7,15 @@ import { runtimeWsHub } from './runtime-ws-hub.js'
 
 const modeSchema = z.enum(['cloud', 'edge', 'airgap', 'hybrid'])
 
+const hardwareSchema = z.object({
+  type: z.enum(['tpm2', 'software-sealed', 'sgx']),
+  challengeId: z.string().uuid(),
+  nonce: z.string().min(8).max(128),
+  quote: z.string().min(8).max(4096),
+  pcrs: z.record(z.string()).optional(),
+  version: z.string().max(32).optional(),
+})
+
 const attestationSchema = z
   .object({
     platform: z.string().max(64).optional(),
@@ -14,6 +23,7 @@ const attestationSchema = z
     hostname: z.string().max(255).optional(),
     sdkVersion: z.string().max(32).optional(),
     runtimeKind: z.string().max(64).optional(),
+    hardware: hardwareSchema.optional(),
   })
   .optional()
 
@@ -75,6 +85,8 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
         activeModel: z.string().optional(),
         currentTask: z.string().optional(),
         attestation: attestationSchema,
+        deploymentGroupId: z.string().uuid().optional(),
+        region: z.string().max(64).optional(),
       })
       .parse(req.body)
 
@@ -108,6 +120,9 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
       trustScore: runtime.trust_score,
       attestationStatus: runtime.attestation_status,
       attestationToken: runtime.attestation_token,
+      hardwareVerified: Boolean(
+        (runtime.attestation_report as Record<string, unknown>)?.hardwareVerified,
+      ),
       connectedAt: runtime.connected_at,
     }
   })

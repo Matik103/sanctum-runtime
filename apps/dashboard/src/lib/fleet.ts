@@ -29,6 +29,7 @@ export type FleetRuntime = {
   status: string
   trust_score: number
   attestation_status: 'verified' | 'unverified' | 'limited'
+  attestation_report?: Record<string, unknown>
   attested_at: string | null
   region: string | null
   deployment_group_id: string | null

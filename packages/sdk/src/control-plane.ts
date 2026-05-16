@@ -1,5 +1,6 @@
 import type { SanctumClient } from './client.js'
 import { defaultAttestationReport, type AttestationReport } from './attestation.js'
+import { defaultAttestationWithHardware } from './hardware-attestation.js'
 import { connectRuntimeWebSocket } from './runtime-ws.js'
 
 export type { AttestationReport } from './attestation.js'
@@ -21,6 +22,8 @@ export type ConnectOptions = {
   attestation?: AttestationReport
   /** When false, connect without sending attestation (trust score may be lower). */
   attest?: boolean
+  /** Request hardware challenge + software-sealed quote (default true when attest). */
+  hardwareAttest?: boolean
   deploymentGroupId?: string
   region?: string
   /** Invoked when the control plane delivers a command on heartbeat. */
@@ -72,6 +75,18 @@ export class ControlPlaneSession {
 
   async connect(options: ConnectOptions): Promise<ConnectResult> {
     const attest = options.attest !== false
+    const hardwareAttest = options.hardwareAttest !== false && attest
+    let attestation: AttestationReport | undefined
+    if (attest) {
+      const base = options.attestation ?? defaultAttestationReport()
+      attestation = hardwareAttest
+        ? await defaultAttestationWithHardware(
+            this.client,
+            base,
+            options.organizationId,
+          )
+        : base
+    }
     const result = await this.client.request<ConnectResult>('POST', '/v1/runtimes/connect', {
       runtimeName: options.runtimeName,
       organizationId: options.organizationId,
@@ -81,7 +96,7 @@ export class ControlPlaneSession {
       telemetry: options.telemetry,
       activeModel: options.activeModel,
       currentTask: options.currentTask,
-      attestation: attest ? (options.attestation ?? defaultAttestationReport()) : undefined,
+      attestation,
       deploymentGroupId: options.deploymentGroupId,
       region: options.region,
     })

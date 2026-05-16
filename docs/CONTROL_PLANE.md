@@ -41,7 +41,7 @@
 | Re-attest + trust API | 3 | **Done** | `POST …/attest`, `GET …/trust` |
 | Fleet verified badge | 3 | **Done** | Fleet runtimes tab |
 | Encrypted memory | 3 | **Done** | `runtime.memory(agentId)` |
-| TPM / hardware quotes | 3 | Stub | `stubHardwareQuote()` |
+| TPM / hardware attestation | 3 | **Done** | Challenge + quote verify |
 | Fleet maps / regions | 4 | **Done** | `GET /v1/fleet/map` |
 | Command dispatch | 4 | **Done** | heartbeat delivery + ack |
 | Deployment groups | 4 | **Done** | `deployment_groups` table |

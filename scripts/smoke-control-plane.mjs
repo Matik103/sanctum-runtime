@@ -48,6 +48,10 @@ async function main() {
   }
   ok(`org ${orgId}`)
 
+  const challenge = await j('GET', `/v1/attestation/challenge?org_id=${encodeURIComponent(orgId)}`)
+  if (challenge.status !== 200) bad('attestation challenge', challenge.status)
+  else ok('attestation challenge')
+
   const connect = await j('POST', '/v1/runtimes/connect', {
     runtimeName: `smoke-${Date.now()}`,
     organizationId: orgId,
@@ -57,10 +61,22 @@ async function main() {
       platform: 'smoke',
       hostname: 'ci',
       sdkVersion: '0.1.1',
+      hardware: challenge.body
+        ? {
+            type: 'software-sealed',
+            challengeId: challenge.body.challengeId,
+            nonce: challenge.body.nonce,
+            quote: challenge.body.softwareSealedQuote,
+          }
+        : undefined,
     },
   })
   if (connect.status !== 200) bad('connect', connect.status)
-  else ok(`connect trust=${connect.body?.trustScore} status=${connect.body?.attestationStatus}`)
+  else {
+    ok(
+      `connect trust=${connect.body?.trustScore} status=${connect.body?.attestationStatus} hw=${connect.body?.hardwareVerified}`,
+    )
+  }
 
   const runtimeId = connect.body?.runtimeId
   if (!runtimeId) {

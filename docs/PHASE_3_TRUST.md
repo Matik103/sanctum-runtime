@@ -13,7 +13,7 @@ Runtime attestation and trust scoring for the Sanctum control plane. This is **i
 | `runtime.attested` events | Done |
 | Fleet “Verified” badge | Done |
 | Re-attest endpoint | Done |
-| TPM / SGX hardware quotes | Stub only |
+| TPM / hardware attestation | **Done** | [PHASE_3_HARDWARE.md](./PHASE_3_HARDWARE.md) |
 | Encrypted agent memory | **Done** | See [PHASE_3_MEMORY.md](./PHASE_3_MEMORY.md) |
 
 ## Connect with attestation

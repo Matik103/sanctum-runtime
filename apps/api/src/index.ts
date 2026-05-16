@@ -10,6 +10,7 @@ import { registerControlPlaneRoutes } from './control-plane-routes.js'
 import { registerOrchestrationRoutes } from './orchestration-routes.js'
 import { registerAgentMemoryRoutes } from './agent-memory-routes.js'
 import { registerMarketplaceRoutes } from './marketplace-routes.js'
+import { registerHardwareAttestationRoutes } from './hardware-attestation-routes.js'
 import { registerUsageRoutes } from './usage-routes.js'
 import { recordUsage, UsageMetrics } from './usage-store.js'
 import { registerRuntimeWsRoutes } from './runtime-ws-routes.js'
@@ -146,6 +147,7 @@ if (supabaseAuth) {
   await registerAgentMemoryRoutes(app)
   await registerMarketplaceRoutes(app)
   await registerUsageRoutes(app)
+  await registerHardwareAttestationRoutes(app)
 }
 
 app.get('/health', async () => {

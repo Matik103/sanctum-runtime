@@ -40,6 +40,14 @@ export {
   type AttestationReport,
 } from './attestation.js'
 export {
+  buildSoftwareSealedHardware,
+  buildTpm2Hardware,
+  defaultAttestationWithHardware,
+  fetchAttestationChallenge,
+  type AttestationChallenge,
+  type HardwareAttestation,
+} from './hardware-attestation.js'
+export {
   AgentMemoryVault,
   memoryKeyHint,
   resolveMemoryKey,

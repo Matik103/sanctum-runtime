@@ -1,5 +1,10 @@
-import { createHmac, randomBytes } from 'node:crypto'
+import { createHmac } from 'node:crypto'
+import type { ChallengeStore } from './challenge-store.js'
+import type { HardwareAttestationInput, HardwareVerifyResult } from './hardware-attestation.js'
+import { verifyHardwareAttestation } from './hardware-attestation.js'
 import type { RuntimeMode } from './control-plane-store.js'
+
+export type { HardwareAttestationInput } from './hardware-attestation.js'
 
 export type AttestationReport = {
   platform?: string
@@ -7,6 +12,7 @@ export type AttestationReport = {
   hostname?: string
   sdkVersion?: string
   runtimeKind?: string
+  hardware?: HardwareAttestationInput
 }
 
 export type AttestationResult = {
@@ -35,14 +41,35 @@ export function issueAttestationToken(
   return createHmac('sha256', attestationSecret()).update(payload).digest('base64url')
 }
 
+export type EvaluateAttestationOptions = {
+  mode: RuntimeMode
+  fingerprint: string
+  report?: AttestationReport
+  challengeStore?: ChallengeStore
+  hardwareResult?: HardwareVerifyResult
+}
+
+export async function evaluateAttestationAsync(
+  input: EvaluateAttestationOptions,
+): Promise<AttestationResult & { hardware?: HardwareVerifyResult }> {
+  let hardwareResult = input.hardwareResult
+  if (input.report?.hardware && input.challengeStore && !hardwareResult) {
+    hardwareResult = await verifyHardwareAttestation(input.challengeStore, input.report.hardware)
+  }
+  const base = evaluateAttestation({ ...input, hardwareResult })
+  return { ...base, hardware: hardwareResult }
+}
+
 export function evaluateAttestation(input: {
   mode: RuntimeMode
   fingerprint: string
   report?: AttestationReport
+  hardwareResult?: HardwareVerifyResult
 }): AttestationResult {
   const report = input.report ?? {}
   const reasons: string[] = []
   let score = 100
+  const hw = input.hardwareResult
 
   if (!report.platform) {
     score -= 8
@@ -59,6 +86,14 @@ export function evaluateAttestation(input: {
   if (input.fingerprint.length < 16) {
     score -= 15
     reasons.push('weak_fingerprint')
+  }
+
+  if (hw?.verified) {
+    score += 12
+    reasons.push('hardware_attested', ...(hw.reasons ?? []))
+  } else if (report.hardware) {
+    score -= 20
+    reasons.push('hardware_failed', ...(hw?.reasons ?? []))
   }
 
   switch (input.mode) {
@@ -81,8 +116,8 @@ export function evaluateAttestation(input: {
   score = Math.max(0, Math.min(100, Math.round(score)))
 
   let status: AttestationResult['status'] = 'verified'
-  if (score < 60) status = 'unverified'
-  else if (input.mode === 'airgap' || score < 85) status = 'limited'
+  if (score < 60 || (report.hardware && !hw?.verified)) status = 'unverified'
+  else if ((input.mode === 'airgap' && !hw?.verified) || score < 85) status = 'limited'
 
   return {
     status,
@@ -92,29 +127,41 @@ export function evaluateAttestation(input: {
   }
 }
 
-export function evaluateAndTokenize(
+export async function evaluateAndTokenize(
   runtimeId: string,
   input: {
     mode: RuntimeMode
     fingerprint: string
     report?: AttestationReport
+    challengeStore?: ChallengeStore
   },
-): AttestationResult & { report: AttestationReport } {
+): Promise<
+  AttestationResult & {
+    report: AttestationReport & {
+      hardwareVerified?: boolean
+      hardwareType?: string
+    }
+  }
+> {
   const report = input.report ?? {}
-  const result = evaluateAttestation({ ...input, report })
+  const evaluated = await evaluateAttestationAsync({
+    mode: input.mode,
+    fingerprint: input.fingerprint,
+    report,
+    challengeStore: input.challengeStore,
+  })
+  const result = evaluated
   const token =
     result.status !== 'unverified'
       ? issueAttestationToken(runtimeId, input.fingerprint, result.trustScore)
       : null
-  return { ...result, token, report }
+  const enriched = {
+    ...report,
+    reasons: result.reasons,
+    hardwareVerified: evaluated.hardware?.verified ?? false,
+    hardwareType: evaluated.hardware?.type,
+  }
+  return { ...result, token, report: enriched }
 }
 
-/** Placeholder for Phase 3+ hardware quotes (TPM, SGX, etc.). */
-export function stubHardwareQuote(): { quote: string; nonce: string } {
-  return {
-    quote: createHmac('sha256', attestationSecret())
-      .update(randomBytes(16))
-      .digest('hex'),
-    nonce: randomBytes(12).toString('base64url'),
-  }
-}
+export { createSoftwareSealedQuote, stubHardwareQuote } from './hardware-attestation.js'

@@ -227,6 +227,9 @@ export function Fleet() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>
                     <h3 style={{ margin: 0 }}>{r.name}</h3>
                     <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                      {r.attestation_report?.hardwareVerified === true && (
+                        <span className="badge success">HW</span>
+                      )}
                       {(() => {
                         const t = trustBadge(r.attestation_status ?? 'unverified')
                         return <span className={`badge ${t.className}`}>{t.label}</span>

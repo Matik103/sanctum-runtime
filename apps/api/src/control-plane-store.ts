@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto'
+import { ChallengeStore } from './challenge-store.js'
 import { evaluateAndTokenize, type AttestationReport } from './attestation.js'
 import { createSupabaseAdmin, type SupabaseAuthConfig } from './auth.js'
 import { recordUsage, UsageMetrics } from './usage-store.js'
@@ -55,7 +56,11 @@ export function defaultFingerprint(): string {
 }
 
 export class ControlPlaneStore {
-  constructor(private supabase: SupabaseAuthConfig) {}
+  private challenges: ChallengeStore
+
+  constructor(private supabase: SupabaseAuthConfig) {
+    this.challenges = new ChallengeStore(supabase)
+  }
 
   private admin() {
     return createSupabaseAdmin(this.supabase)
@@ -122,10 +127,11 @@ export class ControlPlaneStore {
 
     if (error) throw new Error(error.message)
 
-    const att = evaluateAndTokenize(data.id as string, {
+    const att = await evaluateAndTokenize(data.id as string, {
       mode: input.mode,
       fingerprint: input.fingerprint,
       report: input.attestationReport,
+      challengeStore: this.challenges,
     })
 
     const { data: attested, error: attErr } = await admin
@@ -180,10 +186,11 @@ export class ControlPlaneStore {
     if (!row) throw new Error('runtime_not_found')
 
     const now = new Date().toISOString()
-    const att = evaluateAndTokenize(runtimeId, {
+    const att = await evaluateAndTokenize(runtimeId, {
       mode: row.mode as RuntimeMode,
       fingerprint: row.fingerprint as string,
       report,
+      challengeStore: this.challenges,
     })
 
     const { data, error } = await admin
