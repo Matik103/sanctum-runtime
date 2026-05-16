@@ -49,6 +49,7 @@
     "build:all-packages": "npm run build:packages && npm run build:cli",
     "build:dashboard": "npm run build:sdk && npm run build -w @sanctum/dashboard",
     "production:check": "node scripts/production-check.mjs",
+    "seed:production": "node scripts/seed-production-demo.mjs",
     "env:pull": "node scripts/pull-supabase-env.mjs",
     "db:push": "supabase db push",
     "db:status": "supabase migration list",

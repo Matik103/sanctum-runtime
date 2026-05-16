@@ -1,5 +1,6 @@
 import type { ActionResult, PolicyMap, RuntimeStatus } from '@sanctum-runtime/sdk'
 import { IntegrateQuickstart } from '../components/IntegrateQuickstart'
+import { Phase3Onboarding } from '../components/Phase3Onboarding'
 import { decisionTone, timeAgo } from '../lib/format'
 import { actionLabel, decisionLabel } from '../lib/labels'
 import { auditRecordHeadline } from '../lib/narrative'
@@ -49,7 +50,12 @@ export function Overview({
         </div>
       </header>
 
-      {audit.length === 0 && <IntegrateQuickstart />}
+      {audit.length === 0 && (
+        <>
+          <Phase3Onboarding />
+          <IntegrateQuickstart />
+        </>
+      )}
 
       <div className="grid-4">
         <div className="card glow-success">
@@ -58,10 +64,15 @@ export function Overview({
           </div>
           <div className="card-label">Runtime status</div>
           <div className="card-value" style={{ fontSize: '1.1rem' }}>
-            {status?.ollamaConnected ? 'Operational' : 'Degraded'}
+            {status?.riskModelConnected || status?.ollamaConnected ? 'Operational' : 'Degraded'}
           </div>
           <div className="card-meta">
-            {status?.ollamaModel ?? 'No model'} · {Object.keys(policies).length} policies
+            {status?.riskProvider === 'openai'
+              ? `OpenAI · ${status.riskModel ?? 'model'}`
+              : status?.ollamaModel ?? status?.riskProvider === 'none'
+                ? 'Heuristics / offline'
+                : 'No model'}{' '}
+            · {Object.keys(policies).length} policies
           </div>
         </div>
 
@@ -110,8 +121,7 @@ export function Overview({
             {audit.length === 0 ? (
               <tr>
                 <td colSpan={4} className="empty">
-                  Waiting for agent traffic — integrate the SDK or run{' '}
-                  <code>npm run example:agent</code>
+                  No events yet — run <code>npm run seed:production</code> (see Phase 3 card above)
                 </td>
               </tr>
             ) : (
