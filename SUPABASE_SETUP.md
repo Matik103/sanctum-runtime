@@ -35,10 +35,20 @@ Auth is **optional**: if Supabase env vars are unset, the dashboard works withou
 ## Step 4 — Run the database migration
 
 1. **SQL Editor** → **New query**
-2. Paste and run, in order:
-   - [`supabase/migrations/001_profiles.sql`](./supabase/migrations/001_profiles.sql)
-   - [`supabase/migrations/002_audit_events.sql`](./supabase/migrations/002_audit_events.sql) (audit mirror from API)
-3. **Run** each script
+2. **CLI (recommended):** `npm run db:push` after `supabase link --project-ref YOUR_REF`
+3. **Or** SQL Editor — run each file in [`supabase/migrations/`](./supabase/migrations/) in order:
+
+| File | Purpose |
+|------|---------|
+| `001_profiles.sql` | User profiles + signup trigger |
+| `002_audit_events.sql` | Audit log mirror |
+| `003_functions.sql` | `set_updated_at()` |
+| `004_organizations.sql` | Orgs + members |
+| `005_runtime_policies.sql` | Cloud policy storage |
+| `006_webhook_deliveries.sql` | Webhook delivery log |
+| `007_views_and_audit_fixes.sql` | Indexes + `pending_verifications` view |
+
+See [supabase/README.md](./supabase/README.md).
 
 This creates `profiles` + RLS + a trigger on new users.
 

@@ -70,8 +70,11 @@ export async function dispatchWebhooks(
   }
   const json = JSON.stringify(body)
 
+  const { logWebhookDelivery } = await import('./supabase-webhooks.js')
+
   await Promise.all(
     config.urls.map(async (url) => {
+      const started = Date.now()
       try {
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',
@@ -90,9 +93,25 @@ export async function dispatchWebhooks(
         if (!res.ok) {
           console.error(`[sanctum] webhook ${url} → ${res.status}`)
         }
+        void logWebhookDelivery({
+          event,
+          targetUrl: url,
+          statusCode: res.status,
+          success: res.ok,
+          payload: body,
+          durationMs: Date.now() - started,
+        })
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e)
         console.error(`[sanctum] webhook ${url} failed: ${msg}`)
+        void logWebhookDelivery({
+          event,
+          targetUrl: url,
+          success: false,
+          payload: body,
+          errorMessage: msg,
+          durationMs: Date.now() - started,
+        })
       }
     }),
   )

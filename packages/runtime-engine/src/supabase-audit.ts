@@ -1,19 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
 import type { ActionResult } from '@sanctum-runtime/sdk'
-
-let client: ReturnType<typeof createClient> | null = null
-
-function getClient() {
-  const url = process.env.SUPABASE_URL?.trim()
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
-  if (!url || !key) return null
-  if (!client) {
-    client = createClient(url, key, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    })
-  }
-  return client
-}
+import { getSupabaseServiceClient } from './supabase-client.js'
 
 function orgIdFromContext(context: Record<string, unknown>): string | null {
   const id = context.org_id ?? context.orgId
@@ -22,7 +8,7 @@ function orgIdFromContext(context: Record<string, unknown>): string | null {
 
 /** Mirror audit entries to Supabase when configured (optional cloud path). */
 export async function maybeSyncAuditToSupabase(entry: ActionResult): Promise<void> {
-  const sb = getClient()
+  const sb = getSupabaseServiceClient()
   if (!sb) return
 
   const { error } = await sb.from('audit_events').upsert(

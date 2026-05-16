@@ -21,6 +21,12 @@ import {
   type VerificationStatus,
 } from '@sanctum-runtime/sdk'
 import { maybeSyncAuditToSupabase } from './supabase-audit.js'
+import { isSupabaseConfigured } from './supabase-client.js'
+import {
+  deletePolicyFromSupabase,
+  loadPoliciesFromSupabase,
+  syncPoliciesToSupabase,
+} from './supabase-policies.js'
 import {
   dispatchWebhooks,
   getWebhookStatus,
@@ -48,6 +54,12 @@ export class RuntimeEngine {
 
   constructor(options: RuntimeEngineOptions = {}) {
     this.policyEngine = options.policyEngine ?? new PolicyEngine(undefined, undefined)
+    this.policyEngine.setAfterPersist(async (policies) => {
+      await syncPoliciesToSupabase(policies)
+    })
+    this.policyEngine.setOnDelete(async (action) => {
+      await deletePolicyFromSupabase(action)
+    })
     this.auditStore = options.auditStore ?? new AuditStore()
     if (options.riskModel !== undefined) {
       this.riskModel = options.riskModel
@@ -83,6 +95,10 @@ export class RuntimeEngine {
 
   async init(): Promise<void> {
     await this.policyEngine.load()
+    const fromDb = await loadPoliciesFromSupabase()
+    if (fromDb && Object.keys(fromDb).length > 0) {
+      this.policyEngine.mergePolicies(fromDb)
+    }
     await this.auditStore.loadFromDisk()
   }
 
@@ -332,6 +348,7 @@ export class RuntimeEngine {
     systemOfflineCapable: boolean
     policyCount: number
     auditCount: number
+    supabaseConfigured: boolean
   }> {
     const info = this.riskModel?.getInfo()
     const riskModelConnected = this.riskModel
@@ -351,6 +368,7 @@ export class RuntimeEngine {
       systemOfflineCapable: this.forceOfflineMode || !riskModelConnected,
       policyCount: Object.keys(this.policyEngine.getPolicies()).length,
       auditCount: this.auditStore.count(),
+      supabaseConfigured: isSupabaseConfigured(),
     }
   }
 }

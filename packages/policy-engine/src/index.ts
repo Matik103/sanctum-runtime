@@ -12,10 +12,20 @@ export type PolicyEvaluation = {
 export class PolicyEngine {
   private policies: PolicyMap
   private dataDir?: string
+  private afterPersist?: (policies: PolicyMap) => Promise<void>
+  private onDelete?: (action: string) => Promise<void>
 
   constructor(initial?: PolicyMap, dataDir?: string) {
     this.policies = { ...DEFAULT_POLICIES, ...initial }
     this.dataDir = dataDir
+  }
+
+  setAfterPersist(handler: (policies: PolicyMap) => Promise<void>): void {
+    this.afterPersist = handler
+  }
+
+  setOnDelete(handler: (action: string) => Promise<void>): void {
+    this.onDelete = handler
   }
 
   async load(): Promise<void> {
@@ -25,6 +35,16 @@ export class PolicyEngine {
     }
   }
 
+  /** Overlay policies (e.g. from Supabase) on top of defaults + disk. */
+  mergePolicies(overlay: PolicyMap): void {
+    this.policies = { ...this.policies, ...overlay }
+  }
+
+  private async persist(): Promise<void> {
+    await savePoliciesToDisk(this.policies, this.dataDir)
+    await this.afterPersist?.(this.policies)
+  }
+
   getPolicies(): PolicyMap {
     return { ...this.policies }
   }
@@ -32,7 +52,7 @@ export class PolicyEngine {
   async updatePolicy(action: string, patch: Partial<ActionPolicy>): Promise<PolicyMap> {
     const current = this.policies[action] ?? { ...DEFAULT_POLICY }
     this.policies[action] = { ...current, ...patch }
-    await savePoliciesToDisk(this.policies, this.dataDir)
+    await this.persist()
     return this.getPolicies()
   }
 
@@ -43,7 +63,8 @@ export class PolicyEngine {
 
   async deletePolicy(action: string): Promise<PolicyMap> {
     delete this.policies[action]
-    await savePoliciesToDisk(this.policies, this.dataDir)
+    await this.persist()
+    await this.onDelete?.(action)
     return this.getPolicies()
   }
 
@@ -58,7 +79,7 @@ export class PolicyEngine {
     } else {
       this.policies = { ...DEFAULT_POLICIES, ...imported }
     }
-    await savePoliciesToDisk(this.policies, this.dataDir)
+    await this.persist()
     return this.getPolicies()
   }
 

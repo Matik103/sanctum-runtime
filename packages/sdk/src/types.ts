@@ -89,6 +89,7 @@ export const RuntimeStatusSchema = z.object({
   systemOfflineCapable: z.boolean(),
   policyCount: z.number(),
   auditCount: z.number(),
+  supabaseConfigured: z.boolean().optional(),
 })
 
 export type RuntimeStatus = z.infer<typeof RuntimeStatusSchema>

@@ -270,6 +270,9 @@ try {
   await app.listen({ port, host })
   console.log(`Sanctum API listening on http://${host}:${port}`)
   if (supabaseAuth) console.log('Supabase JWT auth enabled')
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
+    console.log('Supabase data sync enabled (audit_events, runtime_policies, webhook_deliveries)')
+  }
   if (apiKey) console.log('API key auth enabled (X-Sanctum-Key)')
 } catch (err) {
   app.log.error(err)

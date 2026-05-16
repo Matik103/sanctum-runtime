@@ -2,3 +2,19 @@
 # https://supabase.com/docs/guides/cli/config
 
 project_id = "nimvcudvrhanxlcpiizz"
+
+[db]
+major_version = 17
+
+[api]
+enabled = true
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:5174"
+additional_redirect_urls = ["http://127.0.0.1:5174/**", "https://*.onrender.com/**"]
+
+[studio]
+enabled = true
