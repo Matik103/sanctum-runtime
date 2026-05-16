@@ -2,9 +2,11 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   fetchFleetAgents,
   fetchFleetEvents,
+  fetchMyOrgs,
   fetchRuntimes,
   type FleetAgent,
   type FleetEvent,
+  type FleetOrg,
   type FleetRuntime,
 } from '../lib/fleet'
 
@@ -20,10 +22,23 @@ export function Fleet() {
   const [events, setEvents] = useState<FleetEvent[]>([])
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<'runtimes' | 'agents' | 'events'>('runtimes')
+  const [orgs, setOrgs] = useState<FleetOrg[]>([])
+  const [orgId, setOrgId] = useState<string>('')
+
+  useEffect(() => {
+    void fetchMyOrgs().then((list) => {
+      setOrgs(list)
+      if (list.length === 1) setOrgId(list[0].org_id)
+    })
+  }, [])
 
   const refresh = useCallback(async () => {
     try {
-      const [rt, ev] = await Promise.all([fetchRuntimes(), fetchFleetEvents(80)])
+      const filter = orgId || undefined
+      const [rt, ev] = await Promise.all([
+        fetchRuntimes(filter),
+        fetchFleetEvents(80, filter),
+      ])
       setRuntimes(rt)
       setEvents(ev)
       setAgents(await fetchFleetAgents())
@@ -31,7 +46,7 @@ export function Fleet() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fleet data unavailable')
     }
-  }, [])
+  }, [orgId])
 
   useEffect(() => {
     void refresh()
@@ -46,9 +61,26 @@ export function Fleet() {
           <h1>Fleet</h1>
           <p>Registered runtimes, agents, and live event stream</p>
         </div>
-        <button type="button" className="btn btn-ghost" onClick={() => void refresh()}>
-          Refresh
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          {orgs.length > 0 && (
+            <select
+              className="input"
+              value={orgId}
+              onChange={(e) => setOrgId(e.target.value)}
+              aria-label="Organization"
+            >
+              <option value="">All organizations</option>
+              {orgs.map((o) => (
+                <option key={o.org_id} value={o.org_id}>
+                  {o.org_name}
+                </option>
+              ))}
+            </select>
+          )}
+          <button type="button" className="btn btn-ghost" onClick={() => void refresh()}>
+            Refresh
+          </button>
+        </div>
       </header>
 
       {error && (

@@ -1,9 +1,46 @@
-import type { FastifyInstance } from 'fastify'
+import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { getSupabaseAuthConfig } from './auth.js'
 import { ControlPlaneStore, defaultFingerprint } from './control-plane-store.js'
 
 const modeSchema = z.enum(['cloud', 'edge', 'airgap', 'hybrid'])
+
+type SanctumReq = FastifyRequest & {
+  sanctumUser?: { id: string; email?: string }
+}
+
+function headerKey(req: FastifyRequest): string | undefined {
+  const v = req.headers['x-sanctum-key']
+  return Array.isArray(v) ? v[0] : v
+}
+
+/** null = unrestricted (legacy env key); [] = no org access */
+async function resolveOrgScope(
+  req: SanctumReq,
+  store: ControlPlaneStore,
+): Promise<string[] | null> {
+  if (req.sanctumUser) return store.getUserOrgIds(req.sanctumUser.id)
+  const key = headerKey(req)
+  if (key?.startsWith('sk_sanctum_')) {
+    const orgId = await store.getApiKeyOrgId(key)
+    return orgId ? [orgId] : null
+  }
+  return null
+}
+
+function assertOrgAllowed(scope: string[] | null, orgId: string, reply: { status: (n: number) => { send: (b: unknown) => unknown } }) {
+  if (scope === null) return true
+  if (!scope.includes(orgId)) {
+    reply.status(403).send({ error: 'org_forbidden' })
+    return false
+  }
+  return true
+}
+
+function filterByScope<T extends { org_id: string }>(rows: T[], scope: string[] | null): T[] {
+  if (scope === null) return rows
+  return rows.filter((r) => scope.includes(r.org_id))
+}
 
 export async function registerControlPlaneRoutes(app: FastifyInstance) {
   const cfg = getSupabaseAuthConfig()
@@ -13,7 +50,7 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
   }
   const store = new ControlPlaneStore(cfg)
 
-  app.post('/v1/runtimes/connect', async (req) => {
+  app.post('/v1/runtimes/connect', async (req, reply) => {
     const body = z
       .object({
         runtimeName: z.string().min(1).max(120),
@@ -26,6 +63,9 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
         currentTask: z.string().optional(),
       })
       .parse(req.body)
+
+    const scope = await resolveOrgScope(req as SanctumReq, store)
+    if (!assertOrgAllowed(scope, body.organizationId, reply)) return
 
     const runtime = await store.connectRuntime({
       orgId: body.organizationId,
@@ -123,13 +163,19 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
 
   app.get('/v1/runtimes', async (req) => {
     const orgId = (req.query as { org_id?: string }).org_id
+    const scope = await resolveOrgScope(req as SanctumReq, store)
+    if (orgId && scope && !scope.includes(orgId)) return []
     await store.markStaleOffline()
-    return store.listRuntimes(orgId)
+    const effectiveOrg =
+      orgId ?? (scope?.length === 1 ? scope[0] : undefined)
+    const runtimes = await store.listRuntimes(effectiveOrg)
+    return filterByScope(runtimes, scope)
   })
 
   app.get('/v1/runtimes/:runtimeId', async (req, reply) => {
     const { runtimeId } = req.params as { runtimeId: string }
-    const runtimes = await store.listRuntimes()
+    const scope = await resolveOrgScope(req as SanctumReq, store)
+    const runtimes = filterByScope(await store.listRuntimes(), scope)
     const runtime = runtimes.find((r) => r.id === runtimeId)
     if (!runtime) return reply.status(404).send({ error: 'runtime_not_found' })
     const agents = await store.listAgents(runtimeId)
@@ -138,20 +184,35 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
 
   app.get('/v1/agents', async (req) => {
     const runtimeId = (req.query as { runtime_id?: string }).runtime_id
-    return store.listAgents(runtimeId)
+    const scope = await resolveOrgScope(req as SanctumReq, store)
+    const agents = await store.listAgents(runtimeId)
+    if (scope === null) return agents
+    const allowed = new Set(
+      filterByScope(await store.listRuntimes(), scope).map((r) => r.id),
+    )
+    return agents.filter((a) => allowed.has(a.runtime_id))
   })
 
   app.get('/v1/events', async (req) => {
     const q = req.query as { org_id?: string; limit?: string }
-    return store.listEvents({
-      orgId: q.org_id,
+    const scope = await resolveOrgScope(req as SanctumReq, store)
+    if (q.org_id && scope && !scope.includes(q.org_id)) return []
+    const orgId = q.org_id ?? (scope?.length === 1 ? scope[0] : undefined)
+    const events = await store.listEvents({
+      orgId,
       limit: q.limit ? Number(q.limit) : 100,
     })
+    return filterByScope(events, scope)
   })
 
   /** Server-sent events for live dashboard (polls every 3s). */
   app.get('/v1/events/stream', async (req, reply) => {
-    const orgId = (req.query as { org_id?: string }).org_id
+    const q = req.query as { org_id?: string }
+    const scope = await resolveOrgScope(req as SanctumReq, store)
+    if (q.org_id && scope && !scope.includes(q.org_id)) {
+      return reply.status(403).send({ error: 'org_forbidden' })
+    }
+    const orgId = q.org_id ?? (scope?.length === 1 ? scope[0] : undefined)
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
@@ -161,7 +222,8 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
     let lastId = ''
     const tick = async () => {
       try {
-        const events = await store.listEvents({ orgId, limit: 20 })
+        let events = await store.listEvents({ orgId, limit: 20 })
+        events = filterByScope(events, scope)
         const payload = JSON.stringify(events)
         if (payload !== lastId) {
           lastId = payload

@@ -258,6 +258,29 @@ export class ControlPlaneStore {
     return data?.length ?? 0
   }
 
+  async getUserOrgIds(userId: string): Promise<string[]> {
+    const admin = this.admin()
+    const { data, error } = await admin
+      .from('organization_members')
+      .select('org_id')
+      .eq('user_id', userId)
+    if (error) throw new Error(error.message)
+    return (data ?? []).map((r) => r.org_id as string)
+  }
+
+  async getApiKeyOrgId(presentedKey: string): Promise<string | null> {
+    if (!presentedKey.startsWith('sk_sanctum_')) return null
+    const admin = this.admin()
+    const prefix = presentedKey.slice(0, 16)
+    const { data } = await admin
+      .from('api_keys')
+      .select('org_id')
+      .eq('key_prefix', prefix)
+      .is('revoked_at', null)
+      .maybeSingle()
+    return (data?.org_id as string | null) ?? null
+  }
+
   async getRuntimeOrgId(runtimeId: string): Promise<string | null> {
     const admin = this.admin()
     const { data } = await admin

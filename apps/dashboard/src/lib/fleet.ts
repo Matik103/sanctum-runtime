@@ -1,7 +1,17 @@
-import { getAccessToken } from './supabase'
+import { getAccessToken, getSupabase } from './supabase'
 
 const apiBase =
   (import.meta.env.VITE_SANCTUM_API_URL as string | undefined)?.replace(/\/$/, '') || '/api'
+
+export type FleetOrg = { org_id: string; org_name: string; role: string }
+
+export async function fetchMyOrgs(): Promise<FleetOrg[]> {
+  const sb = getSupabase()
+  if (!sb) return []
+  const { data, error } = await sb.rpc('get_my_orgs')
+  if (error) return []
+  return (data ?? []) as FleetOrg[]
+}
 
 async function fleetHeaders(): Promise<HeadersInit> {
   const token = await getAccessToken()
@@ -45,8 +55,14 @@ export type FleetEvent = {
   created_at: string
 }
 
-export async function fetchRuntimes(): Promise<FleetRuntime[]> {
-  const res = await fetch(`${apiBase}/v1/runtimes`, { headers: await fleetHeaders() })
+function orgQuery(orgId?: string) {
+  return orgId ? `?org_id=${encodeURIComponent(orgId)}` : ''
+}
+
+export async function fetchRuntimes(orgId?: string): Promise<FleetRuntime[]> {
+  const res = await fetch(`${apiBase}/v1/runtimes${orgQuery(orgId)}`, {
+    headers: await fleetHeaders(),
+  })
   if (!res.ok) throw new Error(`Runtimes: ${res.status}`)
   return res.json() as Promise<FleetRuntime[]>
 }
@@ -57,8 +73,9 @@ export async function fetchFleetAgents(): Promise<FleetAgent[]> {
   return res.json() as Promise<FleetAgent[]>
 }
 
-export async function fetchFleetEvents(limit = 50): Promise<FleetEvent[]> {
-  const res = await fetch(`${apiBase}/v1/events?limit=${limit}`, {
+export async function fetchFleetEvents(limit = 50, orgId?: string): Promise<FleetEvent[]> {
+  const org = orgId ? `&org_id=${encodeURIComponent(orgId)}` : ''
+  const res = await fetch(`${apiBase}/v1/events?limit=${limit}${org}`, {
     headers: await fleetHeaders(),
   })
   if (!res.ok) throw new Error(`Events: ${res.status}`)

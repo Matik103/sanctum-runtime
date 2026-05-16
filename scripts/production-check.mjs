@@ -60,6 +60,25 @@ async function main() {
     } catch (e) {
       bad('webhooks status', e.message)
     }
+
+    try {
+      const root = await get('/')
+      const hasRuntimes = root.body?.endpoints?.runtimes
+      if (hasRuntimes) ok('control plane routes advertised on GET /')
+      else bad('control plane not deployed yet (redeploy API after push)')
+    } catch (e) {
+      bad('GET /', e.message)
+    }
+
+    try {
+      const runtimes = await get('/v1/runtimes', true)
+      if (runtimes.status === 200) {
+        const n = Array.isArray(runtimes.body) ? runtimes.body.length : 0
+        ok(`GET /v1/runtimes (${n} registered)`)
+      } else bad('GET /v1/runtimes', runtimes.status)
+    } catch (e) {
+      bad('GET /v1/runtimes', e.message)
+    }
   } else {
     console.log('○ Set SANCTUM_API_KEY to test authenticated routes')
   }
