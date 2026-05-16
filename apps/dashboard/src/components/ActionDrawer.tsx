@@ -1,7 +1,9 @@
 import { X } from 'lucide-react'
 import type { ActionResult } from '@sanctum-runtime/sdk'
-import { actionLabel, decisionLabel, policyLabel, riskLabel } from '../lib/labels'
+import { actionLabel, anomalyLabel, decisionLabel, policyLabel, riskLabel } from '../lib/labels'
 import { decisionTone, timeAgo } from '../lib/format'
+import { extractHeardPhrase, extractIntent } from '../lib/narrative'
+import { AuditRecord } from './AuditRecord'
 import { ContextDetails } from './ContextDetails'
 
 type Props = {
@@ -13,6 +15,8 @@ export function ActionDrawer({ entry, onClose }: Props) {
   if (!entry) return null
 
   const tone = decisionTone(entry.decision)
+  const heard = extractHeardPhrase(entry.context)
+  const intent = extractIntent(entry.context)
 
   return (
     <>
@@ -26,9 +30,54 @@ export function ActionDrawer({ entry, onClose }: Props) {
         </div>
 
         <section className="drawer-section">
-          <h3>What happened</h3>
+          <h3>Audit record</h3>
+          <div className="audit-record audit-record--drawer">
+            <AuditRecord entry={entry} />
+          </div>
+        </section>
+
+        {(heard || intent) && (
+          <section className="drawer-section">
+            <h3>What was said</h3>
+            {heard && (
+              <blockquote
+                style={{
+                  margin: '0 0 0.75rem',
+                  padding: '0.65rem 0.85rem',
+                  borderLeft: '3px solid var(--accent)',
+                  background: 'rgba(79, 124, 255, 0.08)',
+                  fontSize: '0.9rem',
+                  lineHeight: 1.5,
+                }}
+              >
+                {heard}
+              </blockquote>
+            )}
+            {intent && (
+              <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--muted)' }}>
+                <strong style={{ color: 'var(--foreground)' }}>Stated intent:</strong> {intent}
+              </p>
+            )}
+          </section>
+        )}
+
+        <section className="drawer-section">
+          <h3>Scene details</h3>
           <ContextDetails context={entry.context} actor={entry.actor} />
         </section>
+
+        {entry.anomalyFlags.length > 0 && (
+          <section className="drawer-section">
+            <h3>Signals</h3>
+            <p style={{ margin: 0, display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+              {entry.anomalyFlags.map((f) => (
+                <span key={f} className="badge warning">
+                  {anomalyLabel(f)}
+                </span>
+              ))}
+            </p>
+          </section>
+        )}
 
         <section className="drawer-section">
           <h3>Risk analysis</h3>

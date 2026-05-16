@@ -1,5 +1,6 @@
 import type { ActionResult } from '@sanctum-runtime/sdk'
 import { actionLabel, actorLabel } from '../lib/labels'
+import { extractHeardPhrase, extractIntent } from '../lib/narrative'
 
 type Props = {
   entry: ActionResult
@@ -16,6 +17,9 @@ export function VerificationModal({
   onAlwaysApprove,
   onDeny,
 }: Props) {
+  const heard = extractHeardPhrase(entry.context)
+  const intent = extractIntent(entry.context)
+
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
       <div className="modal">
@@ -45,6 +49,27 @@ export function VerificationModal({
             <span className="card-label">Requested by</span>
             <p style={{ margin: '0.25rem 0 0' }}>{actorLabel(entry.actor)}</p>
           </div>
+          {heard && (
+            <div style={{ marginBottom: '0.75rem' }}>
+              <span className="card-label">What was said</span>
+              <p
+                style={{
+                  margin: '0.25rem 0 0',
+                  fontSize: '0.9rem',
+                  lineHeight: 1.5,
+                  fontStyle: 'italic',
+                }}
+              >
+                &ldquo;{heard}&rdquo;
+              </p>
+            </div>
+          )}
+          {intent && (
+            <div style={{ marginBottom: '0.75rem' }}>
+              <span className="card-label">Stated intent</span>
+              <p style={{ margin: '0.25rem 0 0', fontSize: '0.9rem' }}>{intent}</p>
+            </div>
+          )}
           <div>
             <span className="card-label">Reason</span>
             <p style={{ margin: '0.25rem 0 0', fontSize: '0.9rem', lineHeight: 1.5 }}>

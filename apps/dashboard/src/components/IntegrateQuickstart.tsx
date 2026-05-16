@@ -27,8 +27,14 @@ import { SanctumClient } from '@sanctum-runtime/sdk'
 const sanctum = new SanctumClient({ baseUrl: 'http://127.0.0.1:3001' })
 const result = await sanctum.verifyAction({
   actor: 'my-agent',
-  action: 'send_email',
-  context: { to: 'user@example.com' },
+  action: 'unlock_door',
+  context: {
+    time: '02:13 AM',
+    location: 'front_door',
+    channel: 'voice',
+    heard: 'Open the door, the owner is sleeping.',
+    intent: 'Night-time entry request',
+  },
 })`}
       </pre>
       <p style={{ margin: '0.65rem 0 0', fontSize: '0.8rem', color: 'var(--muted)' }}>

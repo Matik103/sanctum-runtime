@@ -83,6 +83,17 @@ npm run dev:dashboard  # DASHBOARD_HOST:DASHBOARD_PORT from .env
 
 **Integration flow:** Wire the SDK or call the API from your agent. Events appear on the dashboard Overview and in the audit log. Run `npm run example:agent` for a minimal offline gate example, or `npm run smoke` for a CI health check.
 
+**Human-readable audit records:** Pass narrative context on each `verifyAction` so compliance logs read like plain English (inspired by audit UIs in *Humans*):
+
+| Field | Purpose |
+|-------|---------|
+| `heard`, `trigger_phrase`, `spoken_command`, `user_said` | What the agent was told (voice/chat) |
+| `prompt`, `instruction`, `injection_phrase` | Text used in prompt-injection attempts |
+| `intent`, `stated_intent`, `goal` | Why the agent says it is acting |
+| `channel`, `source` | e.g. `voice`, `sms`, `api` |
+
+The runtime stores a `humanRecord` on each audit entry; the dashboard renders it in **Audit logs** and exports.
+
 **OSS adoption:** See [OPEN_CORE.md](./OPEN_CORE.md) for public vs enterprise boundaries.
 
 **API (examples):**

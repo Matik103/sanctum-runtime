@@ -1,6 +1,8 @@
 import type { ActionResult } from '@sanctum-runtime/sdk'
+import { AuditRecord } from '../components/AuditRecord'
 import { decisionTone, timeAgo } from '../lib/format'
-import { actionLabel, decisionLabel, policyLabel } from '../lib/labels'
+import { decisionLabel } from '../lib/labels'
+import { auditRecordText } from '../lib/narrative'
 
 type Props = { audit: ActionResult[]; onSelect: (e: ActionResult) => void }
 
@@ -12,6 +14,10 @@ function download(filename: string, content: string, mime: string) {
   a.download = filename
   a.click()
   URL.revokeObjectURL(url)
+}
+
+function escapeCsv(value: string): string {
+  return `"${value.replace(/"/g, '""')}"`
 }
 
 export function AuditLogs({ audit, onSelect }: Props) {
@@ -26,6 +32,7 @@ export function AuditLogs({ audit, onSelect }: Props) {
       'action',
       'decision',
       'risk',
+      'human_record',
       'reasoning',
       'timestamp',
     ]
@@ -36,7 +43,8 @@ export function AuditLogs({ audit, onSelect }: Props) {
         e.action,
         e.decision,
         e.risk,
-        `"${e.reasoning.replace(/"/g, '""')}"`,
+        escapeCsv(auditRecordText(e)),
+        escapeCsv(e.reasoning),
         e.timestamp,
       ].join(','),
     )
@@ -48,7 +56,10 @@ export function AuditLogs({ audit, onSelect }: Props) {
       <header className="page-header">
         <div>
           <h1>Audit logs</h1>
-          <p>Immutable-style execution history for compliance and review</p>
+          <p>
+            Compliance-style records — what was said, what the agent attempted, and what Sanctum
+            decided
+          </p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button type="button" className="btn btn-ghost" onClick={exportJson}>
@@ -64,33 +75,50 @@ export function AuditLogs({ audit, onSelect }: Props) {
         <table className="data">
           <thead>
             <tr>
-              <th>Event ID</th>
-              <th>Action</th>
+              <th>Record</th>
               <th>Decision</th>
-              <th>Policy</th>
               <th>Runtime</th>
-              <th>Timestamp</th>
+              <th>When</th>
             </tr>
           </thead>
           <tbody>
-            {audit.map((e) => (
-              <tr key={e.id} onClick={() => onSelect(e)}>
-                <td style={{ fontFamily: 'monospace', fontSize: '0.72rem' }}>
-                  {e.id.slice(0, 8)}…
+            {audit.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="empty">
+                  No audit records yet — agent actions will appear here as readable entries.
                 </td>
-                <td>{actionLabel(e.action)}</td>
-                <td>
-                  <span className={`badge ${decisionTone(e.decision)}`}>
-                    {decisionLabel(e.decision)}
-                  </span>
-                </td>
-                <td style={{ color: 'var(--muted)' }}>{policyLabel(e.policyPath)}</td>
-                <td style={{ color: 'var(--muted)' }}>
-                  {e.modelInvoked ? 'Model' : 'Heuristic'}
-                </td>
-                <td style={{ color: 'var(--muted)' }}>{timeAgo(e.timestamp)}</td>
               </tr>
-            ))}
+            ) : (
+              audit.map((e) => (
+                <tr key={e.id} onClick={() => onSelect(e)}>
+                  <td className="audit-record-cell">
+                    <AuditRecord entry={e} compact />
+                    <span
+                      style={{
+                        display: 'block',
+                        marginTop: '0.35rem',
+                        fontFamily: 'monospace',
+                        fontSize: '0.68rem',
+                        color: 'var(--muted)',
+                      }}
+                    >
+                      {e.id.slice(0, 8)}…
+                    </span>
+                  </td>
+                  <td style={{ verticalAlign: 'top' }}>
+                    <span className={`badge ${decisionTone(e.decision)}`}>
+                      {decisionLabel(e.decision)}
+                    </span>
+                  </td>
+                  <td style={{ color: 'var(--muted)', verticalAlign: 'top' }}>
+                    {e.modelInvoked ? 'Model' : 'Heuristic'}
+                  </td>
+                  <td style={{ color: 'var(--muted)', verticalAlign: 'top' }}>
+                    {timeAgo(e.timestamp)}
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

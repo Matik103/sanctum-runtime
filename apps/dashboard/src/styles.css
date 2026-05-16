@@ -352,6 +352,66 @@ table.data tbody tr.feed-row {
   animation: slideIn 0.35s ease-out;
 }
 
+.audit-record {
+  max-width: 42rem;
+  line-height: 1.55;
+  font-size: 0.84rem;
+}
+
+.audit-record__title {
+  margin: 0 0 0.35rem;
+  font-weight: 600;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.audit-record p {
+  margin: 0 0 0.5rem;
+  color: var(--foreground);
+}
+
+.audit-record p:last-child {
+  margin-bottom: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.audit-record--compact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.audit-record--compact strong {
+  font-weight: 600;
+  font-size: 0.86rem;
+}
+
+.audit-record__preview {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.audit-record--drawer {
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.25);
+  margin-bottom: 1rem;
+}
+
+.audit-record--drawer .audit-record__title {
+  color: var(--accent);
+}
+
+table.data td.audit-record-cell {
+  max-width: 28rem;
+  vertical-align: top;
+}
+
 @keyframes slideIn {
   from {
     opacity: 0;

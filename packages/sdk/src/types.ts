@@ -49,6 +49,8 @@ export const ActionResultSchema = z.object({
   evaluationMode: EvaluationModeSchema,
   modelInvoked: z.boolean(),
   ollamaConnected: z.boolean(),
+  /** Plain-language audit record (Humans-style compliance log). */
+  humanRecord: z.string().optional(),
 })
 
 export type ActionResult = z.infer<typeof ActionResultSchema>

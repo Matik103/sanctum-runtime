@@ -13,3 +13,11 @@ export {
   type SanctumMiddlewareContext,
 } from './middleware.js'
 export { evaluationModeLabel, formatActionResult, formatDemoResult } from './labels.js'
+export {
+  auditRecordHeadline,
+  auditRecordText,
+  buildHumanAuditRecord,
+  extractHeardPhrase,
+  extractIntent,
+  NARRATIVE_CONTEXT_KEYS,
+} from './narrative.js'

@@ -3,6 +3,7 @@ import { AuditStore } from '@sanctum/audit-system'
 import { OllamaBridge } from '@sanctum/ollama-bridge'
 import { PolicyEngine } from '@sanctum/policy-engine'
 import type { ActionRequest, ActionResult, Decision, EvaluationMode, RiskLevel } from '@sanctum-runtime/sdk'
+import { buildHumanAuditRecord } from '@sanctum-runtime/sdk'
 import { detectAnomalies } from './anomaly.js'
 import { decisionReasoningSuffix, resolveDecision } from './decision.js'
 import { heuristicRiskFloor, heuristicRiskReason, mergeRisk } from './risk-heuristics.js'
@@ -161,23 +162,28 @@ export class RuntimeEngine {
       reasoning = `Policy requires verification for "${request.action}".`
     }
 
-    const result: ActionResult = {
-      id,
-      correlationId,
+    const partial = {
       actor: request.actor,
       action: request.action,
       context: request.context,
       decision,
-      risk,
+      anomalyFlags,
       reasoning,
+    }
+
+    const result: ActionResult = {
+      id,
+      correlationId,
+      ...partial,
+      risk,
       policyPath: policyEval.policyPath,
       modelConfidence,
-      anomalyFlags,
       timestamp: new Date().toISOString(),
       offlineMode: evaluationMode !== 'online_model',
       evaluationMode,
       modelInvoked,
       ollamaConnected,
+      humanRecord: buildHumanAuditRecord(partial),
     }
 
     await this.auditStore.append(result)

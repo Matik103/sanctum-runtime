@@ -1,14 +1,9 @@
 import { useMemo, useState } from 'react'
 import type { ActionResult } from '@sanctum-runtime/sdk'
 import { decisionTone, timeAgo } from '../lib/format'
-import {
-  actionLabel,
-  actorLabel,
-  contextFieldLabel,
-  decisionLabel,
-  formatContextValue,
-  policyLabel,
-} from '../lib/labels'
+import { AuditRecord } from '../components/AuditRecord'
+import { actionLabel, decisionLabel } from '../lib/labels'
+import { auditRecordText } from '../lib/narrative'
 
 type Props = {
   audit: ActionResult[]
@@ -26,7 +21,8 @@ export function RuntimeActivity({ audit, onSelect }: Props) {
         !q ||
         e.action.includes(q) ||
         e.actor.includes(q) ||
-        e.reasoning.toLowerCase().includes(q)
+        e.reasoning.toLowerCase().includes(q) ||
+        auditRecordText(e).toLowerCase().includes(q)
       const matchFilter =
         filter === 'all' ||
         (filter === 'approved' && e.decision === 'APPROVED') ||
@@ -75,11 +71,9 @@ export function RuntimeActivity({ audit, onSelect }: Props) {
         <table className="data">
           <thead>
             <tr>
-              <th>Actor</th>
+              <th>Record</th>
               <th>Action</th>
-              <th>Context</th>
               <th>Risk</th>
-              <th>Policy</th>
               <th>Decision</th>
               <th>Time</th>
             </tr>
@@ -87,30 +81,22 @@ export function RuntimeActivity({ audit, onSelect }: Props) {
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={7} className="empty">
+                <td colSpan={5} className="empty">
                   No matching events
                 </td>
               </tr>
             ) : (
               rows.map((e) => (
                 <tr key={e.id} onClick={() => onSelect(e)}>
-                  <td>{actorLabel(e.actor)}</td>
-                  <td>{actionLabel(e.action)}</td>
-                  <td style={{ maxWidth: 160, color: 'var(--muted)' }}>
-                    {Object.entries(e.context)
-                      .slice(0, 2)
-                      .map(
-                        ([k, v]) =>
-                          `${contextFieldLabel(k)}: ${formatContextValue(k, v)}`,
-                      )
-                      .join(' · ') || '—'}
+                  <td className="audit-record-cell">
+                    <AuditRecord entry={e} compact />
                   </td>
+                  <td>{actionLabel(e.action)}</td>
                   <td>
                     <span className={`badge ${e.risk === 'high' ? 'danger' : e.risk === 'medium' ? 'warning' : 'neutral'}`}>
                       {e.risk}
                     </span>
                   </td>
-                  <td style={{ color: 'var(--muted)' }}>{policyLabel(e.policyPath)}</td>
                   <td>
                     <span className={`badge ${decisionTone(e.decision)}`}>
                       {decisionLabel(e.decision)}

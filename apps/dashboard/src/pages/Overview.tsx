@@ -2,6 +2,7 @@ import type { ActionResult, PolicyMap, RuntimeStatus } from '@sanctum-runtime/sd
 import { IntegrateQuickstart } from '../components/IntegrateQuickstart'
 import { decisionTone, timeAgo } from '../lib/format'
 import { actionLabel, decisionLabel } from '../lib/labels'
+import { auditRecordHeadline } from '../lib/narrative'
 import { sparkBars } from '../lib/spark'
 
 type Props = {
@@ -100,7 +101,7 @@ export function Overview({
           <thead>
             <tr>
               <th>Status</th>
-              <th>Action</th>
+              <th>Record</th>
               <th>Decision</th>
               <th>Time</th>
             </tr>
@@ -121,7 +122,19 @@ export function Overview({
                       {e.decision === 'APPROVED' ? '●' : e.decision === 'BLOCKED' ? '●' : '●'}
                     </span>
                   </td>
-                  <td>{actionLabel(e.action)}</td>
+                  <td style={{ maxWidth: '22rem' }}>
+                    <span style={{ fontWeight: 500 }}>{auditRecordHeadline(e)}</span>
+                    <span
+                      style={{
+                        display: 'block',
+                        fontSize: '0.75rem',
+                        color: 'var(--muted)',
+                        marginTop: '0.15rem',
+                      }}
+                    >
+                      {actionLabel(e.action)}
+                    </span>
+                  </td>
                   <td>
                     <span className={`badge ${decisionTone(e.decision)}`}>
                       {decisionLabel(e.decision)}

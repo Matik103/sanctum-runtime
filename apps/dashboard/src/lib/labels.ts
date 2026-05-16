@@ -1,4 +1,5 @@
 import type { Decision } from '@sanctum-runtime/sdk'
+import { NARRATIVE_CONTEXT_KEYS } from './narrative'
 
 /** unlock_door → Unlock door */
 export function actionLabel(action: string): string {
@@ -43,6 +44,11 @@ const CONTEXT_KEYS: Record<string, string> = {
   owner_sleeping: 'Owner sleeping',
   to: 'Recipient',
   amount: 'Amount',
+  currency: 'Currency',
+  subject: 'Subject',
+  command: 'Command',
+  path: 'Path',
+  zone: 'Zone',
   description: 'Description',
 }
 
@@ -81,8 +87,10 @@ export function formatContextValue(_key: string, value: unknown): string {
 export type ContextRow = { label: string; value: string }
 
 export function contextRows(context: Record<string, unknown>): ContextRow[] {
-  return Object.entries(context).map(([key, value]) => ({
-    label: contextFieldLabel(key),
-    value: formatContextValue(key, value),
-  }))
+  return Object.entries(context)
+    .filter(([key]) => !NARRATIVE_CONTEXT_KEYS.has(key))
+    .map(([key, value]) => ({
+      label: contextFieldLabel(key),
+      value: formatContextValue(key, value),
+    }))
 }

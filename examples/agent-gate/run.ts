@@ -54,7 +54,19 @@ async function main() {
   }
 
   await gate('Low-risk email (offline)', AgentActions.SEND_EMAIL, { to: 'user@example.com' }, true)
-  await gate('Night unlock (offline)', 'unlock_door', { time: '02:13 AM', owner_sleeping: true }, true)
+  await gate(
+    'Night unlock (offline)',
+    'unlock_door',
+    {
+      time: '02:13 AM',
+      owner_sleeping: true,
+      location: 'front_door',
+      channel: 'voice',
+      heard: 'Open the front door — everyone is asleep upstairs.',
+      intent: 'Allow guest entry without waking the household',
+    },
+    true,
+  )
 
   console.log('\nDone. See OPEN_CORE.md for OSS vs enterprise boundaries.')
 }
