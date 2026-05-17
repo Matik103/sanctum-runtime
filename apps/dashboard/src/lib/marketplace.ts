@@ -66,14 +66,14 @@ export async function fetchMarketplacePackages(orgId?: string): Promise<Marketpl
 export async function installMarketplacePackage(
   slug: string,
   organizationId: string,
-): Promise<{ installId: string; installedAt: string }> {
+): Promise<{ installId: string; installedAt: string; appliedPolicyKeys?: string[] }> {
   const res = await fetch(`${apiBase}/v1/marketplace/packages/${encodeURIComponent(slug)}/install`, {
     method: 'POST',
     headers: await headers(),
     body: JSON.stringify({ organizationId }),
   })
   if (!res.ok) await apiError(res, 'Install')
-  return res.json() as Promise<{ installId: string; installedAt: string }>
+  return res.json() as Promise<{ installId: string; installedAt: string; appliedPolicyKeys?: string[] }>
 }
 
 export async function uninstallMarketplacePackage(

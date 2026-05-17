@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Loader2, Package } from 'lucide-react'
 import { Alert } from '../components/ui/Alert'
 import { EmptyState } from '../components/ui/EmptyState'
@@ -17,9 +17,11 @@ export function Marketplace() {
   const [packages, setPackages] = useState<MarketplacePackage[]>([])
   const [orgs, setOrgs] = useState<FleetOrg[]>([])
   const [orgId, setOrgId] = useState('')
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [busySlug, setBusySlug] = useState<string | null>(null)
+  const loadingRef = useRef(false)
 
   useEffect(() => {
     void (async () => {
@@ -48,15 +50,22 @@ export function Marketplace() {
       setPackages([])
       return
     }
+    if (loadingRef.current) return
+    loadingRef.current = true
+    setLoading(true)
     try {
       setPackages(await fetchMarketplacePackages(orgId))
       setError(null)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Marketplace unavailable')
+    } finally {
+      loadingRef.current = false
+      setLoading(false)
     }
   }, [orgId])
 
   useEffect(() => {
+    setPackages([])
     void refresh()
   }, [refresh])
 
@@ -77,7 +86,7 @@ export function Marketplace() {
             p.slug === pkg.slug ? { ...p, installed: false, installId: null } : p,
           ),
         )
-        setSuccess(`Removed ${pkg.name} from this organization`)
+        setSuccess(`Removed ${pkg.name} and its org policies from this organization`)
       } else {
         const result = await installMarketplacePackage(pkg.slug, orgId)
         setPackages((prev) =>
@@ -87,8 +96,12 @@ export function Marketplace() {
               : p,
           ),
         )
+        const policyNote =
+          result.appliedPolicyKeys && result.appliedPolicyKeys.length > 0
+            ? ` · ${result.appliedPolicyKeys.length} org ${result.appliedPolicyKeys.length === 1 ? 'policy' : 'policies'} applied`
+            : ''
         setSuccess(
-          `${pkg.name} installed — org policies applied. Run connectFromPackage('${pkg.slug}', '${orgId}') or open Fleet.`,
+          `${pkg.name} installed${policyNote}. Run connectFromPackage('${pkg.slug}', '${orgId}') or open Fleet.`,
         )
       }
       await refresh()
@@ -145,12 +158,17 @@ export function Marketplace() {
         </Alert>
       )}
 
-      {packages.length === 0 ? (
+      {loading ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '2rem 0', color: 'var(--muted)' }}>
+          <Loader2 size={18} className="spin" />
+          <span>Loading packages…</span>
+        </div>
+      ) : packages.length === 0 ? (
         <EmptyState
           title={orgId ? 'No packages' : 'Select an organization'}
           description={
             orgId
-              ? 'Run db:push to seed the catalog, or publish an org-specific package via API.'
+              ? 'Run npm run db:push to seed the 12-category catalog, or publish a package via API.'
               : 'Choose an organization above to browse the marketplace.'
           }
         />

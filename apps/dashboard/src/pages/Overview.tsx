@@ -68,7 +68,13 @@ export function Overview({
           </div>
           <div className="card-label">Runtime status</div>
           <div className="card-value" style={{ fontSize: '1.1rem' }}>
-            {status?.riskModelConnected || status?.ollamaConnected ? 'Operational' : 'Degraded'}
+            {status === null
+              ? 'Connecting…'
+              : status.runtimeOnline
+                ? status.riskModelConnected || status.ollamaConnected
+                  ? 'Operational'
+                  : 'Online · offline mode'
+                : 'Offline'}
           </div>
           <div className="card-meta">
             {riskModelMetaLine(status)} · {Object.keys(policies).length} policies

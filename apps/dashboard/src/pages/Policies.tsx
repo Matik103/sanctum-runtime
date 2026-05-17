@@ -43,7 +43,7 @@ export function Policies({
   const [adding, setAdding] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [yamlBusy, setYamlBusy] = useState(false)
-  const [savingAction, setSavingAction] = useState<string | null>(null)
+  const [savingSpec, setSavingSpec] = useState<{ action: string; response: PolicyResponse } | null>(null)
 
   const exportYaml = async () => {
     setYamlBusy(true)
@@ -161,6 +161,7 @@ export function Policies({
             placeholder="action_name or org:action"
             value={newAction}
             onChange={(e) => setNewAction(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') void addPolicy() }}
             style={{
               flex: '1 1 12rem',
               minWidth: '12rem',
@@ -228,29 +229,33 @@ export function Policies({
                 Runtime response
               </p>
               <div className="response-select">
-                {(['approve', 'verify', 'block'] as PolicyResponse[]).map((r) => (
-                  <button
-                    key={r}
-                    type="button"
-                    className={`response-btn ${response === r ? `active ${r}` : ''}`}
-                    disabled={savingAction === action}
-                    onClick={() => {
-                      setSavingAction(action)
-                      setError(null)
-                      void onSetPolicy(action, r)
-                        .catch((e) => {
-                          setError(
-                            e instanceof Error ? e.message : 'Failed to save policy',
-                          )
-                        })
-                        .finally(() => setSavingAction(null))
-                    }}
-                  >
-                    {savingAction === action
-                      ? 'Saving…'
-                      : r.charAt(0).toUpperCase() + r.slice(1)}
-                  </button>
-                ))}
+                {(['approve', 'verify', 'block'] as PolicyResponse[]).map((r) => {
+                  const isSaving = savingSpec?.action === action && savingSpec?.response === r
+                  const isBusy = savingSpec?.action === action
+                  return (
+                    <button
+                      key={r}
+                      type="button"
+                      className={`response-btn ${response === r ? `active ${r}` : ''}`}
+                      disabled={isBusy}
+                      onClick={() => {
+                        setSavingSpec({ action, response: r })
+                        setError(null)
+                        void onSetPolicy(action, r)
+                          .catch((e) => {
+                            setError(
+                              e instanceof Error ? e.message : 'Failed to save policy',
+                            )
+                          })
+                          .finally(() => setSavingSpec(null))
+                      }}
+                    >
+                      {isSaving
+                        ? 'Saving…'
+                        : r.charAt(0).toUpperCase() + r.slice(1)}
+                    </button>
+                  )
+                })}
               </div>
 
               {last && (
