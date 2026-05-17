@@ -54,7 +54,7 @@ export class SanctumClient {
     if (!res.ok) {
       throw new Error(`Sanctum ${method} ${path} failed: ${res.status} ${await res.text()}`)
     }
-    if (res.status === 204 || !res.headers.get('content-length')) {
+    if (res.status === 204) {
       return undefined as T
     }
     const text = await res.text()
@@ -90,8 +90,10 @@ export class SanctumClient {
     return res.json() as Promise<ActionResult>
   }
 
-  async getAudit(limit = 50): Promise<ActionResult[]> {
-    const res = await fetch(`${this.baseUrl}/v1/audit?limit=${limit}`, {
+  async getAudit(limit = 50, orgId?: string): Promise<ActionResult[]> {
+    const q = new URLSearchParams({ limit: String(limit) })
+    if (orgId) q.set('org_id', orgId)
+    const res = await fetch(`${this.baseUrl}/v1/audit?${q}`, {
       headers: await this.headers(false),
     })
     if (!res.ok) throw new Error(`Sanctum audit failed: ${res.status}`)
