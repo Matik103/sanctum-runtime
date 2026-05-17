@@ -162,6 +162,11 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
       })
       .parse(req.body ?? {})
 
+    const scope = await resolveOrgScope(req as SanctumReq, store)
+    const orgId = await store.getRuntimeOrgId(runtimeId)
+    if (!orgId) return reply.status(404).send({ error: 'runtime_not_found' })
+    if (!assertOrgAllowed(scope, orgId, reply)) return
+
     try {
       const runtime = await store.heartbeat(runtimeId, {
         telemetry: body.telemetry,
@@ -202,6 +207,11 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
       })
       .parse(req.body)
 
+    const scope = await resolveOrgScope(req as SanctumReq, store)
+    const runtimeOrgId = await store.getRuntimeOrgId(runtimeId)
+    if (!runtimeOrgId) return reply.status(404).send({ error: 'runtime_not_found' })
+    if (!assertOrgAllowed(scope, runtimeOrgId, reply)) return
+
     try {
       const agent = await store.registerAgent(runtimeId, {
         agentId: body.id,
@@ -228,8 +238,11 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
       })
       .parse(req.body)
 
-    const orgId = body.organizationId ?? (await store.getRuntimeOrgId(runtimeId))
+    // Always derive org from the runtime record; ignore body.organizationId to prevent spoofing.
+    const orgId = await store.getRuntimeOrgId(runtimeId)
     if (!orgId) return reply.status(404).send({ error: 'runtime_not_found' })
+    const scope = await resolveOrgScope(req as SanctumReq, store)
+    if (!assertOrgAllowed(scope, orgId, reply)) return
 
     const event = await store.insertEvent({
       orgId,

@@ -21,7 +21,7 @@ function parseTemplate(raw: unknown): { action: string; patch: Partial<ActionPol
     patch.allowedActors = t.allowedActors.filter((a) => typeof a === 'string') as string[]
   }
   if (typeof t.riskPrompt === 'string' && t.riskPrompt.trim()) {
-    patch.riskPrompt = t.riskPrompt.trim()
+    patch.riskPrompt = t.riskPrompt.trim().slice(0, 8000)
   }
 
   return { action, patch }

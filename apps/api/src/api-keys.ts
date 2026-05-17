@@ -76,6 +76,9 @@ export async function registerApiKeyRoutes(
 
       const store = new ControlPlaneStore(supabase)
       const userOrgIds = await store.getUserOrgIds(user.id)
+      if (parsed.data.org_id && !userOrgIds.includes(parsed.data.org_id)) {
+        return reply.status(403).send({ error: 'org_forbidden' })
+      }
       const orgId = parsed.data.org_id ?? userOrgIds[0] ?? null
 
       const { data, error } = await admin

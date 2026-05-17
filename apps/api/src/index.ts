@@ -243,6 +243,35 @@ app.post('/v1/audit/:id/resolve', async (req, reply) => {
     })
     .parse(req.body)
 
+  // Enforce org scope when Supabase auth is active.
+  if (supabaseAuth) {
+    const entry = runtime.getAuditStore().getById(id)
+    const entryOrgId =
+      entry && typeof entry.context?.org_id === 'string'
+        ? entry.context.org_id
+        : undefined
+    if (entryOrgId) {
+      const { ControlPlaneStore } = await import('./control-plane-store.js')
+      const store = new ControlPlaneStore(supabaseAuth)
+      const user = (req as { sanctumUser?: { id: string } }).sanctumUser
+      let allowedOrgs: string[] | null = null
+      if (user) {
+        allowedOrgs = await store.getUserOrgIds(user.id)
+      } else {
+        const key = Array.isArray(req.headers['x-sanctum-key'])
+          ? req.headers['x-sanctum-key'][0]
+          : req.headers['x-sanctum-key']
+        if (key?.startsWith('sk_sanctum_')) {
+          const orgId = await store.getApiKeyOrgId(key)
+          allowedOrgs = orgId ? [orgId] : []
+        }
+      }
+      if (allowedOrgs !== null && !allowedOrgs.includes(entryOrgId)) {
+        return reply.status(403).send({ error: 'org_forbidden' })
+      }
+    }
+  }
+
   const result = await runtime.resolveAuditEntry(id, body)
   if (!result) {
     return reply.status(404).send({ error: 'audit_entry_not_found' })
