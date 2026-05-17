@@ -15,6 +15,7 @@ import { Policies } from './pages/Policies'
 import { RuntimeActivity } from './pages/RuntimeActivity'
 import { Settings } from './pages/Settings'
 import { ThreatMonitor } from './pages/ThreatMonitor'
+import { Billing } from './pages/Billing'
 
 export function App() {
   const [page, setPage] = useState<PageId>('overview')
@@ -87,6 +88,7 @@ export function App() {
         {page === 'fleet' && <Fleet />}
         {page === 'marketplace' && <Marketplace />}
         {page === 'audit' && <AuditLogs audit={audit} onSelect={onSelect} />}
+        {page === 'billing' && <Billing />}
         {page === 'settings' && <Settings status={status} />}
       </MainCanvas>
 

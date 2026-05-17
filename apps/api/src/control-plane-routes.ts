@@ -4,6 +4,8 @@ import { getSupabaseAuthConfig } from './auth.js'
 import { ControlPlaneStore, defaultFingerprint } from './control-plane-store.js'
 import { OrchestrationStore } from './orchestration-store.js'
 import { runtimeWsHub } from './runtime-ws-hub.js'
+import { recordUsage, UsageMetrics } from './usage-store.js'
+import { getEntitlementEngine } from './entitlements.js'
 
 const modeSchema = z.enum(['cloud', 'edge', 'airgap', 'hybrid'])
 
@@ -86,6 +88,7 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
   }
   const store = new ControlPlaneStore(cfg)
   const orch = new OrchestrationStore(cfg)
+  const entitlements = getEntitlementEngine(cfg)
 
   app.post('/v1/runtimes/connect', async (req, reply) => {
     const body = z
@@ -112,6 +115,16 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
       if (keyOrg) orgId = keyOrg
     }
     if (!assertOrgAllowed(scope, orgId, reply)) return
+
+    const slot = await entitlements.checkRuntimeSlot(orgId)
+    if (!slot.allowed) {
+      return reply.status(402).send({
+        error: 'runtime_limit_reached',
+        detail: `Your plan allows ${slot.limit} connected runtime${slot.limit === 1 ? '' : 's'}. Upgrade to add more.`,
+        used: slot.used,
+        limit: slot.limit,
+      })
+    }
 
     const ip = extractIp(req)
     const runtime = await store.connectRuntime({
@@ -200,6 +213,8 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
                 payload: c.payload,
               })),
             )
+      // Record ~1 minute of runtime uptime per heartbeat (approx 60s interval)
+      recordUsage(cfg, orgId, UsageMetrics.RUNTIME_HOURS, 1 / 60)
       return {
         ok: true,
         lastSeenAt: runtime.last_seen_at,

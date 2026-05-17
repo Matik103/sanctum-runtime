@@ -2,11 +2,14 @@ import { createSupabaseAdmin, type SupabaseAuthConfig } from './auth.js'
 
 export const UsageMetrics = {
   RUNTIME_CONNECT: 'runtime.connect',
+  RUNTIME_HOURS: 'runtime.hours',
   ACTION_VERIFY: 'action.verify',
   COMMAND_DISPATCH: 'command.dispatch',
   MARKETPLACE_INSTALL: 'marketplace.install',
   MEMORY_WRITE: 'memory.write',
   AGENT_REGISTER: 'agent.register',
+  SECURITY_ATTESTATION: 'security.attestation',
+  API_CALL: 'api.call',
 } as const
 
 export type UsageMetric = (typeof UsageMetrics)[keyof typeof UsageMetrics]

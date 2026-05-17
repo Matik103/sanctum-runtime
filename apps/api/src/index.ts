@@ -12,6 +12,7 @@ import { registerAgentMemoryRoutes } from './agent-memory-routes.js'
 import { registerMarketplaceRoutes } from './marketplace-routes.js'
 import { registerHardwareAttestationRoutes } from './hardware-attestation-routes.js'
 import { registerUsageRoutes } from './usage-routes.js'
+import { registerBillingRoutes } from './billing-routes.js'
 import { recordUsage, UsageMetrics } from './usage-store.js'
 import { registerRuntimeWsRoutes } from './runtime-ws-routes.js'
 import { runtimeWsHub } from './runtime-ws-hub.js'
@@ -135,6 +136,7 @@ app.get('/', async () => ({
     agentMemory: 'GET|PUT|DELETE /v1/runtimes/:id/agents/:agentId/memory/:key',
     marketplace: 'GET /v1/marketplace/packages · install · connect hints',
     usage: 'GET /v1/usage?org_id=',
+    billing: 'GET /v1/billing/plan · POST /v1/billing/checkout',
     analyze: 'POST /analyze-action',
   },
 }))
@@ -147,6 +149,7 @@ if (supabaseAuth) {
   await registerAgentMemoryRoutes(app)
   await registerMarketplaceRoutes(app, runtime)
   await registerUsageRoutes(app)
+  await registerBillingRoutes(app)
   await registerHardwareAttestationRoutes(app)
 }
 
