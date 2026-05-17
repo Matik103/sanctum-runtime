@@ -1,6 +1,4 @@
 import type { ActionResult, PolicyMap, RuntimeStatus } from '@sanctum-runtime/sdk/browser'
-import { IntegrateQuickstart } from '../components/IntegrateQuickstart'
-import { Phase3Onboarding } from '../components/Phase3Onboarding'
 import { decisionTone, timeAgo } from '../lib/format'
 import { actionLabel, decisionLabel } from '../lib/labels'
 import { auditRecordHeadline } from '../lib/narrative'
@@ -62,13 +60,6 @@ export function Overview({
           </span>
         </div>
       </header>
-
-      {audit.length === 0 && (
-        <>
-          <Phase3Onboarding />
-          <IntegrateQuickstart />
-        </>
-      )}
 
       <div className="grid-4">
         <div className="card glow-success">
@@ -137,7 +128,7 @@ export function Overview({
             {audit.length === 0 ? (
               <tr>
                 <td colSpan={4} className="empty">
-                  No events yet — run <code>npm run seed:production</code> (see Phase 3 card above)
+                  No events yet — connect a runtime or call <code>/v1/actions/verify</code> to start streaming
                 </td>
               </tr>
             ) : (
