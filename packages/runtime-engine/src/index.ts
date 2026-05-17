@@ -278,9 +278,14 @@ export class RuntimeEngine {
       decision = 'BLOCKED'
       risk = 'high'
     } else if (!useHeuristicsOnly && this.riskModel) {
-      const { assessment, error } = await this.riskModel.analyzeAction(request, {
-        riskPrompt: policyEval.policy.riskPrompt,
-      })
+      const RISK_MODEL_TIMEOUT_MS = 15_000
+      const timeoutError = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('risk_model_timeout')), RISK_MODEL_TIMEOUT_MS),
+      )
+      const { assessment, error } = await Promise.race([
+        this.riskModel.analyzeAction(request, { riskPrompt: policyEval.policy.riskPrompt }),
+        timeoutError.catch((e: Error) => ({ assessment: null, error: e.message })),
+      ])
 
       if (assessment) {
         modelInvoked = true
