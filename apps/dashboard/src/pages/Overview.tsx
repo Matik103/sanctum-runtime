@@ -116,7 +116,7 @@ export function Overview({
           <div className="card-value" style={{ fontSize: '1.25rem' }}>
             {audit.length ? Math.round((approved / audit.length) * 100) : 100}%
           </div>
-          <div className="card-meta">Policy enforcement · local uptime</div>
+          <div className="card-meta">{audit.length ? `${audit.length} actions evaluated` : 'No actions yet'}</div>
         </div>
       </div>
 

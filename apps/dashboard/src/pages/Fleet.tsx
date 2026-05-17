@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
+import { timeAgo } from '../lib/format'
 import { Alert } from '../components/ui/Alert'
 import { EmptyState } from '../components/ui/EmptyState'
 import { PageActions } from '../components/ui/PageActions'
@@ -270,45 +271,39 @@ export function Fleet() {
                       <span className={`badge ${statusBadge(r.status)}`}>{r.status}</span>
                     </div>
                   </div>
-                  <p className="hint-line" style={{ margin: '0.35rem 0' }}>
-                    {r.org_id} · {r.mode}
-                    {r.region ? ` · ${r.region}` : ''} · trust {r.trust_score}
-                    {r.attested_at && (
-                      <> · attested {new Date(r.attested_at).toLocaleDateString()}</>
-                    )}
+                  <p className="hint-line" style={{ margin: '0.3rem 0 0' }}>
+                    {r.mode}{r.region ? ` · ${r.region}` : ''} · trust {r.trust_score}
                   </p>
                   {r.active_model && (
-                    <p style={{ margin: '0.25rem 0', fontSize: '0.85rem' }}>
-                      Model <strong>{r.active_model}</strong>
+                    <p style={{ margin: '0.3rem 0 0', fontSize: '0.82rem', color: 'var(--muted)' }}>
+                      {r.active_model}
                     </p>
                   )}
                   {r.current_task && (
-                    <p style={{ margin: '0.25rem 0', fontSize: '0.85rem', color: 'var(--muted)' }}>
+                    <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: 'var(--muted)', fontStyle: 'italic' }}>
                       {r.current_task}
                     </p>
                   )}
                   {groups.filter((g) => g.org_id === r.org_id).length > 0 && (
-                    <label className="hint-line" style={{ display: 'block', marginTop: '0.5rem', fontSize: '0.8rem' }}>
-                      Group
-                      <select
-                        className="input"
-                        style={{ display: 'block', width: '100%', marginTop: '0.2rem', fontSize: '0.8rem' }}
-                        value={r.deployment_group_id ?? ''}
-                        onChange={(e) => void assignRuntimeGroup(r.id, e.target.value)}
-                      >
-                        <option value="">— unassigned —</option>
-                        {groups
-                          .filter((g) => g.org_id === r.org_id)
-                          .map((g) => (
-                            <option key={g.id} value={g.id}>
-                              {g.name}
-                            </option>
-                          ))}
-                      </select>
-                    </label>
+                    <select
+                      className="input"
+                      style={{ display: 'block', width: '100%', marginTop: '0.6rem', fontSize: '0.8rem' }}
+                      value={r.deployment_group_id ?? ''}
+                      onChange={(e) => void assignRuntimeGroup(r.id, e.target.value)}
+                      aria-label="Deployment group"
+                    >
+                      <option value="">No group</option>
+                      {groups
+                        .filter((g) => g.org_id === r.org_id)
+                        .map((g) => (
+                          <option key={g.id} value={g.id}>
+                            {g.name}
+                          </option>
+                        ))}
+                    </select>
                   )}
-                  <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem', color: 'var(--muted)' }}>
-                    Last seen {r.last_seen_at ? new Date(r.last_seen_at).toLocaleString() : '—'}
+                  <p style={{ margin: '0.5rem 0 0', fontSize: '0.73rem', color: 'var(--muted)' }}>
+                    {r.last_seen_at ? timeAgo(r.last_seen_at) : 'never seen'}
                   </p>
                 </article>
               ))}

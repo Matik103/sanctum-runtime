@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { timeAgo } from '../lib/format'
 import { KeyRound, Monitor, RefreshCw, Server, Trash2 } from 'lucide-react'
 import type { RuntimeStatus } from '@sanctum-runtime/sdk/browser'
 import { Alert } from '../components/ui/Alert'
@@ -253,31 +254,23 @@ export function Devices({ status }: Props) {
             <div className="policy-grid" style={{ marginTop: workspaceOrgId ? '1.25rem' : 0 }}>
               {runtimes.map((r) => (
                 <article key={r.id} className="policy-card">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'flex-start' }}>
                     <h3 style={{ margin: 0 }}>{r.name}</h3>
                     <span className={`badge ${runtimeStatusBadge(r.status)}`}>{r.status}</span>
                   </div>
-                  <p className="hint-line" style={{ margin: '0.35rem 0' }}>
-                    {r.org_id} · {r.mode}
-                    {r.region ? ` · ${r.region}` : ''}
-                  </p>
                   {r.active_model && (
-                    <p style={{ margin: '0.25rem 0', fontSize: '0.85rem' }}>
-                      Model <strong>{r.active_model}</strong>
+                    <p style={{ margin: '0.3rem 0 0', fontSize: '0.82rem', color: 'var(--muted)' }}>
+                      {r.active_model}
                     </p>
                   )}
                   {r.current_task && (
-                    <p style={{ margin: '0.25rem 0', fontSize: '0.85rem', color: 'var(--muted)' }}>
+                    <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: 'var(--muted)', fontStyle: 'italic' }}>
                       {r.current_task}
                     </p>
                   )}
                   <DeviceDetails runtime={r} />
-                  <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem', color: 'var(--muted)' }}>
-                    Last seen{' '}
-                    {r.last_seen_at ? new Date(r.last_seen_at).toLocaleString() : '—'}
-                  </p>
-                  <p style={{ margin: '0.35rem 0 0', fontSize: '0.7rem', color: 'var(--muted)' }}>
-                    Runtime id <code className="inline-code">{r.id.slice(0, 8)}…</code>
+                  <p style={{ margin: '0.5rem 0 0', fontSize: '0.73rem', color: 'var(--muted)' }}>
+                    {r.last_seen_at ? timeAgo(r.last_seen_at) : 'never seen'} · <code style={{ fontFamily: 'monospace' }}>{r.id.slice(0, 8)}</code>
                   </p>
                 </article>
               ))}

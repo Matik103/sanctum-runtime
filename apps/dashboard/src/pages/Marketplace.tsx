@@ -215,63 +215,51 @@ export function Marketplace() {
                 key={pkg.id}
                 className={`policy-card marketplace-card ${installed ? 'marketplace-card--installed' : ''}`}
               >
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
-                  <Package size={20} style={{ flexShrink: 0, marginTop: '0.15rem' }} />
-                  <div style={{ flex: 1 }}>
-                    <h3 style={{ margin: '0 0 0.25rem' }}>{pkg.name}</h3>
-                  <p className="hint-line" style={{ margin: 0 }}>
-                    {pkg.slug} · v{pkg.version} · {pkg.category}
-                    {Array.isArray(pkg.policyTemplates) && pkg.policyTemplates.length > 0
-                      ? ` · ${pkg.policyTemplates.length} policies on install`
-                      : ''}
-                  </p>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+                  <Package size={16} style={{ flexShrink: 0, marginTop: '0.25rem', opacity: 0.5 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                      <h3 style={{ margin: 0 }}>{pkg.name}</h3>
+                      {installed && <span className="badge success">Installed</span>}
+                    </div>
+                    <p className="hint-line" style={{ margin: '0.15rem 0 0' }}>
+                      {pkg.category}
+                      {Array.isArray(pkg.policyTemplates) && pkg.policyTemplates.length > 0
+                        ? ` · ${pkg.policyTemplates.length} policies`
+                        : ''}
+                    </p>
                   </div>
-                  {installed && <span className="badge success">Installed</span>}
                 </div>
                 {pkg.description && (
-                  <p style={{ margin: '0.5rem 0', fontSize: '0.85rem' }}>{pkg.description}</p>
-                )}
-                {pkg.readme && (
-                  <p style={{ margin: '0.35rem 0', fontSize: '0.8rem', color: 'var(--muted)' }}>
-                    {pkg.readme}
+                  <p style={{
+                    margin: '0.5rem 0 0',
+                    fontSize: '0.82rem',
+                    color: 'var(--muted)',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                  }}>
+                    {pkg.description}
                   </p>
                 )}
-                <pre
-                  className="inline-code"
-                  style={{
-                    display: 'block',
-                    margin: '0.5rem 0',
-                    padding: '0.5rem',
-                    fontSize: '0.75rem',
-                    overflow: 'auto',
-                  }}
-                >
-                  {`runtime.connectFromPackage('${pkg.slug}', '${orgId || 'your-org'}')`}
-                </pre>
-                <button
-                  type="button"
-                  className={`btn btn-sm ${
-                    installed ? 'btn-danger' : 'btn-primary'
-                  }`}
-                  onClick={() => void toggleInstall(pkg)}
-                  disabled={!orgId || busy}
-                  aria-busy={busy}
-                >
-                  {busy ? (
-                    <>
-                      <Loader2
-                        size={14}
-                        style={{ marginRight: '0.35rem', verticalAlign: 'middle' }}
-                        className="spin"
-                      />
-                      {installed ? 'Removing…' : 'Installing…'}
-                    </>
-                  ) : installed ? (
-                    'Uninstall'
-                  ) : (
-                    'Install'
-                  )}
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem' }}>
+                  <button
+                    type="button"
+                    className={`btn btn-sm ${installed ? 'btn-danger' : 'btn-primary'}`}
+                    onClick={() => void toggleInstall(pkg)}
+                    disabled={!orgId || busy}
+                    aria-busy={busy}
+                    style={{ flexShrink: 0 }}
+                  >
+                    {busy ? (
+                      <><Loader2 size={13} style={{ marginRight: '0.3rem', verticalAlign: 'middle' }} className="spin" />{installed ? 'Removing…' : 'Installing…'}</>
+                    ) : installed ? 'Uninstall' : 'Install'}
+                  </button>
+                  <code style={{ fontSize: '0.72rem', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                    connectFromPackage('{pkg.slug}')
+                  </code>
+                </div>
               </article>
             )
           })}

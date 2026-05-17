@@ -145,13 +145,10 @@ export function Policies({
       </header>
 
       <div className="card" style={{ marginBottom: '1.25rem' }}>
-        <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--muted)', lineHeight: 1.6 }}>
-          Add as many action policies as your product needs. Each policy sets how Sanctum responds
-          when an AI requests that action. Changes are saved to the runtime API
-          {supabaseConfigured ? ' and Supabase' : ''}.{' '}
-          <strong style={{ color: 'var(--success)' }}>Approve</strong> runs automatically,{' '}
-          <strong style={{ color: 'var(--warning)' }}>Verify</strong> pauses for you,{' '}
-          <strong style={{ color: '#fca5a5' }}>Block</strong> denies immediately.
+        <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--muted)' }}>
+          <strong style={{ color: 'var(--success)' }}>Approve</strong> — runs automatically &nbsp;·&nbsp;
+          <strong style={{ color: 'var(--warning)' }}>Verify</strong> — pauses for your review &nbsp;·&nbsp;
+          <strong style={{ color: '#fca5a5' }}>Block</strong> — denied immediately
         </p>
       </div>
 
@@ -212,7 +209,7 @@ export function Policies({
 
           return (
             <article key={action} className="policy-card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.6rem' }}>
                 <h3 style={{ margin: 0 }}>{actionLabel(action)}</h3>
                 {!BUILTIN_ACTIONS.has(action) && (
                   <button
@@ -225,13 +222,6 @@ export function Policies({
                   </button>
                 )}
               </div>
-              <p style={{ margin: '0.25rem 0', color: 'var(--muted)', fontSize: '0.85rem' }}>
-                When an agent requests this action, Sanctum applies the response below.
-              </p>
-
-              <p className="card-label" style={{ marginTop: '0.75rem' }}>
-                Runtime response
-              </p>
               <div className="response-select">
                 {(['approve', 'verify', 'block'] as PolicyResponse[]).map((r) => {
                   const isSaving = savingSpec?.action === action && savingSpec?.response === r
