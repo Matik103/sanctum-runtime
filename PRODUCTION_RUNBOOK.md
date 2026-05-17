@@ -28,10 +28,12 @@ Runtimes ────────┘  connect · heartbeat · WS · memory
 ### 1.1 Supabase
 
 ```bash
-npm run db:push    # applies migrations 001–019
+npm run db:push    # applies migrations 001–022
 ```
 
 Confirm in SQL Editor: `registered_runtimes`, `runtime_packages`, `usage_events`, `attestation_challenges`, `agent_memory_entries`.
+
+> **Marketplace catalog** (migrations 020–022) adds the full 12-category package set. If the Marketplace page shows 0 packages after `db:push`, confirm these migrations ran.
 
 Link project: `supabase link` (if not already).
 
@@ -202,7 +204,7 @@ Update secrets store with the new key after rotation.
 | Revoke key failed | Redeploy API (CORS DELETE + empty DELETE body fix) |
 | CORS on DELETE | `DASHBOARD_URL` exact match on API |
 | `sk_sanctum_*` 401 locally | Use dashboard key in `.env`, not legacy hex key |
-| Marketplace empty | `npm run db:push` (catalog in `017`–`021`) |
+| Marketplace empty | `npm run db:push` (catalog in `017`–`022`) |
 | Hardware `hw=false` | Run challenge before connect; redeploy API `94ed661+` |
 | Usage all zeros | Run smoke or connect — usage records on events |
 | Audit empty after refresh | Redeploy API with Supabase hydrate (`d042761+`) |
