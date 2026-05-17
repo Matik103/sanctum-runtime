@@ -28,7 +28,7 @@ Runtimes ────────┘  connect · heartbeat · WS · memory
 ### 1.1 Supabase
 
 ```bash
-npm run db:push    # applies migrations 001–023
+npm run db:push    # applies migrations 001–024
 ```
 
 Confirm in SQL Editor (or run the checks in §1.3):
@@ -41,10 +41,13 @@ Confirm in SQL Editor (or run the checks in §1.3):
 | `attestation_challenges` | 019 |
 | `agent_memory_entries` | 016 |
 | `plans`, `org_plans` | 023 |
+| `sso_configs`, `export_audit`, notification columns on `org_plans` | 024 |
 
 > **Marketplace catalog** (020–022) — 16 packages / 12 categories. If Marketplace shows 0 packages, confirm 017 + 020–022 ran.
 >
 > **Billing** (023) — every org gets `org_plans.plan_id = 'free'` via trigger + backfill.
+>
+> **Notifications / SSO / GDPR** (024) — per-org notification prefs; `export_audit` log; enterprise `sso_configs`.
 
 ### 1.3 Verify migrations (SQL Editor)
 
@@ -57,7 +60,7 @@ where table_schema = 'public'
     'registered_runtimes', 'registered_agents', 'runtime_events',
     'runtime_packages', 'runtime_package_installs',
     'usage_events', 'agent_memory_entries', 'attestation_challenges',
-    'plans', 'org_plans', 'api_keys'
+    'plans', 'org_plans', 'api_keys', 'sso_configs', 'export_audit'
   )
 order by 1;
 
@@ -86,6 +89,12 @@ Link project: `supabase link` (if not already).
 | `SANCTUM_OFFLINE_MODE` | optional | `true` if no OpenAI/Ollama on host |
 | `SANCTUM_RISK_PROVIDER` | optional | `none` \| `openai` |
 | Legacy `SANCTUM_API_KEY` | optional | Hex key for scripts; prefer dashboard `sk_sanctum_*` |
+| `PADDLE_VENDOR_ID`, `PADDLE_PRODUCT_*`, `PADDLE_WEBHOOK_SECRET` | optional | Paid checkout + webhook → updates `org_plans` |
+| `RESEND_API_KEY`, `NOTIFICATION_FROM_EMAIL` | optional | Quota/anomaly email alerts |
+| `SLACK_WEBHOOK_URL` / per-org prefs in Settings | optional | Slack alerts |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | optional | Distributed tracing |
+| `SANCTUM_MIN_SDK_VERSION` | optional | Advisory on `/v1/runtimes/connect` |
+| `SSO_ENCRYPTION_KEY` | optional | Encrypt OIDC client secrets (use KMS in prod) |
 
 Redeploy after env changes.
 
