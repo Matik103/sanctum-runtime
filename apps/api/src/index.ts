@@ -16,6 +16,11 @@ import { registerHardwareAttestationRoutes } from './hardware-attestation-routes
 import { registerUsageRoutes } from './usage-routes.js'
 import { registerBillingRoutes } from './billing-routes.js'
 import { registerExportRoutes } from './export-routes.js'
+import { registerGovernanceRoutes } from './governance.js'
+import { registerComplianceRoutes } from './compliance.js'
+import { registerPolicyVersionRoutes } from './policy-versions.js'
+import { startWebhookWorker } from './webhook-queue.js'
+import { riskModelBreaker } from './circuit-breaker.js'
 import { traced } from './telemetry.js'
 import { sendNotificationDeduped } from './notifications.js'
 import { getEntitlementEngine } from './entitlements.js'
@@ -223,7 +228,12 @@ if (supabaseAuth) {
   await registerBillingRoutes(app)
   await registerExportRoutes(app)
   await registerHardwareAttestationRoutes(app)
+  await registerPolicyVersionRoutes(app, supabaseAuth)
+  await registerGovernanceRoutes(app, supabaseAuth)
+  await registerComplianceRoutes(app, supabaseAuth)
 }
+
+const stopWebhookWorker = supabaseAuth ? startWebhookWorker(supabaseAuth) : null
 
 app.get('/health', async () => {
   const status = await runtime.getStatus()
@@ -407,10 +417,12 @@ app.post('/v1/actions/verify', async (req) => {
     'action.verify',
     { actor: body.actor, action: body.action, org_id: orgId ?? '' },
     async (span) => {
-      const r = await runtime.verifyAction(request, {
-        offlineMode: body.offlineMode,
-        correlationId: body.correlationId,
-      })
+      const r = await riskModelBreaker.call(() =>
+        runtime.verifyAction(request, {
+          offlineMode: body.offlineMode,
+          correlationId: body.correlationId,
+        })
+      )
       span.end({ decision: r.decision, risk: r.risk, anomaly_flags: r.anomalyFlags.join(',') })
       return r
     },
@@ -523,8 +535,28 @@ try {
     } else {
       console.log('Dashboard API keys: dev pepper')
     }
+
+    // Warn if SANCTUM_API_KEY_PEPPER is not set in production
+    if (!process.env.SANCTUM_API_KEY_PEPPER?.trim() && process.env.NODE_ENV === 'production') {
+      console.warn('WARN: SANCTUM_API_KEY_PEPPER is not set. API key security relies on SUPABASE_SERVICE_ROLE_KEY pepper only.')
+    }
+
+    if (stopWebhookWorker) {
+      console.log('Webhook delivery worker started (30s interval)')
+    }
   }
 } catch (err) {
   app.log.error(err)
   process.exit(1)
 }
+
+// Graceful shutdown: stop webhook worker and close server
+const shutdown = async (signal: string) => {
+  console.log(`Received ${signal} — shutting down`)
+  stopWebhookWorker?.()
+  await app.close()
+  process.exit(0)
+}
+
+process.on('SIGTERM', () => { void shutdown('SIGTERM') })
+process.on('SIGINT', () => { void shutdown('SIGINT') })

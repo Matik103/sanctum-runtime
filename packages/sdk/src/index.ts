@@ -59,3 +59,8 @@ export {
   type MarketplaceConnectHints,
   type MarketplacePackage,
 } from './marketplace.js'
+export {
+  buildDelegationChain,
+  enrichActionWithDelegation,
+  type DelegationContext,
+} from './delegation.js'

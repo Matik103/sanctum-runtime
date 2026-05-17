@@ -1,0 +1,45 @@
+Sanctum Runtime has been deployed!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  API endpoint (port-forward):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  kubectl port-forward svc/{{ include "sanctum-runtime.fullname" . }}-api 3000:3000 -n {{ .Release.Namespace }}
+
+  Then: curl http://localhost:3000/health
+
+{{- if .Values.ingress.enabled }}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Dashboard (Ingress):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  https://{{ (first .Values.ingress.hosts).host }}
+
+{{- end }}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Retrieve your Sanctum API key:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  kubectl get secret {{ include "sanctum-runtime.fullname" . }} \
+    -n {{ .Release.Namespace }} \
+    -o jsonpath='{.data.sanctum-api-key}' | base64 --decode && echo
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Verify installation:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  kubectl rollout status deployment/{{ include "sanctum-runtime.fullname" . }}-api -n {{ .Release.Namespace }}
+  curl http://localhost:3000/health   # after port-forwarding
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Upgrade:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  helm upgrade {{ .Release.Name }} . \
+    --namespace {{ .Release.Namespace }} \
+    --reuse-values \
+    --set image.tag=<new-version>
+
+For full documentation see: deploy/README.md

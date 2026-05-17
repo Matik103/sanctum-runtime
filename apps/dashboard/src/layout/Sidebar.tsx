@@ -1,6 +1,10 @@
 import {
   Activity,
+  CheckSquare,
   CreditCard,
+  FileText,
+  GitBranch,
+  History,
   LayoutDashboard,
   Monitor,
   Package,
@@ -20,6 +24,9 @@ export type PageId =
   | 'activity'
   | 'threats'
   | 'policies'
+  | 'policy-history'
+  | 'governance'
+  | 'compliance'
   | 'devices'
   | 'fleet'
   | 'marketplace'
@@ -27,11 +34,14 @@ export type PageId =
   | 'billing'
   | 'settings'
 
-const NAV: { id: PageId; label: string; icon: typeof LayoutDashboard }[] = [
+const NAV: { id: PageId; label: string; icon: typeof LayoutDashboard; group?: string }[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'activity', label: 'Runtime Activity', icon: Activity },
   { id: 'threats', label: 'Threat Monitor', icon: ShieldAlert },
   { id: 'policies', label: 'Policies', icon: Shield },
+  { id: 'policy-history', label: 'Policy History', icon: History },
+  { id: 'governance', label: 'Governance', icon: CheckSquare },
+  { id: 'compliance', label: 'Compliance', icon: FileText },
   { id: 'devices', label: 'Devices', icon: Monitor },
   { id: 'fleet', label: 'Fleet', icon: Radio },
   { id: 'marketplace', label: 'Marketplace', icon: Package },

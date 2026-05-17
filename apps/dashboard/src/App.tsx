@@ -9,15 +9,18 @@ import { useDashboard } from './hooks/useDashboard'
 import { MainCanvas } from './layout/MainCanvas'
 import { Sidebar, type PageId } from './layout/Sidebar'
 import { AuditLogs } from './pages/AuditLogs'
+import { Billing } from './pages/Billing'
+import { Compliance } from './pages/Compliance'
 import { Devices } from './pages/Devices'
 import { Fleet } from './pages/Fleet'
+import { Governance } from './pages/Governance'
 import { Marketplace } from './pages/Marketplace'
 import { Overview } from './pages/Overview'
 import { Policies } from './pages/Policies'
+import { PolicyHistory } from './pages/PolicyHistory'
 import { RuntimeActivity } from './pages/RuntimeActivity'
 import { Settings } from './pages/Settings'
 import { ThreatMonitor } from './pages/ThreatMonitor'
-import { Billing } from './pages/Billing'
 
 export function App() {
   const online = useNetworkStatus()
@@ -95,6 +98,9 @@ export function App() {
             onPoliciesChange={replacePolicies}
           />
         )}
+        {page === 'policy-history' && <PolicyHistory />}
+        {page === 'governance' && <Governance />}
+        {page === 'compliance' && <Compliance />}
         {page === 'devices' && <Devices status={status} />}
         {page === 'fleet' && <Fleet />}
         {page === 'marketplace' && <Marketplace />}

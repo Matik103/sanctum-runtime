@@ -1,0 +1,161 @@
+# Sanctum Runtime — Helm chart default values
+# Override with: helm install sanctum-runtime . -f my-values.yaml
+
+replicaCount: 2
+
+image:
+  repository: ghcr.io/matik103/sanctum-runtime
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+# ---------------------------------------------------------------------------
+# API service
+# ---------------------------------------------------------------------------
+api:
+  service:
+    type: ClusterIP
+    port: 3000
+
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+  env:
+    NODE_ENV: production
+    SANCTUM_OFFLINE_MODE: "false"
+    SANCTUM_RISK_PROVIDER: "none"
+    SANCTUM_PUBLIC_API_URL: "https://api.example.com"
+    DASHBOARD_URL: "https://dashboard.example.com"
+    SANCTUM_DOCS_URL: "https://www.sanctumruntime.com/docs"
+    # Comma-separated — extend via your values override
+    SANCTUM_CORS_ORIGINS: "https://dashboard.example.com"
+    # Paddle (optional billing)
+    PADDLE_SANDBOX: "false"
+    PADDLE_VENDOR_ID: ""
+    PADDLE_PRODUCT_OPERATOR: ""
+    PADDLE_PRODUCT_TEAM: ""
+    PADDLE_PRODUCT_ENTERPRISE: ""
+
+# ---------------------------------------------------------------------------
+# Dashboard (Nginx serving pre-built SPA)
+# ---------------------------------------------------------------------------
+dashboard:
+  enabled: true
+  image:
+    repository: nginx
+    tag: alpine
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 80
+
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+    limits:
+      cpu: "200m"
+      memory: "128Mi"
+
+# ---------------------------------------------------------------------------
+# Ingress
+# ---------------------------------------------------------------------------
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: sanctum.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: dashboard
+        - path: /api
+          pathType: Prefix
+          service: api
+  tls: []
+  # - secretName: sanctum-tls
+  #   hosts:
+  #     - sanctum.example.com
+
+# ---------------------------------------------------------------------------
+# Supabase (required for auth / data persistence)
+# ---------------------------------------------------------------------------
+supabase:
+  url: "https://your-project.supabase.co"
+  anonKey: ""
+  # serviceRoleKey is stored in a Kubernetes Secret — use secretRef
+  serviceRoleKeySecretRef:
+    name: ""     # defaults to {{ include "sanctum-runtime.fullname" . }}
+    key: supabase-service-role-key
+
+# ---------------------------------------------------------------------------
+# API key
+# If sanctumApiKey is empty the chart auto-generates a random value.
+# ---------------------------------------------------------------------------
+sanctumApiKey: ""
+sanctumApiKeyPepper: ""
+
+# ---------------------------------------------------------------------------
+# Ollama (optional local risk model)
+# ---------------------------------------------------------------------------
+ollama:
+  enabled: false
+  url: "http://ollama:11434"
+
+# ---------------------------------------------------------------------------
+# Paddle billing (optional)
+# ---------------------------------------------------------------------------
+paddleWebhookSecret: ""
+
+# ---------------------------------------------------------------------------
+# Horizontal Pod Autoscaler
+# ---------------------------------------------------------------------------
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+# ---------------------------------------------------------------------------
+# Pod Disruption Budget
+# ---------------------------------------------------------------------------
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# ---------------------------------------------------------------------------
+# Service Account
+# ---------------------------------------------------------------------------
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# ---------------------------------------------------------------------------
+# Pod security
+# ---------------------------------------------------------------------------
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+
+# ---------------------------------------------------------------------------
+# Node affinity / tolerations (advanced)
+# ---------------------------------------------------------------------------
+nodeSelector: {}
+tolerations: []
+affinity: {}
