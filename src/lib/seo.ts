@@ -23,7 +23,7 @@ export function absoluteUrl(path: string): string {
 }
 
 export function defaultOgImage(): string {
-  return absoluteUrl("/favicon.svg");
+  return absoluteUrl("/favicon-512.png");
 }
 
 export type PageSeoOptions = {
@@ -64,7 +64,7 @@ export const organizationJsonLd = {
   "@type": "Organization",
   name: siteName,
   url: origin,
-  logo: absoluteUrl("/favicon.svg"),
+  logo: absoluteUrl("/favicon-512.png"),
   description: defaultDescription,
   sameAs: [githubUrl],
 };
