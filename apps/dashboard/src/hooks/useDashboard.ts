@@ -6,6 +6,7 @@ import {
   type DashboardData,
   type PolicyResponse,
 } from '../lib/api'
+import { apiBaseUrl } from '../lib/api-url'
 import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 
 const DISMISSED_KEY = 'sanctum-dismissed-verifications'
@@ -85,14 +86,12 @@ export function useDashboard() {
         return cur
       })
     } catch (e) {
-      const isProd =
-        typeof window !== 'undefined' &&
-        !window.location.hostname.includes('localhost') &&
-        !window.location.hostname.includes('127.0.0.1')
-      const missingApiUrl =
-        isProd && !(import.meta.env.VITE_SANCTUM_API_URL as string | undefined)?.trim()
-      const msg = missingApiUrl
-        ? 'Dashboard was built without VITE_SANCTUM_API_URL. Set it on Render and redeploy the static site.'
+      const networkFailed =
+        e instanceof TypeError ||
+        (e instanceof Error &&
+          /failed to fetch|networkerror|load failed/i.test(e.message))
+      const msg = networkFailed
+        ? `Cannot reach ${apiBaseUrl} from the browser (CORS or API down). On Render → sanctum-api: set DASHBOARD_URL=https://console.sanctumruntime.com, redeploy API, then set sanctum-dashboard VITE_SANCTUM_API_URL=https://api.sanctumruntime.com and redeploy the dashboard.`
         : e instanceof Error && e.message.includes('500')
           ? 'Runtime API is not running. From the repo root run: npm run dev:runtime (or npm run dev:api in another terminal).'
           : e instanceof Error

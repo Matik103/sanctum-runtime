@@ -1,7 +1,7 @@
+import { apiBaseUrl } from '../lib/api-url'
+
 export function IntegrateQuickstart() {
-  const apiUrl =
-    (import.meta.env.VITE_SANCTUM_API_URL as string | undefined)?.replace(/\/$/, '') ||
-    'http://127.0.0.1:3001'
+  const apiUrl = apiBaseUrl
 
   return (
     <section

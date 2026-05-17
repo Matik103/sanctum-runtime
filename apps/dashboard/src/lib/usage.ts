@@ -1,7 +1,6 @@
 import { getAccessToken } from './supabase'
 
-const apiBase =
-  (import.meta.env.VITE_SANCTUM_API_URL as string | undefined)?.replace(/\/$/, '') || '/api'
+import { apiBaseUrl as apiBase } from './api-url'
 
 export type UsageSummary = {
   orgId: string

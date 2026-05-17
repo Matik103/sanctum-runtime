@@ -1,13 +1,10 @@
 import { SanctumClient } from '@sanctum-runtime/sdk/browser'
 import type { ActionPolicy, ActionRequest, ActionResult, PolicyMap, RuntimeStatus } from '@sanctum-runtime/sdk/browser'
+import { apiBaseUrl } from './api-url'
 import { getAccessToken } from './supabase'
 
-/** Dev: Vite proxies `/api` → runtime. Production static host: set `VITE_SANCTUM_API_URL` at build time. */
-const apiBase =
-  (import.meta.env.VITE_SANCTUM_API_URL as string | undefined)?.replace(/\/$/, '') || '/api'
-
 export const api = new SanctumClient({
-  baseUrl: apiBase,
+  baseUrl: apiBaseUrl,
   getAccessToken,
 })
 

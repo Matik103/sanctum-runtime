@@ -63,10 +63,20 @@ for (const origin of process.env.SANCTUM_CORS_ORIGINS?.split(',') ?? []) {
 }
 
 await app.register(websocket)
+function isAllowedCorsOrigin(origin: string): boolean {
+  if (corsOrigins.has(origin)) return true
+  try {
+    const host = new URL(origin).hostname
+    return host === 'sanctumruntime.com' || host.endsWith('.sanctumruntime.com')
+  } catch {
+    return false
+  }
+}
+
 await app.register(cors, {
   origin: (origin, cb) => {
     if (!origin) return cb(null, true)
-    cb(null, corsOrigins.has(origin))
+    cb(null, isAllowedCorsOrigin(origin))
   },
   methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Sanctum-Key', 'X-Request-Id'],
@@ -119,6 +129,8 @@ app.setErrorHandler((err, _req, reply) => {
 const AUTH_BYPASS = new Set(['/health', '/', '/metrics', '/v1/billing/webhook'])
 
 app.addHook('onRequest', async (req, reply) => {
+  if (req.method === 'OPTIONS') return
+
   const path = req.url.split('?')[0]
   if (AUTH_BYPASS.has(path)) return
 

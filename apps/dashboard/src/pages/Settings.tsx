@@ -6,10 +6,8 @@ import { fetchMyOrgs, type FleetOrg } from '../lib/fleet'
 import { fetchOperatorContext } from '../lib/marketplace'
 import { riskModelMetaLine } from '../lib/risk-label'
 import { fetchUsage, usageMetricLabel, type UsageSummary } from '../lib/usage'
+import { apiBaseUrl as apiBase } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
-
-const apiBase =
-  (import.meta.env.VITE_SANCTUM_API_URL as string | undefined)?.replace(/\/$/, '') || '/api'
 
 async function authHeaders(json = false): Promise<Record<string, string>> {
   const token = await getAccessToken()

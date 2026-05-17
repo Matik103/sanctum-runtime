@@ -1,8 +1,7 @@
 import { getAccessToken } from './supabase'
 import { fetchMyOrgs, type FleetOrg } from './fleet'
 
-const apiBase =
-  (import.meta.env.VITE_SANCTUM_API_URL as string | undefined)?.replace(/\/$/, '') || '/api'
+import { apiBaseUrl as apiBase } from './api-url'
 
 export type MarketplacePackage = {
   id: string
