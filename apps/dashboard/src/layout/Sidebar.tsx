@@ -3,7 +3,6 @@ import {
   CheckSquare,
   CreditCard,
   FileText,
-  GitBranch,
   History,
   LayoutDashboard,
   Monitor,

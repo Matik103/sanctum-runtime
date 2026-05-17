@@ -19,6 +19,7 @@ import { registerExportRoutes } from './export-routes.js'
 import { registerGovernanceRoutes } from './governance.js'
 import { registerComplianceRoutes } from './compliance.js'
 import { registerPolicyVersionRoutes } from './policy-versions.js'
+import { registerDelegationRoutes } from './delegation.js'
 import { startWebhookWorker } from './webhook-queue.js'
 import { riskModelBreaker } from './circuit-breaker.js'
 import { traced } from './telemetry.js'
@@ -231,6 +232,7 @@ if (supabaseAuth) {
   await registerPolicyVersionRoutes(app, supabaseAuth)
   await registerGovernanceRoutes(app, supabaseAuth)
   await registerComplianceRoutes(app, supabaseAuth)
+  await registerDelegationRoutes(app, supabaseAuth)
 }
 
 const stopWebhookWorker = supabaseAuth ? startWebhookWorker(supabaseAuth) : null

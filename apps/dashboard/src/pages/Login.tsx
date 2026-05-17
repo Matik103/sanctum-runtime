@@ -77,7 +77,6 @@ export function Login() {
         provider: provider === 'azure' ? 'azure' : provider,
         options: {
           redirectTo: window.location.origin,
-          data: { portal_type: 'enterprise', auth_provider: provider },
         },
       })
       if (err) throw err

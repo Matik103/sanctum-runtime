@@ -5,8 +5,10 @@
  * helpers to validate whether a child agent is authorised to perform an
  * action on behalf of its parent.
  */
+import type { FastifyInstance } from 'fastify'
 import type { SupabaseAuthConfig } from './auth.js'
-import { createSupabaseAdmin } from './auth.js'
+import { authenticateRequest, createSupabaseAdmin } from './auth.js'
+import { assertOrgRole } from './rbac.js'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -197,4 +199,84 @@ export function enrichAuditWithDelegation(
       delegation_depth: chain.length,
     },
   }
+}
+
+// ─── HTTP Routes ──────────────────────────────────────────────────────────────
+
+export function registerDelegationRoutes(app: FastifyInstance, cfg: SupabaseAuthConfig) {
+  // List active delegation grants for an org
+  app.get('/v1/orgs/:orgId/delegations', async (req, reply) => {
+    const user = await authenticateRequest(req, cfg)
+    if (!user) return reply.status(401).send({ error: 'Unauthorized' })
+    const { orgId } = req.params as { orgId: string }
+    await assertOrgRole(cfg, orgId, user.id, 'member')
+
+    const admin = createSupabaseAdmin(cfg)
+    const { data, error } = await admin
+      .from('agent_delegations')
+      .select('*')
+      .eq('org_id', orgId)
+      .is('revoked_at', null)
+      .order('created_at', { ascending: false })
+
+    if (error) return reply.status(500).send({ error: error.message })
+    return reply.send(data ?? [])
+  })
+
+  // Grant a new delegation
+  app.post('/v1/orgs/:orgId/delegations', async (req, reply) => {
+    const user = await authenticateRequest(req, cfg)
+    if (!user) return reply.status(401).send({ error: 'Unauthorized' })
+    const { orgId } = req.params as { orgId: string }
+    await assertOrgRole(cfg, orgId, user.id, 'admin')
+
+    const body = req.body as {
+      parentAgentId: string
+      childAgentId: string
+      grantedActions?: string[]
+      expiresAt?: string
+    }
+    if (!body.parentAgentId || !body.childAgentId) {
+      return reply.status(400).send({ error: 'parentAgentId and childAgentId are required' })
+    }
+
+    const id = await grantDelegation(cfg, orgId, {
+      parentAgentId: body.parentAgentId,
+      childAgentId: body.childAgentId,
+      grantedActions: body.grantedActions,
+      expiresAt: body.expiresAt ? new Date(body.expiresAt) : undefined,
+    })
+    return reply.status(201).send({ id })
+  })
+
+  // Revoke a delegation grant
+  app.delete('/v1/orgs/:orgId/delegations/:delegationId', async (req, reply) => {
+    const user = await authenticateRequest(req, cfg)
+    if (!user) return reply.status(401).send({ error: 'Unauthorized' })
+    const { orgId, delegationId } = req.params as { orgId: string; delegationId: string }
+    await assertOrgRole(cfg, orgId, user.id, 'admin')
+
+    await revokeDelegation(cfg, delegationId, orgId)
+    return reply.status(204).send()
+  })
+
+  // Validate whether a child agent may act on behalf of a parent for a given action
+  app.post('/v1/orgs/:orgId/delegations/validate', async (req, reply) => {
+    const user = await authenticateRequest(req, cfg)
+    if (!user) return reply.status(401).send({ error: 'Unauthorized' })
+    const { orgId } = req.params as { orgId: string }
+    await assertOrgRole(cfg, orgId, user.id, 'member')
+
+    const body = req.body as {
+      parentAgentId: string
+      childAgentId: string
+      action: string
+    }
+    if (!body.parentAgentId || !body.childAgentId || !body.action) {
+      return reply.status(400).send({ error: 'parentAgentId, childAgentId and action are required' })
+    }
+
+    const result = await validateDelegation(cfg, orgId, body.parentAgentId, body.childAgentId, body.action)
+    return reply.send(result)
+  })
 }

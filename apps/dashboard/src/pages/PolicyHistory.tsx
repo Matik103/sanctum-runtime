@@ -4,6 +4,7 @@ import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
 import { Alert } from '../components/ui/Alert'
 import { timeAgo } from '../lib/format'
+import { fetchMyOrgs } from '../lib/fleet'
 
 type PolicySnapshot = {
   id: string
@@ -15,8 +16,6 @@ type PolicySnapshot = {
   snapshot: Record<string, unknown>
 }
 
-type Props = { orgId?: string }
-
 async function authHeaders(json = false): Promise<Record<string, string>> {
   const token = await getAccessToken()
   const h: Record<string, string> = {}
@@ -25,7 +24,8 @@ async function authHeaders(json = false): Promise<Record<string, string>> {
   return h
 }
 
-export function PolicyHistory({ orgId }: Props) {
+export function PolicyHistory() {
+  const [orgId, setOrgId] = useState('')
   const [snapshots, setSnapshots] = useState<PolicySnapshot[]>([])
   const [selected, setSelected] = useState<PolicySnapshot | null>(null)
   const [label, setLabel] = useState('')
@@ -33,6 +33,10 @@ export function PolicyHistory({ orgId }: Props) {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ text: string; variant: 'success' | 'error' } | null>(null)
   const [showSave, setShowSave] = useState(false)
+
+  useEffect(() => {
+    fetchMyOrgs().then((orgs) => { if (orgs[0]) setOrgId(orgs[0].id) }).catch(() => {})
+  }, [])
 
   const load = async () => {
     if (!orgId) return

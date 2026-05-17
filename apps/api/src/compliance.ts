@@ -92,7 +92,7 @@ export async function generateComplianceReport(
   const [auditRes, exportRes, runtimesRes] = await Promise.allSettled([
     admin
       .from('audit_events')
-      .select('id,action,decision,anomaly_flags,actor,context,created_at')
+      .select('id,action,decision,anomaly_flags,resolved_by,actor,context,created_at')
       .eq('org_id', orgId)
       .gte('created_at', start)
       .lte('created_at', end)
@@ -137,7 +137,7 @@ export async function generateComplianceReport(
     if (decision === 'BLOCKED') blockedActions++
     if (decision === 'REQUIRE_VERIFICATION') verifiedActions++
     if (flags.length > 0) anomalyFlagsTotal += flags.length
-    if (ctx.resolved_at) humanReviews++
+    if (evt.resolved_by) humanReviews++
 
     if (risk === 'high') riskDist.high++
     else if (risk === 'medium') riskDist.medium++

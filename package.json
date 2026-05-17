@@ -45,7 +45,7 @@
     "build:sdk": "npm run build -w @sanctum-runtime/sdk",
     "build:adapter": "npm run build -w @sanctum-runtime/adapter-agent-runtime",
     "build:adapters": "npm run build -w @sanctum-runtime/adapters",
-    "build:packages": "npm run build:sdk && npm run build:adapter",
+    "build:packages": "npm run build:sdk && npm run build:adapter && npm run build:adapters",
     "build:cli": "npm run build -w @sanctum-runtime/cli",
     "build:all-packages": "npm run build:packages && npm run build:cli",
     "build:dashboard": "npm run build:sdk && npm run build -w @sanctum/dashboard",
