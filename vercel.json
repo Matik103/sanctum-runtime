@@ -3,5 +3,30 @@
   "installCommand": "npm ci",
   "buildCommand": "npm run build:vercel",
   "framework": null,
-  "outputDirectory": ".vercel/output"
+  "outputDirectory": ".vercel/output",
+  "trailingSlash": false,
+  "cleanUrls": true,
+  "redirects": [
+    {
+      "source": "/docs/",
+      "destination": "/docs",
+      "permanent": true
+    },
+    {
+      "source": "/:path((?!assets/).*)/",
+      "destination": "/:path",
+      "permanent": true
+    }
+  ],
+  "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ]
 }
