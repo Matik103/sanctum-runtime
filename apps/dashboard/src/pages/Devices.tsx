@@ -14,6 +14,7 @@ import {
   type ApiKeyRecord,
   type CreateApiKeyResult,
 } from '../lib/api-keys'
+import { apiBaseUrl } from '../lib/api-url'
 import { fetchMyOrgs, fetchRuntimes, type FleetOrg, type FleetRuntime } from '../lib/fleet'
 import { fetchOperatorContext } from '../lib/marketplace'
 import { riskModelMetaLine } from '../lib/risk-label'
@@ -183,9 +184,7 @@ export function Devices({ status }: Props) {
   }
 
   const active = keys.filter((k) => !k.revoked_at)
-  const apiUrl =
-    (import.meta.env.VITE_SANCTUM_API_URL as string | undefined)?.replace(/\/$/, '') ||
-    'https://sanctum-api-6zgy.onrender.com'
+  const apiUrl = apiBaseUrl
 
   const envSnippet = created
     ? `SANCTUM_API_URL=${apiUrl}\nSANCTUM_API_KEY=${created.secret}${orgId ? `\nSANCTUM_ORG_ID=${orgId}` : ''}`

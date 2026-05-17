@@ -52,10 +52,15 @@ const app = Fastify({
 
 const corsOrigins = new Set([
   dashboardUrl,
+  'https://console.sanctumruntime.com',
   'https://sanctum-dashboard.onrender.com',
   'http://127.0.0.1:5174',
   'http://localhost:5174',
 ])
+for (const origin of process.env.SANCTUM_CORS_ORIGINS?.split(',') ?? []) {
+  const trimmed = origin.trim()
+  if (trimmed) corsOrigins.add(trimmed)
+}
 
 await app.register(websocket)
 await app.register(cors, {
@@ -145,10 +150,20 @@ if (process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || process.env.VITE_SUPABASE_S
   console.log(`Supabase policy store active (${count} policies loaded/seeded)`)
 }
 
+const publicApiUrl =
+  process.env.SANCTUM_PUBLIC_API_URL?.trim() ||
+  process.env.SANCTUM_API_URL?.trim() ||
+  process.env.RENDER_EXTERNAL_URL?.trim() ||
+  undefined
+
+const publicDocsUrl =
+  process.env.SANCTUM_DOCS_URL?.trim() || 'https://www.sanctumruntime.com/docs'
+
 app.get('/', async () => ({
   name: 'Sanctum Runtime API',
   version: '0.1.0',
-  docs: 'See DEVELOPMENT.md in the repo',
+  url: publicApiUrl,
+  docs: publicDocsUrl,
   dashboard: dashboardUrl,
   auth: supabaseAuth
     ? 'Supabase JWT (Bearer) or X-Sanctum-Key'

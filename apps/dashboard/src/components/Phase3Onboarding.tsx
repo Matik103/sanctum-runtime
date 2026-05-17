@@ -1,7 +1,7 @@
+import { apiBaseUrl } from '../lib/api-url'
+
 export function Phase3Onboarding() {
-  const apiUrl =
-    (import.meta.env.VITE_SANCTUM_API_URL as string | undefined)?.replace(/\/$/, '') ||
-    'https://sanctum-api-6zgy.onrender.com'
+  const apiUrl = apiBaseUrl
 
   return (
     <section className="card panel-glass alert--info" style={{ marginBottom: '1.25rem' }}>

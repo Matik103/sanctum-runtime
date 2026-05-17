@@ -29,7 +29,9 @@ services:
       - key: VITE_SUPABASE_SERVICE_ROLE_KEY
         sync: false
       - key: DASHBOARD_URL
-        sync: false
+        value: https://console.sanctumruntime.com
+      - key: SANCTUM_PUBLIC_API_URL
+        value: https://api.sanctumruntime.com
 
   - type: web
     name: sanctum-dashboard
@@ -44,7 +46,7 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_SANCTUM_API_URL
-        value: https://sanctum-api-6zgy.onrender.com
+        value: https://api.sanctumruntime.com
       - key: VITE_DOCS_URL
         value: https://www.sanctumruntime.com/docs
       - key: VITE_MARKETING_URL
