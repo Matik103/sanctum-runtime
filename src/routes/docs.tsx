@@ -1,26 +1,19 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Navbar } from "@/components/Navbar";
+import { pageSeo } from "@/lib/seo";
 import { consoleUrl, githubUrl } from "@/lib/site-links";
 import { ArrowLeft } from "lucide-react";
 
 export const Route = createFileRoute("/docs")({
   component: DocsPage,
-  head: () => ({
-    meta: [
-      { title: "Documentation — Sanctum Runtime" },
-      {
-        name: "description",
-        content:
-          "Sanctum Runtime documentation: runtime trust infrastructure for autonomous AI systems.",
-      },
-      { property: "og:title", content: "Documentation — Sanctum Runtime" },
-      {
-        property: "og:description",
-        content:
-          "Action verification, permissions, audit logs, and local governance for agents, robotics, and automation.",
-      },
-    ],
-  }),
+  head: () =>
+    pageSeo({
+      title: "Documentation — Sanctum Runtime",
+      description:
+        "Sanctum Runtime documentation: action verification, policies, SDK integration, quick start, and open-core boundaries.",
+      path: "/docs",
+      ogType: "article",
+    }),
 });
 
 function Section({

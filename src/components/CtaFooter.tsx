@@ -46,6 +46,12 @@ export function CtaFooter() {
             <Link to={docsPath} className="hover:text-foreground">
               Docs
             </Link>
+            <Link to="/architecture" className="hover:text-foreground">
+              Architecture
+            </Link>
+            <Link to="/glossary" className="hover:text-foreground">
+              Glossary
+            </Link>
             <Link to={openCorePath} className="hover:text-foreground">
               Open core
             </Link>

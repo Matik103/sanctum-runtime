@@ -1,0 +1,9 @@
+# Sanctum Runtime Console
+
+This host is the authenticated operator UI. It is not indexed for search.
+
+For product documentation, architecture, SDK, and glossary, use the marketing site:
+
+- https://www.sanctumruntime.com/llms.txt
+- https://www.sanctumruntime.com/docs
+- https://api.sanctumruntime.com/

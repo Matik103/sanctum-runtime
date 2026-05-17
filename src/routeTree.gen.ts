@@ -9,12 +9,42 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WhatIsSanctumRuntimeRouteImport } from './routes/what-is-sanctum-runtime'
+import { Route as SecurityRouteImport } from './routes/security'
+import { Route as SdkRouteImport } from './routes/sdk'
+import { Route as GlossaryRouteImport } from './routes/glossary'
 import { Route as DocsRouteImport } from './routes/docs'
+import { Route as ArchitectureRouteImport } from './routes/architecture'
 import { Route as IndexRouteImport } from './routes/index'
 
+const WhatIsSanctumRuntimeRoute = WhatIsSanctumRuntimeRouteImport.update({
+  id: '/what-is-sanctum-runtime',
+  path: '/what-is-sanctum-runtime',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SecurityRoute = SecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SdkRoute = SdkRouteImport.update({
+  id: '/sdk',
+  path: '/sdk',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GlossaryRoute = GlossaryRouteImport.update({
+  id: '/glossary',
+  path: '/glossary',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DocsRoute = DocsRouteImport.update({
   id: '/docs',
   path: '/docs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArchitectureRoute = ArchitectureRouteImport.update({
+  id: '/architecture',
+  path: '/architecture',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -25,37 +55,114 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/architecture': typeof ArchitectureRoute
   '/docs': typeof DocsRoute
+  '/glossary': typeof GlossaryRoute
+  '/sdk': typeof SdkRoute
+  '/security': typeof SecurityRoute
+  '/what-is-sanctum-runtime': typeof WhatIsSanctumRuntimeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/architecture': typeof ArchitectureRoute
   '/docs': typeof DocsRoute
+  '/glossary': typeof GlossaryRoute
+  '/sdk': typeof SdkRoute
+  '/security': typeof SecurityRoute
+  '/what-is-sanctum-runtime': typeof WhatIsSanctumRuntimeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/architecture': typeof ArchitectureRoute
   '/docs': typeof DocsRoute
+  '/glossary': typeof GlossaryRoute
+  '/sdk': typeof SdkRoute
+  '/security': typeof SecurityRoute
+  '/what-is-sanctum-runtime': typeof WhatIsSanctumRuntimeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/docs'
+  fullPaths:
+    | '/'
+    | '/architecture'
+    | '/docs'
+    | '/glossary'
+    | '/sdk'
+    | '/security'
+    | '/what-is-sanctum-runtime'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/docs'
-  id: '__root__' | '/' | '/docs'
+  to:
+    | '/'
+    | '/architecture'
+    | '/docs'
+    | '/glossary'
+    | '/sdk'
+    | '/security'
+    | '/what-is-sanctum-runtime'
+  id:
+    | '__root__'
+    | '/'
+    | '/architecture'
+    | '/docs'
+    | '/glossary'
+    | '/sdk'
+    | '/security'
+    | '/what-is-sanctum-runtime'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ArchitectureRoute: typeof ArchitectureRoute
   DocsRoute: typeof DocsRoute
+  GlossaryRoute: typeof GlossaryRoute
+  SdkRoute: typeof SdkRoute
+  SecurityRoute: typeof SecurityRoute
+  WhatIsSanctumRuntimeRoute: typeof WhatIsSanctumRuntimeRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/what-is-sanctum-runtime': {
+      id: '/what-is-sanctum-runtime'
+      path: '/what-is-sanctum-runtime'
+      fullPath: '/what-is-sanctum-runtime'
+      preLoaderRoute: typeof WhatIsSanctumRuntimeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/security': {
+      id: '/security'
+      path: '/security'
+      fullPath: '/security'
+      preLoaderRoute: typeof SecurityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sdk': {
+      id: '/sdk'
+      path: '/sdk'
+      fullPath: '/sdk'
+      preLoaderRoute: typeof SdkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/glossary': {
+      id: '/glossary'
+      path: '/glossary'
+      fullPath: '/glossary'
+      preLoaderRoute: typeof GlossaryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/docs': {
       id: '/docs'
       path: '/docs'
       fullPath: '/docs'
       preLoaderRoute: typeof DocsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/architecture': {
+      id: '/architecture'
+      path: '/architecture'
+      fullPath: '/architecture'
+      preLoaderRoute: typeof ArchitectureRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -70,7 +177,12 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ArchitectureRoute: ArchitectureRoute,
   DocsRoute: DocsRoute,
+  GlossaryRoute: GlossaryRoute,
+  SdkRoute: SdkRoute,
+  SecurityRoute: SecurityRoute,
+  WhatIsSanctumRuntimeRoute: WhatIsSanctumRuntimeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

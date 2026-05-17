@@ -1,0 +1,7 @@
+# Operator console — not for public search indexing
+User-agent: *
+Disallow: /
+
+# Product docs live on the marketing site
+# https://www.sanctumruntime.com/docs
+# https://www.sanctumruntime.com/llms.txt

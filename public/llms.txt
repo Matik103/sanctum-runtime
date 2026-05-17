@@ -1,0 +1,32 @@
+# Sanctum Runtime
+
+> Trusted runtime infrastructure for autonomous AI — verification, policy, and audit before agents and robots execute in the physical world.
+
+## Product
+
+- Website: https://www.sanctumruntime.com/
+- Console (operators): https://console.sanctumruntime.com/
+- API: https://api.sanctumruntime.com/
+- Open source: https://github.com/Matik103/sanctum-runtime
+
+## Machine-readable pages
+
+- Docs: https://www.sanctumruntime.com/docs
+- What is Sanctum Runtime: https://www.sanctumruntime.com/what-is-sanctum-runtime
+- Architecture: https://www.sanctumruntime.com/architecture
+- SDK: https://www.sanctumruntime.com/sdk
+- Security: https://www.sanctumruntime.com/security
+- Glossary: https://www.sanctumruntime.com/glossary
+
+## Markdown (AI-friendly)
+
+- /ai/architecture.md
+- /ai/sdk.md
+- /ai/security.md
+- /ai/glossary.md
+- /ai/overview.md
+
+## Packages
+
+- npm: @sanctum-runtime/sdk, @sanctum-runtime/adapter-agent-runtime
+- Python: sanctum-runtime

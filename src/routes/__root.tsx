@@ -9,6 +9,13 @@ import {
 } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
+import {
+  defaultDescription,
+  organizationJsonLd,
+  pageSeo,
+  siteName,
+  softwareApplicationJsonLd,
+} from "@/lib/seo";
 
 function NotFoundComponent() {
   return (
@@ -67,26 +74,19 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
+const defaultHead = pageSeo({
+  title: `${siteName} — Runtime Trust for Autonomous AI`,
+  description: defaultDescription,
+  path: "/",
+});
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
     meta: [
+      ...defaultHead.meta,
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Sanctum — Runtime Trust for Autonomous AI" },
-      {
-        name: "description",
-        content:
-          "Runtime trust infrastructure for autonomous AI systems — verification, permissions, audit, and local governance.",
-      },
-      { name: "author", content: "Sanctum" },
-      { property: "og:title", content: "Sanctum — Runtime Trust for Autonomous AI" },
-      {
-        property: "og:description",
-        content: "Sanctum provides runtime trust infrastructure between AI reasoning and real-world execution.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
+      { name: "robots", content: "index, follow" },
     ],
     links: [
       { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
@@ -97,6 +97,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap",
       },
       { rel: "stylesheet", href: appCss },
+      ...defaultHead.links,
     ],
   }),
   shellComponent: RootShell,
@@ -110,6 +111,14 @@ function RootShell({ children }: { children: React.ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareApplicationJsonLd) }}
+        />
       </head>
       <body>
         {children}
