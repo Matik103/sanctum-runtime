@@ -51,6 +51,11 @@ export const DEFAULT_POLICIES: PolicyMap = {
     autoBlock: false,
     blockWhenOffline: false,
   },
+  robot_arm_move: {
+    requiresVerification: true,
+    autoBlock: false,
+    blockWhenOffline: false,
+  },
 }
 
 export const DEFAULT_POLICY: ActionPolicy = {

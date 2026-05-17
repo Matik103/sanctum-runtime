@@ -2,21 +2,17 @@
  * Install a marketplace package, connect, register template agents, and run one verify.
  *
  *   SANCTUM_API_URL=... SANCTUM_API_KEY=... \
- *   SANCTUM_PACKAGE=sanctum-agent-host|warehouse-robot|edge-sensor-gateway \
+ *   SANCTUM_PACKAGE=<slug> \
  *   npx tsx examples/marketplace-connect/run.ts
  */
-import { SanctumRuntime } from '@sanctum-runtime/sdk'
-import { resolveSanctumApiUrl } from '../../scripts/env.ts'
+import { runPackageDemo, type PackageDemo } from './shared.ts'
 
-const API = resolveSanctumApiUrl()
 const KEY = process.env.SANCTUM_API_KEY?.trim()
 const PKG = process.env.SANCTUM_PACKAGE ?? 'sanctum-agent-host'
 
-const DEMO: Record<
-  string,
-  { agentId: string; action: string; context: Record<string, unknown> }
-> = {
+const DEMOS: Record<string, PackageDemo> = {
   'sanctum-agent-host': {
+    slug: 'sanctum-agent-host',
     agentId: 'default_agent',
     action: 'send_email',
     context: {
@@ -26,14 +22,52 @@ const DEMO: Record<
     },
   },
   'warehouse-robot': {
+    slug: 'warehouse-robot',
     agentId: 'navigation',
     action: 'move_robot',
     context: { zone: 'warehouse', speed: 'normal' },
   },
   'edge-sensor-gateway': {
+    slug: 'edge-sensor-gateway',
     agentId: 'telemetry',
     action: 'disable_alarm',
     context: { zone: 'perimeter', reason: 'maintenance window' },
+  },
+  'smart-home-hub': {
+    slug: 'smart-home-hub',
+    agentId: 'home_agent',
+    action: 'unlock_door',
+    context: { location: 'front_door', owner_sleeping: true },
+  },
+  'ros2-mobile': {
+    slug: 'ros2-mobile',
+    agentId: 'ros2_controller',
+    action: 'move_robot',
+    context: { zone: 'warehouse', speed: 'normal' },
+  },
+  'finance-agent': {
+    slug: 'finance-agent',
+    agentId: 'treasury_agent',
+    action: 'transfer_funds',
+    context: { amount: 1000, currency: 'USD', to: 'vendor@example.com' },
+  },
+  'langchain-agent-host': {
+    slug: 'langchain-agent-host',
+    agentId: 'langchain_agent',
+    action: 'unlock_door',
+    context: { location: 'garage', intent: 'guest entry' },
+  },
+  'crewai-crew-host': {
+    slug: 'crewai-crew-host',
+    agentId: 'crew_agent',
+    action: 'robot_arm_move',
+    context: { x: 1, y: 0, z: 0.5 },
+  },
+  'mcp-server-host': {
+    slug: 'mcp-server-host',
+    agentId: 'mcp_host',
+    action: 'transfer_funds',
+    context: { amount: 250, to_account: 'ops' },
   },
 }
 
@@ -42,41 +76,11 @@ if (!KEY) {
   process.exit(1)
 }
 
-const runtime = new SanctumRuntime({ baseUrl: API, apiKey: KEY })
-
-async function resolveOrgId(): Promise<string> {
-  if (process.env.SANCTUM_ORG_ID?.trim()) return process.env.SANCTUM_ORG_ID.trim()
-  const res = await fetch(`${API}/v1/operator/context`, {
-    headers: { 'X-Sanctum-Key': KEY! },
-  })
-  if (res.ok) {
-    const ctx = (await res.json()) as { defaultOrganizationId?: string | null }
-    if (ctx.defaultOrganizationId) return ctx.defaultOrganizationId
-  }
-  throw new Error('Set SANCTUM_ORG_ID or use an API key with operator context')
-}
-
-const orgId = await resolveOrgId()
-const demo = DEMO[PKG]
+const demo = DEMOS[PKG]
 if (!demo) {
-  console.error(`Unknown SANCTUM_PACKAGE=${PKG}. Use: ${Object.keys(DEMO).join(', ')}`)
+  console.error(`Unknown SANCTUM_PACKAGE=${PKG}`)
+  console.error('Available:', Object.keys(DEMOS).join(', '))
   process.exit(1)
 }
 
-console.log(`Installing ${PKG} for org ${orgId}…\n`)
-
-const conn = await runtime.connectFromPackage(PKG, orgId)
-console.log('Connected from marketplace:', conn)
-
-const verify = await runtime.verifyAction({
-  actor: demo.agentId,
-  action: demo.action,
-  context: { ...demo.context, org_id: orgId },
-  offlineMode: true,
-})
-
-console.log(`\nVerify ${demo.action} (${demo.agentId}):`, verify.decision)
-
-await runtime.emitEvent('marketplace.demo', { package: PKG, decision: verify.decision }, demo.agentId)
-await runtime.disconnect()
-console.log('\nDone — check Fleet and Policies in the dashboard.')
+await runPackageDemo(demo, KEY)

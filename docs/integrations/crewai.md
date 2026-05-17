@@ -2,6 +2,8 @@
 
 Wrap CrewAI tool functions so every physical or privileged action passes through Sanctum first.
 
+**Marketplace template:** `crewai-crew-host` — install in dashboard, then `connectFromPackage('crewai-crew-host', orgId)`. Example: `npm run example:marketplace:crewai`.
+
 ## Install
 
 ```bash

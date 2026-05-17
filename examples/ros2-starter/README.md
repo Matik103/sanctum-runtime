@@ -2,6 +2,8 @@
 
 Gate robot commands through Sanctum before they reach your ROS 2 action servers.
 
+**Marketplace:** install template `ros2-mobile` in the dashboard, then `connectFromPackage('ros2-mobile', orgId)` — or run `npm run example:marketplace:ros2`.
+
 ## Pattern
 
 1. ROS node receives a high-level command (e.g. `move_arm`).

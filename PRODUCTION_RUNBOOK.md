@@ -202,7 +202,7 @@ Update secrets store with the new key after rotation.
 | Revoke key failed | Redeploy API (CORS DELETE + empty DELETE body fix) |
 | CORS on DELETE | `DASHBOARD_URL` exact match on API |
 | `sk_sanctum_*` 401 locally | Use dashboard key in `.env`, not legacy hex key |
-| Marketplace empty | `npm run db:push` (seed in `017_runtime_marketplace.sql`) |
+| Marketplace empty | `npm run db:push` (catalog in `017`–`021`) |
 | Hardware `hw=false` | Run challenge before connect; redeploy API `94ed661+` |
 | Usage all zeros | Run smoke or connect — usage records on events |
 | Audit empty after refresh | Redeploy API with Supabase hydrate (`d042761+`) |

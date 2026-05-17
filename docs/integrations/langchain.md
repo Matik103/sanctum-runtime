@@ -2,6 +2,8 @@
 
 Gate LangChain tools with Sanctum so dangerous actions pause for human review or block automatically.
 
+**Marketplace template:** `langchain-agent-host` — install in dashboard, then `connectFromPackage('langchain-agent-host', orgId)`. Example: `npm run example:marketplace:langchain`.
+
 ## Python (recommended)
 
 ```bash

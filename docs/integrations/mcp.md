@@ -2,6 +2,8 @@
 
 For [Model Context Protocol](https://modelcontextprotocol.io) servers, call Sanctum in each **tool handler** before side effects.
 
+**Marketplace template:** `mcp-server-host` — install in dashboard, then `connectFromPackage('mcp-server-host', orgId)`. Example: `npm run example:marketplace:mcp`.
+
 ## Python MCP server
 
 ```bash
