@@ -5,7 +5,6 @@ export default defineNitroConfig({
   preset: "vercel",
   compatibilityDate: "2025-05-15",
   routeRules: {
-    "/docs/": { redirect: "/docs" },
     "/assets/**": {
       headers: { "cache-control": "public, max-age=31536000, immutable" },
     },
