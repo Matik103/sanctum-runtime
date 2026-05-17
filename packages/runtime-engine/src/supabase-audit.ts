@@ -12,6 +12,8 @@ type AuditRow = {
   reasoning: string | null
   human_record: string | null
   human_resolution: string | null
+  anomaly_flags: string[] | null
+  resolved_by: string | null
   payload: Record<string, unknown>
   created_at: string
   resolved_at: string | null
@@ -36,6 +38,7 @@ function rowToActionResult(row: AuditRow): ActionResult {
       reasoning: row.reasoning ?? payload.reasoning ?? '',
       humanRecord: row.human_record ?? payload.humanRecord,
       humanResolution: row.human_resolution ?? payload.humanResolution,
+      anomalyFlags: row.anomaly_flags ?? payload.anomalyFlags ?? [],
       resolvedAt: row.resolved_at ?? payload.resolvedAt,
       timestamp: row.created_at ?? payload.timestamp,
       context: {
@@ -55,7 +58,7 @@ function rowToActionResult(row: AuditRow): ActionResult {
     risk: (row.risk ?? 'low') as ActionResult['risk'],
     reasoning: row.reasoning ?? '',
     policyPath: 'policy.unknown',
-    anomalyFlags: [],
+    anomalyFlags: row.anomaly_flags ?? [],
     timestamp: row.created_at,
     offlineMode: true,
     evaluationMode: 'offline_forced',
@@ -84,6 +87,8 @@ export async function maybeSyncAuditToSupabase(entry: ActionResult): Promise<voi
       reasoning: entry.reasoning,
       human_record: entry.humanRecord ?? null,
       human_resolution: entry.humanResolution ?? null,
+      anomaly_flags: entry.anomalyFlags ?? [],
+      resolved_by: (entry as unknown as { resolvedBy?: string }).resolvedBy ?? null,
       payload: entry,
       created_at: entry.timestamp,
       resolved_at: entry.resolvedAt ?? null,

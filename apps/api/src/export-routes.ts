@@ -1,9 +1,9 @@
-import { createHmac } from 'crypto'
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { createSupabaseAdmin, getSupabaseAuthConfig } from './auth.js'
 import { ControlPlaneStore } from './control-plane-store.js'
 import { getEntitlementEngine } from './entitlements.js'
+import { encryptSecret, decryptSecret, getEncryptionKey } from './crypto-utils.js'
 
 type SanctumReq = FastifyRequest & {
   sanctumUser?: { id: string; email?: string }
@@ -17,11 +17,29 @@ function headerKey(req: FastifyRequest): string | undefined {
 // In-memory rate limit: one export per org per hour
 const exportCooldowns = new Map<string, number>()
 
-function encryptSecret(plaintext: string): string {
-  const key = process.env.SSO_ENCRYPTION_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? 'dev-key-change-in-production'
-  const hmac = createHmac('sha256', key).update(plaintext).digest('hex')
-  // In production: use AES-256-GCM. This is a placeholder marker.
-  return `enc:v1:${Buffer.from(plaintext).toString('base64')}:${hmac.slice(0, 16)}`
+// Cache for OIDC discovery documents: issuer → { tokenEndpoint, fetchedAt }
+const oidcDiscoveryCache = new Map<string, { tokenEndpoint: string; authorizationEndpoint: string; fetchedAt: number }>()
+const DISCOVERY_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+
+async function fetchOidcDiscovery(issuer: string): Promise<{ tokenEndpoint: string; authorizationEndpoint: string } | null> {
+  const cached = oidcDiscoveryCache.get(issuer)
+  if (cached && Date.now() - cached.fetchedAt < DISCOVERY_CACHE_TTL_MS) {
+    return { tokenEndpoint: cached.tokenEndpoint, authorizationEndpoint: cached.authorizationEndpoint }
+  }
+
+  try {
+    const res = await fetch(`${issuer}/.well-known/openid-configuration`, { signal: AbortSignal.timeout(10_000) })
+    if (!res.ok) return null
+    const doc = await res.json() as Record<string, unknown>
+    const tokenEndpoint = doc['token_endpoint'] as string | undefined
+    const authorizationEndpoint = doc['authorization_endpoint'] as string | undefined
+    if (!tokenEndpoint || !authorizationEndpoint) return null
+
+    oidcDiscoveryCache.set(issuer, { tokenEndpoint, authorizationEndpoint, fetchedAt: Date.now() })
+    return { tokenEndpoint, authorizationEndpoint }
+  } catch {
+    return null
+  }
 }
 
 export async function registerExportRoutes(app: FastifyInstance) {
@@ -185,6 +203,9 @@ export async function registerExportRoutes(app: FastifyInstance) {
       enabled: z.boolean().optional().default(false),
     }).parse(req.body)
 
+    const encKey = getEncryptionKey()
+    const encryptedSecret = await encryptSecret(body.oidc_client_secret, encKey)
+
     const admin = createSupabaseAdmin(cfg)
     const { data, error } = await admin
       .from('sso_configs')
@@ -192,7 +213,7 @@ export async function registerExportRoutes(app: FastifyInstance) {
         org_id: orgId,
         oidc_issuer: body.oidc_issuer,
         oidc_client_id: body.oidc_client_id,
-        oidc_client_secret_enc: encryptSecret(body.oidc_client_secret),
+        oidc_client_secret_enc: encryptedSecret,
         oidc_scopes: body.oidc_scopes,
         attribute_map: body.attribute_map,
         enabled: body.enabled,
@@ -220,27 +241,197 @@ export async function registerExportRoutes(app: FastifyInstance) {
       return reply.status(404).send({ error: 'sso_not_configured', orgId })
     }
 
-    // Fetch OIDC discovery document
-    const disco = await fetch(`${ssoConfig.oidc_issuer}/.well-known/openid-configuration`)
-      .then((r) => r.json() as Promise<Record<string, unknown>>)
-      .catch(() => null)
-
-    if (!disco?.authorization_endpoint) {
+    const disco = await fetchOidcDiscovery(ssoConfig.oidc_issuer as string)
+    if (!disco?.authorizationEndpoint) {
       return reply.status(502).send({ error: 'oidc_discovery_failed' })
     }
 
-    const state = crypto.randomUUID()
+    const state = `${orgId}.${crypto.randomUUID()}`
     const redirectUri = `${process.env.SANCTUM_API_URL ?? ''}/v1/sso/callback`
     const scopes = (ssoConfig.oidc_scopes as string[]).join(' ')
 
-    const authUrl = new URL(disco.authorization_endpoint as string)
+    const authUrl = new URL(disco.authorizationEndpoint)
     authUrl.searchParams.set('response_type', 'code')
-    authUrl.searchParams.set('client_id', ssoConfig.oidc_client_id)
+    authUrl.searchParams.set('client_id', ssoConfig.oidc_client_id as string)
     authUrl.searchParams.set('redirect_uri', redirectUri)
     authUrl.searchParams.set('scope', scopes)
     authUrl.searchParams.set('state', state)
 
     return reply.redirect(authUrl.toString())
+  })
+
+  // GET /v1/sso/callback — OIDC authorization code callback
+  app.get('/v1/sso/callback', async (req, reply) => {
+    const q = req.query as { code?: string; state?: string; error?: string; error_description?: string }
+
+    if (q.error) {
+      const dashUrl = process.env.SANCTUM_DASHBOARD_URL ?? process.env.VITE_DASHBOARD_URL ?? 'http://localhost:5174'
+      return reply.redirect(`${dashUrl}/auth/sso-error?error=${encodeURIComponent(q.error)}&description=${encodeURIComponent(q.error_description ?? '')}`)
+    }
+
+    if (!q.code || !q.state) {
+      return reply.status(400).send({ error: 'missing_code_or_state' })
+    }
+
+    // State encodes orgId: "<orgId>.<nonce>"
+    const dotIdx = q.state.indexOf('.')
+    const orgId = dotIdx > 0 ? q.state.slice(0, dotIdx) : q.state
+
+    if (!orgId) {
+      return reply.status(400).send({ error: 'invalid_state' })
+    }
+
+    const admin = createSupabaseAdmin(cfg)
+
+    // Fetch SSO config for the org
+    const { data: ssoConfig } = await admin
+      .from('sso_configs')
+      .select('oidc_issuer,oidc_client_id,oidc_client_secret_enc,oidc_scopes,enabled,attribute_map')
+      .eq('org_id', orgId)
+      .maybeSingle()
+
+    if (!ssoConfig?.enabled) {
+      return reply.status(404).send({ error: 'sso_not_configured', orgId })
+    }
+
+    // Fetch OIDC discovery to get token endpoint
+    const disco = await fetchOidcDiscovery(ssoConfig.oidc_issuer as string)
+    if (!disco?.tokenEndpoint) {
+      return reply.status(502).send({ error: 'oidc_discovery_failed' })
+    }
+
+    // Decrypt the client secret
+    let clientSecret: string
+    try {
+      const encKey = getEncryptionKey()
+      clientSecret = await decryptSecret(ssoConfig.oidc_client_secret_enc as string, encKey)
+    } catch {
+      return reply.status(500).send({ error: 'sso_secret_decrypt_failed' })
+    }
+
+    const redirectUri = `${process.env.SANCTUM_API_URL ?? ''}/v1/sso/callback`
+
+    // Exchange authorization code for tokens
+    let tokenResponse: Record<string, unknown>
+    try {
+      const tokenRes = await fetch(disco.tokenEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          code: q.code,
+          redirect_uri: redirectUri,
+          client_id: ssoConfig.oidc_client_id as string,
+          client_secret: clientSecret,
+        }).toString(),
+        signal: AbortSignal.timeout(15_000),
+      })
+
+      if (!tokenRes.ok) {
+        const errText = await tokenRes.text().catch(() => '')
+        return reply.status(502).send({ error: 'token_exchange_failed', detail: errText.slice(0, 500) })
+      }
+
+      tokenResponse = await tokenRes.json() as Record<string, unknown>
+    } catch (err) {
+      return reply.status(502).send({ error: 'token_exchange_error', detail: err instanceof Error ? err.message : String(err) })
+    }
+
+    // Parse JWT claims from id_token (no signature verification — we fetched it directly from the IDP)
+    let idClaims: Record<string, unknown> = {}
+    const idToken = tokenResponse['id_token'] as string | undefined
+    if (idToken) {
+      try {
+        const parts = idToken.split('.')
+        if (parts.length >= 2) {
+          const payload = parts[1]
+          // Base64url → base64
+          const b64 = payload.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(payload.length / 4) * 4, '=')
+          idClaims = JSON.parse(Buffer.from(b64, 'base64').toString('utf8')) as Record<string, unknown>
+        }
+      } catch { /* best-effort, continue with empty claims */ }
+    }
+
+    // Apply attribute_map if provided (maps IDP claim names to Sanctum fields)
+    const attrMap = (ssoConfig.attribute_map ?? {}) as Record<string, string>
+    const emailClaim = attrMap['email'] ?? 'email'
+    const nameClaim = attrMap['name'] ?? 'name'
+
+    const email = (idClaims[emailClaim] ?? idClaims['email']) as string | undefined
+    const name = (idClaims[nameClaim] ?? idClaims['name']) as string | undefined
+    const sub = idClaims['sub'] as string | undefined
+
+    if (!email && !sub) {
+      return reply.status(502).send({ error: 'no_identity_in_id_token' })
+    }
+
+    // Upsert user via Supabase admin and create a session
+    let accessToken: string | null = null
+    let refreshToken: string | null = null
+    try {
+      const identEmail = email ?? `${sub}@sso.local`
+
+      // Try to find existing user by email
+      const { data: existingUsers } = await admin.auth.admin.listUsers({ page: 1, perPage: 1 })
+      const existingUser = existingUsers?.users?.find((u) => u.email === identEmail)
+
+      let userId: string
+      if (existingUser) {
+        userId = existingUser.id
+        // Update metadata if needed
+        await admin.auth.admin.updateUserById(userId, {
+          user_metadata: { sso_org_id: orgId, sso_sub: sub, name },
+        })
+      } else {
+        // Create user
+        const { data: newUser, error: createErr } = await admin.auth.admin.createUser({
+          email: identEmail,
+          email_confirm: true,
+          user_metadata: { sso_org_id: orgId, sso_sub: sub, name },
+        })
+        if (createErr || !newUser?.user) {
+          return reply.status(500).send({ error: 'user_creation_failed', detail: createErr?.message })
+        }
+        userId = newUser.user.id
+      }
+
+      // Ensure the user is a member of the org
+      await admin.from('organization_members').upsert({
+        org_id: orgId,
+        user_id: userId,
+        role: 'member',
+        invited_at: new Date().toISOString(),
+      }, { onConflict: 'org_id,user_id', ignoreDuplicates: true })
+
+      // Generate a session for the user
+      const { data: sessionData, error: sessionErr } = await admin.auth.admin.generateLink({
+        type: 'magiclink',
+        email: identEmail,
+      })
+
+      if (sessionErr || !sessionData) {
+        // Fallback: sign in with OTP and return limited info
+        return reply.status(500).send({ error: 'session_creation_failed', detail: sessionErr?.message })
+      }
+
+      // Exchange the magic link for actual session tokens using the hashed token
+      const linkUrl = new URL(sessionData.properties?.action_link ?? '')
+      const hashParams = new URLSearchParams(linkUrl.hash.slice(1))
+      accessToken = hashParams.get('access_token')
+      refreshToken = hashParams.get('refresh_token')
+    } catch (err) {
+      return reply.status(500).send({ error: 'session_error', detail: err instanceof Error ? err.message : String(err) })
+    }
+
+    const dashUrl = process.env.SANCTUM_DASHBOARD_URL ?? process.env.VITE_DASHBOARD_URL ?? 'http://localhost:5174'
+
+    if (accessToken) {
+      // Redirect with tokens in fragment (never in query string to avoid logging)
+      return reply.redirect(`${dashUrl}/auth/sso-complete#access_token=${encodeURIComponent(accessToken)}&refresh_token=${encodeURIComponent(refreshToken ?? '')}&org_id=${encodeURIComponent(orgId)}`)
+    }
+
+    // Fallback: redirect to dashboard login page for the org
+    return reply.redirect(`${dashUrl}/auth/login?sso_org=${encodeURIComponent(orgId)}&sso_complete=1`)
   })
 
   // ── Notification Preferences ────────────────────────────────────────────────

@@ -1,0 +1,15 @@
+apiVersion: v2
+name: sanctum-runtime
+description: Sanctum Runtime - AI Action Gate
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - ai
+  - agent
+  - safety
+  - runtime
+  - gate
+maintainers:
+  - name: Sanctum Runtime
+    url: https://sanctumruntime.com
