@@ -86,18 +86,18 @@ export function useDashboard() {
         return cur
       })
     } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Failed to reach runtime API'
       const networkFailed =
         e instanceof TypeError ||
-        (e instanceof Error &&
-          /failed to fetch|networkerror|load failed/i.test(e.message))
-      const msg = networkFailed
-        ? `Cannot reach ${apiBaseUrl} from the browser (CORS or API down). On Render → sanctum-api: set DASHBOARD_URL=https://console.sanctumruntime.com, redeploy API, then set sanctum-dashboard VITE_SANCTUM_API_URL=https://api.sanctumruntime.com and redeploy the dashboard.`
-        : e instanceof Error && e.message.includes('500')
-          ? 'Runtime API is not running. From the repo root run: npm run dev:runtime (or npm run dev:api in another terminal).'
-          : e instanceof Error
-            ? e.message
-            : 'Failed to reach runtime API'
-      setApiError(msg)
+        /failed to fetch|networkerror|load failed|net::/i.test(msg)
+      const authFailed = /\b401\b/.test(msg)
+      setApiError(
+        networkFailed
+          ? `API unreachable (${apiBaseUrl}). Check: 1) sanctum-api is deployed and running on Render, 2) the custom domain api.sanctumruntime.com is configured in Render → Settings → Custom Domains, 3) both services redeployed after env var changes.`
+          : authFailed
+            ? 'API reached but returned 401 — sign in or check your API key.'
+            : msg,
+      )
     }
   }, [])
 

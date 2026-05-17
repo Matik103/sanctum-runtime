@@ -126,7 +126,7 @@ app.setErrorHandler((err, _req, reply) => {
   })
 })
 
-const AUTH_BYPASS = new Set(['/health', '/', '/metrics', '/v1/billing/webhook'])
+const AUTH_BYPASS = new Set(['/health', '/', '/metrics', '/v1/billing/webhook', '/v1/status'])
 
 app.addHook('onRequest', async (req, reply) => {
   if (req.method === 'OPTIONS') return
