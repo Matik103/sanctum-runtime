@@ -2,23 +2,51 @@
 
 Catalog of runtime templates with one-click org install and SDK `connectFromPackage()`.
 
-## Catalog (seeded)
+## Twelve categories (primary catalog)
 
-| Slug | Category | Mode | Primary agent | Example |
-|------|----------|------|---------------|---------|
-| `sanctum-agent-host` | agent-host | cloud | `default_agent` | `npm run example:marketplace` |
-| `warehouse-robot` | robotics | edge | `navigation` | `SANCTUM_PACKAGE=warehouse-robot npm run example:marketplace` |
-| `edge-sensor-gateway` | edge | hybrid | `telemetry` | `SANCTUM_PACKAGE=edge-sensor-gateway npm run example:marketplace` |
-| `smart-home-hub` | smart-home | hybrid | `home_agent` | `npm run example:marketplace:smart-home` |
-| `ros2-mobile` | robotics | edge | `ros2_controller` | `npm run example:marketplace:ros2` |
-| `finance-agent` | automation | cloud | `treasury_agent` | `npm run example:marketplace:finance` |
-| `langchain-agent-host` | agent-host | cloud | `langchain_agent` | `npm run example:marketplace:langchain` |
-| `crewai-crew-host` | automation | cloud | `crew_agent` | `npm run example:marketplace:crewai` |
-| `mcp-server-host` | agent-host | cloud | `mcp_host` | `npm run example:marketplace:mcp` |
+Each row in [CATEGORIES.md](../CATEGORIES.md) has a **primary** marketplace slug. Integration profiles share the same category where noted.
 
-Apply migrations `017`–`021` via `npm run db:push`.
+| # | Category | Primary slug | Also in category |
+|---|----------|--------------|------------------|
+| 1 | AI agents | `sanctum-agent-host` | `langchain-agent-host`, `mcp-server-host` |
+| 2 | Humanoids | `humanoid-host` | — |
+| 3 | Embodied AI | `embodied-ai-host` | — |
+| 4 | Smart home | `smart-home-hub` | — |
+| 5 | AI operating systems | `ai-os-host` | — |
+| 6 | Robotics integrators | `warehouse-robot` | `ros2-mobile` |
+| 7 | Workflow / automation | `crewai-crew-host` | `finance-agent` |
+| 8 | Physical security / edge | `edge-sensor-gateway` | — |
+| 9 | Healthcare robotics | `healthcare-host` | — |
+| 10 | Autonomous mobility | `mobility-host` | — |
+| 11 | AI companions | `companion-host` | — |
+| 12 | Industrial automation | `industrial-host` | — |
 
-**Install applies org-scoped policies** (`{orgId}:{action}`) and stores keys in the install record. **Uninstall removes** those policy keys.
+Apply migrations `017`–`022` via `npm run db:push`.
+
+**Install applies org-scoped policies** (`{orgId}:{action}`) from each package’s `policy_templates` and stores keys on the install record. **Uninstall removes** those policy keys.
+
+## Full catalog
+
+| Slug | Category | Example |
+|------|----------|---------|
+| `sanctum-agent-host` | ai-agents | `npm run example:marketplace` |
+| `langchain-agent-host` | ai-agents | `npm run example:marketplace:langchain` |
+| `mcp-server-host` | ai-agents | `npm run example:marketplace:mcp` |
+| `humanoid-host` | humanoid | `npm run example:marketplace:humanoid` |
+| `embodied-ai-host` | embodied | `npm run example:marketplace:embodied` |
+| `smart-home-hub` | smart-home | `npm run example:marketplace:smart-home` |
+| `ai-os-host` | ai-os | `npm run example:marketplace:ai-os` |
+| `warehouse-robot` | robotics | `SANCTUM_PACKAGE=warehouse-robot npm run example:marketplace` |
+| `ros2-mobile` | robotics | `npm run example:marketplace:ros2` |
+| `crewai-crew-host` | automation | `npm run example:marketplace:crewai` |
+| `finance-agent` | automation | `npm run example:marketplace:finance` |
+| `edge-sensor-gateway` | edge | `SANCTUM_PACKAGE=edge-sensor-gateway npm run example:marketplace` |
+| `healthcare-host` | healthcare | `npm run example:marketplace:healthcare` |
+| `mobility-host` | mobility | `npm run example:marketplace:mobility` |
+| `companion-host` | companion | `npm run example:marketplace:companion` |
+| `industrial-host` | industrial | `npm run example:marketplace:industrial` |
+
+Or set `SANCTUM_PACKAGE=<slug>` with `npm run example:marketplace`.
 
 ## Dashboard
 

@@ -31,6 +31,27 @@ Sanctum is **not** an “agents-only” tool. It is a **category-agnostic action
 
 Default policies in the repo already cover several physical and agent actions (`unlock_door`, `move_robot`, `disable_alarm`, …). Add yours with `registerPolicy()` or YAML import.
 
+### Marketplace templates (hosted catalog)
+
+After `npm run db:push` (migrations `017`–`022`), each category has a **primary** installable package in the dashboard Marketplace:
+
+| # | Category | Primary slug |
+|---|----------|--------------|
+| 1 | AI agents | `sanctum-agent-host` (+ `langchain-agent-host`, `mcp-server-host`) |
+| 2 | Humanoids | `humanoid-host` |
+| 3 | Embodied AI | `embodied-ai-host` |
+| 4 | Smart home | `smart-home-hub` |
+| 5 | AI operating systems | `ai-os-host` |
+| 6 | Robotics integrators | `warehouse-robot`, `ros2-mobile` |
+| 7 | Workflow / automation | `crewai-crew-host`, `finance-agent` |
+| 8 | Physical security / edge | `edge-sensor-gateway` |
+| 9 | Healthcare robotics | `healthcare-host` |
+| 10 | Autonomous mobility | `mobility-host` |
+| 11 | AI companions | `companion-host` |
+| 12 | Industrial automation | `industrial-host` |
+
+See [docs/PHASE_4_MARKETPLACE.md](./docs/PHASE_4_MARKETPLACE.md) and `examples/marketplace-connect/`.
+
 ---
 
 ## Integration pattern (every category)
