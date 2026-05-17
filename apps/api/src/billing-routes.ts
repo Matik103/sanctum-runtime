@@ -63,16 +63,23 @@ export async function registerBillingRoutes(app: FastifyInstance) {
     // Fetch active runtime count
     const runtimesConnected = await entitlements.getActiveRuntimeCount(orgId)
 
-    // Fetch active agent count from orchestration store
+    // Active agents on this org's runtimes (registered_agents via runtime_id)
     let agentsActive = 0
     try {
       const admin = createSupabaseAdmin(cfg)
-      const { count } = await admin
-        .from('orchestration_agents')
-        .select('id', { count: 'exact', head: true })
+      const { data: runtimeRows } = await admin
+        .from('registered_runtimes')
+        .select('id')
         .eq('org_id', orgId)
-        .eq('status', 'active')
-      agentsActive = count ?? 0
+      const runtimeIds = (runtimeRows ?? []).map((r) => r.id as string)
+      if (runtimeIds.length > 0) {
+        const { count } = await admin
+          .from('registered_agents')
+          .select('id', { count: 'exact', head: true })
+          .in('runtime_id', runtimeIds)
+          .eq('status', 'active')
+        agentsActive = count ?? 0
+      }
     } catch { /* ignore */ }
 
     // Paddle subscription info

@@ -28,12 +28,48 @@ Runtimes ────────┘  connect · heartbeat · WS · memory
 ### 1.1 Supabase
 
 ```bash
-npm run db:push    # applies migrations 001–022
+npm run db:push    # applies migrations 001–023
 ```
 
-Confirm in SQL Editor: `registered_runtimes`, `runtime_packages`, `usage_events`, `attestation_challenges`, `agent_memory_entries`.
+Confirm in SQL Editor (or run the checks in §1.3):
 
-> **Marketplace catalog** (migrations 020–022) adds the full 12-category package set. If the Marketplace page shows 0 packages after `db:push`, confirm these migrations ran.
+| Object | Migration |
+|--------|-----------|
+| `registered_runtimes`, `registered_agents`, `runtime_events` | 010 |
+| `runtime_packages`, `runtime_package_installs` | 017 |
+| `usage_events` | 018 |
+| `attestation_challenges` | 019 |
+| `agent_memory_entries` | 016 |
+| `plans`, `org_plans` | 023 |
+
+> **Marketplace catalog** (020–022) — 16 packages / 12 categories. If Marketplace shows 0 packages, confirm 017 + 020–022 ran.
+>
+> **Billing** (023) — every org gets `org_plans.plan_id = 'free'` via trigger + backfill.
+
+### 1.3 Verify migrations (SQL Editor)
+
+```sql
+-- Should return 23 rows (one per migration file applied via CLI history, or spot-check tables):
+select table_name from information_schema.tables
+where table_schema = 'public'
+  and table_name in (
+    'organizations', 'organization_members', 'runtime_policies', 'audit_events',
+    'registered_runtimes', 'registered_agents', 'runtime_events',
+    'runtime_packages', 'runtime_package_installs',
+    'usage_events', 'agent_memory_entries', 'attestation_challenges',
+    'plans', 'org_plans', 'api_keys'
+  )
+order by 1;
+
+-- Marketplace row count (expect 16 after 022):
+select count(*) as package_count from public.runtime_packages where visibility = 'public';
+
+-- Every org on a plan:
+select count(*) as orgs_without_plan
+from public.organizations o
+left join public.org_plans p on p.org_id = o.id
+where p.org_id is null;
+```
 
 Link project: `supabase link` (if not already).
 
@@ -182,7 +218,7 @@ Update secrets store with the new key after rotation.
 
 ## 7. Production checklist
 
-- [ ] `npm run db:push` — all migrations applied
+- [ ] `npm run db:push` — migrations 001–023 (see §1.3 SQL checks)
 - [ ] API env: Supabase + `DASHBOARD_URL` + pepper
 - [ ] Dashboard env: `VITE_*` trio
 - [ ] Supabase redirect URLs
