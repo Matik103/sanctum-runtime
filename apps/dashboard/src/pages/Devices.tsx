@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import { KeyRound, Server, Trash2 } from 'lucide-react'
+import { KeyRound, Monitor, RefreshCw, Server, Trash2 } from 'lucide-react'
 import type { RuntimeStatus } from '@sanctum-runtime/sdk/browser'
 import { Alert } from '../components/ui/Alert'
 import { CopyField } from '../components/ui/CopyField'
 import { EmptyState } from '../components/ui/EmptyState'
+import { PageActions } from '../components/ui/PageActions'
 import {
   createApiKey,
   deleteApiKey,
@@ -11,6 +12,8 @@ import {
   type ApiKeyRecord,
   type CreateApiKeyResult,
 } from '../lib/api-keys'
+import { fetchMyOrgs, fetchRuntimes, type FleetOrg, type FleetRuntime } from '../lib/fleet'
+import { fetchOperatorContext } from '../lib/marketplace'
 import { riskModelMetaLine } from '../lib/risk-label'
 
 type Props = { status: RuntimeStatus | null }
@@ -24,14 +27,66 @@ function formatDate(iso: string | null) {
   })
 }
 
+function runtimeStatusBadge(status: string) {
+  if (status === 'online') return 'success'
+  if (status === 'degraded') return 'warning'
+  return 'neutral'
+}
+
 export function Devices({ status }: Props) {
   const modelOnline = status?.riskModelConnected ?? status?.ollamaConnected ?? false
   const [keys, setKeys] = useState<ApiKeyRecord[]>([])
+  const [runtimes, setRuntimes] = useState<FleetRuntime[]>([])
+  const [orgs, setOrgs] = useState<FleetOrg[]>([])
+  const [orgId, setOrgId] = useState('')
+  const [devicesLoading, setDevicesLoading] = useState(false)
+  const [devicesError, setDevicesError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [newName, setNewName] = useState('')
   const [created, setCreated] = useState<CreateApiKeyResult | null>(null)
   const [busy, setBusy] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  useEffect(() => {
+    void (async () => {
+      let list = await fetchMyOrgs()
+      if (list.length === 0) {
+        const ctx = await fetchOperatorContext()
+        if (ctx?.defaultOrganizationId) {
+          list = [
+            {
+              org_id: ctx.defaultOrganizationId,
+              org_name: 'Workspace',
+              role: 'owner',
+            },
+          ]
+        }
+      }
+      setOrgs(list)
+      if (list[0]) {
+        setOrgId((prev) => prev || list[0].org_id)
+      }
+    })()
+  }, [])
+
+  const loadDevices = useCallback(async () => {
+    setDevicesLoading(true)
+    try {
+      const rt = await fetchRuntimes(orgId || undefined)
+      setRuntimes(rt)
+      setDevicesError(null)
+    } catch (e) {
+      setDevicesError(e instanceof Error ? e.message : 'Could not load connected devices')
+    } finally {
+      setDevicesLoading(false)
+    }
+  }, [orgId])
+
+  useEffect(() => {
+    void loadDevices()
+    const id = setInterval(() => void loadDevices(), 8000)
+    return () => clearInterval(id)
+  }, [loadDevices])
 
   const load = useCallback(async () => {
     try {
@@ -80,16 +135,44 @@ export function Devices({ status }: Props) {
     'https://sanctum-api-6zgy.onrender.com'
 
   const envSnippet = created
-    ? `SANCTUM_API_URL=${apiUrl}\nSANCTUM_API_KEY=${created.secret}`
-    : `SANCTUM_API_URL=${apiUrl}\nSANCTUM_API_KEY=sk_sanctum_...`
+    ? `SANCTUM_API_URL=${apiUrl}\nSANCTUM_API_KEY=${created.secret}${orgId ? `\nSANCTUM_ORG_ID=${orgId}` : ''}`
+    : `SANCTUM_API_URL=${apiUrl}\nSANCTUM_API_KEY=sk_sanctum_...${orgId ? `\nSANCTUM_ORG_ID=${orgId}` : ''}`
+
+  const workspaceOrgId = orgId || orgs[0]?.org_id || ''
 
   return (
     <>
       <header className="page-header">
         <div>
           <h1>Devices & API keys</h1>
-          <p>Credentials for CI, agents, and runtime SDK scripts</p>
+          <p>Connected runtimes, workspace credentials, and control-plane health</p>
         </div>
+        <PageActions>
+          {orgs.length > 1 ? (
+            <select
+              className="input"
+              value={orgId}
+              onChange={(e) => setOrgId(e.target.value)}
+              aria-label="Organization"
+              style={{ minWidth: '10rem' }}
+            >
+              {orgs.map((o) => (
+                <option key={o.org_id} value={o.org_id}>
+                  {o.org_name}
+                </option>
+              ))}
+            </select>
+          ) : null}
+          <button
+            type="button"
+            className="btn btn-ghost"
+            disabled={devicesLoading}
+            onClick={() => void loadDevices()}
+          >
+            <RefreshCw size={16} className={devicesLoading ? 'spin' : undefined} />
+            Refresh
+          </button>
+        </PageActions>
       </header>
 
       {error && (
@@ -97,6 +180,77 @@ export function Devices({ status }: Props) {
           {error}
         </Alert>
       )}
+
+      <section className="section">
+        <div className="section__header">
+          <h2>
+            <Monitor size={18} style={{ verticalAlign: 'middle', marginRight: '0.4rem' }} />
+            Connected devices
+          </h2>
+          <p>Runtimes registered via SDK connect — same hosts as Fleet</p>
+        </div>
+
+        <div className="section__body">
+          {devicesError && (
+            <Alert variant="error" onDismiss={() => setDevicesError(null)}>
+              {devicesError}
+            </Alert>
+          )}
+          {workspaceOrgId ? (
+            <CopyField
+              label="Workspace organization id"
+              value={workspaceOrgId}
+              hint="Set SANCTUM_ORG_ID when connecting scripts or marketplace examples."
+            />
+          ) : null}
+
+          {devicesLoading && runtimes.length === 0 ? (
+            <p className="hint-line" style={{ marginTop: workspaceOrgId ? '1rem' : 0 }}>
+              Loading devices…
+            </p>
+          ) : runtimes.length === 0 ? (
+            <EmptyState
+              title="No devices connected yet"
+              description="Create an API key below, set SANCTUM_API_URL and SANCTUM_ORG_ID, then run npm run example:connect or connectFromPackage() from the Marketplace."
+            />
+          ) : (
+            <div className="policy-grid" style={{ marginTop: workspaceOrgId ? '1.25rem' : 0 }}>
+              {runtimes.map((r) => (
+                <article key={r.id} className="policy-card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>
+                    <h3 style={{ margin: 0 }}>{r.name}</h3>
+                    <span className={`badge ${runtimeStatusBadge(r.status)}`}>{r.status}</span>
+                  </div>
+                  <p className="hint-line" style={{ margin: '0.35rem 0' }}>
+                    {r.org_id} · {r.mode}
+                    {r.region ? ` · ${r.region}` : ''}
+                  </p>
+                  {r.active_model && (
+                    <p style={{ margin: '0.25rem 0', fontSize: '0.85rem' }}>
+                      Model <strong>{r.active_model}</strong>
+                    </p>
+                  )}
+                  {r.current_task && (
+                    <p style={{ margin: '0.25rem 0', fontSize: '0.85rem', color: 'var(--muted)' }}>
+                      {r.current_task}
+                    </p>
+                  )}
+                  <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem', color: 'var(--muted)' }}>
+                    Last seen{' '}
+                    {r.last_seen_at ? new Date(r.last_seen_at).toLocaleString() : '—'}
+                  </p>
+                  <p style={{ margin: '0.35rem 0 0', fontSize: '0.7rem', color: 'var(--muted)' }}>
+                    Runtime id <code className="inline-code">{r.id.slice(0, 8)}…</code>
+                  </p>
+                </article>
+              ))}
+            </div>
+          )}
+          <p className="hint-line" style={{ marginTop: '1rem' }}>
+            Map, agents, and dispatch live under <strong>Fleet</strong> in the sidebar.
+          </p>
+        </div>
+      </section>
 
       <section className="section">
         <div className="section__header">
