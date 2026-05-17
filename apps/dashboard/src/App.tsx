@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 import { ActionDrawer } from './components/ActionDrawer'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { useNetworkStatus } from './hooks/useNetworkStatus'
 import { ReviewQueueBanner, summarizePendingActions } from './components/ReviewQueueBanner'
 import { VerificationModal } from './components/VerificationModal'
 import { useDashboard } from './hooks/useDashboard'
@@ -19,6 +20,7 @@ import { ThreatMonitor } from './pages/ThreatMonitor'
 import { Billing } from './pages/Billing'
 
 export function App() {
+  const online = useNetworkStatus()
   const [page, setPage] = useState<PageId>('overview')
   const [selected, setSelected] = useState<ActionResult | null>(null)
   const {
@@ -47,6 +49,13 @@ export function App() {
 
       <MainCanvas>
         <ErrorBoundary>
+        {!online && (
+          <div className="alert alert--warn" role="alert" style={{ marginBottom: '1rem' }}>
+            <div className="alert__body">
+              <strong>You are offline.</strong> Dashboard data may be stale. Reconnect to resume live updates.
+            </div>
+          </div>
+        )}
         {apiError && (
           <div className="alert alert--error" role="alert">
             <div className="alert__body">

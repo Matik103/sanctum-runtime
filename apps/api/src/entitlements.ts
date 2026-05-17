@@ -47,9 +47,13 @@ export class EntitlementEngine {
     try {
       const { data } = await this.admin()
         .from('org_plans')
-        .select('plan_id')
+        .select('plan_id,trial_ends_at')
         .eq('org_id', orgId)
         .maybeSingle()
+      // Active trial: treat as operator plan
+      if (data?.trial_ends_at && new Date(data.trial_ends_at as string) > new Date()) {
+        return 'operator'
+      }
       const id = (data?.plan_id as string | undefined) ?? 'free'
       return (id in PLAN_DEFAULTS ? id : 'free') as PlanId
     } catch {
@@ -60,6 +64,29 @@ export class EntitlementEngine {
   async getLimits(orgId: string): Promise<PlanLimits> {
     const planId = await this.getPlanId(orgId)
     return PLAN_DEFAULTS[planId]
+  }
+
+  async getNotificationPrefs(orgId: string): Promise<{
+    email: string | null
+    slackWebhookUrl: string | null
+    notificationWebhookUrl: string | null
+    quotaWarningPct: number
+  }> {
+    try {
+      const { data } = await this.admin()
+        .from('org_plans')
+        .select('notification_email,slack_webhook_url,notification_webhook_url,quota_warning_pct')
+        .eq('org_id', orgId)
+        .maybeSingle()
+      return {
+        email: (data?.notification_email as string | null) ?? null,
+        slackWebhookUrl: (data?.slack_webhook_url as string | null) ?? null,
+        notificationWebhookUrl: (data?.notification_webhook_url as string | null) ?? null,
+        quotaWarningPct: (data?.quota_warning_pct as number | null) ?? 80,
+      }
+    } catch {
+      return { email: null, slackWebhookUrl: null, notificationWebhookUrl: null, quotaWarningPct: 80 }
+    }
   }
 
   async getActiveRuntimeCount(orgId: string): Promise<number> {

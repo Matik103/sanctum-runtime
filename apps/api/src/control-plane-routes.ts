@@ -126,6 +126,23 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
       })
     }
 
+    // SDK minimum version advisory
+    const minSdkVersion = process.env.SANCTUM_MIN_SDK_VERSION?.trim()
+    let sdkWarning: string | undefined
+    const sdkVersion = body.attestation?.sdkVersion
+    if (minSdkVersion && sdkVersion) {
+      const parseSemver = (v: string) => v.replace(/^v/, '').split('.').map(Number)
+      const [minMaj, minMin, minPat] = parseSemver(minSdkVersion)
+      const [sdkMaj, sdkMin, sdkPat] = parseSemver(sdkVersion)
+      const isOld =
+        sdkMaj < minMaj ||
+        (sdkMaj === minMaj && sdkMin < minMin) ||
+        (sdkMaj === minMaj && sdkMin === minMin && sdkPat < minPat)
+      if (isOld) {
+        sdkWarning = `SDK ${sdkVersion} is below minimum ${minSdkVersion}. Upgrade @sanctum-runtime/sdk to avoid future connection rejection.`
+      }
+    }
+
     const ip = extractIp(req)
     const runtime = await store.connectRuntime({
       orgId,
@@ -152,6 +169,7 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
         (runtime.attestation_report as Record<string, unknown>)?.hardwareVerified,
       ),
       connectedAt: runtime.connected_at,
+      ...(sdkWarning ? { sdkWarning } : {}),
     }
   })
 

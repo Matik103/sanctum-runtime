@@ -15,6 +15,10 @@ import { registerMarketplaceRoutes } from './marketplace-routes.js'
 import { registerHardwareAttestationRoutes } from './hardware-attestation-routes.js'
 import { registerUsageRoutes } from './usage-routes.js'
 import { registerBillingRoutes } from './billing-routes.js'
+import { registerExportRoutes } from './export-routes.js'
+import { traced } from './telemetry.js'
+import { sendNotificationDeduped } from './notifications.js'
+import { getEntitlementEngine } from './entitlements.js'
 import { recordUsage, UsageMetrics } from './usage-store.js'
 import { registerRuntimeWsRoutes } from './runtime-ws-routes.js'
 import { runtimeWsHub } from './runtime-ws-hub.js'
@@ -173,7 +177,10 @@ app.get('/', async () => ({
     agentMemory: 'GET|PUT|DELETE /v1/runtimes/:id/agents/:agentId/memory/:key',
     marketplace: 'GET /v1/marketplace/packages · install · connect hints',
     usage: 'GET /v1/usage?org_id=',
-    billing: 'GET /v1/billing/plan · POST /v1/billing/checkout',
+    billing: 'GET /v1/billing/plan · POST /v1/billing/checkout · POST /v1/billing/webhook',
+    export: 'GET /v1/orgs/:orgId/export.json · GET /v1/orgs/:orgId/export/history',
+    notifications: 'GET|PATCH /v1/orgs/:orgId/notifications',
+    sso: 'GET|PUT /v1/orgs/:orgId/sso · GET /v1/sso/:orgId/login',
     analyze: 'POST /analyze-action',
   },
 }))
@@ -187,6 +194,7 @@ if (supabaseAuth) {
   await registerMarketplaceRoutes(app, runtime)
   await registerUsageRoutes(app)
   await registerBillingRoutes(app)
+  await registerExportRoutes(app)
   await registerHardwareAttestationRoutes(app)
 }
 
@@ -365,16 +373,47 @@ app.post('/v1/actions/verify', async (req) => {
     context: body.context,
   })
 
-  const result = await runtime.verifyAction(request, {
-    offlineMode: body.offlineMode,
-    correlationId: body.correlationId,
-  })
   const orgId =
     typeof body.context?.org_id === 'string' ? body.context.org_id : undefined
+
+  const result = await traced(
+    'action.verify',
+    { actor: body.actor, action: body.action, org_id: orgId ?? '' },
+    async (span) => {
+      const r = await runtime.verifyAction(request, {
+        offlineMode: body.offlineMode,
+        correlationId: body.correlationId,
+      })
+      span.end({ decision: r.decision, risk: r.risk, anomaly_flags: r.anomalyFlags.join(',') })
+      return r
+    },
+    req.id,
+  )
+
   recordUsage(supabaseAuth, orgId, UsageMetrics.ACTION_VERIFY, 1, {
     action: body.action,
     decision: result.decision,
   })
+
+  // Notify on anomaly spikes (BLOCKED or anomaly flags present)
+  if (supabaseAuth && orgId && (result.decision === 'BLOCKED' || result.anomalyFlags.length > 0)) {
+    const entEngine = getEntitlementEngine(supabaseAuth)
+    void entEngine.getNotificationPrefs(orgId).then((prefs) => {
+      sendNotificationDeduped(
+        {
+          type: 'anomaly.spike',
+          orgId,
+          title: `Anomaly detected: ${body.action}`,
+          body: `Actor "${body.actor}" triggered ${result.anomalyFlags.join(', ') || 'a block'} on action "${body.action}". Decision: ${result.decision}. Risk: ${(result.risk * 100).toFixed(0)}%.`,
+          severity: result.decision === 'BLOCKED' ? 'critical' : 'warning',
+          data: { action: body.action, actor: body.actor, decision: result.decision, risk: result.risk, anomalyFlags: result.anomalyFlags },
+        },
+        { email: prefs.email, slackWebhookUrl: prefs.slackWebhookUrl, notificationWebhookUrl: prefs.notificationWebhookUrl },
+        300_000, // 5-minute cooldown per org to avoid spam
+      )
+    }).catch(() => { /* best-effort */ })
+  }
+
   return result
 })
 
