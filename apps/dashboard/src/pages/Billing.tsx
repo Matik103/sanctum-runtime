@@ -157,6 +157,21 @@ export function Billing() {
       {error && <Alert variant="error" onDismiss={() => setError(null)}>{error}</Alert>}
       {checkoutMsg && <Alert variant="info" onDismiss={() => setCheckoutMsg(null)}>{checkoutMsg}</Alert>}
 
+      {plan && plan.quotas.events.pct !== null && plan.quotas.events.pct >= 80 && (
+        <Alert variant="warn">
+          <strong>Event quota at {plan.quotas.events.pct}%</strong> —{' '}
+          {plan.quotas.events.pct >= 100
+            ? 'Quota reached. New events may be dropped. Upgrade your plan.'
+            : `You've used ${formatNumber(plan.usage.eventsThisMonth)} of ${formatLimit(plan.limits.maxEventsPerMonth)} events this month.`}
+        </Alert>
+      )}
+      {plan && plan.quotas.runtimes.pct !== null && plan.quotas.runtimes.pct >= 80 && (
+        <Alert variant="warn">
+          <strong>Runtime slots at {plan.quotas.runtimes.pct}%</strong> —{' '}
+          {plan.quotas.runtimes.used} of {plan.quotas.runtimes.limit} slots used. Upgrade to connect more runtimes.
+        </Alert>
+      )}
+
       {loading && !plan ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '2rem 0', color: 'var(--muted)' }}>
           <Loader2 size={18} className="spin" />

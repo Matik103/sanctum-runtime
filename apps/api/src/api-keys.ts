@@ -154,6 +154,51 @@ export async function registerApiKeyRoutes(
       return reply.status(500).send({ error: 'api_keys_delete_failed', detail })
     }
   })
+
+  /** Atomically rotate an API key — generates new secret, replaces hash in-place. */
+  app.post('/v1/api-keys/:id/rotate', async (req, reply) => {
+    try {
+      const user = (req as { sanctumUser?: { id: string } }).sanctumUser
+      if (!user) return reply.status(403).send({ error: 'dashboard_auth_required' })
+
+      const rawId = (req.params as { id?: string }).id?.trim()
+      const parsed = z.string().uuid().safeParse(rawId)
+      if (!parsed.success) return reply.status(400).send({ error: 'invalid_id' })
+      const id = parsed.data
+
+      const secret = generateApiKeySecret()
+      const { prefix, suffix } = keyDisplayParts(secret)
+      const keyHash = await hashApiKeyV1(secret)
+
+      const { data, error } = await admin
+        .from('api_keys')
+        .update({
+          key_hash: keyHash,
+          key_prefix: prefix,
+          key_suffix: suffix,
+          hash_version: 'bcrypt_v1',
+        })
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .is('revoked_at', null)
+        .select('id, name, key_prefix, key_suffix, org_id, created_at')
+        .single()
+
+      if (error || !data) {
+        return reply.status(404).send({ error: 'api_key_not_found' })
+      }
+
+      return {
+        ...data,
+        secret,
+        display_key: `${prefix}…${suffix ?? ''}`,
+        hint: 'Rotated. Copy the new secret now — it will not be shown again.',
+      }
+    } catch (e) {
+      req.log.error(e, 'api_keys_rotate_exception')
+      return reply.status(500).send({ error: 'rotate_failed' })
+    }
+  })
 }
 
 function formatDisplayKey(prefix: string, suffix: string | null): string {

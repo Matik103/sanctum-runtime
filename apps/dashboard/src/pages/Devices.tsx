@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { timeAgo } from '../lib/format'
-import { KeyRound, Monitor, RefreshCw, Server, Trash2 } from 'lucide-react'
+import { KeyRound, Monitor, RefreshCw, RotateCcw, Server, Trash2 } from 'lucide-react'
 import type { RuntimeStatus } from '@sanctum-runtime/sdk/browser'
 import { Alert } from '../components/ui/Alert'
 import { CopyField } from '../components/ui/CopyField'
@@ -10,6 +10,7 @@ import {
   createApiKey,
   deleteApiKey,
   listApiKeys,
+  rotateApiKey,
   type ApiKeyRecord,
   type CreateApiKeyResult,
 } from '../lib/api-keys'
@@ -82,6 +83,7 @@ export function Devices({ status }: Props) {
   const [busy, setBusy] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [rotatingId, setRotatingId] = useState<string | null>(null)
 
   useEffect(() => {
     void (async () => {
@@ -149,6 +151,20 @@ export function Devices({ status }: Props) {
       setError(e instanceof Error ? e.message : 'Create failed')
     } finally {
       setBusy(false)
+    }
+  }
+
+  const onRotate = async (id: string) => {
+    setRotatingId(id)
+    setError(null)
+    try {
+      const row = await rotateApiKey(id)
+      setCreated(row)
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Rotate failed')
+    } finally {
+      setRotatingId(null)
     }
   }
 
@@ -395,16 +411,29 @@ export function Devices({ status }: Props) {
                             </button>
                           </span>
                         ) : (
-                          <button
-                            type="button"
-                            className="btn btn-ghost btn-sm key-delete-trigger"
-                            disabled={busy || deletingId != null}
-                            onClick={() => setConfirmDeleteId(k.id)}
-                            aria-label={`Delete API key ${k.name}`}
-                          >
-                            <Trash2 size={15} />
-                            {deletingId === k.id ? 'Deleting…' : 'Delete'}
-                          </button>
+                          <span style={{ display: 'inline-flex', gap: '0.3rem' }}>
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-sm"
+                              disabled={busy || deletingId != null || rotatingId != null}
+                              onClick={() => void onRotate(k.id)}
+                              aria-label={`Rotate API key ${k.name}`}
+                              title="Generate a new secret for this key"
+                            >
+                              <RotateCcw size={14} />
+                              {rotatingId === k.id ? 'Rotating…' : 'Rotate'}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-sm key-delete-trigger"
+                              disabled={busy || deletingId != null || rotatingId != null}
+                              onClick={() => setConfirmDeleteId(k.id)}
+                              aria-label={`Delete API key ${k.name}`}
+                            >
+                              <Trash2 size={15} />
+                              {deletingId === k.id ? 'Deleting…' : 'Delete'}
+                            </button>
+                          </span>
                         )}
                       </td>
                     </tr>

@@ -66,3 +66,12 @@ export async function deleteApiKey(id: string): Promise<void> {
 
 /** @deprecated use deleteApiKey */
 export const revokeApiKey = deleteApiKey
+
+export async function rotateApiKey(id: string): Promise<CreateApiKeyResult> {
+  const res = await fetch(`${apiBase}/v1/api-keys/${id}/rotate`, {
+    method: 'POST',
+    headers: await authHeaders(),
+  })
+  if (!res.ok) await parseApiError(res, 'Could not rotate API key')
+  return res.json() as Promise<CreateApiKeyResult>
+}

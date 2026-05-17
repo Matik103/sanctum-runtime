@@ -1,4 +1,6 @@
 import cors from '@fastify/cors'
+import helmet from '@fastify/helmet'
+import rateLimit from '@fastify/rate-limit'
 import websocket from '@fastify/websocket'
 import { RuntimeEngine } from '@sanctum/runtime-engine'
 import { ActionRequestSchema } from '@sanctum-runtime/sdk'
@@ -38,7 +40,11 @@ const runtime = new RuntimeEngine({
   forceOfflineMode: forceOffline,
 })
 
-const app = Fastify({ logger: true })
+const app = Fastify({
+  logger: true,
+  bodyLimit: 512 * 1024, // 512 KB
+  genReqId: () => crypto.randomUUID(),
+})
 
 const corsOrigins = new Set([
   dashboardUrl,
@@ -54,7 +60,36 @@ await app.register(cors, {
     cb(null, corsOrigins.has(origin))
   },
   methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Sanctum-Key'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Sanctum-Key', 'X-Request-Id'],
+  exposedHeaders: ['X-Request-Id', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
+})
+
+await app.register(helmet, {
+  contentSecurityPolicy: false,         // API, not serving HTML
+  crossOriginResourcePolicy: false,     // CORS plugin handles this
+  crossOriginOpenerPolicy: false,
+  crossOriginEmbedderPolicy: false,
+})
+
+await app.register(rateLimit, {
+  global: true,
+  max: 120,
+  timeWindow: '1 minute',
+  allowList: ['127.0.0.1', '::1'],
+  keyGenerator: (req) => {
+    const fwd = req.headers['x-forwarded-for']
+    const ip = Array.isArray(fwd) ? fwd[0] : (typeof fwd === 'string' ? fwd.split(',')[0].trim() : req.ip)
+    return ip ?? req.ip
+  },
+  errorResponseBuilder: () => ({
+    error: 'rate_limit_exceeded',
+    hint: 'Too many requests — back off and retry',
+  }),
+})
+
+// Echo request ID in responses for traceability
+app.addHook('onSend', async (req, reply) => {
+  reply.header('X-Request-Id', req.id)
 })
 
 app.setErrorHandler((err, _req, reply) => {
@@ -72,9 +107,11 @@ app.setErrorHandler((err, _req, reply) => {
   })
 })
 
+const AUTH_BYPASS = new Set(['/health', '/', '/metrics', '/v1/billing/webhook'])
+
 app.addHook('onRequest', async (req, reply) => {
   const path = req.url.split('?')[0]
-  if (path === '/health' || path === '/') return
+  if (AUTH_BYPASS.has(path)) return
 
   const auth = await authenticateRequest(req.headers, {
     supabase: supabaseAuth,
@@ -249,8 +286,9 @@ app.post('/v1/policies/import.yaml', async (req) => {
 app.get('/v1/webhooks/status', async () => runtime.getWebhookStatus())
 
 app.get('/v1/audit', async (req) => {
-  const limit = Number((req.query as { limit?: string }).limit ?? 50)
-  const orgId = (req.query as { org_id?: string }).org_id
+  const q = req.query as { limit?: string; org_id?: string }
+  const limit = Math.min(500, Math.max(1, Number(q.limit ?? 50) || 50))
+  const orgId = q.org_id
   return runtime.listAudit(limit, orgId)
 })
 
@@ -373,6 +411,31 @@ app.post('/analyze-action', async (req) => {
     anomalyFlags: result.anomalyFlags,
     offlineMode: result.offlineMode,
   }
+})
+
+// Prometheus-format metrics (no auth — safe for scraping)
+app.get('/metrics', async (_req, reply) => {
+  const status = await runtime.getStatus()
+  const policies = runtime.getPolicyEngine().getPolicies()
+  const policyCount = Object.keys(policies).length
+  const lines = [
+    '# HELP sanctum_audit_entries_total Total audit entries in memory',
+    '# TYPE sanctum_audit_entries_total gauge',
+    `sanctum_audit_entries_total ${status.auditCount}`,
+    '# HELP sanctum_policies_total Active policy count',
+    '# TYPE sanctum_policies_total gauge',
+    `sanctum_policies_total ${policyCount}`,
+    '# HELP sanctum_ws_connections_active Active WebSocket runtime connections',
+    '# TYPE sanctum_ws_connections_active gauge',
+    `sanctum_ws_connections_active ${runtimeWsHub.connectedCount()}`,
+    '# HELP sanctum_risk_model_up Risk model connectivity (1=up 0=down)',
+    '# TYPE sanctum_risk_model_up gauge',
+    `sanctum_risk_model_up ${(status.riskModelConnected || status.ollamaConnected) ? 1 : 0}`,
+    '# HELP sanctum_runtime_up Runtime engine status (1=online 0=offline)',
+    '# TYPE sanctum_runtime_up gauge',
+    `sanctum_runtime_up ${status.runtimeOnline ? 1 : 0}`,
+  ]
+  return reply.type('text/plain; version=0.0.4; charset=utf-8').send(lines.join('\n') + '\n')
 })
 
 try {

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 import { ActionDrawer } from './components/ActionDrawer'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { ReviewQueueBanner, summarizePendingActions } from './components/ReviewQueueBanner'
 import { VerificationModal } from './components/VerificationModal'
 import { useDashboard } from './hooks/useDashboard'
@@ -45,6 +46,7 @@ export function App() {
       <Sidebar page={page} onPage={setPage} status={status} />
 
       <MainCanvas>
+        <ErrorBoundary>
         {apiError && (
           <div className="alert alert--error" role="alert">
             <div className="alert__body">
@@ -90,6 +92,7 @@ export function App() {
         {page === 'audit' && <AuditLogs audit={audit} onSelect={onSelect} />}
         {page === 'billing' && <Billing />}
         {page === 'settings' && <Settings status={status} />}
+        </ErrorBoundary>
       </MainCanvas>
 
       <ActionDrawer entry={selected} onClose={() => setSelected(null)} />

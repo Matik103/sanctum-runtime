@@ -1,3 +1,4 @@
+import { createHmac, timingSafeEqual } from 'crypto'
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { getSupabaseAuthConfig, createSupabaseAdmin } from './auth.js'
@@ -187,5 +188,109 @@ export async function registerBillingRoutes(app: FastifyInstance) {
       priceMonthlyUsd: PLAN_DEFAULTS[body.plan_id as PlanId].priceMonthlyUsd,
       message: checkoutUrl ? null : 'Paddle not configured — contact billing@sanctum.run',
     }
+  })
+
+  // POST /v1/billing/webhook — Paddle inbound webhook (no auth, signature-verified)
+  app.post('/v1/billing/webhook', {
+    config: { rawBody: true },
+  }, async (req, reply) => {
+    const secret = process.env.PADDLE_WEBHOOK_SECRET
+    if (!secret) {
+      app.log.warn('[billing/webhook] PADDLE_WEBHOOK_SECRET not set — skipping signature check')
+    } else {
+      // Paddle Billing signature: "ts=<epoch>;h1=<hmac>"
+      const sigHeader = req.headers['paddle-signature'] as string | undefined
+      if (!sigHeader) return reply.status(401).send({ error: 'missing_signature' })
+
+      const parts = Object.fromEntries(sigHeader.split(';').map((p) => p.split('=')))
+      const ts = parts['ts']
+      const h1 = parts['h1']
+      if (!ts || !h1) return reply.status(401).send({ error: 'malformed_signature' })
+
+      // Reject stale webhooks (>5 min)
+      if (Math.abs(Date.now() / 1000 - Number(ts)) > 300) {
+        return reply.status(401).send({ error: 'stale_webhook' })
+      }
+
+      const rawBody = (req as { rawBody?: Buffer }).rawBody ?? Buffer.from(JSON.stringify(req.body))
+      const expected = createHmac('sha256', secret)
+        .update(`${ts}:${rawBody.toString('utf8')}`)
+        .digest('hex')
+
+      try {
+        if (!timingSafeEqual(Buffer.from(h1, 'hex'), Buffer.from(expected, 'hex'))) {
+          return reply.status(401).send({ error: 'invalid_signature' })
+        }
+      } catch {
+        return reply.status(401).send({ error: 'invalid_signature' })
+      }
+    }
+
+    const event = req.body as Record<string, unknown>
+    const eventType = event['event_type'] as string | undefined
+    app.log.info({ eventType }, '[billing/webhook] received')
+
+    // Extract org_id from Paddle passthrough / custom_data
+    const customData = (event['data'] as Record<string, unknown>)?.['custom_data'] as Record<string, unknown> | undefined
+    const passthrough = customData?.['org_id'] as string | undefined
+
+    if (!passthrough) {
+      return reply.status(200).send({ ok: true, note: 'no org_id in custom_data — skipped' })
+    }
+
+    const admin = createSupabaseAdmin(cfg)
+
+    const PLAN_MAP: Record<string, PlanId> = {
+      'subscription.activated': 'operator',  // default; overridden by product mapping below
+      'subscription.updated': 'operator',
+      'subscription.cancelled': 'free',
+      'subscription.paused': 'free',
+    }
+
+    // Map Paddle price/product IDs to plan IDs
+    const priceId = (event['data'] as Record<string, unknown>)?.['items'] as unknown
+    let planId: PlanId | null = null
+
+    const productIdMap: Record<string, PlanId> = {
+      [process.env.PADDLE_PRODUCT_OPERATOR ?? '__none__']: 'operator',
+      [process.env.PADDLE_PRODUCT_TEAM ?? '__none__']: 'team',
+      [process.env.PADDLE_PRODUCT_ENTERPRISE ?? '__none__']: 'enterprise',
+    }
+
+    if (Array.isArray(priceId)) {
+      for (const item of priceId as Record<string, unknown>[]) {
+        const pid = item['price']?.['product_id'] as string | undefined
+        if (pid && productIdMap[pid]) {
+          planId = productIdMap[pid]
+          break
+        }
+      }
+    }
+    if (!planId && eventType && PLAN_MAP[eventType]) planId = PLAN_MAP[eventType]
+
+    if (planId) {
+      const subscriptionId = (event['data'] as Record<string, unknown>)?.['id'] as string | undefined
+      const customerId = (event['data'] as Record<string, unknown>)?.['customer_id'] as string | undefined
+
+      const { error } = await admin
+        .from('org_plans')
+        .upsert({
+          org_id: passthrough,
+          plan_id: planId,
+          paddle_subscription_id: subscriptionId ?? null,
+          paddle_customer_id: customerId ?? null,
+          billing_cycle_anchor: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'org_id' })
+
+      if (error) {
+        app.log.error({ err: error }, '[billing/webhook] upsert failed')
+        return reply.status(500).send({ error: 'db_error' })
+      }
+
+      app.log.info({ orgId: passthrough, planId }, '[billing/webhook] plan updated')
+    }
+
+    return reply.status(200).send({ ok: true })
   })
 }

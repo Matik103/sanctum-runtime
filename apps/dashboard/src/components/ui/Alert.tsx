@@ -1,12 +1,13 @@
-import { AlertCircle, CheckCircle2, Info } from 'lucide-react'
+import { AlertCircle, AlertTriangle, CheckCircle2, Info } from 'lucide-react'
 import type { ReactNode } from 'react'
 
-type Variant = 'error' | 'success' | 'info'
+type Variant = 'error' | 'success' | 'info' | 'warn'
 
 const icons = {
   error: AlertCircle,
   success: CheckCircle2,
   info: Info,
+  warn: AlertTriangle,
 }
 
 type Props = {

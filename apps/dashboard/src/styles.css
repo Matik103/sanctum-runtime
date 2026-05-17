@@ -803,6 +803,15 @@ table.data td.audit-record-cell {
   color: #93b4ff;
 }
 
+.alert--warn {
+  background: color-mix(in srgb, var(--warning, #f59e0b) 12%, transparent);
+  border-color: color-mix(in srgb, var(--warning, #f59e0b) 35%, transparent);
+}
+
+.alert--warn .alert__icon {
+  color: var(--warning, #f59e0b);
+}
+
 .tab-bar {
   display: flex;
   flex-wrap: wrap;
