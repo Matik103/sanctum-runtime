@@ -84,6 +84,10 @@ export function Policies({
       setError('Enter an action name (e.g. deploy_model, acme:transfer_funds)')
       return
     }
+    if (!/^[a-zA-Z0-9_.:@/-]+$/.test(action)) {
+      setError('Action name can only contain letters, numbers, and _ . : @ / -')
+      return
+    }
     setAdding(true)
     setError(null)
     try {

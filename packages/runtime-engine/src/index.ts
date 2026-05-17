@@ -274,9 +274,6 @@ export class RuntimeEngine {
     } else if (policyEval.violations.includes('policy_actor_not_allowed')) {
       decision = 'BLOCKED'
       risk = 'high'
-    } else if (anomalyFlags.includes('suspicious_prompt_pattern')) {
-      decision = 'BLOCKED'
-      risk = 'high'
     } else if (!useHeuristicsOnly && this.riskModel) {
       const RISK_MODEL_TIMEOUT_MS = 15_000
       const timeoutError = new Promise<never>((_, reject) =>
@@ -309,6 +306,11 @@ export class RuntimeEngine {
         })
       } else {
         evaluationMode = 'offline_model_failed'
+        if (error === 'risk_model_timeout') {
+          console.warn('[sanctum] Risk model timed out after 15s — falling back to heuristics. Check model connectivity.')
+        } else if (error) {
+          console.error(`[sanctum] Risk model error: ${error}`)
+        }
         modelReason = error ? `Risk model error: ${error}` : undefined
 
         decision = resolveDecision({

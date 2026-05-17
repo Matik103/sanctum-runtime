@@ -14,11 +14,16 @@ export function resolveDecision(options: {
   }
 
   if (anomalyFlags.includes('suspicious_prompt_pattern')) {
-    return 'BLOCKED'
+    // Require human review rather than silent hard-block; autoBlock overrides.
+    return policy.autoBlock ? 'BLOCKED' : 'REQUIRE_VERIFICATION'
   }
 
-  if (anomalyFlags.includes('unsafe_command_chain') && policy.autoBlock) {
-    return 'BLOCKED'
+  if (
+    anomalyFlags.includes('unsafe_command_chain') ||
+    anomalyFlags.includes('rapid_repeat_action') ||
+    anomalyFlags.includes('privilege_escalation_chain')
+  ) {
+    return policy.autoBlock ? 'BLOCKED' : 'REQUIRE_VERIFICATION'
   }
 
   if (

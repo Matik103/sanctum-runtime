@@ -152,11 +152,39 @@ if (supabaseAuth) {
 
 app.get('/health', async () => {
   const status = await runtime.getStatus()
+  const webhookStatus = runtime.getWebhookStatus()
+
+  let supabaseOk: boolean | null = null
+  if (supabaseAuth) {
+    try {
+      const { createSupabaseAdmin } = await import('./auth.js')
+      const admin = createSupabaseAdmin(supabaseAuth)
+      const { error } = await admin.from('organizations').select('id').limit(1)
+      supabaseOk = !error
+    } catch {
+      supabaseOk = false
+    }
+  }
+
   return {
     ok: status.runtimeOnline,
-    ollama: status.ollamaConnected,
-    auditCount: status.auditCount,
-    policyCount: status.policyCount,
+    riskModel: {
+      provider: status.riskProvider,
+      connected: status.riskModelConnected,
+      endpoint: status.riskEndpoint ?? null,
+    },
+    audit: {
+      count: status.auditCount,
+      supabaseConfigured: status.supabaseConfigured,
+    },
+    policies: {
+      count: status.policyCount,
+    },
+    supabase: supabaseOk,
+    webhooks: {
+      configured: webhookStatus.configured,
+      urlCount: webhookStatus.urlCount,
+    },
     wsConnections: runtimeWsHub.connectedCount(),
   }
 })

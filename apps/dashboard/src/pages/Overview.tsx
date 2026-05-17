@@ -25,9 +25,14 @@ export function Overview({
   const approved = audit.filter((e) => e.decision === 'APPROVED').length
   const blocked = audit.filter((e) => e.decision === 'BLOCKED').length
   const verify = audit.filter((e) => e.decision === 'REQUIRE_VERIFICATION').length
-  const threats = audit.filter(
-    (e) => e.decision !== 'APPROVED' || e.anomalyFlags.length > 0,
+  // Threats = blocked + held for review + approved-but-anomalous (flagged actions)
+  const blockedOrHeld = audit.filter(
+    (e) => e.decision === 'BLOCKED' || e.decision === 'REQUIRE_VERIFICATION',
   ).length
+  const flagged = audit.filter(
+    (e) => e.decision === 'APPROVED' && e.anomalyFlags.length > 0,
+  ).length
+  const threats = blockedOrHeld + flagged
   const hasThreat = threats > 0
   const bars = sparkBars(audit)
 
@@ -39,9 +44,13 @@ export function Overview({
           <p>Verify agent actions, fleet telemetry, and audit — before they execute</p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <span className="pill ok">
-            <span className="status-dot ok" style={{ marginRight: 0 }} aria-hidden />
-            Runtime online
+          <span className={`pill ${status?.runtimeOnline === false ? 'warn' : 'ok'}`}>
+            <span
+              className={`status-dot ${status?.runtimeOnline === false ? 'warn' : 'ok'}`}
+              style={{ marginRight: 0 }}
+              aria-hidden
+            />
+            {status === null ? 'Connecting…' : status.runtimeOnline ? 'Runtime online' : 'Runtime offline'}
           </span>
           <span className="pill" title="Open-source runtime preview">
             v0.1
@@ -97,7 +106,9 @@ export function Overview({
         <div className={`card ${hasThreat ? 'glow-danger' : ''}`}>
           <div className="card-label">Threat activity</div>
           <div className="card-value">{threats}</div>
-          <div className="card-meta">Suspicious or held actions in log</div>
+          <div className="card-meta">
+            {blockedOrHeld} blocked/held · {flagged} flagged approved
+          </div>
         </div>
 
         <div className="card">

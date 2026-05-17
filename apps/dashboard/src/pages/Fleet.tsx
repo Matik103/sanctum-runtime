@@ -166,6 +166,12 @@ export function Fleet() {
       setDispatchMsg('Select an organization first')
       return
     }
+    const cmd = dispatchCmd.trim()
+    if (!cmd) {
+      setDispatchMsg('Enter a command first')
+      return
+    }
+    if (!window.confirm(`Dispatch "${cmd}" to all matching runtimes in org ${mapOrgId}?`)) return
     try {
       const res = await dispatchFleetCommand({
         organizationId: mapOrgId,

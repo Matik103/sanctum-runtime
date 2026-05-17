@@ -18,6 +18,7 @@ export class AuditStore {
   async append(entry: AuditEntry): Promise<void> {
     this.entries.unshift(entry)
     if (this.entries.length > 500) {
+      console.warn('[sanctum] Audit in-memory cap reached (500). Oldest entries are being dropped. Consider enabling Supabase for persistent audit storage.')
       this.entries = this.entries.slice(0, 500)
     }
     await mkdir(dirname(this.logPath), { recursive: true })

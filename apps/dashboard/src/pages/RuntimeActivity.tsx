@@ -42,6 +42,12 @@ export function RuntimeActivity({ audit, onSelect }: Props) {
         </div>
       </header>
 
+      <div style={{ padding: '0.4rem 0 0.75rem', fontSize: '0.8rem', color: 'var(--muted)' }}>
+        {rows.length === audit.length
+          ? `${audit.length} event${audit.length !== 1 ? 's' : ''}`
+          : `${rows.length} of ${audit.length} events`}
+      </div>
+
       <div className="toolbar">
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
           <input

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Loader2, Package } from 'lucide-react'
 import { Alert } from '../components/ui/Alert'
 import { EmptyState } from '../components/ui/EmptyState'
@@ -21,7 +21,18 @@ export function Marketplace() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [busySlug, setBusySlug] = useState<string | null>(null)
+  const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const loadingRef = useRef(false)
+
+  const categories = useMemo(() => {
+    const cats = Array.from(new Set(packages.map((p) => p.category).filter(Boolean))).sort()
+    return cats
+  }, [packages])
+
+  const visiblePackages = useMemo(() => {
+    if (categoryFilter === 'all') return packages
+    return packages.filter((p) => p.category === categoryFilter)
+  }, [packages, categoryFilter])
 
   useEffect(() => {
     void (async () => {
@@ -173,8 +184,30 @@ export function Marketplace() {
           }
         />
       ) : (
+        <>
+          {categories.length > 1 && (
+            <div className="toolbar" style={{ marginBottom: '1rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className={`chip ${categoryFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setCategoryFilter('all')}
+              >
+                All ({packages.length})
+              </button>
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  className={`chip ${categoryFilter === cat ? 'active' : ''}`}
+                  onClick={() => setCategoryFilter(cat)}
+                >
+                  {cat} ({packages.filter((p) => p.category === cat).length})
+                </button>
+              ))}
+            </div>
+          )}
         <div className="policy-grid">
-          {packages.map((pkg) => {
+          {visiblePackages.map((pkg) => {
             const busy = busySlug === pkg.slug
             const installed = pkg.installed
             return (
@@ -243,6 +276,7 @@ export function Marketplace() {
             )
           })}
         </div>
+        </>
       )}
     </>
   )

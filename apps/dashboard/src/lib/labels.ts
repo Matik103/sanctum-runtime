@@ -58,6 +58,8 @@ const ANOMALY_LABELS: Record<string, string> = {
   owner_absent_or_sleeping: 'Owner vulnerable',
   suspicious_prompt_pattern: 'Prompt injection',
   unsafe_command_chain: 'Unsafe escalation',
+  rapid_repeat_action: 'Rapid repeat',
+  privilege_escalation_chain: 'Privilege escalation',
   high_value_transfer: 'High-value transfer',
 }
 
