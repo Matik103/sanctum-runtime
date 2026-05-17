@@ -9,6 +9,7 @@ import {
   User,
   Zap,
 } from 'lucide-react'
+import { docsUrl } from '../lib/site-links'
 import { getSupabase } from '../lib/supabase'
 import '../styles/auth.css'
 
@@ -307,7 +308,7 @@ export function Login() {
       <footer className="auth-footer">
         Sanctum Runtime · Trusted execution layer ·{' '}
         <a
-          href="https://github.com/Matik103/sanctum-runtime"
+          href={docsUrl}
           target="_blank"
           rel="noreferrer"
           style={{ color: '#93b4ff' }}

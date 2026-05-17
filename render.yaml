@@ -45,6 +45,10 @@ services:
     envVars:
       - key: VITE_SANCTUM_API_URL
         value: https://sanctum-api-6zgy.onrender.com
+      - key: VITE_DOCS_URL
+        value: https://www.sanctumruntime.com/docs
+      - key: VITE_MARKETING_URL
+        value: https://www.sanctumruntime.com
       - key: VITE_SUPABASE_URL
         value: https://nimvcudvrhanxlcpiizz.supabase.co
       - key: VITE_SUPABASE_ANON_KEY
