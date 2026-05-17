@@ -295,15 +295,15 @@ async function generateSoc2Report(
         .eq('org_id', orgId)
         .then((r) => r.count ?? 0),
 
-      // Pending approvals (governance table)
-      admin
-        .from('pending_approvals')
-        .select('id', { count: 'exact', head: true })
-        .eq('org_id', orgId)
-        .gte('created_at', start)
-        .lte('created_at', end)
-        .then((r) => r.count ?? 0)
-        .catch(() => 0 as number),
+      // Pending approvals (governance table — may not exist yet, so swallow errors)
+      Promise.resolve(
+        admin
+          .from('pending_approvals')
+          .select('id', { count: 'exact', head: true })
+          .eq('org_id', orgId)
+          .gte('created_at', start)
+          .lte('created_at', end),
+      ).then((r) => r.count ?? 0).catch(() => 0 as number),
     ])
 
   const criteria: Soc2CriterionStatus[] = [
