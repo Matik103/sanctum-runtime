@@ -23,6 +23,11 @@ const attestationSchema = z
     hostname: z.string().max(255).optional(),
     sdkVersion: z.string().max(32).optional(),
     runtimeKind: z.string().max(64).optional(),
+    nodeVersion: z.string().max(32).optional(),
+    cpuCount: z.number().int().min(1).max(1024).optional(),
+    totalMemoryMb: z.number().int().min(0).optional(),
+    containerEnv: z.string().max(32).optional(),
+    cloudProvider: z.string().max(32).optional(),
     hardware: hardwareSchema.optional(),
   })
   .optional()
@@ -34,6 +39,15 @@ type SanctumReq = FastifyRequest & {
 function headerKey(req: FastifyRequest): string | undefined {
   const v = req.headers['x-sanctum-key']
   return Array.isArray(v) ? v[0] : v
+}
+
+function extractIp(req: FastifyRequest): string | undefined {
+  const fwd = req.headers['x-forwarded-for']
+  const xff = Array.isArray(fwd) ? fwd[0] : fwd
+  if (xff) return xff.split(',')[0].trim()
+  const real = req.headers['x-real-ip']
+  if (real) return Array.isArray(real) ? real[0] : real
+  return (req.ip as string | undefined) || undefined
 }
 
 /** null = unrestricted (legacy env key); [] = no org access */
@@ -99,12 +113,13 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
     }
     if (!assertOrgAllowed(scope, orgId, reply)) return
 
+    const ip = extractIp(req)
     const runtime = await store.connectRuntime({
       orgId,
       name: body.runtimeName,
       fingerprint: body.fingerprint ?? defaultFingerprint(),
       mode: body.mode,
-      metadata: body.metadata,
+      metadata: { ...body.metadata, ...(ip ? { lastIp: ip } : {}) },
       telemetry: body.telemetry,
       activeModel: body.activeModel,
       currentTask: body.currentTask,
@@ -168,8 +183,9 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
     if (!assertOrgAllowed(scope, orgId, reply)) return
 
     try {
+      const ip = extractIp(req)
       const runtime = await store.heartbeat(runtimeId, {
-        telemetry: body.telemetry,
+        telemetry: { ...(body.telemetry ?? {}), ...(ip ? { lastIp: ip } : {}) },
         currentTask: body.currentTask,
         activeModel: body.activeModel,
         status: body.status,

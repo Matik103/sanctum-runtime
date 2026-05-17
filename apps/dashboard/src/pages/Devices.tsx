@@ -33,6 +33,40 @@ function runtimeStatusBadge(status: string) {
   return 'neutral'
 }
 
+function DeviceDetails({ runtime: r }: { runtime: import('../lib/fleet').FleetRuntime }) {
+  const report = (r.attestation_report ?? {}) as Record<string, unknown>
+  const tel = (r.telemetry ?? {}) as Record<string, unknown>
+
+  const items: [string, string][] = []
+  if (report.hostname) items.push(['Host', String(report.hostname)])
+  if (report.platform) items.push(['OS', String(report.platform)])
+  if (report.arch) items.push(['Arch', String(report.arch)])
+  if (report.nodeVersion) items.push(['Node', String(report.nodeVersion)])
+  if (report.runtimeKind && report.runtimeKind !== 'node') items.push(['Runtime', String(report.runtimeKind)])
+  if (typeof report.cpuCount === 'number') items.push(['CPUs', String(report.cpuCount)])
+  if (typeof report.totalMemoryMb === 'number') {
+    const gb = report.totalMemoryMb >= 1024
+      ? `${(report.totalMemoryMb / 1024).toFixed(1)} GB`
+      : `${report.totalMemoryMb} MB`
+    items.push(['RAM', gb])
+  }
+  if (report.containerEnv && report.containerEnv !== 'none') items.push(['Container', String(report.containerEnv)])
+  if (report.cloudProvider && report.cloudProvider !== 'none') items.push(['Cloud', String(report.cloudProvider)])
+  if (typeof tel.lastIp === 'string') items.push(['IP', tel.lastIp])
+  if (typeof r.metadata?.lastIp === 'string' && !tel.lastIp) items.push(['IP', String(r.metadata.lastIp)])
+
+  if (items.length === 0) return null
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.75rem', marginTop: '0.5rem', paddingTop: '0.4rem', borderTop: '1px solid var(--border)' }}>
+      {items.map(([label, value]) => (
+        <span key={label} style={{ fontSize: '0.73rem', color: 'var(--muted)' }}>
+          <strong style={{ color: 'var(--text-secondary, var(--text))' }}>{label}</strong>{' '}{value}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 export function Devices({ status }: Props) {
   const modelOnline = status?.riskModelConnected ?? status?.ollamaConnected ?? false
   const [keys, setKeys] = useState<ApiKeyRecord[]>([])
@@ -237,6 +271,7 @@ export function Devices({ status }: Props) {
                       {r.current_task}
                     </p>
                   )}
+                  <DeviceDetails runtime={r} />
                   <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem', color: 'var(--muted)' }}>
                     Last seen{' '}
                     {r.last_seen_at ? new Date(r.last_seen_at).toLocaleString() : '—'}

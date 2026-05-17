@@ -35,6 +35,7 @@ export type FleetRuntime = {
   deployment_group_id: string | null
   current_task: string | null
   active_model: string | null
+  metadata: Record<string, unknown>
   telemetry: Record<string, unknown>
   last_seen_at: string | null
 }

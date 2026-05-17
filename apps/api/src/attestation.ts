@@ -12,6 +12,11 @@ export type AttestationReport = {
   hostname?: string
   sdkVersion?: string
   runtimeKind?: string
+  nodeVersion?: string
+  cpuCount?: number
+  totalMemoryMb?: number
+  containerEnv?: string
+  cloudProvider?: string
   hardware?: HardwareAttestationInput
 }
 
