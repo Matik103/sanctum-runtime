@@ -47,24 +47,34 @@ export async function applyMarketplacePolicyTemplates(
   return applied
 }
 
-/** Remove policies recorded on install (best-effort). */
+/** Remove policies recorded on install (best-effort, no full-map Supabase upsert). */
 export async function removeMarketplacePolicyTemplates(
   runtime: RuntimeEngine,
   policyKeys: string[],
 ): Promise<void> {
-  const engine = runtime.getPolicyEngine()
-  for (const key of policyKeys) {
-    if (!key.includes(':')) continue
-    try {
-      await engine.deletePolicy(key)
-    } catch {
-      /* already removed */
-    }
-  }
+  if (policyKeys.length === 0) return
+  await runtime.removePolicyKeys(policyKeys)
 }
 
 export function policyKeysFromInstallConfig(config: Record<string, unknown> | undefined): string[] {
   const raw = config?.appliedPolicyKeys
   if (!Array.isArray(raw)) return []
   return raw.filter((k): k is string => typeof k === 'string' && k.includes(':'))
+}
+
+/** Keys from install record, or rebuild from catalog templates for legacy installs. */
+export function policyKeysForUninstall(
+  orgId: string,
+  config: Record<string, unknown> | undefined,
+  templates: unknown[],
+): string[] {
+  const stored = policyKeysFromInstallConfig(config)
+  if (stored.length > 0) return stored
+  const keys: string[] = []
+  for (const raw of templates ?? []) {
+    if (!raw || typeof raw !== 'object') continue
+    const action = String((raw as { action?: unknown }).action ?? '').trim()
+    if (action) keys.push(`${orgId}:${action}`)
+  }
+  return keys
 }

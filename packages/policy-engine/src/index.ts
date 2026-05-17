@@ -41,7 +41,11 @@ export class PolicyEngine {
   }
 
   private async persist(): Promise<void> {
-    await savePoliciesToDisk(this.policies, this.dataDir)
+    try {
+      await savePoliciesToDisk(this.policies, this.dataDir)
+    } catch (err) {
+      console.error('[sanctum] policy disk persist failed:', err)
+    }
     await this.afterPersist?.(this.policies)
   }
 
@@ -61,9 +65,18 @@ export class PolicyEngine {
     return this.updatePolicy(action, policy)
   }
 
+  /** Drop a policy from memory only (no disk / cloud sync). */
+  forgetPolicy(action: string): void {
+    delete this.policies[action]
+  }
+
   async deletePolicy(action: string): Promise<PolicyMap> {
     delete this.policies[action]
-    await this.persist()
+    try {
+      await savePoliciesToDisk(this.policies, this.dataDir)
+    } catch (err) {
+      console.error('[sanctum] policy disk persist failed:', err)
+    }
     await this.onDelete?.(action)
     return this.getPolicies()
   }

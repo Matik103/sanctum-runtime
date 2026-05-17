@@ -208,6 +208,25 @@ export class RuntimeEngine {
     }
   }
 
+  /** Remove org-scoped keys without re-upserting the full policy map (marketplace uninstall). */
+  async removePolicyKeys(keys: string[]): Promise<void> {
+    const engine = this.policyEngine
+    for (const key of keys) {
+      if (!key.includes(':')) continue
+      engine.forgetPolicy(key)
+      try {
+        await deletePolicyFromSupabase(key)
+      } catch (err) {
+        console.error(`[sanctum] remove policy ${key} failed:`, err)
+      }
+    }
+    try {
+      await engine.persistToDisk()
+    } catch (err) {
+      console.error('[sanctum] policy disk persist after batch remove failed:', err)
+    }
+  }
+
   getPoliciesForOrg(orgId: string): PolicyMap {
     const prefix = `${orgId}:`
     const scoped: PolicyMap = {}

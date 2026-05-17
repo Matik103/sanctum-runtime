@@ -5,7 +5,7 @@ import { getSupabaseAuthConfig } from './auth.js'
 import { ControlPlaneStore } from './control-plane-store.js'
 import {
   applyMarketplacePolicyTemplates,
-  policyKeysFromInstallConfig,
+  policyKeysForUninstall,
   removeMarketplacePolicyTemplates,
 } from './marketplace-policies.js'
 import { MarketplaceStore } from './marketplace-store.js'
@@ -190,21 +190,34 @@ export async function registerMarketplaceRoutes(
     if (!assertOrgAllowed(scope, orgId, reply)) return
 
     const installRow = await market.getInstallRecord(orgId, slug)
-    const policyKeys = policyKeysFromInstallConfig(
-      (installRow?.install.config as Record<string, unknown> | undefined) ?? undefined,
+    if (!installRow) return reply.status(404).send({ error: 'not_installed' })
+
+    const policyKeys = policyKeysForUninstall(
+      orgId,
+      (installRow.install.config as Record<string, unknown> | undefined) ?? undefined,
+      installRow.package.policy_templates,
     )
+
+    await store.ensureOrg(orgId)
+
+    try {
+      await removeMarketplacePolicyTemplates(runtime, policyKeys)
+    } catch (e) {
+      req.log.warn({ err: e, slug, orgId }, 'marketplace policy cleanup failed')
+    }
 
     const removed = await market.uninstall(orgId, slug)
     if (!removed) return reply.status(404).send({ error: 'not_installed' })
 
-    if (policyKeys.length > 0) {
-      await removeMarketplacePolicyTemplates(runtime, policyKeys)
+    try {
+      await store.insertEvent({
+        orgId,
+        eventType: 'marketplace.uninstalled',
+        payload: { slug, policyKeysRemoved: policyKeys.length },
+      })
+    } catch (e) {
+      req.log.warn({ err: e, slug, orgId }, 'marketplace uninstalled event failed')
     }
-    await store.insertEvent({
-      orgId,
-      eventType: 'marketplace.uninstalled',
-      payload: { slug },
-    })
     return { ok: true }
   })
 
