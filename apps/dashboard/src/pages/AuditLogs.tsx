@@ -18,7 +18,8 @@ function download(filename: string, content: string, mime: string) {
 }
 
 function escapeCsv(value: string): string {
-  return `"${value.replace(/"/g, '""')}"`
+  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value
+  return `"${safe.replace(/"/g, '""')}"`
 }
 
 export function AuditLogs({ audit, onSelect }: Props) {
@@ -39,14 +40,14 @@ export function AuditLogs({ audit, onSelect }: Props) {
     ]
     const rows = audit.map((e) =>
       [
-        e.id,
-        e.actor,
-        e.action,
-        e.decision,
-        e.risk,
+        escapeCsv(e.id),
+        escapeCsv(e.actor),
+        escapeCsv(e.action),
+        escapeCsv(e.decision),
+        escapeCsv(e.risk ?? ''),
         escapeCsv(auditRecordText(e)),
         escapeCsv(e.reasoning),
-        e.timestamp,
+        escapeCsv(e.timestamp),
       ].join(','),
     )
     download('sanctum-audit.csv', [headers.join(','), ...rows].join('\n'), 'text/csv')

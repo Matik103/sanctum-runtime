@@ -78,7 +78,10 @@ export function Sidebar({ page, onPage, status }: Props) {
           {risk.label}
         </div>
         <div>
-          Runtime <strong style={{ color: 'var(--success)' }}>active</strong>
+          Runtime{' '}
+          <strong style={{ color: status?.runtimeOnline === false ? 'var(--danger)' : 'var(--success)' }}>
+            {status?.runtimeOnline === false ? 'offline' : 'active'}
+          </strong>
         </div>
         {isSupabaseConfigured && user && (
           <div style={{ marginTop: '0.75rem', fontSize: '0.78rem', color: 'var(--muted)' }}>

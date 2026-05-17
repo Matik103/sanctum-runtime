@@ -22,6 +22,9 @@ export function riskModelStatusLine(status: RuntimeStatus | null): {
   if (connected) {
     return { dot: 'ok', label: model ? `Risk model · ${model}` : 'Risk model connected' }
   }
+  if (provider === 'none') {
+    return { dot: 'ok', label: 'Offline mode · heuristics only' }
+  }
   if (provider === 'openai') {
     return { dot: 'warn', label: 'OpenAI disconnected' }
   }
@@ -37,6 +40,7 @@ export function riskModelMetaLine(status: RuntimeStatus | null): string {
   const model = status.riskModel ?? status.ollamaModel
   if (provider === 'openai') return model ? `OpenAI · ${model}` : 'OpenAI'
   if (provider === 'ollama') return model ? `Ollama · ${model}` : 'Ollama'
+  if (provider === 'none') return 'Offline mode · heuristics only'
   if (model) return model
   return 'Risk model not configured'
 }

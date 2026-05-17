@@ -46,6 +46,7 @@ export function Devices({ status }: Props) {
   const [created, setCreated] = useState<CreateApiKeyResult | null>(null)
   const [busy, setBusy] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   useEffect(() => {
     void (async () => {
@@ -117,6 +118,7 @@ export function Devices({ status }: Props) {
   }
 
   const onDelete = async (id: string) => {
+    setConfirmDeleteId(null)
     setDeletingId(id)
     setError(null)
     try {
@@ -344,16 +346,38 @@ export function Devices({ status }: Props) {
                       <td style={{ color: 'var(--muted)' }}>{formatDate(k.created_at)}</td>
                       <td style={{ color: 'var(--muted)' }}>{formatDate(k.last_used_at)}</td>
                       <td style={{ textAlign: 'right' }}>
-                        <button
-                          type="button"
-                          className="btn btn-ghost btn-sm key-delete-trigger"
-                          disabled={busy || deletingId != null}
-                          onClick={() => void onDelete(k.id)}
-                          aria-label={`Delete API key ${k.name}`}
-                        >
-                          <Trash2 size={15} />
-                          {deletingId === k.id ? 'Deleting…' : 'Delete'}
-                        </button>
+                        {confirmDeleteId === k.id ? (
+                          <span style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>Delete key?</span>
+                            <button
+                              type="button"
+                              className="btn btn-sm"
+                              style={{ background: 'var(--danger)', color: '#fff', border: 'none' }}
+                              disabled={deletingId != null}
+                              onClick={() => void onDelete(k.id)}
+                            >
+                              Yes, delete
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-sm"
+                              onClick={() => setConfirmDeleteId(null)}
+                            >
+                              Cancel
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-sm key-delete-trigger"
+                            disabled={busy || deletingId != null}
+                            onClick={() => setConfirmDeleteId(k.id)}
+                            aria-label={`Delete API key ${k.name}`}
+                          >
+                            <Trash2 size={15} />
+                            {deletingId === k.id ? 'Deleting…' : 'Delete'}
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}

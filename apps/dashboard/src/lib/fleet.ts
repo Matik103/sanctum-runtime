@@ -72,8 +72,9 @@ export async function fetchRuntimes(orgId?: string): Promise<FleetRuntime[]> {
   return res.json() as Promise<FleetRuntime[]>
 }
 
-export async function fetchFleetAgents(): Promise<FleetAgent[]> {
-  const res = await fetch(`${apiBase}/v1/agents`, { headers: await fleetHeaders() })
+export async function fetchFleetAgents(orgId?: string): Promise<FleetAgent[]> {
+  const q = orgId ? `?org_id=${encodeURIComponent(orgId)}` : ''
+  const res = await fetch(`${apiBase}/v1/agents${q}`, { headers: await fleetHeaders() })
   if (!res.ok) throw new Error(`Agents: ${res.status}`)
   return res.json() as Promise<FleetAgent[]>
 }

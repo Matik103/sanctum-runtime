@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { BarChart3, Settings2 } from 'lucide-react'
 import type { RuntimeStatus } from '@sanctum-runtime/sdk/browser'
 import { fetchMyOrgs, type FleetOrg } from '../lib/fleet'
+import { fetchOperatorContext } from '../lib/marketplace'
 import { riskModelMetaLine } from '../lib/risk-label'
 import { fetchUsage, usageMetricLabel, type UsageSummary } from '../lib/usage'
 
@@ -14,10 +15,17 @@ export function Settings({ status }: Props) {
   const [usageError, setUsageError] = useState<string | null>(null)
 
   useEffect(() => {
-    void fetchMyOrgs().then((list) => {
+    void (async () => {
+      let list = await fetchMyOrgs()
+      if (list.length === 0) {
+        const ctx = await fetchOperatorContext()
+        if (ctx?.defaultOrganizationId) {
+          list = [{ org_id: ctx.defaultOrganizationId, org_name: 'Workspace', role: 'owner' }]
+        }
+      }
       setOrgs(list)
       if (list[0]) setOrgId(list[0].org_id)
-    })
+    })()
   }, [])
 
   useEffect(() => {

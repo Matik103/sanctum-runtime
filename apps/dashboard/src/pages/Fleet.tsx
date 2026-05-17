@@ -21,6 +21,7 @@ import {
   type FleetOrg,
   type FleetRuntime,
 } from '../lib/fleet'
+import { fetchOperatorContext } from '../lib/marketplace'
 
 function statusBadge(status: string) {
   if (status === 'online') return 'success'
@@ -53,12 +54,17 @@ export function Fleet() {
   const [groupMsg, setGroupMsg] = useState<string | null>(null)
 
   useEffect(() => {
-    void fetchMyOrgs().then((list) => {
-      setOrgs(list)
-      if (list.length === 1) {
-        setOrgId(list[0].org_id)
+    void (async () => {
+      let list = await fetchMyOrgs()
+      if (list.length === 0) {
+        const ctx = await fetchOperatorContext()
+        if (ctx?.defaultOrganizationId) {
+          list = [{ org_id: ctx.defaultOrganizationId, org_name: 'Workspace', role: 'owner' }]
+        }
       }
-    })
+      setOrgs(list)
+      if (list.length >= 1) setOrgId(list[0].org_id)
+    })()
   }, [])
 
   const refresh = useCallback(async () => {
@@ -70,7 +76,7 @@ export function Fleet() {
       const [rt, ev, ag] = await Promise.all([
         fetchRuntimes(filter),
         fetchFleetEvents(80, filter),
-        fetchFleetAgents(),
+        fetchFleetAgents(filter),
       ])
       setRuntimes(rt)
       setEvents(ev)

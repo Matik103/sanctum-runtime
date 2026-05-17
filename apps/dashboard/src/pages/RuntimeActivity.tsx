@@ -43,12 +43,35 @@ export function RuntimeActivity({ audit, onSelect }: Props) {
       </header>
 
       <div className="toolbar">
-        <input
-          className="input"
-          placeholder="Search action, actor, context…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          <input
+            className="input"
+            placeholder="Search action, actor, context…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ paddingRight: search ? '2rem' : undefined }}
+          />
+          {search && (
+            <button
+              type="button"
+              aria-label="Clear search"
+              onClick={() => setSearch('')}
+              style={{
+                position: 'absolute',
+                right: '0.5rem',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--muted)',
+                fontSize: '1rem',
+                lineHeight: 1,
+                padding: 0,
+              }}
+            >
+              ×
+            </button>
+          )}
+        </div>
         {[
           ['all', 'All'],
           ['approved', 'Approved'],
