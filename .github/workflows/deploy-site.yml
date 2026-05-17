@@ -36,6 +36,10 @@ jobs:
 
       - name: Build site
         run: npm run build
+        env:
+          VITE_CONSOLE_URL: https://console.sanctumruntime.com/
+          VITE_MARKETING_URL: https://www.sanctumruntime.com/
+          VITE_GITHUB_URL: https://github.com/Matik103/sanctum-runtime
 
       - name: Deploy to Cloudflare
         uses: cloudflare/wrangler-action@v3

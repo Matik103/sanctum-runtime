@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import { docsPath, enterpriseAccessUrl, githubUrl, openCorePath, privacyUrl, quickstartPath } from "@/lib/site-links";
+import { consoleUrl, docsPath, enterpriseAccessUrl, githubUrl, openCorePath, privacyUrl } from "@/lib/site-links";
 import { ArrowRight } from "lucide-react";
 import logo from "@/assets/sanctum-logo.png";
 
@@ -16,20 +16,18 @@ export function CtaFooter() {
           can <span className="text-gradient">trust</span>.
         </h2>
         <p className="mt-6 text-lg text-muted-foreground max-w-xl mx-auto">
-          Clone the open-source runtime, gate your first agent action in minutes. Enterprise fleet
-          and cloud features are a separate track.
+          Open the cloud console to manage runtimes and policies, or self-host the open-source
+          runtime from GitHub.
         </p>
         <div className="mt-10 flex flex-wrap justify-center gap-3">
           <Button asChild size="lg" className="bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90 h-12 px-8">
-            <Link to={quickstartPath}>
+            <a href={consoleUrl}>
               Start with Runtime
               <ArrowRight className="ml-1 h-4 w-4" />
-            </Link>
+            </a>
           </Button>
           <Button asChild size="lg" variant="outline" className="glass h-12 px-8">
-            <a href={enterpriseAccessUrl} target="_blank" rel="noopener noreferrer">
-              Enterprise interest
-            </a>
+            <a href={enterpriseAccessUrl}>Enterprise</a>
           </Button>
         </div>
       </div>
@@ -42,6 +40,9 @@ export function CtaFooter() {
             <span className="ml-2">— Runtime trust for autonomous AI</span>
           </div>
           <div className="flex items-center gap-6">
+            <a href={consoleUrl} className="hover:text-foreground">
+              Console
+            </a>
             <Link to={docsPath} className="hover:text-foreground">
               Docs
             </Link>

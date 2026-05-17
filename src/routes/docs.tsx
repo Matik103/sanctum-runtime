@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Navbar } from "@/components/Navbar";
+import { consoleUrl, githubUrl } from "@/lib/site-links";
 import { ArrowLeft } from "lucide-react";
 
 export const Route = createFileRoute("/docs")({
@@ -172,18 +173,22 @@ function DocsPage() {
                 <div className="mt-8 rounded-xl border border-primary/30 bg-primary/5 px-5 py-4 text-sm text-foreground/90">
                   <strong className="text-foreground">v0.1 — open source (MIT).</strong>{" "}
                   <a
-                    href="https://github.com/Matik103/sanctum-runtime"
+                    href={githubUrl}
                     className="text-primary hover:underline"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    github.com/Matik103/sanctum-runtime
+                    GitHub (self-host)
                   </a>
                   {" "}— copy <code className="font-mono text-primary">.env.example</code> to{" "}
-                  <code className="font-mono text-primary">.env</code>, set your hosts/ports, then{" "}
-                  <code className="font-mono text-primary">npm run dev:runtime</code>. Enterprise:{" "}
+                  <code className="font-mono text-primary">.env</code>, then{" "}
+                  <code className="font-mono text-primary">npm run dev:runtime</code>. Hosted console:{" "}
+                  <a href={consoleUrl} className="text-primary hover:underline">
+                    console.sanctumruntime.com
+                  </a>
+                  . Enterprise boundary:{" "}
                   <a href="#open-core" className="text-primary hover:underline">
-                    open core boundary
+                    open core
                   </a>
                   .
                 </div>
