@@ -17,6 +17,51 @@ export const publicRoutes = [
   "/glossary",
 ] as const;
 
+/** HTML routes for sitemap.xml — keep in sync with TanStack routes. */
+export const sitemapPages: ReadonlyArray<{
+  path: (typeof publicRoutes)[number];
+  changefreq: "weekly" | "monthly";
+  priority: number;
+}> = [
+  { path: "/", changefreq: "weekly", priority: 1.0 },
+  { path: "/docs", changefreq: "weekly", priority: 0.9 },
+  { path: "/what-is-sanctum-runtime", changefreq: "monthly", priority: 0.85 },
+  { path: "/architecture", changefreq: "monthly", priority: 0.85 },
+  { path: "/sdk", changefreq: "monthly", priority: 0.85 },
+  { path: "/security", changefreq: "monthly", priority: 0.8 },
+  { path: "/glossary", changefreq: "monthly", priority: 0.8 },
+];
+
+/** Static AI / crawler files under public/ */
+export const sitemapAiPaths = [
+  "/llms.txt",
+  "/ai/overview.md",
+  "/ai/architecture.md",
+  "/ai/sdk.md",
+  "/ai/security.md",
+  "/ai/glossary.md",
+] as const;
+
+export const sitemapIndexUrl = () => absoluteUrl("/sitemap-index.xml");
+
+/** Google Search Console + Bing Webmaster HTML-tag verification (set in Vercel/Cloudflare env). */
+function readViteEnv(key: string): string | undefined {
+  if (typeof import.meta === "undefined" || !import.meta.env) {
+    return process.env[key]?.trim() || undefined;
+  }
+  const v = (import.meta.env as Record<string, string | undefined>)[key];
+  return v?.trim() || process.env[key]?.trim() || undefined;
+}
+
+export function searchVerificationMeta(): Array<{ name: string; content: string }> {
+  const meta: Array<{ name: string; content: string }> = [];
+  const google = readViteEnv("VITE_GOOGLE_SITE_VERIFICATION");
+  const bing = readViteEnv("VITE_BING_SITE_VERIFICATION");
+  if (google) meta.push({ name: "google-site-verification", content: google });
+  if (bing) meta.push({ name: "msvalidate.01", content: bing });
+  return meta;
+}
+
 export function absoluteUrl(path: string): string {
   const normalized = path.startsWith("/") ? path : `/${path}`;
   return `${origin}${normalized}`;
