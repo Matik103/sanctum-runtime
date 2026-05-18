@@ -1,7 +1,8 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { createSupabaseAdmin, type SupabaseAuthConfig } from './auth.js'
-import { assertOrgRole } from './rbac.js'
+import { ControlPlaneStore } from './control-plane-store.js'
+import { assertOrgRole, type OrgRole } from './rbac.js'
 
 export type PolicyMap = Record<string, unknown>
 
@@ -17,6 +18,11 @@ export type PolicySnapshot = {
 
 type SanctumReq = import('fastify').FastifyRequest & {
   sanctumUser?: { id: string; email?: string }
+}
+
+function headerKey(req: SanctumReq): string | undefined {
+  const raw = req.headers['x-sanctum-key']
+  return Array.isArray(raw) ? raw[0] : raw
 }
 
 /**
@@ -104,16 +110,38 @@ export async function registerPolicyVersionRoutes(
   app: FastifyInstance,
   cfg: SupabaseAuthConfig,
 ): Promise<void> {
-  const orgIdSchema = z.string().uuid()
+  const store = new ControlPlaneStore(cfg)
+  const orgIdSchema = z.string().min(1).max(128)
   const snapshotIdSchema = z.string().uuid()
+
+  async function resolveAccess(
+    req: SanctumReq,
+    orgId: string,
+    minRole: OrgRole,
+  ): Promise<{ ok: boolean; userId?: string }> {
+    if (req.sanctumUser) {
+      try {
+        await assertOrgRole(cfg, orgId, req.sanctumUser.id, minRole)
+        return { ok: true, userId: req.sanctumUser.id }
+      } catch {
+        return { ok: false }
+      }
+    }
+    const key = headerKey(req)
+    if (key?.startsWith('sk_sanctum_')) {
+      const keyOrg = await store.getApiKeyOrgId(key)
+      if (keyOrg !== orgId) return { ok: false }
+      // Dashboard API keys are org-scoped admin credentials
+      return { ok: true, userId: undefined }
+    }
+    return { ok: false }
+  }
 
   // GET /v1/orgs/:orgId/policy-snapshots
   app.get('/v1/orgs/:orgId/policy-snapshots', async (req, reply) => {
     const orgId = orgIdSchema.parse((req.params as { orgId: string }).orgId)
-    const user = (req as SanctumReq).sanctumUser
-    if (!user) return reply.status(401).send({ error: 'unauthorized' })
-
-    await assertOrgRole(cfg, orgId, user.id, 'member')
+    const access = await resolveAccess(req as SanctumReq, orgId, 'member')
+    if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
 
     const q = req.query as { limit?: string }
     const limit = Math.min(200, Math.max(1, Number(q.limit ?? 50) || 50))
@@ -124,10 +152,8 @@ export async function registerPolicyVersionRoutes(
   // POST /v1/orgs/:orgId/policy-snapshots
   app.post('/v1/orgs/:orgId/policy-snapshots', async (req, reply) => {
     const orgId = orgIdSchema.parse((req.params as { orgId: string }).orgId)
-    const user = (req as SanctumReq).sanctumUser
-    if (!user) return reply.status(401).send({ error: 'unauthorized' })
-
-    await assertOrgRole(cfg, orgId, user.id, 'admin')
+    const access = await resolveAccess(req as SanctumReq, orgId, 'admin')
+    if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
 
     const body = z.object({
       label: z.string().max(256).optional(),
@@ -155,7 +181,7 @@ export async function registerPolicyVersionRoutes(
       cfg,
       orgId,
       policies,
-      user.id,
+      access.userId ?? '00000000-0000-0000-0000-000000000000',
       body.label,
       body.change_summary,
     )
@@ -169,10 +195,8 @@ export async function registerPolicyVersionRoutes(
     orgIdSchema.parse(orgId)
     snapshotIdSchema.parse(snapshotId)
 
-    const user = (req as SanctumReq).sanctumUser
-    if (!user) return reply.status(401).send({ error: 'unauthorized' })
-
-    await assertOrgRole(cfg, orgId, user.id, 'member')
+    const access = await resolveAccess(req as SanctumReq, orgId, 'member')
+    if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
 
     const snapshot = await getPolicySnapshot(cfg, snapshotId, orgId)
     if (!snapshot) return reply.status(404).send({ error: 'snapshot_not_found' })
@@ -185,10 +209,8 @@ export async function registerPolicyVersionRoutes(
     orgIdSchema.parse(orgId)
     snapshotIdSchema.parse(snapshotId)
 
-    const user = (req as SanctumReq).sanctumUser
-    if (!user) return reply.status(401).send({ error: 'unauthorized' })
-
-    await assertOrgRole(cfg, orgId, user.id, 'admin')
+    const access = await resolveAccess(req as SanctumReq, orgId, 'admin')
+    if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
 
     const snapshot = await getPolicySnapshot(cfg, snapshotId, orgId)
     if (!snapshot) return reply.status(404).send({ error: 'snapshot_not_found' })
@@ -228,7 +250,7 @@ export async function registerPolicyVersionRoutes(
       cfg,
       orgId,
       policies,
-      user.id,
+      access.userId ?? '00000000-0000-0000-0000-000000000000',
       `Restored from snapshot ${snapshotId}`,
       `Automated snapshot created during restore of ${snapshotId}${snapshot.label ? ` ("${snapshot.label}")` : ''}`,
     )
