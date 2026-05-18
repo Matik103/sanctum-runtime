@@ -426,3 +426,5 @@ export class RuntimeEngine {
     }
   }
 }
+
+export { registerAnomalyRule, type AnomalyRule } from './anomaly.js'

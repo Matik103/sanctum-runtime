@@ -5,7 +5,8 @@
  * helpers to validate whether a child agent is authorised to perform an
  * action on behalf of its parent.
  */
-import type { FastifyInstance } from 'fastify'
+import type { FastifyInstance, FastifyRequest } from 'fastify'
+import { z } from 'zod'
 import type { SupabaseAuthConfig } from './auth.js'
 import { createSupabaseAdmin } from './auth.js'
 import { assertOrgRole, type OrgRole } from './rbac.js'
@@ -230,6 +231,19 @@ export function enrichAuditWithDelegation(
 
 // ─── HTTP Routes ──────────────────────────────────────────────────────────────
 
+const GrantSchema = z.object({
+  parentAgentId: z.string().min(1),
+  childAgentId: z.string().min(1),
+  grantedActions: z.array(z.string()).optional(),
+  expiresAt: z.string().datetime().optional(),
+})
+
+const ValidateSchema = z.object({
+  parentAgentId: z.string().min(1),
+  childAgentId: z.string().min(1),
+  action: z.string().min(1),
+})
+
 export function registerDelegationRoutes(app: FastifyInstance, cfg: SupabaseAuthConfig) {
   app.get('/v1/orgs/:orgId/delegations', async (req, reply) => {
     const { orgId } = req.params as { orgId: string }
@@ -258,15 +272,11 @@ export function registerDelegationRoutes(app: FastifyInstance, cfg: SupabaseAuth
     const access = await requireOrgAccess(req as SanctumReq, cfg, orgId, 'admin')
     if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
 
-    const body = req.body as {
-      parentAgentId: string
-      childAgentId: string
-      grantedActions?: string[]
-      expiresAt?: string
+    const parsed = GrantSchema.safeParse(req.body)
+    if (!parsed.success) {
+      return reply.status(400).send({ error: 'invalid_body', detail: parsed.error.flatten() })
     }
-    if (!body.parentAgentId || !body.childAgentId) {
-      return reply.status(400).send({ error: 'parentAgentId and childAgentId are required' })
-    }
+    const body = parsed.data
 
     const id = await grantDelegation(cfg, orgId, {
       parentAgentId: body.parentAgentId,
@@ -292,16 +302,13 @@ export function registerDelegationRoutes(app: FastifyInstance, cfg: SupabaseAuth
     const access = await requireOrgAccess(req as SanctumReq, cfg, orgId, 'member')
     if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
 
-    const body = req.body as {
-      parentAgentId: string
-      childAgentId: string
-      action: string
+    const parsed = ValidateSchema.safeParse(req.body)
+    if (!parsed.success) {
+      return reply.status(400).send({ error: 'invalid_body', detail: parsed.error.flatten() })
     }
-    if (!body.parentAgentId || !body.childAgentId || !body.action) {
-      return reply.status(400).send({ error: 'parentAgentId, childAgentId and action are required' })
-    }
+    const { parentAgentId, childAgentId, action } = parsed.data
 
-    const result = await validateDelegation(cfg, orgId, body.parentAgentId, body.childAgentId, body.action)
+    const result = await validateDelegation(cfg, orgId, parentAgentId, childAgentId, action)
     return reply.send(result)
   })
 }

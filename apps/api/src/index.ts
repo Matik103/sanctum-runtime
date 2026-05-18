@@ -415,7 +415,22 @@ app.post('/v1/audit/:id/resolve', async (req, reply) => {
   return result
 })
 
-app.post('/v1/actions/verify', async (req) => {
+app.post('/v1/actions/verify', {
+  config: {
+    rateLimit: {
+      max: 30,
+      timeWindow: '1 minute',
+      keyGenerator: (req: import('fastify').FastifyRequest) => {
+        // Rate-limit per actor field in body if present, otherwise fall back to IP
+        const body = req.body as Record<string, unknown> | null
+        const actor = typeof body?.actor === 'string' ? body.actor : null
+        const fwd = req.headers['x-forwarded-for']
+        const ip = Array.isArray(fwd) ? fwd[0] : (typeof fwd === 'string' ? fwd.split(',')[0].trim() : req.ip)
+        return actor ? `actor:${actor}` : (ip ?? req.ip)
+      },
+    },
+  },
+}, async (req) => {
   const body = z
     .object({
       actor: z.string(),

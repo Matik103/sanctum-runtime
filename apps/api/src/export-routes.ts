@@ -338,19 +338,39 @@ export async function registerExportRoutes(app: FastifyInstance) {
       return reply.status(502).send({ error: 'token_exchange_error', detail: err instanceof Error ? err.message : String(err) })
     }
 
-    // Parse JWT claims from id_token (no signature verification — we fetched it directly from the IDP)
+    // Decode JWT claims from id_token.
+    // Signature verification is omitted because we received this token directly
+    // from the IDP token_endpoint over TLS — it cannot be forged in transit.
+    // We DO validate iss, aud, and exp to prevent token reuse and misconfiguration.
     let idClaims: Record<string, unknown> = {}
     const idToken = tokenResponse['id_token'] as string | undefined
     if (idToken) {
       try {
         const parts = idToken.split('.')
         if (parts.length >= 2) {
-          const payload = parts[1]
-          // Base64url → base64
-          const b64 = payload.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(payload.length / 4) * 4, '=')
+          const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(parts[1].length / 4) * 4, '=')
           idClaims = JSON.parse(Buffer.from(b64, 'base64').toString('utf8')) as Record<string, unknown>
         }
-      } catch { /* best-effort, continue with empty claims */ }
+      } catch { /* malformed JWT — idClaims stays empty, identity check below will catch it */ }
+    }
+
+    // Validate standard claims — reject tokens that look replayed or misconfigured
+    const now = Math.floor(Date.now() / 1000)
+    const iss = idClaims['iss'] as string | undefined
+    const aud = idClaims['aud'] as string | string[] | undefined
+    const exp = idClaims['exp'] as number | undefined
+    const expectedIss = (ssoConfig.oidc_issuer as string).replace(/\/$/, '')
+    const clientId = ssoConfig.oidc_client_id as string
+
+    if (iss && iss.replace(/\/$/, '') !== expectedIss) {
+      return reply.status(401).send({ error: 'sso_token_issuer_mismatch', expected: expectedIss, got: iss })
+    }
+    const audList = Array.isArray(aud) ? aud : (aud ? [aud] : [])
+    if (audList.length > 0 && !audList.includes(clientId)) {
+      return reply.status(401).send({ error: 'sso_token_audience_mismatch' })
+    }
+    if (exp && exp < now) {
+      return reply.status(401).send({ error: 'sso_token_expired' })
     }
 
     // Apply attribute_map if provided (maps IDP claim names to Sanctum fields)
