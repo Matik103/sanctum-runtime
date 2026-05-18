@@ -1,6 +1,6 @@
 # Supabase schema (Sanctum)
 
-## Migrations (001–023)
+## Migrations (001–027)
 
 | # | File | Objects |
 |---|------|---------|
@@ -27,6 +27,10 @@
 | 021 | `021_marketplace_expand_catalog.sql` | +6 integration packages |
 | 022 | `022_marketplace_twelve_categories.sql` | 12 categories, +6 primary packages |
 | 023 | `023_billing_plans.sql` | `plans`, `org_plans`, free-plan trigger |
+| 024 | `024_notifications_sso.sql` | `sso_configs`, `export_audit`, notification columns on `org_plans` |
+| 025 | `025_governance.sql` | `approval_workflows`, `pending_approvals`, `policy_snapshots`, `agent_delegations`, `webhook_queue` |
+| 026 | `026_audit_compliance_columns.sql` | `audit_events.anomaly_flags`, `resolved_by` |
+| 027 | `027_rls_governance_and_hardening.sql` | RLS on governance + `plans`; `is_org_member` / `is_org_role`; tighten audit/webhook/api_keys policies |
 
 ## Deploy to linked project
 
@@ -45,6 +49,13 @@ select count(*) from public.runtime_packages where visibility = 'public';  -- ex
 select count(*) from public.plans;                                         -- expect 4
 select count(*) from public.organizations o
   left join public.org_plans p on p.org_id = o.id where p.org_id is null;  -- expect 0
+
+-- After 027: every public table should have RLS on
+select c.relname, c.relrowsecurity
+from pg_class c
+join pg_namespace n on n.oid = c.relnamespace
+where n.nspname = 'public' and c.relkind = 'r'
+order by 1;
 ```
 
 ## Local env
