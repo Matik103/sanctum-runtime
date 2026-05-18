@@ -10,6 +10,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { docsUrl } from '../lib/site-links'
+import { sanitizeApiError } from '../lib/sanitize-error'
 import { getSupabase } from '../lib/supabase'
 import '../styles/auth.css'
 
@@ -57,7 +58,7 @@ export function Login() {
         if (err) throw err
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Authentication failed')
+      setError(sanitizeApiError(err, 'Authentication failed'))
     } finally {
       setBusy(false)
     }
@@ -81,7 +82,7 @@ export function Login() {
       })
       if (err) throw err
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'SSO sign-in failed. Contact your administrator.')
+      setError(sanitizeApiError(err, 'SSO sign-in failed. Contact your administrator.'))
     } finally {
       setBusy(false)
     }

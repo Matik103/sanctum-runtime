@@ -10,41 +10,7 @@ import {
 } from './marketplace-policies.js'
 import { MarketplaceStore } from './marketplace-store.js'
 import { recordUsage, UsageMetrics } from './usage-store.js'
-
-type SanctumReq = FastifyRequest & {
-  sanctumUser?: { id: string; email?: string }
-}
-
-function headerKey(req: FastifyRequest): string | undefined {
-  const v = req.headers['x-sanctum-key']
-  return Array.isArray(v) ? v[0] : v
-}
-
-async function resolveOrgScope(
-  req: SanctumReq,
-  store: ControlPlaneStore,
-): Promise<string[] | null> {
-  if (req.sanctumUser) return store.getUserOrgIds(req.sanctumUser.id)
-  const key = headerKey(req)
-  if (key?.startsWith('sk_sanctum_')) {
-    const orgId = await store.getApiKeyOrgId(key)
-    return orgId ? [orgId] : null
-  }
-  return null
-}
-
-function assertOrgAllowed(
-  scope: string[] | null,
-  orgId: string,
-  reply: { status: (n: number) => { send: (b: unknown) => unknown } },
-) {
-  if (scope === null) return true
-  if (!scope.includes(orgId)) {
-    reply.status(403).send({ error: 'org_forbidden' })
-    return false
-  }
-  return true
-}
+import { assertOrgAllowed, resolveOrgScope, type SanctumReq } from './org-scope.js'
 
 const slugSchema = z
   .string()

@@ -21,6 +21,17 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | null>(null)
 
+function ConfigUnavailable() {
+  return (
+    <div className="auth-loading" style={{ flexDirection: 'column', gap: '0.75rem' }}>
+      <p style={{ margin: 0, fontWeight: 600 }}>Console unavailable</p>
+      <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--muted)', maxWidth: '22rem', textAlign: 'center' }}>
+        Authentication is not configured for this deployment. Contact your administrator.
+      </p>
+    </div>
+  )
+}
+
 export function useAuth(): AuthState {
   const ctx = useContext(AuthContext)
   if (!ctx) {
@@ -75,6 +86,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   if (!isSupabaseConfigured) {
+    if (import.meta.env.PROD) {
+      return <ConfigUnavailable />
+    }
     return <>{children}</>
   }
 

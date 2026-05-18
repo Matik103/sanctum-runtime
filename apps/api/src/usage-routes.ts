@@ -3,28 +3,7 @@ import { z } from 'zod'
 import { getSupabaseAuthConfig } from './auth.js'
 import { ControlPlaneStore } from './control-plane-store.js'
 import { UsageStore } from './usage-store.js'
-
-type SanctumReq = FastifyRequest & {
-  sanctumUser?: { id: string; email?: string }
-}
-
-function headerKey(req: FastifyRequest): string | undefined {
-  const v = req.headers['x-sanctum-key']
-  return Array.isArray(v) ? v[0] : v
-}
-
-async function resolveOrgScope(
-  req: SanctumReq,
-  store: ControlPlaneStore,
-): Promise<string[] | null> {
-  if (req.sanctumUser) return store.getUserOrgIds(req.sanctumUser.id)
-  const key = headerKey(req)
-  if (key?.startsWith('sk_sanctum_')) {
-    const orgId = await store.getApiKeyOrgId(key)
-    return orgId ? [orgId] : null
-  }
-  return null
-}
+import { resolveOrgScope, type SanctumReq } from './org-scope.js'
 
 export async function registerUsageRoutes(app: FastifyInstance) {
   const cfg = getSupabaseAuthConfig()

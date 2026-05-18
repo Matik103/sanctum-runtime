@@ -6,7 +6,7 @@ import {
   type DashboardData,
   type PolicyResponse,
 } from '../lib/api'
-import { apiBaseUrl } from '../lib/api-url'
+import { sanitizeApiError } from '../lib/sanitize-error'
 import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 
 const DISMISSED_KEY = 'sanctum-dismissed-verifications'
@@ -86,18 +86,7 @@ export function useDashboard() {
         return cur
       })
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Failed to reach runtime API'
-      const networkFailed =
-        e instanceof TypeError ||
-        /failed to fetch|networkerror|load failed|net::/i.test(msg)
-      const authFailed = /\b401\b/.test(msg)
-      setApiError(
-        networkFailed
-          ? `API unreachable (${apiBaseUrl}). Check: 1) sanctum-api is deployed and running on Render, 2) the custom domain api.sanctumruntime.com is configured in Render → Settings → Custom Domains, 3) both services redeployed after env var changes.`
-          : authFailed
-            ? 'API reached but returned 401 — sign in or check your API key.'
-            : msg,
-      )
+      setApiError(sanitizeApiError(e, 'Failed to reach the API'))
     }
   }, [])
 

@@ -7,8 +7,35 @@
  */
 import type { FastifyInstance } from 'fastify'
 import type { SupabaseAuthConfig } from './auth.js'
-import { authenticateRequest, createSupabaseAdmin } from './auth.js'
-import { assertOrgRole } from './rbac.js'
+import { createSupabaseAdmin } from './auth.js'
+import { assertOrgRole, type OrgRole } from './rbac.js'
+import { ControlPlaneStore } from './control-plane-store.js'
+import { headerKey, type SanctumReq } from './org-scope.js'
+import { isProduction } from './security.js'
+
+async function requireOrgAccess(
+  req: SanctumReq,
+  cfg: SupabaseAuthConfig,
+  orgId: string,
+  minRole: OrgRole,
+): Promise<{ ok: true; userId?: string } | { ok: false }> {
+  if (req.sanctumUser) {
+    try {
+      await assertOrgRole(cfg, orgId, req.sanctumUser.id, minRole)
+      return { ok: true, userId: req.sanctumUser.id }
+    } catch {
+      return { ok: false }
+    }
+  }
+  const key = headerKey(req)
+  if (key?.startsWith('sk_sanctum_')) {
+    const store = new ControlPlaneStore(cfg)
+    const keyOrg = await store.getApiKeyOrgId(key)
+    if (keyOrg === orgId) return { ok: true }
+    return { ok: false }
+  }
+  return { ok: false }
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -204,12 +231,10 @@ export function enrichAuditWithDelegation(
 // ─── HTTP Routes ──────────────────────────────────────────────────────────────
 
 export function registerDelegationRoutes(app: FastifyInstance, cfg: SupabaseAuthConfig) {
-  // List active delegation grants for an org
   app.get('/v1/orgs/:orgId/delegations', async (req, reply) => {
-    const user = await authenticateRequest(req, cfg)
-    if (!user) return reply.status(401).send({ error: 'Unauthorized' })
     const { orgId } = req.params as { orgId: string }
-    await assertOrgRole(cfg, orgId, user.id, 'member')
+    const access = await requireOrgAccess(req as SanctumReq, cfg, orgId, 'member')
+    if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
 
     const admin = createSupabaseAdmin(cfg)
     const { data, error } = await admin
@@ -219,16 +244,19 @@ export function registerDelegationRoutes(app: FastifyInstance, cfg: SupabaseAuth
       .is('revoked_at', null)
       .order('created_at', { ascending: false })
 
-    if (error) return reply.status(500).send({ error: error.message })
+    if (error) {
+      return reply.status(500).send({
+        error: 'delegation_list_failed',
+        ...(!isProduction() && { detail: error.message }),
+      })
+    }
     return reply.send(data ?? [])
   })
 
-  // Grant a new delegation
   app.post('/v1/orgs/:orgId/delegations', async (req, reply) => {
-    const user = await authenticateRequest(req, cfg)
-    if (!user) return reply.status(401).send({ error: 'Unauthorized' })
     const { orgId } = req.params as { orgId: string }
-    await assertOrgRole(cfg, orgId, user.id, 'admin')
+    const access = await requireOrgAccess(req as SanctumReq, cfg, orgId, 'admin')
+    if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
 
     const body = req.body as {
       parentAgentId: string
@@ -251,21 +279,18 @@ export function registerDelegationRoutes(app: FastifyInstance, cfg: SupabaseAuth
 
   // Revoke a delegation grant
   app.delete('/v1/orgs/:orgId/delegations/:delegationId', async (req, reply) => {
-    const user = await authenticateRequest(req, cfg)
-    if (!user) return reply.status(401).send({ error: 'Unauthorized' })
     const { orgId, delegationId } = req.params as { orgId: string; delegationId: string }
-    await assertOrgRole(cfg, orgId, user.id, 'admin')
+    const access = await requireOrgAccess(req as SanctumReq, cfg, orgId, 'admin')
+    if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
 
     await revokeDelegation(cfg, delegationId, orgId)
     return reply.status(204).send()
   })
 
-  // Validate whether a child agent may act on behalf of a parent for a given action
   app.post('/v1/orgs/:orgId/delegations/validate', async (req, reply) => {
-    const user = await authenticateRequest(req, cfg)
-    if (!user) return reply.status(401).send({ error: 'Unauthorized' })
     const { orgId } = req.params as { orgId: string }
-    await assertOrgRole(cfg, orgId, user.id, 'member')
+    const access = await requireOrgAccess(req as SanctumReq, cfg, orgId, 'member')
+    if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
 
     const body = req.body as {
       parentAgentId: string

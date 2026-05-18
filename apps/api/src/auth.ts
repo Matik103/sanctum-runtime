@@ -1,4 +1,5 @@
 import { createClient, type User } from '@supabase/supabase-js'
+import { allowOpenApi, isProduction } from './security.js'
 
 export type SupabaseAuthConfig = {
   url: string
@@ -70,6 +71,14 @@ export async function authenticateRequest(
   }
 
   if (options.supabase || options.apiKey) {
+    return { ok: false, reason: 'missing' }
+  }
+
+  if (allowOpenApi()) {
+    return { ok: true, method: 'none' }
+  }
+
+  if (isProduction()) {
     return { ok: false, reason: 'missing' }
   }
 

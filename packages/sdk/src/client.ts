@@ -52,7 +52,19 @@ export class SanctumClient {
       body: body != null ? JSON.stringify(body) : undefined,
     })
     if (!res.ok) {
-      throw new Error(`Sanctum ${method} ${path} failed: ${res.status} ${await res.text()}`)
+      const text = await res.text()
+      let msg = `Request failed (${res.status})`
+      try {
+        const body = JSON.parse(text) as { error?: string; hint?: string }
+        if (body.hint && process.env.NODE_ENV !== 'production') msg = body.hint
+        else if (body.error) msg = body.error.replace(/_/g, ' ')
+      } catch {
+        /* non-JSON body */
+      }
+      if (process.env.NODE_ENV !== 'production' && text) {
+        msg = `Sanctum ${method} ${path} failed: ${res.status} ${text.slice(0, 200)}`
+      }
+      throw new Error(msg)
     }
     if (res.status === 204) {
       return undefined as T

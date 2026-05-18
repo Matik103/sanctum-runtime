@@ -34,6 +34,20 @@ import {
   isSupabaseAuthEnabled,
 } from './auth.js'
 import {
+  internalErrorBody,
+  isProduction,
+  metricsAuthorized,
+} from './security.js'
+import {
+  assertAuditEntryScope,
+  listScopedAudit,
+  mergePoliciesForOrgs,
+  pickScopedOrgs,
+  policyStorageKey,
+  resolveRouteOrgScope,
+} from './scoped-policy-audit.js'
+import { assertOrgAllowed, type SanctumReq } from './org-scope.js'
+import {
   loadRepoEnv,
   resolveApiListenTarget,
   resolveDashboardUrl,
@@ -52,6 +66,7 @@ const runtime = new RuntimeEngine({
 
 const app = Fastify({
   logger: true,
+  trustProxy: true,
   bodyLimit: 512 * 1024, // 512 KB
   genReqId: () => crypto.randomUUID(),
 })
@@ -81,7 +96,10 @@ function isAllowedCorsOrigin(origin: string): boolean {
 
 await app.register(cors, {
   origin: (origin, cb) => {
-    if (!origin) return cb(null, true)
+    if (!origin) {
+      cb(null, !isProduction())
+      return
+    }
     cb(null, isAllowedCorsOrigin(origin))
   },
   methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -125,20 +143,26 @@ app.setErrorHandler((err, _req, reply) => {
     })
   }
   app.log.error(err)
-  const detail = err instanceof Error ? err.message : undefined
-  return reply.status(500).send({
-    error: 'internal_error',
-    ...(detail && { detail }),
-  })
+  return reply.status(500).send(internalErrorBody(err))
 })
 
-const AUTH_BYPASS = new Set(['/health', '/', '/metrics', '/v1/billing/webhook', '/v1/status'])
+function isPublicPath(path: string): boolean {
+  if (path === '/health' || path === '/v1/billing/webhook') return true
+  if (path.startsWith('/v1/sso/')) return true
+  if (!isProduction()) {
+    if (path === '/' || path === '/metrics' || path === '/v1/status') return true
+  }
+  return false
+}
 
 app.addHook('onRequest', async (req, reply) => {
   if (req.method === 'OPTIONS') return
 
   const path = req.url.split('?')[0]
-  if (AUTH_BYPASS.has(path)) return
+  if (path === '/metrics' && !metricsAuthorized(req.headers)) {
+    return reply.status(404).send({ error: 'not_found' })
+  }
+  if (isPublicPath(path)) return
 
   const auth = await authenticateRequest(req.headers, {
     supabase: supabaseAuth,
@@ -148,9 +172,13 @@ app.addHook('onRequest', async (req, reply) => {
   if (!auth.ok) {
     return reply.status(401).send({
       error: 'unauthorized',
-      hint: isSupabaseAuthEnabled()
-        ? 'Sign in via the dashboard (Bearer JWT) or send X-Sanctum-Key for scripts'
-        : 'Set X-Sanctum-Key or configure Supabase auth',
+      ...(isProduction()
+        ? {}
+        : {
+            hint: isSupabaseAuthEnabled()
+              ? 'Sign in via the dashboard (Bearer JWT) or send X-Sanctum-Key'
+              : 'Set X-Sanctum-Key or configure Supabase auth',
+          }),
     })
   }
 
@@ -177,46 +205,28 @@ const publicApiUrl =
 const publicDocsUrl =
   process.env.SANCTUM_DOCS_URL?.trim() || 'https://www.sanctumruntime.com/docs'
 
-app.get('/', async () => ({
-  name: 'Sanctum Runtime API',
-  version: '0.1.0',
-  url: publicApiUrl,
-  docs: publicDocsUrl,
-  dashboard: dashboardUrl,
-  auth: supabaseAuth
-    ? 'Supabase JWT (Bearer) or X-Sanctum-Key'
-    : apiKey
-      ? 'X-Sanctum-Key required'
-      : 'none (local dev)',
-  endpoints: {
-    health: 'GET /health',
-    status: 'GET /v1/status',
-    verify: 'POST /v1/actions/verify',
-    audit: 'GET /v1/audit',
-    resolve: 'POST /v1/audit/:id/resolve',
-    verification: 'GET /v1/verifications/:correlationId',
-    orgPolicies: 'GET /v1/orgs/:orgId/policies',
-    policies: 'GET|POST /v1/policies',
-    policyByAction: 'PATCH|DELETE /v1/policies/:action',
-    policiesYaml: 'GET /v1/policies/export.yaml · POST /v1/policies/import.yaml',
-    webhooks: 'GET /v1/webhooks/status',
-    apiKeys: 'GET|POST /v1/api-keys · DELETE /v1/api-keys/:id',
-    runtimes:
-      'POST /v1/runtimes/connect · POST …/attest · GET …/trust · heartbeat/agents/events',
-    fleet: 'GET /v1/fleet/map · deployment-groups · POST /v1/orchestration/dispatch',
-    operatorContext: 'GET /v1/operator/context',
-    eventStream: 'GET /v1/events/stream (SSE)',
-    runtimeWs: 'WS /v1/runtimes/ws?runtimeId=',
-    agentMemory: 'GET|PUT|DELETE /v1/runtimes/:id/agents/:agentId/memory/:key',
-    marketplace: 'GET /v1/marketplace/packages · install · connect hints',
-    usage: 'GET /v1/usage?org_id=',
-    billing: 'GET /v1/billing/plan · POST /v1/billing/checkout · POST /v1/billing/webhook',
-    export: 'GET /v1/orgs/:orgId/export.json · GET /v1/orgs/:orgId/export/history',
-    notifications: 'GET|PATCH /v1/orgs/:orgId/notifications',
-    sso: 'GET|PUT /v1/orgs/:orgId/sso · GET /v1/sso/:orgId/login',
-    analyze: 'POST /analyze-action',
-  },
-}))
+app.get('/', async () => {
+  if (isProduction()) {
+    return {
+      name: 'Sanctum Runtime API',
+      health: '/health',
+      docs: publicDocsUrl,
+    }
+  }
+  return {
+    name: 'Sanctum Runtime API',
+    version: '0.1.0',
+    url: publicApiUrl,
+    docs: publicDocsUrl,
+    dashboard: dashboardUrl,
+    auth: supabaseAuth ? 'Supabase JWT or X-Sanctum-Key' : apiKey ? 'X-Sanctum-Key' : 'none (local dev)',
+    endpoints: {
+      health: 'GET /health',
+      status: 'GET /v1/status',
+      verify: 'POST /v1/actions/verify',
+    },
+  }
+})
 
 if (supabaseAuth) {
   await registerApiKeyRoutes(app, supabaseAuth)
@@ -238,6 +248,10 @@ if (supabaseAuth) {
 const stopWebhookWorker = supabaseAuth ? startWebhookWorker(supabaseAuth) : null
 
 app.get('/health', async () => {
+  if (isProduction()) {
+    return { ok: true }
+  }
+
   const status = await runtime.getStatus()
   const webhookStatus = runtime.getWebhookStatus()
 
@@ -258,27 +272,28 @@ app.get('/health', async () => {
     riskModel: {
       provider: status.riskProvider,
       connected: status.riskModelConnected,
-      endpoint: status.riskEndpoint ?? null,
     },
-    audit: {
-      count: status.auditCount,
-      supabaseConfigured: status.supabaseConfigured,
-    },
-    policies: {
-      count: status.policyCount,
-    },
+    audit: { count: status.auditCount },
+    policies: { count: status.policyCount },
     supabase: supabaseOk,
-    webhooks: {
-      configured: webhookStatus.configured,
-      urlCount: webhookStatus.urlCount,
-    },
+    webhooks: { configured: webhookStatus.configured },
     wsConnections: runtimeWsHub.connectedCount(),
   }
 })
 
 app.get('/v1/status', async () => runtime.getStatus())
 
-app.get('/v1/policies', async () => runtime.getPolicyEngine().getPolicies())
+app.get('/v1/policies', async (req, reply) => {
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
+  const q = req.query as { org_id?: string }
+  const picked = pickScopedOrgs(scope, q.org_id)
+  if ('status' in picked) return reply.status(picked.status).send(picked.body)
+  if (scope === null && picked.orgIds.length === 0) {
+    return runtime.getPolicyEngine().getPolicies()
+  }
+  const orgIds = picked.orgIds.length > 0 ? picked.orgIds : scope ?? []
+  return mergePoliciesForOrgs(runtime, orgIds)
+})
 
 const policyPatchSchema = z.object({
   requiresVerification: z.boolean().optional(),
@@ -294,33 +309,57 @@ const policyActionSchema = z
   .max(256)
   .regex(/^[a-zA-Z0-9_.:@/-]+$/)
 
-app.post('/v1/policies', async (req) => {
+app.post('/v1/policies', async (req, reply) => {
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
   const body = z
     .object({
       action: policyActionSchema,
+      org_id: z.string().min(1).max(128).optional(),
     })
     .merge(policyPatchSchema)
     .parse(req.body)
-  const { action, ...patch } = body
-  return runtime.getPolicyEngine().createPolicy(action, patch)
+  const picked = pickScopedOrgs(scope, body.org_id, { requireSingle: true })
+  if ('status' in picked) return reply.status(picked.status).send(picked.body)
+  const orgId = picked.orgIds[0]
+  const { action, org_id: _org, ...patch } = body
+  const key = policyStorageKey(action, orgId, scope)
+  return runtime.getPolicyEngine().createPolicy(key, patch)
 })
 
-app.patch('/v1/policies/:action', async (req) => {
+app.patch('/v1/policies/:action', async (req, reply) => {
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
   const action = policyActionSchema.parse((req.params as { action: string }).action)
+  const q = req.query as { org_id?: string }
   const body = policyPatchSchema.parse(req.body)
-  return await runtime.getPolicyEngine().updatePolicy(action, body)
+  const picked = pickScopedOrgs(scope, q.org_id, { requireSingle: true })
+  if ('status' in picked) return reply.status(picked.status).send(picked.body)
+  const key = policyStorageKey(action, picked.orgIds[0], scope)
+  return await runtime.getPolicyEngine().updatePolicy(key, body)
 })
 
-app.delete('/v1/policies/:action', async (req) => {
+app.delete('/v1/policies/:action', async (req, reply) => {
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
   const action = policyActionSchema.parse((req.params as { action: string }).action)
-  return runtime.getPolicyEngine().deletePolicy(action)
+  const q = req.query as { org_id?: string }
+  const picked = pickScopedOrgs(scope, q.org_id, { requireSingle: true })
+  if ('status' in picked) return reply.status(picked.status).send(picked.body)
+  const key = policyStorageKey(action, picked.orgIds[0], scope)
+  return runtime.getPolicyEngine().deletePolicy(key)
 })
 
-app.get('/v1/policies/export.yaml', async (_req, reply) => {
+app.get('/v1/policies/export.yaml', async (req, reply) => {
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
+  if (scope !== null) {
+    return reply.status(403).send({ error: 'org_scoped_export_forbidden' })
+  }
   return reply.type('text/yaml; charset=utf-8').send(runtime.exportPoliciesYaml())
 })
 
-app.post('/v1/policies/import.yaml', async (req) => {
+app.post('/v1/policies/import.yaml', async (req, reply) => {
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
+  if (scope !== null) {
+    return reply.status(403).send({ error: 'org_scoped_import_forbidden' })
+  }
   const body = z
     .object({
       yaml: z.string().min(1),
@@ -332,11 +371,13 @@ app.post('/v1/policies/import.yaml', async (req) => {
 
 app.get('/v1/webhooks/status', async () => runtime.getWebhookStatus())
 
-app.get('/v1/audit', async (req) => {
+app.get('/v1/audit', async (req, reply) => {
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
   const q = req.query as { limit?: string; org_id?: string }
   const limit = Math.min(500, Math.max(1, Number(q.limit ?? 50) || 50))
-  const orgId = q.org_id
-  return runtime.listAudit(limit, orgId)
+  const picked = pickScopedOrgs(scope, q.org_id)
+  if ('status' in picked) return reply.status(picked.status).send(picked.body)
+  return listScopedAudit(runtime, limit, picked.orgIds, scope)
 })
 
 app.get('/v1/verifications/:correlationId', async (req) => {
@@ -344,8 +385,10 @@ app.get('/v1/verifications/:correlationId', async (req) => {
   return runtime.getVerificationStatus(correlationId)
 })
 
-app.get('/v1/orgs/:orgId/policies', async (req) => {
+app.get('/v1/orgs/:orgId/policies', async (req, reply) => {
   const { orgId } = req.params as { orgId: string }
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
+  if (!assertOrgAllowed(scope, orgId, reply)) return
   return runtime.getPoliciesForOrg(orgId)
 })
 
@@ -359,34 +402,11 @@ app.post('/v1/audit/:id/resolve', async (req, reply) => {
     })
     .parse(req.body)
 
-  // Enforce org scope when Supabase auth is active.
-  if (supabaseAuth) {
-    const entry = runtime.getAuditStore().getById(id)
-    const entryOrgId =
-      entry && typeof entry.context?.org_id === 'string'
-        ? entry.context.org_id
-        : undefined
-    if (entryOrgId) {
-      const { ControlPlaneStore } = await import('./control-plane-store.js')
-      const store = new ControlPlaneStore(supabaseAuth)
-      const user = (req as { sanctumUser?: { id: string } }).sanctumUser
-      let allowedOrgs: string[] | null = null
-      if (user) {
-        allowedOrgs = await store.getUserOrgIds(user.id)
-      } else {
-        const key = Array.isArray(req.headers['x-sanctum-key'])
-          ? req.headers['x-sanctum-key'][0]
-          : req.headers['x-sanctum-key']
-        if (key?.startsWith('sk_sanctum_')) {
-          const orgId = await store.getApiKeyOrgId(key)
-          allowedOrgs = orgId ? [orgId] : []
-        }
-      }
-      if (allowedOrgs !== null && !allowedOrgs.includes(entryOrgId)) {
-        return reply.status(403).send({ error: 'org_forbidden' })
-      }
-    }
-  }
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
+  const entry = runtime.getAuditStore().getById(id)
+  const entryOrgId =
+    entry && typeof entry.context?.org_id === 'string' ? entry.context.org_id : undefined
+  if (!assertAuditEntryScope(scope, entryOrgId, reply)) return
 
   const result = await runtime.resolveAuditEntry(id, body)
   if (!result) {

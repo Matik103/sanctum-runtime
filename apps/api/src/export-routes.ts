@@ -4,6 +4,7 @@ import { createSupabaseAdmin, getSupabaseAuthConfig } from './auth.js'
 import { ControlPlaneStore } from './control-plane-store.js'
 import { getEntitlementEngine } from './entitlements.js'
 import { encryptSecret, decryptSecret, getEncryptionKey } from './crypto-utils.js'
+import { isProduction, maskWebhookUrl } from './security.js'
 
 type SanctumReq = FastifyRequest & {
   sanctumUser?: { id: string; email?: string }
@@ -449,7 +450,15 @@ export async function registerExportRoutes(app: FastifyInstance) {
       .eq('org_id', orgId)
       .maybeSingle()
 
-    return data ?? {}
+    if (!data) return {}
+    return {
+      notification_email: data.notification_email,
+      slack_webhook_url: maskWebhookUrl(data.slack_webhook_url as string | null),
+      slack_webhook_configured: Boolean(data.slack_webhook_url),
+      notification_webhook_url: maskWebhookUrl(data.notification_webhook_url as string | null),
+      notification_webhook_configured: Boolean(data.notification_webhook_url),
+      quota_warning_pct: data.quota_warning_pct,
+    }
   })
 
   // PATCH /v1/orgs/:orgId/notifications
@@ -473,7 +482,19 @@ export async function registerExportRoutes(app: FastifyInstance) {
       .select('notification_email,slack_webhook_url,notification_webhook_url,quota_warning_pct')
       .single()
 
-    if (error) return reply.status(500).send({ error: 'notification_prefs_failed', detail: error.message })
-    return data
+    if (error) {
+      return reply.status(500).send({
+        error: 'notification_prefs_failed',
+        ...(!isProduction() && { detail: error.message }),
+      })
+    }
+    return {
+      notification_email: data.notification_email,
+      slack_webhook_url: maskWebhookUrl(data.slack_webhook_url as string | null),
+      slack_webhook_configured: Boolean(data.slack_webhook_url),
+      notification_webhook_url: maskWebhookUrl(data.notification_webhook_url as string | null),
+      notification_webhook_configured: Boolean(data.notification_webhook_url),
+      quota_warning_pct: data.quota_warning_pct,
+    }
   })
 }

@@ -11,7 +11,9 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: { componentStack: string }) {
-    console.error('[ErrorBoundary]', error, info.componentStack)
+    if (import.meta.env.DEV) {
+      console.error('[ErrorBoundary]', error, info.componentStack)
+    }
   }
 
   render() {
@@ -26,9 +28,11 @@ export class ErrorBoundary extends Component<Props, State> {
           background: 'color-mix(in srgb, var(--danger, #ef4444) 10%, transparent)',
         }}>
           <p style={{ fontWeight: 600, margin: '0 0 0.5rem' }}>Something went wrong</p>
-          <p style={{ fontSize: '0.82rem', color: 'var(--muted)', margin: '0 0 1rem', fontFamily: 'monospace' }}>
-            {this.state.error.message}
-          </p>
+          {import.meta.env.DEV && (
+            <p style={{ fontSize: '0.82rem', color: 'var(--muted)', margin: '0 0 1rem', fontFamily: 'monospace' }}>
+              {this.state.error.message}
+            </p>
+          )}
           <button
             type="button"
             className="btn btn-ghost btn-sm"

@@ -34,7 +34,10 @@ export default defineConfig(({ mode, command }) => {
   const config: import('vite').UserConfig = {
     plugins: [react()],
     envDir: repoRoot,
-    envPrefix: ['VITE_', 'SUPABASE_'],
+    envPrefix: ['VITE_'],
+    build: {
+      sourcemap: false,
+    },
     define: {
       'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(
         env.VITE_SUPABASE_URL ?? env.SUPABASE_URL ?? '',

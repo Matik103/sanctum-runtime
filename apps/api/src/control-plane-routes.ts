@@ -6,6 +6,13 @@ import { OrchestrationStore } from './orchestration-store.js'
 import { runtimeWsHub } from './runtime-ws-hub.js'
 import { recordUsage, UsageMetrics } from './usage-store.js'
 import { getEntitlementEngine } from './entitlements.js'
+import {
+  assertOrgAllowed,
+  filterByScope,
+  headerKey,
+  resolveOrgScope,
+  type SanctumReq,
+} from './org-scope.js'
 
 const modeSchema = z.enum(['cloud', 'edge', 'airgap', 'hybrid'])
 
@@ -34,15 +41,6 @@ const attestationSchema = z
   })
   .optional()
 
-type SanctumReq = FastifyRequest & {
-  sanctumUser?: { id: string; email?: string }
-}
-
-function headerKey(req: FastifyRequest): string | undefined {
-  const v = req.headers['x-sanctum-key']
-  return Array.isArray(v) ? v[0] : v
-}
-
 function extractIp(req: FastifyRequest): string | undefined {
   const fwd = req.headers['x-forwarded-for']
   const xff = Array.isArray(fwd) ? fwd[0] : fwd
@@ -50,34 +48,6 @@ function extractIp(req: FastifyRequest): string | undefined {
   const real = req.headers['x-real-ip']
   if (real) return Array.isArray(real) ? real[0] : real
   return (req.ip as string | undefined) || undefined
-}
-
-/** null = unrestricted (legacy env key); [] = no org access */
-async function resolveOrgScope(
-  req: SanctumReq,
-  store: ControlPlaneStore,
-): Promise<string[] | null> {
-  if (req.sanctumUser) return store.getUserOrgIds(req.sanctumUser.id)
-  const key = headerKey(req)
-  if (key?.startsWith('sk_sanctum_')) {
-    const orgId = await store.getApiKeyOrgId(key)
-    return orgId ? [orgId] : null
-  }
-  return null
-}
-
-function assertOrgAllowed(scope: string[] | null, orgId: string, reply: { status: (n: number) => { send: (b: unknown) => unknown } }) {
-  if (scope === null) return true
-  if (!scope.includes(orgId)) {
-    reply.status(403).send({ error: 'org_forbidden' })
-    return false
-  }
-  return true
-}
-
-function filterByScope<T extends { org_id: string }>(rows: T[], scope: string[] | null): T[] {
-  if (scope === null) return rows
-  return rows.filter((r) => scope.includes(r.org_id))
 }
 
 export async function registerControlPlaneRoutes(app: FastifyInstance) {
