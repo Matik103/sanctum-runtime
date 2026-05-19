@@ -72,6 +72,8 @@ export async function registerExportRoutes(app: FastifyInstance) {
     const resolvedOrg = await resolveOrgId(req as SanctumReq, orgId)
     if (!resolvedOrg) return reply.status(403).send({ error: 'org_forbidden' })
 
+    const admin = createSupabaseAdmin(cfg)
+
     // Rate limit: one export per hour per org — checked in DB so it survives redeploys
     const { data: lastExport } = await admin
       .from('export_audit')
@@ -94,7 +96,6 @@ export async function registerExportRoutes(app: FastifyInstance) {
       }
     }
 
-    const admin = createSupabaseAdmin(cfg)
     const exportedAt = new Date().toISOString()
 
     // Fetch all org data in parallel
