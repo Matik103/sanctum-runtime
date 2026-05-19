@@ -10,16 +10,25 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WhatIsSanctumRuntimeRouteImport } from './routes/what-is-sanctum-runtime'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SecurityRouteImport } from './routes/security'
 import { Route as SdkRouteImport } from './routes/sdk'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as GlossaryRouteImport } from './routes/glossary'
 import { Route as DocsRouteImport } from './routes/docs'
+import { Route as CookiesRouteImport } from './routes/cookies'
+import { Route as BillingRouteImport } from './routes/billing'
 import { Route as ArchitectureRouteImport } from './routes/architecture'
 import { Route as IndexRouteImport } from './routes/index'
 
 const WhatIsSanctumRuntimeRoute = WhatIsSanctumRuntimeRouteImport.update({
   id: '/what-is-sanctum-runtime',
   path: '/what-is-sanctum-runtime',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SecurityRoute = SecurityRouteImport.update({
@@ -32,6 +41,11 @@ const SdkRoute = SdkRouteImport.update({
   path: '/sdk',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GlossaryRoute = GlossaryRouteImport.update({
   id: '/glossary',
   path: '/glossary',
@@ -40,6 +54,16 @@ const GlossaryRoute = GlossaryRouteImport.update({
 const DocsRoute = DocsRouteImport.update({
   id: '/docs',
   path: '/docs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CookiesRoute = CookiesRouteImport.update({
+  id: '/cookies',
+  path: '/cookies',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BillingRoute = BillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ArchitectureRoute = ArchitectureRouteImport.update({
@@ -56,29 +80,41 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/architecture': typeof ArchitectureRoute
+  '/billing': typeof BillingRoute
+  '/cookies': typeof CookiesRoute
   '/docs': typeof DocsRoute
   '/glossary': typeof GlossaryRoute
+  '/privacy': typeof PrivacyRoute
   '/sdk': typeof SdkRoute
   '/security': typeof SecurityRoute
+  '/terms': typeof TermsRoute
   '/what-is-sanctum-runtime': typeof WhatIsSanctumRuntimeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/architecture': typeof ArchitectureRoute
+  '/billing': typeof BillingRoute
+  '/cookies': typeof CookiesRoute
   '/docs': typeof DocsRoute
   '/glossary': typeof GlossaryRoute
+  '/privacy': typeof PrivacyRoute
   '/sdk': typeof SdkRoute
   '/security': typeof SecurityRoute
+  '/terms': typeof TermsRoute
   '/what-is-sanctum-runtime': typeof WhatIsSanctumRuntimeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/architecture': typeof ArchitectureRoute
+  '/billing': typeof BillingRoute
+  '/cookies': typeof CookiesRoute
   '/docs': typeof DocsRoute
   '/glossary': typeof GlossaryRoute
+  '/privacy': typeof PrivacyRoute
   '/sdk': typeof SdkRoute
   '/security': typeof SecurityRoute
+  '/terms': typeof TermsRoute
   '/what-is-sanctum-runtime': typeof WhatIsSanctumRuntimeRoute
 }
 export interface FileRouteTypes {
@@ -86,38 +122,54 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/architecture'
+    | '/billing'
+    | '/cookies'
     | '/docs'
     | '/glossary'
+    | '/privacy'
     | '/sdk'
     | '/security'
+    | '/terms'
     | '/what-is-sanctum-runtime'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/architecture'
+    | '/billing'
+    | '/cookies'
     | '/docs'
     | '/glossary'
+    | '/privacy'
     | '/sdk'
     | '/security'
+    | '/terms'
     | '/what-is-sanctum-runtime'
   id:
     | '__root__'
     | '/'
     | '/architecture'
+    | '/billing'
+    | '/cookies'
     | '/docs'
     | '/glossary'
+    | '/privacy'
     | '/sdk'
     | '/security'
+    | '/terms'
     | '/what-is-sanctum-runtime'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ArchitectureRoute: typeof ArchitectureRoute
+  BillingRoute: typeof BillingRoute
+  CookiesRoute: typeof CookiesRoute
   DocsRoute: typeof DocsRoute
   GlossaryRoute: typeof GlossaryRoute
+  PrivacyRoute: typeof PrivacyRoute
   SdkRoute: typeof SdkRoute
   SecurityRoute: typeof SecurityRoute
+  TermsRoute: typeof TermsRoute
   WhatIsSanctumRuntimeRoute: typeof WhatIsSanctumRuntimeRoute
 }
 
@@ -128,6 +180,13 @@ declare module '@tanstack/react-router' {
       path: '/what-is-sanctum-runtime'
       fullPath: '/what-is-sanctum-runtime'
       preLoaderRoute: typeof WhatIsSanctumRuntimeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/security': {
@@ -144,6 +203,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SdkRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/glossary': {
       id: '/glossary'
       path: '/glossary'
@@ -156,6 +222,20 @@ declare module '@tanstack/react-router' {
       path: '/docs'
       fullPath: '/docs'
       preLoaderRoute: typeof DocsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cookies': {
+      id: '/cookies'
+      path: '/cookies'
+      fullPath: '/cookies'
+      preLoaderRoute: typeof CookiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/billing': {
+      id: '/billing'
+      path: '/billing'
+      fullPath: '/billing'
+      preLoaderRoute: typeof BillingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/architecture': {
@@ -178,10 +258,14 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ArchitectureRoute: ArchitectureRoute,
+  BillingRoute: BillingRoute,
+  CookiesRoute: CookiesRoute,
   DocsRoute: DocsRoute,
   GlossaryRoute: GlossaryRoute,
+  PrivacyRoute: PrivacyRoute,
   SdkRoute: SdkRoute,
   SecurityRoute: SecurityRoute,
+  TermsRoute: TermsRoute,
   WhatIsSanctumRuntimeRoute: WhatIsSanctumRuntimeRoute,
 }
 export const routeTree = rootRouteImport
