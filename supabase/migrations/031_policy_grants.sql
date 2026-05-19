@@ -27,7 +27,7 @@ create policy "org members read grants"
   on policy_grants for select
   using (
     org_id in (
-      select org_id from org_members
+      select org_id from public.organization_members
       where user_id = auth.uid()
     )
   );

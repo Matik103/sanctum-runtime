@@ -26,7 +26,7 @@ create policy "org members read agent registrations"
   on agent_registrations for select
   using (
     org_id in (
-      select org_id from org_members where user_id = auth.uid()
+      select org_id from public.organization_members where user_id = auth.uid()
     )
   );
 
