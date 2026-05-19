@@ -3,6 +3,7 @@ import { Download, ShieldCheck, BarChart3, FileText } from 'lucide-react'
 import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
 import { Alert } from '../components/ui/Alert'
+import { TabBar } from '../components/ui/TabBar'
 import { fetchMyOrgs, type FleetOrg } from '../lib/fleet'
 
 type ComplianceReport = {
@@ -166,15 +167,15 @@ export function Compliance() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
-            {(['report', 'soc2', 'anomalies'] as const).map((t) => (
-              <button key={t} type="button" className={`btn ${tab === t ? 'btn-primary' : ''}`} onClick={() => setTab(t)}>
-                {t === 'report' ? <><BarChart3 size={13} style={{ marginRight: '0.3rem', verticalAlign: 'middle' }} />Overview</> :
-                 t === 'soc2' ? <><ShieldCheck size={13} style={{ marginRight: '0.3rem', verticalAlign: 'middle' }} />SOC2 Controls</> :
-                 'Risk distribution'}
-              </button>
-            ))}
-          </div>
+          <TabBar
+            tabs={[
+              { id: 'report' as const, label: 'Overview' },
+              { id: 'soc2' as const, label: 'SOC2 Controls' },
+              { id: 'anomalies' as const, label: 'Risk Distribution' },
+            ]}
+            active={tab}
+            onChange={setTab}
+          />
 
           {tab === 'report' && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>

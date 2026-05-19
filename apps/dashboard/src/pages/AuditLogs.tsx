@@ -59,8 +59,7 @@ export function AuditLogs({ audit, onSelect }: Props) {
         <div>
           <h1>Audit logs</h1>
           <p>
-            Compliance-style records — what was said, what the agent attempted, and what Sanctum
-            decided
+            Immutable record of every agent action and trust decision
           </p>
         </div>
         <PageActions>

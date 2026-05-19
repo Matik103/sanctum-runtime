@@ -51,8 +51,8 @@ export function ThreatMonitor({ audit, onSelect }: Props) {
     <>
       <header className="page-header">
         <div>
-          <h1>Runtime threat detection</h1>
-          <p>Behavioral anomalies and unsafe execution attempts</p>
+          <h1>Threat Monitor</h1>
+          <p>Behavioral anomaly detection and threat response</p>
         </div>
       </header>
 

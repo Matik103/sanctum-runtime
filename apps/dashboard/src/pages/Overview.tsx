@@ -38,8 +38,8 @@ export function Overview({
     <>
       <header className="page-header">
         <div>
-          <h1>Mission control</h1>
-          <p>Verify agent actions, fleet telemetry, and audit — before they execute</p>
+          <h1>Overview</h1>
+          <p>Pre-execution trust verification for your AI agent fleet</p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <span className={`pill ${status?.runtimeOnline === false ? 'warn' : 'ok'}`}>
@@ -103,7 +103,7 @@ export function Overview({
         </div>
 
         <div className="card">
-          <div className="card-label">Trust integrity</div>
+          <div className="card-label">Approval rate</div>
           <div className="card-value" style={{ fontSize: '1.25rem' }}>
             {audit.length ? Math.round((approved / audit.length) * 100) : 100}%
           </div>
@@ -113,7 +113,7 @@ export function Overview({
 
       <div className="table-wrap">
         <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid var(--border)' }}>
-          <strong style={{ fontSize: '0.9rem' }}>Live event stream</strong>
+          <strong style={{ fontSize: '0.9rem' }}>Recent events</strong>
         </div>
         <table className="data">
           <thead>
@@ -128,7 +128,7 @@ export function Overview({
             {audit.length === 0 ? (
               <tr>
                 <td colSpan={4} className="empty">
-                  No events yet — connect a runtime or call <code>/v1/actions/verify</code> to start streaming
+                  No events yet. Connect a runtime to begin streaming action events.
                 </td>
               </tr>
             ) : (

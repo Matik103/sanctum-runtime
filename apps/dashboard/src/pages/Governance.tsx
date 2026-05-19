@@ -4,6 +4,7 @@ import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
 import { timeAgo } from '../lib/format'
 import { Alert } from '../components/ui/Alert'
+import { TabBar } from '../components/ui/TabBar'
 import { fetchMyOrgs } from '../lib/fleet'
 
 type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'expired' | 'escalated'
@@ -69,7 +70,7 @@ export function Governance() {
   const [newWf, setNewWf] = useState<Partial<Workflow> | null>(null)
 
   useEffect(() => {
-    fetchMyOrgs().then((orgs) => { if (orgs[0]) setOrgId(orgs[0].id) }).catch(() => {})
+    fetchMyOrgs().then((orgs) => { if (orgs[0]) setOrgId(orgs[0].org_id) }).catch(() => {})
   }, [])
 
   const load = async () => {
@@ -148,20 +149,21 @@ export function Governance() {
         </Alert>
       )}
 
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
-        {(['approvals', 'workflows'] as const).map((t) => (
-          <button key={t} type="button" className={`btn ${tab === t ? 'btn-primary' : ''}`} onClick={() => setTab(t)}>
-            {t === 'approvals' ? `Pending approvals${approvals.filter(a => a.status === 'pending').length ? ` (${approvals.filter(a => a.status === 'pending').length})` : ''}` : 'Workflows'}
-          </button>
-        ))}
-      </div>
+      <TabBar
+        tabs={[
+          { id: 'approvals' as const, label: 'Pending Approvals', count: approvals.filter(a => a.status === 'pending').length },
+          { id: 'workflows' as const, label: 'Workflows', count: workflows.length },
+        ]}
+        active={tab}
+        onChange={setTab}
+      />
 
       {tab === 'approvals' && (
         <>
-          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-            {(['all', 'pending', 'approved', 'rejected', 'expired'] as const).map((s) => (
-              <button key={s} type="button" className={`btn btn-sm ${statusFilter === s ? 'btn-primary' : ''}`} onClick={() => setStatusFilter(s)}>
-                {s}
+          <div className="toolbar" style={{ marginBottom: '1rem' }}>
+            {([['all', 'All'], ['pending', 'Pending'], ['approved', 'Approved'], ['rejected', 'Rejected'], ['expired', 'Expired']] as const).map(([s, label]) => (
+              <button key={s} type="button" className={`chip ${statusFilter === s ? 'active' : ''}`} onClick={() => setStatusFilter(s)}>
+                {label}
               </button>
             ))}
           </div>

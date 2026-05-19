@@ -195,8 +195,8 @@ export function Fleet() {
     <>
       <header className="page-header">
         <div>
-          <h1>Fleet</h1>
-          <p>Registered runtimes, agents, and live event stream</p>
+          <h1>Runtime Fleet</h1>
+          <p>Registered runtimes, active agents, and orchestration</p>
         </div>
         <PageActions>
           {orgs.length > 0 && (
@@ -246,11 +246,11 @@ export function Fleet() {
           {runtimes.length === 0 ? (
             <div className="section__body">
             <EmptyState
-              title="No runtimes in this view"
+              title="No runtimes connected"
               description={
                 orgId
-                  ? 'Try “All organizations”, or connect with your workspace org id (Devices → API key, then SANCTUM_ORG_ID).'
-                  : 'Connect a host with runtime.connect() using your workspace organization id — not demo-org.'
+                  ? 'No runtimes found for this organization. Connect a runtime using your API key and organization credentials.'
+                  : 'Connect a runtime using your organization credentials. See Devices for API keys.'
               }
             />
             </div>
@@ -341,7 +341,7 @@ export function Fleet() {
               {fleetMap.regions.length === 0 ? (
                 <EmptyState
                   title="No regions"
-                  description="Pass region on runtime.connect() or metadata.region."
+                  description="Assign a region when connecting runtimes to enable geographic grouping."
                 />
               ) : (
                 <div className="policy-grid" style={{ marginBottom: '1.5rem' }}>
@@ -413,7 +413,7 @@ export function Fleet() {
                         onClick={() => {
                           setDispatchGroupId(g.id)
                           setDispatchCmd('ping')
-                          setDispatchMsg(`Target set to group “${g.name}” — click Dispatch`)
+                          setDispatchMsg(`Target set to group "${g.name}" — click Dispatch`)
                         }}
                       >
                         Target for dispatch
@@ -499,8 +499,8 @@ export function Fleet() {
                 <tr>
                   <td colSpan={4}>
                     <EmptyState
-                      title="No agents"
-                      description="Call runtime.registerAgent() after connect()."
+                      title="No agents registered"
+                      description="Register agents from your connected runtimes to see them listed here."
                     />
                   </td>
                 </tr>
@@ -539,7 +539,7 @@ export function Fleet() {
                   <td colSpan={3}>
                     <EmptyState
                       title="No events yet"
-                      description="Emit with runtime.emitEvent() or verify actions while connected."
+                      description="Events are emitted when runtimes connect and agents verify actions."
                     />
                   </td>
                 </tr>
