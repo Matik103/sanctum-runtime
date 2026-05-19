@@ -99,18 +99,43 @@ export async function registerExportRoutes(app: FastifyInstance) {
 
       const exportedAt = new Date().toISOString()
 
-      // Fetch all org data in parallel
-      const [auditRes, runtimesRes, apiKeysRes, usageRes] = await Promise.allSettled([
-        admin.from('audit_events').select('*').eq('org_id', orgId).order('created_at', { ascending: false }).limit(10000),
-        admin.from('registered_runtimes').select('id,name,status,mode,region,connected_at,last_seen_at,attestation_report,trust_score').eq('org_id', orgId),
-        admin.from('api_keys').select('id,name,key_prefix,org_id,created_at,last_used_at,revoked_at').eq('org_id', orgId),
-        admin.from('usage_events').select('metric,quantity,metadata,recorded_at').eq('org_id', orgId).order('recorded_at', { ascending: false }).limit(50000),
+      // Fetch all org data in parallel with conservative limits to stay within
+      // Supabase free-tier statement timeout (~8s). Each query is independent so
+      // a single slow table won't block the others.
+      const timeout = <T>(ms: number, fallback: T) =>
+        new Promise<T>((res) => setTimeout(() => res(fallback), ms))
+
+      const [auditRes, runtimesRes, apiKeysRes, usageRes] = await Promise.all([
+        Promise.race([
+          admin.from('audit_events')
+            .select('id,org_id,actor,action,decision,risk_score,created_at,context,reasoning')
+            .eq('org_id', orgId).order('created_at', { ascending: false }).limit(2000),
+          timeout(6000, { data: [] as unknown[], error: null }),
+        ]),
+        Promise.race([
+          admin.from('registered_runtimes')
+            .select('id,name,status,mode,region,connected_at,last_seen_at,trust_score')
+            .eq('org_id', orgId),
+          timeout(6000, { data: [] as unknown[], error: null }),
+        ]),
+        Promise.race([
+          admin.from('api_keys')
+            .select('id,name,key_prefix,org_id,created_at,last_used_at,revoked_at')
+            .eq('org_id', orgId),
+          timeout(6000, { data: [] as unknown[], error: null }),
+        ]),
+        Promise.race([
+          admin.from('usage_events')
+            .select('metric,quantity,recorded_at')
+            .eq('org_id', orgId).order('recorded_at', { ascending: false }).limit(5000),
+          timeout(6000, { data: [] as unknown[], error: null }),
+        ]),
       ])
 
-      const auditEvents = auditRes.status === 'fulfilled' ? (auditRes.value.data ?? []) : []
-      const runtimes = runtimesRes.status === 'fulfilled' ? (runtimesRes.value.data ?? []) : []
-      const apiKeys = apiKeysRes.status === 'fulfilled' ? (apiKeysRes.value.data ?? []) : []
-      const usageEvents = usageRes.status === 'fulfilled' ? (usageRes.value.data ?? []) : []
+      const auditEvents = auditRes.data ?? []
+      const runtimes = runtimesRes.data ?? []
+      const apiKeys = apiKeysRes.data ?? []
+      const usageEvents = usageRes.data ?? []
 
       const totalRecords = auditEvents.length + runtimes.length + apiKeys.length + usageEvents.length
 
