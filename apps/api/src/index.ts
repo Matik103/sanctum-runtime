@@ -28,6 +28,8 @@ import { getEntitlementEngine } from './entitlements.js'
 import { recordUsage, UsageMetrics } from './usage-store.js'
 import { registerRuntimeWsRoutes } from './runtime-ws-routes.js'
 import { runtimeWsHub } from './runtime-ws-hub.js'
+import { registerAlertRoutes } from './alert-routes.js'
+import { AlertStore } from './alert-store.js'
 import {
   authenticateRequest,
   getSupabaseAuthConfig,
@@ -245,6 +247,7 @@ if (supabaseAuth) {
   await registerGovernanceRoutes(app, supabaseAuth)
   await registerComplianceRoutes(app, supabaseAuth)
   await registerDelegationRoutes(app, supabaseAuth)
+  await registerAlertRoutes(app)
 }
 
 const stopWebhookWorker = supabaseAuth ? startWebhookWorker(supabaseAuth) : null
@@ -504,21 +507,35 @@ app.post('/v1/actions/verify', {
     decision: result.decision,
   })
 
-  // Notify on anomaly spikes (BLOCKED or anomaly flags present)
+  // Persist alert + notify on anomaly spikes (BLOCKED or anomaly flags present)
   if (supabaseAuth && orgId && (result.decision === 'BLOCKED' || result.anomalyFlags.length > 0)) {
+    const severity = result.decision === 'BLOCKED' ? 'critical' : 'warning'
+    const eventType = result.decision === 'BLOCKED' ? 'agent.blocked_action' : 'anomaly.spike'
+    const title = result.decision === 'BLOCKED'
+      ? `Action blocked: ${body.action}`
+      : `Anomaly detected: ${body.action}`
+    const message = `Actor "${body.actor}" triggered ${result.anomalyFlags.join(', ') || 'a block'} on action "${body.action}". Decision: ${result.decision}. Risk: ${(result.risk * 100).toFixed(0)}%.`
+    const metadata = { action: body.action, actor: body.actor, decision: result.decision, risk: result.risk, anomalyFlags: result.anomalyFlags }
+
+    // Persist to alerts table (always)
+    const alertStore = new AlertStore(supabaseAuth)
+    void alertStore.createAlert({
+      org_id: orgId,
+      severity,
+      type: eventType,
+      title,
+      message,
+      channels: ['email', 'slack', 'webhook'],
+      metadata,
+    }).catch(() => { /* best-effort */ })
+
+    // Send outbound notification (deduplicated per org, 5-min cooldown)
     const entEngine = getEntitlementEngine(supabaseAuth)
     void entEngine.getNotificationPrefs(orgId).then((prefs) => {
       sendNotificationDeduped(
-        {
-          type: 'anomaly.spike',
-          orgId,
-          title: `Anomaly detected: ${body.action}`,
-          body: `Actor "${body.actor}" triggered ${result.anomalyFlags.join(', ') || 'a block'} on action "${body.action}". Decision: ${result.decision}. Risk: ${(result.risk * 100).toFixed(0)}%.`,
-          severity: result.decision === 'BLOCKED' ? 'critical' : 'warning',
-          data: { action: body.action, actor: body.actor, decision: result.decision, risk: result.risk, anomalyFlags: result.anomalyFlags },
-        },
+        { type: eventType, orgId, title, body: message, severity, data: metadata },
         { email: prefs.email, slackWebhookUrl: prefs.slackWebhookUrl, notificationWebhookUrl: prefs.notificationWebhookUrl },
-        300_000, // 5-minute cooldown per org to avoid spam
+        300_000,
       )
     }).catch(() => { /* best-effort */ })
   }

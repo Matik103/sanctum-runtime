@@ -21,6 +21,7 @@ import { PolicyHistory } from './pages/PolicyHistory'
 import { RuntimeActivity } from './pages/RuntimeActivity'
 import { Settings } from './pages/Settings'
 import { ThreatMonitor } from './pages/ThreatMonitor'
+import { Alerts } from './pages/Alerts'
 
 export function App() {
   const online = useNetworkStatus()
@@ -89,6 +90,7 @@ export function App() {
         )}
         {page === 'activity' && <RuntimeActivity audit={audit} onSelect={onSelect} />}
         {page === 'threats' && <ThreatMonitor audit={audit} onSelect={onSelect} />}
+        {page === 'alerts' && <Alerts />}
         {page === 'policies' && (
           <Policies
             policies={policies}
