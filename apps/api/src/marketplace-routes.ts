@@ -189,7 +189,13 @@ export async function registerMarketplaceRoutes(
     const scope = await resolveOrgScope(req as SanctumReq, store)
     if (!assertOrgAllowed(scope, orgId, reply)) return
 
-    const installRow = await market.getInstallRecord(orgId, slug)
+    let installRow: Awaited<ReturnType<typeof market.getInstallRecord>>
+    try {
+      installRow = await market.getInstallRecord(orgId, slug)
+    } catch (e) {
+      req.log.error({ err: e, slug, orgId }, 'marketplace getInstallRecord error')
+      return reply.status(500).send({ error: 'uninstall_failed' })
+    }
     if (!installRow) return reply.status(404).send({ error: 'not_installed' })
 
     const policyKeys = policyKeysForUninstall(
@@ -206,7 +212,13 @@ export async function registerMarketplaceRoutes(
       req.log.warn({ err: e, slug, orgId }, 'marketplace policy cleanup failed')
     }
 
-    const removed = await market.uninstall(orgId, slug)
+    let removed: boolean
+    try {
+      removed = await market.uninstall(orgId, slug)
+    } catch (e) {
+      req.log.error({ err: e, slug, orgId }, 'marketplace uninstall db error')
+      return reply.status(500).send({ error: 'uninstall_failed' })
+    }
     if (!removed) return reply.status(404).send({ error: 'not_installed' })
 
     try {
