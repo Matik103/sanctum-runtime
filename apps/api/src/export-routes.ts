@@ -68,81 +68,86 @@ export async function registerExportRoutes(app: FastifyInstance) {
 
   // GET /v1/orgs/:orgId/export.json
   app.get('/v1/orgs/:orgId/export.json', async (req, reply) => {
-    const { orgId } = req.params as { orgId: string }
-    const resolvedOrg = await resolveOrgId(req as SanctumReq, orgId)
-    if (!resolvedOrg) return reply.status(403).send({ error: 'org_forbidden' })
+    try {
+      const { orgId } = req.params as { orgId: string }
+      const resolvedOrg = await resolveOrgId(req as SanctumReq, orgId)
+      if (!resolvedOrg) return reply.status(403).send({ error: 'org_forbidden' })
 
-    const admin = createSupabaseAdmin(cfg)
+      const admin = createSupabaseAdmin(cfg)
 
-    // Rate limit: one export per hour per org — checked in DB so it survives redeploys
-    const { data: lastExport } = await admin
-      .from('export_audit')
-      .select('created_at')
-      .eq('org_id', orgId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+      // Rate limit: one export per hour per org — checked in DB so it survives redeploys
+      const { data: lastExport } = await admin
+        .from('export_audit')
+        .select('created_at')
+        .eq('org_id', orgId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
 
-    if (lastExport?.created_at) {
-      const lastMs = new Date(lastExport.created_at as string).getTime()
-      const elapsed = Date.now() - lastMs
-      if (elapsed < 3_600_000) {
-        const nextMs = 3_600_000 - elapsed
-        return reply.status(429).send({
-          error: 'export_rate_limited',
-          retryAfterMs: nextMs,
-          retryAfterMinutes: Math.ceil(nextMs / 60_000),
-        })
+      if (lastExport?.created_at) {
+        const lastMs = new Date(lastExport.created_at as string).getTime()
+        const elapsed = Date.now() - lastMs
+        if (elapsed < 3_600_000) {
+          const nextMs = 3_600_000 - elapsed
+          return reply.status(429).send({
+            error: 'export_rate_limited',
+            retryAfterMs: nextMs,
+            retryAfterMinutes: Math.ceil(nextMs / 60_000),
+          })
+        }
       }
+
+      const exportedAt = new Date().toISOString()
+
+      // Fetch all org data in parallel
+      const [auditRes, runtimesRes, apiKeysRes, usageRes] = await Promise.allSettled([
+        admin.from('audit_events').select('*').eq('org_id', orgId).order('created_at', { ascending: false }).limit(10000),
+        admin.from('registered_runtimes').select('id,name,status,mode,region,connected_at,last_seen_at,attestation_report,trust_score').eq('org_id', orgId),
+        admin.from('api_keys').select('id,name,key_prefix,org_id,created_at,last_used_at,revoked_at').eq('org_id', orgId),
+        admin.from('usage_events').select('metric,quantity,metadata,recorded_at').eq('org_id', orgId).order('recorded_at', { ascending: false }).limit(50000),
+      ])
+
+      const auditEvents = auditRes.status === 'fulfilled' ? (auditRes.value.data ?? []) : []
+      const runtimes = runtimesRes.status === 'fulfilled' ? (runtimesRes.value.data ?? []) : []
+      const apiKeys = apiKeysRes.status === 'fulfilled' ? (apiKeysRes.value.data ?? []) : []
+      const usageEvents = usageRes.status === 'fulfilled' ? (usageRes.value.data ?? []) : []
+
+      const totalRecords = auditEvents.length + runtimes.length + apiKeys.length + usageEvents.length
+
+      // Log export in audit table (best-effort — missing table won't block the export)
+      await admin.from('export_audit').insert({
+        org_id: orgId,
+        requested_by: (req as SanctumReq).sanctumUser?.email ?? 'api_key',
+        export_type: 'full',
+        record_count: totalRecords,
+      }).catch(() => {})
+
+      const payload = {
+        export_version: '1.0',
+        exported_at: exportedAt,
+        org_id: orgId,
+        record_counts: {
+          audit_events: auditEvents.length,
+          runtimes: runtimes.length,
+          api_keys: apiKeys.length,
+          usage_events: usageEvents.length,
+        },
+        data: {
+          audit_events: auditEvents,
+          runtimes,
+          api_keys: apiKeys,
+          usage_events: usageEvents,
+        },
+      }
+
+      return reply
+        .header('Content-Disposition', `attachment; filename="sanctum-export-${orgId}-${exportedAt.slice(0, 10)}.json"`)
+        .type('application/json')
+        .send(JSON.stringify(payload, null, 2))
+    } catch (err) {
+      req.log.error({ err }, 'GDPR export failed')
+      return reply.status(500).send({ error: 'export_failed', detail: err instanceof Error ? err.message : String(err) })
     }
-
-    const exportedAt = new Date().toISOString()
-
-    // Fetch all org data in parallel
-    const [auditRes, runtimesRes, apiKeysRes, usageRes] = await Promise.allSettled([
-      admin.from('audit_events').select('*').eq('org_id', orgId).order('created_at', { ascending: false }).limit(10000),
-      admin.from('registered_runtimes').select('id,name,status,mode,region,connected_at,last_seen_at,attestation_report,trust_score').eq('org_id', orgId),
-      admin.from('api_keys').select('id,name,key_prefix,org_id,created_at,last_used_at,revoked_at').eq('org_id', orgId),
-      admin.from('usage_events').select('metric,quantity,metadata,recorded_at').eq('org_id', orgId).order('recorded_at', { ascending: false }).limit(50000),
-    ])
-
-    const auditEvents = auditRes.status === 'fulfilled' ? (auditRes.value.data ?? []) : []
-    const runtimes = runtimesRes.status === 'fulfilled' ? (runtimesRes.value.data ?? []) : []
-    const apiKeys = apiKeysRes.status === 'fulfilled' ? (apiKeysRes.value.data ?? []) : []
-    const usageEvents = usageRes.status === 'fulfilled' ? (usageRes.value.data ?? []) : []
-
-    const totalRecords = auditEvents.length + runtimes.length + apiKeys.length + usageEvents.length
-
-    // Log export in audit table
-    await admin.from('export_audit').insert({
-      org_id: orgId,
-      requested_by: (req as SanctumReq).sanctumUser?.email ?? 'api_key',
-      export_type: 'full',
-      record_count: totalRecords,
-    }).catch(() => { /* best-effort */ })
-
-    const payload = {
-      export_version: '1.0',
-      exported_at: exportedAt,
-      org_id: orgId,
-      record_counts: {
-        audit_events: auditEvents.length,
-        runtimes: runtimes.length,
-        api_keys: apiKeys.length,
-        usage_events: usageEvents.length,
-      },
-      data: {
-        audit_events: auditEvents,
-        runtimes,
-        api_keys: apiKeys, // no key_hash included
-        usage_events: usageEvents,
-      },
-    }
-
-    return reply
-      .header('Content-Disposition', `attachment; filename="sanctum-export-${orgId}-${exportedAt.slice(0, 10)}.json"`)
-      .type('application/json')
-      .send(JSON.stringify(payload, null, 2))
   })
 
   // GET /v1/orgs/:orgId/export/history
