@@ -78,6 +78,46 @@ export async function exportPoliciesYaml(): Promise<string> {
   return api.exportPoliciesYaml()
 }
 
+export async function updatePolicyConditions(
+  action: string,
+  conditions: import('@sanctum-runtime/sdk/browser').PolicyCondition[],
+): Promise<PolicyMap> {
+  return api.updatePolicy(action, { conditions })
+}
+
+export type SimulateResult = {
+  simulation: true
+  decision: 'APPROVED' | 'BLOCKED' | 'REQUIRE_VERIFICATION'
+  risk: 'low' | 'medium' | 'high'
+  policyPath: string
+  anomalyFlags: string[]
+  conditionMatched: boolean
+  policyFlags: {
+    autoBlock: boolean
+    requiresVerification: boolean
+    blockWhenOffline: boolean
+    allowedActors: string[]
+    conditions: import('@sanctum-runtime/sdk/browser').PolicyCondition[]
+  }
+}
+
+export async function simulateAction(
+  actor: string,
+  action: string,
+  context: Record<string, unknown>,
+): Promise<SimulateResult> {
+  const token = await getAccessToken()
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  const res = await fetch(`${apiBaseUrl}/v1/policies/simulate`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ actor, action, context }),
+  })
+  if (!res.ok) throw new Error(`Simulate failed: ${res.status}`)
+  return res.json() as Promise<SimulateResult>
+}
+
 export async function importPoliciesYaml(yaml: string, merge = true): Promise<PolicyMap> {
   return api.importPoliciesYaml(yaml, merge)
 }

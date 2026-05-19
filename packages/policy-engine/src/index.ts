@@ -123,11 +123,60 @@ export class PolicyEngine {
     this.policies = { ...DEFAULT_POLICIES, ...overlay }
   }
 
+  private resolveField(request: ActionRequest, field: string): unknown {
+    if (field === 'actor') return request.actor
+    if (field === 'action') return request.action
+    if (field.startsWith('context.')) {
+      const key = field.slice('context.'.length)
+      return (request.context as Record<string, unknown>)[key]
+    }
+    return undefined
+  }
+
+  private testCondition(value: unknown, op: string, target: string | number | boolean): boolean {
+    if (value === undefined || value === null) return false
+    const numVal = Number(value)
+    const numTarget = Number(target)
+    switch (op) {
+      case 'gt': return !isNaN(numVal) && !isNaN(numTarget) && numVal > numTarget
+      case 'lt': return !isNaN(numVal) && !isNaN(numTarget) && numVal < numTarget
+      case 'gte': return !isNaN(numVal) && !isNaN(numTarget) && numVal >= numTarget
+      case 'lte': return !isNaN(numVal) && !isNaN(numTarget) && numVal <= numTarget
+      case 'eq': return String(value) === String(target)
+      case 'neq': return String(value) !== String(target)
+      case 'contains': return String(value).includes(String(target))
+      case 'startsWith': return String(value).startsWith(String(target))
+      case 'endsWith': return String(value).endsWith(String(target))
+      case 'matches': try { return new RegExp(String(target)).test(String(value)) } catch { return false }
+      default: return false
+    }
+  }
+
   evaluate(request: ActionRequest, offlineMode: boolean): PolicyEvaluation {
     const { key, path } = this.resolvePolicyKey(request)
     const policy = this.policies[key] ?? DEFAULT_POLICY
     const policyPath = path
     const violations: string[] = []
+
+    // Evaluate conditions before standard policy flags
+    if (policy.conditions?.length) {
+      for (const cond of policy.conditions) {
+        const fieldValue = this.resolveField(request, cond.field)
+        if (this.testCondition(fieldValue, cond.op, cond.value)) {
+          const condViolations: string[] = []
+          if (cond.result === 'block') condViolations.push('condition_auto_block')
+          return {
+            policy: {
+              ...policy,
+              autoBlock: cond.result === 'block',
+              requiresVerification: cond.result === 'verify',
+            },
+            policyPath: `${path}.condition[${cond.field} ${cond.op} ${cond.value}]`,
+            violations: condViolations,
+          }
+        }
+      }
+    }
 
     if (policy.autoBlock) {
       violations.push('policy_auto_block')

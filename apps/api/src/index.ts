@@ -30,6 +30,8 @@ import { registerRuntimeWsRoutes } from './runtime-ws-routes.js'
 import { runtimeWsHub } from './runtime-ws-hub.js'
 import { registerAlertRoutes } from './alert-routes.js'
 import { AlertStore } from './alert-store.js'
+import { sendVerificationEmail, verifyToken } from './verify-email.js'
+import { loadPoliciesFromSupabase, detectAnomalies, heuristicRiskFloor } from '@sanctum/runtime-engine'
 import {
   authenticateRequest,
   getSupabaseAuthConfig,
@@ -200,6 +202,20 @@ if (process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || process.env.VITE_SUPABASE_S
   console.log(`Supabase policy store active (${count} policies loaded/seeded)`)
 }
 
+// Realtime policy sync — keeps in-memory engine consistent across horizontal instances
+if (supabaseAuth) {
+  const realtimeAdmin = createSupabaseAdmin(supabaseAuth)
+  realtimeAdmin
+    .channel('policy-sync')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'runtime_policies' }, () => {
+      void loadPoliciesFromSupabase().then((policies) => {
+        if (policies) runtime.getPolicyEngine().mergePolicies(policies)
+      }).catch(() => {})
+    })
+    .subscribe()
+  console.log('[sanctum] Realtime policy sync active')
+}
+
 const publicApiUrl =
   process.env.SANCTUM_PUBLIC_API_URL?.trim() ||
   process.env.SANCTUM_API_URL?.trim() ||
@@ -344,6 +360,42 @@ const policyActionSchema = z
   .min(1)
   .max(256)
   .regex(/^[a-zA-Z0-9_.:@/-]+$/)
+
+// Simulate what would happen for a given action — no audit log entry created
+app.post('/v1/policies/simulate', async (req) => {
+  const body = z
+    .object({
+      actor: z.string().min(1),
+      action: z.string().min(1),
+      context: z.record(z.unknown()).default({}),
+    })
+    .parse(req.body)
+  const request = ActionRequestSchema.parse(body)
+  const anomalyFlags = detectAnomalies(request)
+  const policyEval = runtime.getPolicyEngine().evaluate(request, false)
+  const risk = heuristicRiskFloor(request, anomalyFlags)
+  let decision: 'APPROVED' | 'BLOCKED' | 'REQUIRE_VERIFICATION' = 'APPROVED'
+  if (policyEval.violations.includes('policy_auto_block') || policyEval.violations.includes('condition_auto_block')) {
+    decision = 'BLOCKED'
+  } else if (policyEval.policy.requiresVerification || risk === 'high' || risk === 'medium' || anomalyFlags.length > 0) {
+    decision = 'REQUIRE_VERIFICATION'
+  }
+  return {
+    simulation: true,
+    decision,
+    risk,
+    policyPath: policyEval.policyPath,
+    anomalyFlags,
+    conditionMatched: policyEval.policyPath.includes('.condition['),
+    policyFlags: {
+      autoBlock: policyEval.policy.autoBlock,
+      requiresVerification: policyEval.policy.requiresVerification,
+      blockWhenOffline: policyEval.policy.blockWhenOffline,
+      allowedActors: policyEval.policy.allowedActors ?? [],
+      conditions: policyEval.policy.conditions ?? [],
+    },
+  }
+})
 
 app.post('/v1/policies', async (req, reply) => {
   const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
@@ -540,7 +592,44 @@ app.post('/v1/actions/verify', {
     }).catch(() => { /* best-effort */ })
   }
 
+  // Out-of-band email verification — send approve/deny links when dashboard may be closed
+  if (result.decision === 'REQUIRE_VERIFICATION' && supabaseAuth && orgId) {
+    const entEngine = getEntitlementEngine(supabaseAuth)
+    void entEngine.getNotificationPrefs(orgId).then(async (prefs) => {
+      if (prefs.email) {
+        await sendVerificationEmail({
+          to: prefs.email,
+          actionId: result.id,
+          actor: body.actor,
+          action: body.action,
+          context: body.context,
+          risk: result.risk,
+          publicApiUrl: publicApiUrl ?? `http://localhost:${port}`,
+        })
+      }
+    }).catch(() => {})
+  }
+
   return result
+})
+
+// One-time email approve/deny link (no auth — HMAC token is the proof)
+app.get('/v1/verify-action', async (req, reply) => {
+  const { token } = req.query as { token?: string }
+  if (!token) return reply.status(400).send({ error: 'missing_token' })
+  const parsed = verifyToken(token)
+  if (!parsed) return reply.status(400).send({ error: 'invalid_or_expired_token' })
+  const result = await runtime.resolveAuditEntry(parsed.id, {
+    decision: parsed.decision,
+    resolvedBy: 'email-link',
+  })
+  if (!result) return reply.status(404).send({ error: 'verification_not_found' })
+  const verb = parsed.decision === 'APPROVED' ? 'Approved' : 'Blocked'
+  const color = parsed.decision === 'APPROVED' ? '#10b981' : '#ef4444'
+  const icon = parsed.decision === 'APPROVED' ? '✓' : '✗'
+  return reply.type('text/html').send(
+    `<!DOCTYPE html><html><body style="background:#070b14;font-family:Inter,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0"><div style="text-align:center;color:#f9fafb;max-width:400px;padding:2rem"><div style="font-size:56px;margin-bottom:12px">${icon}</div><h1 style="color:${color};margin:0 0 12px;font-size:28px">${verb}</h1><p style="color:#9ca3af;margin:0 0 8px">Action <strong style="color:#f9fafb">${result.action}</strong> has been ${verb.toLowerCase()}.</p><p style="color:#6b7280;font-size:13px">You can close this tab.</p></div></body></html>`
+  )
 })
 
 app.post('/analyze-action', async (req) => {
