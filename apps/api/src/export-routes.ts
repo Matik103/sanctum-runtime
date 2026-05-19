@@ -64,46 +64,109 @@ export async function registerExportRoutes(app: FastifyInstance) {
     return null
   }
 
+  /** Export path: never throw on Supabase slowness (free-tier PostgREST timeouts). */
+  async function resolveOrgIdForExport(
+    admin: ReturnType<typeof createSupabaseAdmin>,
+    req: SanctumReq,
+    orgIdParam: string,
+  ): Promise<{ orgId: string | null; warning?: string }> {
+    if (req.sanctumUser) {
+      try {
+        const result = await Promise.race([
+          admin.from('organization_members').select('org_id').eq('user_id', req.sanctumUser.id),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('organization_members timed out')), 5000),
+          ),
+        ])
+        if (result.error) {
+          return { orgId: null, warning: `organization_members: ${result.error.message}` }
+        }
+        const orgs = (result.data ?? []).map((r) => r.org_id as string)
+        if (orgs.includes(orgIdParam)) return { orgId: orgIdParam }
+        return { orgId: null }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        return { orgId: null, warning: `organization_members: ${msg}` }
+      }
+    }
+    const key = headerKey(req)
+    if (key?.startsWith('sk_sanctum_')) {
+      try {
+        const keyOrg = await store.getApiKeyOrgId(key)
+        if (keyOrg === orgIdParam) return { orgId: orgIdParam }
+        return { orgId: null }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        return { orgId: null, warning: `api_key: ${msg}` }
+      }
+    }
+    return { orgId: null }
+  }
+
   // ── GDPR Data Export ────────────────────────────────────────────────────────
 
   // GET /v1/orgs/:orgId/export.json
   app.get('/v1/orgs/:orgId/export.json', async (req, reply) => {
-    try {
-      const { orgId } = req.params as { orgId: string }
-      const resolvedOrg = await resolveOrgId(req as SanctumReq, orgId)
-      if (!resolvedOrg) return reply.status(403).send({ error: 'org_forbidden' })
+    const { orgId } = req.params as { orgId: string }
+    const warnings: string[] = []
 
+    try {
       const admin = createSupabaseAdmin(cfg)
 
-      // Rate limit: one export per hour per org — checked in DB so it survives redeploys
-      const { data: lastExport } = await admin
-        .from('export_audit')
-        .select('created_at')
-        .eq('org_id', orgId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      if (lastExport?.created_at) {
-        const lastMs = new Date(lastExport.created_at as string).getTime()
-        const elapsed = Date.now() - lastMs
-        if (elapsed < 3_600_000) {
-          const nextMs = 3_600_000 - elapsed
-          return reply.status(429).send({
-            error: 'export_rate_limited',
-            retryAfterMs: nextMs,
-            retryAfterMinutes: Math.ceil(nextMs / 60_000),
+      const membership = await resolveOrgIdForExport(admin, req as SanctumReq, orgId)
+      if (membership.warning) warnings.push(membership.warning)
+      if (!membership.orgId) {
+        if (membership.warning) {
+          return reply.status(503).send({
+            error: 'export_unavailable',
+            warnings,
+            hint: 'Could not verify org membership (database slow or timed out). Retry in a few minutes.',
           })
         }
+        return reply.status(403).send({ error: 'org_forbidden' })
+      }
+
+      // Rate limit: one export per hour per org (best-effort — skip if table slow/missing)
+      try {
+        const { data: lastExport, error: rateErr } = await Promise.race([
+          admin
+            .from('export_audit')
+            .select('created_at')
+            .eq('org_id', orgId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('export_audit rate check timed out')), 4000),
+          ),
+        ])
+        if (rateErr) {
+          warnings.push(`export_audit: ${rateErr.message}`)
+        } else if (lastExport?.created_at) {
+          const lastMs = new Date(lastExport.created_at as string).getTime()
+          const elapsed = Date.now() - lastMs
+          if (elapsed < 3_600_000) {
+            const nextMs = 3_600_000 - elapsed
+            return reply.status(429).send({
+              error: 'export_rate_limited',
+              retryAfterMs: nextMs,
+              retryAfterMinutes: Math.ceil(nextMs / 60_000),
+            })
+          }
+        }
+      } catch (err) {
+        warnings.push(
+          `export_audit: ${err instanceof Error ? err.message : String(err)}`,
+        )
       }
 
       const exportedAt = new Date().toISOString()
 
-      // Lean columns only (no full payload) — stays under Supabase free-tier PostgREST timeout (~8s).
+      // Sequential + short timeouts — easier on Supabase free tier than parallel fan-out.
       const queryWithTimeout = async <T>(
         label: string,
         run: () => PromiseLike<{ data: T | null; error: { message: string } | null }>,
-        ms = 8000,
+        ms = 5000,
       ): Promise<{ data: T; warning?: string }> => {
         try {
           const result = await Promise.race([
@@ -122,64 +185,70 @@ export async function registerExportRoutes(app: FastifyInstance) {
         }
       }
 
-      const [auditOut, runtimesOut, apiKeysOut, usageOut] = await Promise.all([
-        queryWithTimeout(
-          'audit_events',
-          () =>
-            admin
-              .from('audit_events')
-              .select(
-                'id,correlation_id,org_id,actor,action,decision,risk,reasoning,anomaly_flags,resolved_by,created_at,resolved_at',
-              )
-              .eq('org_id', orgId)
-              .order('created_at', { ascending: false })
-              .limit(1000),
-        ),
-        queryWithTimeout(
-          'registered_runtimes',
-          () =>
-            admin
-              .from('registered_runtimes')
-              .select('id,name,status,mode,region,connected_at,last_seen_at,trust_score')
-              .eq('org_id', orgId),
-        ),
-        queryWithTimeout(
-          'api_keys',
-          () =>
-            admin
-              .from('api_keys')
-              .select('id,name,key_prefix,org_id,created_at,last_used_at,revoked_at')
-              .eq('org_id', orgId),
-        ),
-        queryWithTimeout(
-          'usage_events',
-          () =>
-            admin
-              .from('usage_events')
-              .select('metric,quantity,recorded_at')
-              .eq('org_id', orgId)
-              .order('recorded_at', { ascending: false })
-              .limit(2000),
-        ),
-      ])
+      // Base schema columns only (002) — avoids failures when 026/028 not applied yet.
+      const auditOut = await queryWithTimeout(
+        'audit_events',
+        () =>
+          admin
+            .from('audit_events')
+            .select(
+              'id,correlation_id,org_id,actor,action,decision,risk,reasoning,created_at,resolved_at',
+            )
+            .eq('org_id', orgId)
+            .order('created_at', { ascending: false })
+            .limit(500),
+      )
+      const runtimesOut = await queryWithTimeout(
+        'registered_runtimes',
+        () =>
+          admin
+            .from('registered_runtimes')
+            .select('id,name,status,mode,region,connected_at,last_seen_at,trust_score')
+            .eq('org_id', orgId),
+      )
+      const apiKeysOut = await queryWithTimeout(
+        'api_keys',
+        () =>
+          admin
+            .from('api_keys')
+            .select('id,name,key_prefix,org_id,created_at,last_used_at,revoked_at')
+            .eq('org_id', orgId),
+      )
+      const usageOut = await queryWithTimeout(
+        'usage_events',
+        () =>
+          admin
+            .from('usage_events')
+            .select('metric,quantity,recorded_at')
+            .eq('org_id', orgId)
+            .order('recorded_at', { ascending: false })
+            .limit(1000),
+      )
 
       const auditEvents = auditOut.data
       const runtimes = runtimesOut.data
       const apiKeys = apiKeysOut.data
       const usageEvents = usageOut.data
-      const warnings = [auditOut, runtimesOut, apiKeysOut, usageOut]
-        .map((o) => o.warning)
-        .filter((w): w is string => Boolean(w))
+      for (const w of [auditOut, runtimesOut, apiKeysOut, usageOut]) {
+        if (w.warning) warnings.push(w.warning)
+      }
 
       const totalRecords = auditEvents.length + runtimes.length + apiKeys.length + usageEvents.length
 
-      // Log export in audit table (best-effort — missing table won't block the export)
-      await admin.from('export_audit').insert({
-        org_id: orgId,
-        requested_by: (req as SanctumReq).sanctumUser?.email ?? 'api_key',
-        export_type: 'full',
-        record_count: totalRecords,
-      }).catch(() => {})
+      // Log export in audit table (best-effort)
+      try {
+        const { error: logErr } = await admin.from('export_audit').insert({
+          org_id: orgId,
+          requested_by: (req as SanctumReq).sanctumUser?.email ?? 'api_key',
+          export_type: 'full',
+          record_count: totalRecords,
+        })
+        if (logErr) warnings.push(`export_audit log: ${logErr.message}`)
+      } catch (err) {
+        warnings.push(
+          `export_audit log: ${err instanceof Error ? err.message : String(err)}`,
+        )
+      }
 
       const payload = {
         export_version: '1.0',
@@ -206,13 +275,21 @@ export async function registerExportRoutes(app: FastifyInstance) {
         .send(JSON.stringify(payload, null, 2))
     } catch (err) {
       req.log.error({ err }, 'GDPR export failed')
-      return reply.status(500).send({
-        error: 'export_failed',
-        ...(!isProduction() && {
-          detail: err instanceof Error ? err.message : String(err),
-        }),
-        hint: 'Database query failed or timed out. Retry in a few minutes, or upgrade Supabase plan for heavier exports.',
-      })
+      const msg = err instanceof Error ? err.message : String(err)
+      warnings.push(msg)
+      // Still return a downloadable file so operators get something + error context.
+      const fallback = {
+        export_version: '1.0',
+        exported_at: new Date().toISOString(),
+        org_id: orgId,
+        warnings,
+        record_counts: { audit_events: 0, runtimes: 0, api_keys: 0, usage_events: 0 },
+        data: { audit_events: [], runtimes: [], api_keys: [], usage_events: [] },
+      }
+      return reply
+        .header('Content-Disposition', `attachment; filename="sanctum-export-${orgId}-partial.json"`)
+        .type('application/json')
+        .send(JSON.stringify(fallback, null, 2))
     }
   })
 
