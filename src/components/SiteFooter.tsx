@@ -1,13 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
-  billingUrl,
   consoleUrl,
-  cookiesUrl,
+  contactUrl,
   docsPath,
-  githubUrl,
-  openCorePath,
+  pricingUrl,
   privacyUrl,
+  refundUrl,
   termsUrl,
 } from "@/lib/site-links";
 import logo from "@/assets/sanctum-logo.png";
@@ -54,7 +53,7 @@ function FooterNavLink({
   );
 }
 
-/** Shared site footer — kept outside decorative overlays so links stay clickable. */
+/** Shared site footer — Paddle verification links + product entry. */
 export function SiteFooter() {
   return (
     <footer className="relative z-20 border-t border-border bg-background">
@@ -69,20 +68,15 @@ export function SiteFooter() {
             className="flex flex-wrap items-center justify-center md:justify-end gap-x-5 gap-y-2"
             aria-label="Footer"
           >
+            <FooterNavLink href={privacyUrl}>Privacy Policy</FooterNavLink>
+            <FooterNavLink href={termsUrl}>Terms &amp; Conditions</FooterNavLink>
+            <FooterNavLink href={refundUrl}>Refund Policy</FooterNavLink>
+            <FooterNavLink href={docsPath}>Documentation</FooterNavLink>
+            <FooterNavLink href={pricingUrl}>Pricing</FooterNavLink>
+            <FooterNavLink href={contactUrl}>Contact</FooterNavLink>
             <FooterNavLink href={consoleUrl} external>
               Console
             </FooterNavLink>
-            <FooterNavLink href={docsPath}>Docs</FooterNavLink>
-            <FooterNavLink href="/architecture">Architecture</FooterNavLink>
-            <FooterNavLink href="/glossary">Glossary</FooterNavLink>
-            <FooterNavLink href={openCorePath}>Open core</FooterNavLink>
-            <FooterNavLink href={githubUrl} external>
-              GitHub
-            </FooterNavLink>
-            <FooterNavLink href={termsUrl}>Terms</FooterNavLink>
-            <FooterNavLink href={billingUrl}>Billing</FooterNavLink>
-            <FooterNavLink href={cookiesUrl}>Cookies</FooterNavLink>
-            <FooterNavLink href={privacyUrl}>Privacy Policy</FooterNavLink>
             <span className="text-muted-foreground/80">© 2026</span>
           </nav>
         </div>

@@ -4,7 +4,7 @@ import { pageSeo, webPageJsonLd } from "@/lib/seo";
 import { privacyEmail } from "@/lib/site-links";
 
 const path = "/terms";
-const title = "Terms of Service — Sanctum Runtime";
+const title = "Terms & Conditions — Sanctum Runtime";
 const description =
   "Terms governing use of the Sanctum Runtime website, cloud console, API, and related services.";
 
@@ -17,7 +17,7 @@ function TermsPage() {
   return (
     <DiscoverPageLayout
       eyebrow="Legal"
-      title="Terms of Service"
+      title="Terms & Conditions"
       lead="These terms govern your access to and use of Sanctum Runtime websites, the cloud console, APIs, and related services."
     >
       <p className="text-sm text-muted-foreground">Last updated: April 30, 2026</p>
@@ -115,8 +115,9 @@ function TermsPage() {
           </a>
         </p>
         <p>
-          <Link to="/privacy">Privacy Policy</Link> · <Link to="/billing">Billing</Link> ·{" "}
-          <Link to="/cookies">Cookies</Link>
+          <Link to="/privacy">Privacy Policy</Link> · <Link to="/refund">Refund Policy</Link> ·{" "}
+          <Link to="/billing">Billing</Link> · <Link to="/pricing">Pricing</Link> ·{" "}
+          <Link to="/contact">Contact</Link> · <Link to="/cookies">Cookies</Link>
         </p>
       </section>
 

@@ -53,7 +53,11 @@ export const githubUrl = githubRepo;
 /** Legal pages (marketing site; use full URL for Google OAuth consent screen) */
 export const privacyUrl = readEnv("VITE_PRIVACY_URL", "/privacy");
 export const termsUrl = readEnv("VITE_TERMS_URL", "/terms");
+export const refundUrl = readEnv("VITE_REFUND_URL", "/refund");
+export const pricingUrl = readEnv("VITE_PRICING_URL", "/pricing");
+export const contactUrl = readEnv("VITE_CONTACT_URL", "/contact");
 export const billingUrl = readEnv("VITE_BILLING_URL", "/billing");
 export const cookiesUrl = readEnv("VITE_COOKIES_URL", "/cookies");
 
 export const privacyEmail = readEnv("VITE_PRIVACY_EMAIL", "privacy@sanctumruntime.com");
+export const billingEmail = readEnv("VITE_BILLING_EMAIL", "billing@sanctumruntime.com");

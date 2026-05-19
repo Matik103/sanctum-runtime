@@ -1198,3 +1198,54 @@ tr.key-row--pending td {
     flex-direction: column;
   }
 }
+
+/* Legal footer (Paddle verification — links to marketing site) */
+.legal-footer {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.legal-footer--shell {
+  margin-top: auto;
+  padding: 1rem 0 0.5rem;
+}
+
+.legal-footer--auth,
+.auth-footer.legal-footer {
+  margin-top: 0;
+  padding: 1rem 1.5rem 1.25rem;
+  text-align: center;
+  border-top: 1px solid rgba(148, 163, 184, 0.08);
+}
+
+.legal-footer__nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem 0.5rem;
+  line-height: 1.6;
+}
+
+.legal-footer__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.legal-footer__sep {
+  color: var(--muted);
+  opacity: 0.5;
+  user-select: none;
+}
+
+.legal-footer a {
+  color: #93b4ff;
+  text-decoration: none;
+}
+
+.legal-footer a:hover {
+  text-decoration: underline;
+}

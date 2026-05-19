@@ -23,6 +23,7 @@ import { Settings } from './pages/Settings'
 import { ThreatMonitor } from './pages/ThreatMonitor'
 import { Agents } from './pages/Agents'
 import { Alerts } from './pages/Alerts'
+import { LegalFooter } from './components/LegalFooter'
 
 export function App() {
   const online = useNetworkStatus()
@@ -112,6 +113,7 @@ export function App() {
         {page === 'billing' && <Billing />}
         {page === 'settings' && <Settings status={status} />}
         </ErrorBoundary>
+        <LegalFooter className="legal-footer--shell" />
       </MainCanvas>
 
       <ActionDrawer entry={selected} onClose={() => setSelected(null)} />

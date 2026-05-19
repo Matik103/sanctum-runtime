@@ -9,7 +9,7 @@ import {
   User,
   Zap,
 } from 'lucide-react'
-import { docsUrl } from '../lib/site-links'
+import { LegalFooter } from '../components/LegalFooter'
 import { sanitizeApiError } from '../lib/sanitize-error'
 import { getSupabase } from '../lib/supabase'
 import '../styles/auth.css'
@@ -305,17 +305,7 @@ export function Login() {
         </div>
       </div>
 
-      <footer className="auth-footer">
-        Sanctum Runtime · Trusted execution layer ·{' '}
-        <a
-          href={docsUrl}
-          target="_blank"
-          rel="noreferrer"
-          style={{ color: '#93b4ff' }}
-        >
-          Documentation
-        </a>
-      </footer>
+      <LegalFooter className="auth-footer" />
     </div>
   )
 }

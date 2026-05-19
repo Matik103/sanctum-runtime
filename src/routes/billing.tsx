@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { DiscoverPageLayout } from "@/components/DiscoverPageLayout";
 import { pageSeo, webPageJsonLd } from "@/lib/seo";
-import { privacyEmail } from "@/lib/site-links";
+import { billingEmail, privacyEmail } from "@/lib/site-links";
 
 const path = "/billing";
 const title = "Billing — Sanctum Runtime";
@@ -52,9 +52,10 @@ function BillingPage() {
         <h2>4. Cancellations and refunds</h2>
         <p>
           You may cancel a subscription according to the process in the console or payment provider
-          portal. Unless required by law, fees are non-refundable for partial billing periods. After
-          cancellation, you may retain access until the end of the paid period; data retention follows
-          your plan and our <Link to="/privacy">Privacy Policy</Link>.
+          portal. Refunds and disputes are handled by Paddle as described in our{" "}
+          <Link to="/refund">Refund and Dispute Policy</Link>. After cancellation, you may retain
+          access until the end of the paid period; data retention follows your plan and our{" "}
+          <Link to="/privacy">Privacy Policy</Link>.
         </p>
       </section>
 
@@ -78,13 +79,14 @@ function BillingPage() {
         <h2>7. Contact</h2>
         <p>
           Billing questions:{" "}
-          <a href={`mailto:${privacyEmail}`} className="text-primary hover:underline">
-            {privacyEmail}
+          <a href={`mailto:${billingEmail}`} className="text-primary hover:underline">
+            {billingEmail}
           </a>
         </p>
         <p>
-          <Link to="/terms">Terms of Service</Link> · <Link to="/privacy">Privacy Policy</Link> ·{" "}
-          <Link to="/cookies">Cookies</Link>
+          <Link to="/terms">Terms &amp; Conditions</Link> · <Link to="/privacy">Privacy Policy</Link>{" "}
+          · <Link to="/refund">Refund Policy</Link> · <Link to="/pricing">Pricing</Link> ·{" "}
+          <Link to="/contact">Contact</Link> · <Link to="/cookies">Cookies</Link>
         </p>
       </section>
 

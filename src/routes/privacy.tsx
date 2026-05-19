@@ -143,8 +143,9 @@ function PrivacyPage() {
           </a>
         </p>
         <p>
-          See also: <Link to="/terms">Terms of Service</Link>, <Link to="/billing">Billing</Link>,{" "}
-          <Link to="/cookies">Cookies</Link>.
+          See also: <Link to="/terms">Terms &amp; Conditions</Link>, <Link to="/refund">Refund Policy</Link>,{" "}
+          <Link to="/billing">Billing</Link>, <Link to="/pricing">Pricing</Link>,{" "}
+          <Link to="/contact">Contact</Link>, <Link to="/cookies">Cookies</Link>.
         </p>
       </section>
 
