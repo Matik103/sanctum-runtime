@@ -1208,11 +1208,6 @@ tr.key-row--pending td {
   color: var(--muted);
 }
 
-.legal-footer--shell {
-  margin-top: auto;
-  padding: 1rem 0 0.5rem;
-}
-
 .legal-footer--auth,
 .auth-footer.legal-footer {
   margin-top: 0;
