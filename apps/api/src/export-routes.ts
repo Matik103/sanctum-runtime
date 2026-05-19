@@ -480,14 +480,18 @@ export async function registerExportRoutes(app: FastifyInstance) {
       .eq('org_id', orgId)
       .maybeSingle()
 
-    if (!data) return {}
+    if (!data) return {
+      notification_email: null,
+      slack_webhook_configured: false,
+      notification_webhook_configured: false,
+      quota_warning_pct: 80,
+    }
     return {
       notification_email: data.notification_email,
-      slack_webhook_url: maskWebhookUrl(data.slack_webhook_url as string | null),
+      // Never return raw webhook URLs to the client — just whether they're set
       slack_webhook_configured: Boolean(data.slack_webhook_url),
-      notification_webhook_url: maskWebhookUrl(data.notification_webhook_url as string | null),
       notification_webhook_configured: Boolean(data.notification_webhook_url),
-      quota_warning_pct: data.quota_warning_pct,
+      quota_warning_pct: data.quota_warning_pct ?? 80,
     }
   })
 
@@ -499,6 +503,7 @@ export async function registerExportRoutes(app: FastifyInstance) {
 
     const body = z.object({
       notification_email: z.string().email().nullable().optional(),
+      // Webhooks: omit key = keep existing; null = clear; string = update
       slack_webhook_url: z.string().url().nullable().optional(),
       notification_webhook_url: z.string().url().nullable().optional(),
       quota_warning_pct: z.number().int().min(50).max(100).optional(),
@@ -507,8 +512,10 @@ export async function registerExportRoutes(app: FastifyInstance) {
     const admin = createSupabaseAdmin(cfg)
     const { data, error } = await admin
       .from('org_plans')
-      .update({ ...body, updated_at: new Date().toISOString() })
-      .eq('org_id', orgId)
+      .upsert(
+        { org_id: orgId, ...body, updated_at: new Date().toISOString() },
+        { onConflict: 'org_id', ignoreDuplicates: false },
+      )
       .select('notification_email,slack_webhook_url,notification_webhook_url,quota_warning_pct')
       .single()
 
@@ -520,11 +527,9 @@ export async function registerExportRoutes(app: FastifyInstance) {
     }
     return {
       notification_email: data.notification_email,
-      slack_webhook_url: maskWebhookUrl(data.slack_webhook_url as string | null),
       slack_webhook_configured: Boolean(data.slack_webhook_url),
-      notification_webhook_url: maskWebhookUrl(data.notification_webhook_url as string | null),
       notification_webhook_configured: Boolean(data.notification_webhook_url),
-      quota_warning_pct: data.quota_warning_pct,
+      quota_warning_pct: data.quota_warning_pct ?? 80,
     }
   })
 }

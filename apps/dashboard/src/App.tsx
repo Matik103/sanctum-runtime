@@ -90,7 +90,7 @@ export function App() {
         )}
         {page === 'activity' && <RuntimeActivity audit={audit} onSelect={onSelect} />}
         {page === 'threats' && <ThreatMonitor audit={audit} onSelect={onSelect} />}
-        {page === 'alerts' && <Alerts />}
+        {page === 'alerts' && <Alerts onPage={setPage} />}
         {page === 'policies' && (
           <Policies
             policies={policies}

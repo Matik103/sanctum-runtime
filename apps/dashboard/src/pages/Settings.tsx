@@ -19,8 +19,8 @@ async function authHeaders(json = false): Promise<Record<string, string>> {
 
 type NotificationPrefs = {
   notification_email: string | null
-  slack_webhook_url: string | null
-  notification_webhook_url: string | null
+  slack_webhook_configured: boolean
+  notification_webhook_configured: boolean
   quota_warning_pct: number
 }
 
@@ -33,7 +33,7 @@ export function Settings({ status }: Props) {
   const [usageError, setUsageError] = useState<string | null>(null)
   const [exportBusy, setExportBusy] = useState(false)
   const [exportMsg, setExportMsg] = useState<string | null>(null)
-  const [, setNotifPrefs] = useState<NotificationPrefs | null>(null)
+  const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs | null>(null)
   const [notifBusy, setNotifBusy] = useState(false)
   const [notifMsg, setNotifMsg] = useState<string | null>(null)
   const [editEmail, setEditEmail] = useState('')
@@ -69,8 +69,9 @@ export function Settings({ status }: Props) {
         const d = await res.json() as NotificationPrefs
         setNotifPrefs(d)
         setEditEmail(d.notification_email ?? '')
-        setEditSlack(d.slack_webhook_url ?? '')
-        setEditWebhook(d.notification_webhook_url ?? '')
+        // Never pre-populate webhook inputs — show configured status instead
+        setEditSlack('')
+        setEditWebhook('')
         setEditPct(d.quota_warning_pct ?? 80)
       } catch { /* ignore if not configured */ }
     })()
@@ -107,22 +108,47 @@ export function Settings({ status }: Props) {
     setNotifBusy(true)
     setNotifMsg(null)
     try {
+      const patch: Record<string, unknown> = {
+        notification_email: editEmail || null,
+        quota_warning_pct: editPct,
+      }
+      // Only include webhook URLs when the user typed a new value.
+      // Omitting the key preserves the existing stored value.
+      // Sending null explicitly clears it.
+      if (editSlack) patch.slack_webhook_url = editSlack
+      if (editWebhook) patch.notification_webhook_url = editWebhook
+
       const res = await fetch(`${apiBase}/v1/orgs/${orgId}/notifications`, {
         method: 'PATCH',
         headers: await authHeaders(true),
-        body: JSON.stringify({
-          notification_email: editEmail || null,
-          slack_webhook_url: editSlack || null,
-          notification_webhook_url: editWebhook || null,
-          quota_warning_pct: editPct,
-        }),
+        body: JSON.stringify(patch),
       })
       if (!res.ok) throw new Error(`Save failed: ${res.status}`)
+      const updated = await res.json() as NotificationPrefs
+      setNotifPrefs(updated)
+      setEditSlack('')
+      setEditWebhook('')
       setNotifMsg('Notification preferences saved.')
     } catch (e) {
       setNotifMsg(e instanceof Error ? e.message : 'Save failed')
     } finally {
       setNotifBusy(false)
+    }
+  }
+
+  const clearWebhook = async (field: 'slack_webhook_url' | 'notification_webhook_url') => {
+    try {
+      const res = await fetch(`${apiBase}/v1/orgs/${orgId}/notifications`, {
+        method: 'PATCH',
+        headers: await authHeaders(true),
+        body: JSON.stringify({ [field]: null }),
+      })
+      if (!res.ok) throw new Error(`Failed: ${res.status}`)
+      const updated = await res.json() as NotificationPrefs
+      setNotifPrefs(updated)
+      setNotifMsg('Webhook removed.')
+    } catch (e) {
+      setNotifMsg(e instanceof Error ? e.message : 'Failed to remove webhook')
     }
   }
 
@@ -214,7 +240,7 @@ export function Settings({ status }: Props) {
             </div>
             <div className="section__body">
               {notifMsg && (
-                <Alert variant={notifMsg.includes('saved') ? 'success' : 'error'} onDismiss={() => setNotifMsg(null)}>
+                <Alert variant={notifMsg.includes('saved') || notifMsg.includes('removed') ? 'success' : 'error'} onDismiss={() => setNotifMsg(null)}>
                   {notifMsg}
                 </Alert>
               )}
@@ -236,10 +262,18 @@ export function Settings({ status }: Props) {
                   <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.3rem', color: 'var(--muted)' }}>
                     Slack webhook URL
                   </label>
+                  {notifPrefs?.slack_webhook_configured && !editSlack && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                      <span className="badge success" style={{ fontSize: '0.72rem' }}>Configured</span>
+                      <button type="button" className="btn btn-ghost" style={{ fontSize: '0.75rem', padding: '0.1rem 0.4rem', color: 'var(--danger)' }} onClick={() => void clearWebhook('slack_webhook_url')}>
+                        Remove
+                      </button>
+                    </div>
+                  )}
                   <input
                     className="input"
                     type="url"
-                    placeholder="https://hooks.slack.com/services/..."
+                    placeholder={notifPrefs?.slack_webhook_configured ? 'Enter new URL to replace…' : 'https://hooks.slack.com/services/...'}
                     value={editSlack}
                     onChange={(e) => setEditSlack(e.target.value)}
                     style={{ width: '100%' }}
@@ -249,10 +283,18 @@ export function Settings({ status }: Props) {
                   <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.3rem', color: 'var(--muted)' }}>
                     Generic webhook URL (PagerDuty, OpsGenie…)
                   </label>
+                  {notifPrefs?.notification_webhook_configured && !editWebhook && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                      <span className="badge success" style={{ fontSize: '0.72rem' }}>Configured</span>
+                      <button type="button" className="btn btn-ghost" style={{ fontSize: '0.75rem', padding: '0.1rem 0.4rem', color: 'var(--danger)' }} onClick={() => void clearWebhook('notification_webhook_url')}>
+                        Remove
+                      </button>
+                    </div>
+                  )}
                   <input
                     className="input"
                     type="url"
-                    placeholder="https://events.pagerduty.com/..."
+                    placeholder={notifPrefs?.notification_webhook_configured ? 'Enter new URL to replace…' : 'https://events.pagerduty.com/...'}
                     value={editWebhook}
                     onChange={(e) => setEditWebhook(e.target.value)}
                     style={{ width: '100%' }}
