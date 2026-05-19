@@ -116,7 +116,7 @@ export function Policies({
       <header className="page-header">
         <div>
           <h1>Policies</h1>
-          <p>Define trust boundaries — not programming rules</p>
+          <p>Configure trust boundaries for AI agent actions across your fleet</p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <button

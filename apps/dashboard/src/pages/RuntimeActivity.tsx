@@ -38,7 +38,7 @@ export function RuntimeActivity({ audit, onSelect }: Props) {
       <header className="page-header">
         <div>
           <h1>Runtime activity</h1>
-          <p>Full visibility into AI behavior and execution decisions</p>
+          <p>Real-time visibility into agent actions and execution decisions</p>
         </div>
       </header>
 

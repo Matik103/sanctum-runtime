@@ -89,7 +89,7 @@ export function PolicyHistory({ orgId }: Props) {
       <header className="page-header">
         <div>
           <h1>Policy History</h1>
-          <p>Version snapshots and rollback for org policies</p>
+          <p>Version-controlled policy snapshots with one-click rollback</p>
         </div>
         <button type="button" className="btn btn-primary" onClick={() => setShowSave(true)}>
           <Tag size={14} style={{ marginRight: '0.3rem', verticalAlign: 'middle' }} />

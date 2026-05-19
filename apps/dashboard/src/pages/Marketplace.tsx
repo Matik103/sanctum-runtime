@@ -176,11 +176,11 @@ export function Marketplace() {
         </div>
       ) : packages.length === 0 ? (
         <EmptyState
-          title={orgId ? 'No packages' : 'Select an organization'}
+          title={orgId ? 'No packages available' : 'Select an organization'}
           description={
             orgId
-              ? 'Run npm run db:push to seed the 12-category catalog, or publish a package via API.'
-              : 'Choose an organization above to browse the marketplace.'
+              ? 'No packages are available for this organization. Contact your administrator to enable the package catalog.'
+              : 'Choose an organization above to browse available packages.'
           }
         />
       ) : (

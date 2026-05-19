@@ -263,7 +263,7 @@ export function Devices({ status }: Props) {
           ) : runtimes.length === 0 ? (
             <EmptyState
               title="No devices connected yet"
-              description="Create an API key below, set SANCTUM_API_URL and SANCTUM_ORG_ID, then run npm run example:connect or connectFromPackage() from the Marketplace."
+              description="Create an API key below, then connect your runtime using SANCTUM_API_URL and SANCTUM_ORG_ID."
             />
           ) : (
             <div className="policy-grid" style={{ marginTop: workspaceOrgId ? '1.25rem' : 0 }}>
@@ -311,7 +311,7 @@ export function Devices({ status }: Props) {
 
         <div className="section__body">
           <p className="hint-line">
-            Create a key for <code>npm run example:connect</code>, robotics hosts, or CI pipelines.
+            Create a key to authenticate runtimes, scripts, and automated pipelines.
           </p>
 
           <form
@@ -351,9 +351,9 @@ export function Devices({ status }: Props) {
                 hint="Shown once only. Store in your secrets manager."
               />
               <CopyField
-                label="Environment file"
+                label="Environment variables"
                 value={envSnippet}
-                hint="Paste into .env, then run npm run example:connect"
+                hint="Add these to your runtime environment or .env file."
               />
             </div>
           )}

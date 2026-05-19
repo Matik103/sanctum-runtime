@@ -221,7 +221,7 @@ export function Settings({ status }: Props) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxWidth: '28rem' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.3rem', color: 'var(--muted)' }}>
-                    Alert email (Resend required)
+                    Alert email
                   </label>
                   <input
                     className="input"
@@ -282,7 +282,7 @@ export function Settings({ status }: Props) {
                 </button>
               </div>
               <p className="hint-line" style={{ marginTop: '0.75rem' }}>
-                Set <code className="inline-code">RESEND_API_KEY</code> on the API host to enable email alerts.
+                Email alerts require an active email integration on your deployment.
               </p>
             </div>
           </section>

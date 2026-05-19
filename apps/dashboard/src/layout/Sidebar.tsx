@@ -43,7 +43,7 @@ const NAV: { id: PageId; label: string; icon: typeof LayoutDashboard; group?: st
   { id: 'governance', label: 'Governance', icon: CheckSquare },
   { id: 'compliance', label: 'Compliance', icon: FileText },
   { id: 'devices', label: 'Devices', icon: Monitor },
-  { id: 'fleet', label: 'Fleet', icon: Radio },
+  { id: 'fleet', label: 'Runtime Fleet', icon: Radio },
   { id: 'marketplace', label: 'Marketplace', icon: Package },
   { id: 'audit', label: 'Audit Logs', icon: ScrollText },
   { id: 'billing', label: 'Billing', icon: CreditCard },
