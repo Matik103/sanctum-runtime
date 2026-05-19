@@ -47,6 +47,8 @@ import {
   resolveRouteOrgScope,
 } from './scoped-policy-audit.js'
 import { assertOrgAllowed, type SanctumReq } from './org-scope.js'
+import { ControlPlaneStore } from './control-plane-store.js'
+import { createSupabaseAdmin } from './auth.js'
 import {
   loadRepoEnv,
   resolveApiListenTarget,
@@ -282,6 +284,37 @@ app.get('/health', async () => {
 })
 
 app.get('/v1/status', async () => runtime.getStatus())
+
+// List orgs the caller belongs to, and ensure their personal org exists
+app.get('/v1/orgs', async (req, reply) => {
+  if (!supabaseAuth) return reply.send([])
+  const user = (req as SanctumReq).sanctumUser
+  if (!user) return reply.status(401).send({ error: 'unauthorized' })
+
+  const store = new ControlPlaneStore(supabaseAuth)
+  const admin = createSupabaseAdmin(supabaseAuth)
+
+  // Derive personal org ID from user UUID
+  const personalOrgId = 'personal-' + user.id.replace(/-/g, '').slice(0, 12)
+
+  // Ensure personal org exists (idempotent)
+  await admin.from('organizations').upsert(
+    { id: personalOrgId, name: user.email ?? personalOrgId },
+    { onConflict: 'id', ignoreDuplicates: true },
+  ).catch(() => {})
+  await admin.from('organization_members').upsert(
+    { org_id: personalOrgId, user_id: user.id, role: 'owner' },
+    { onConflict: 'org_id,user_id', ignoreDuplicates: true },
+  ).catch(() => {})
+
+  const orgIds = await store.getUserOrgIds(user.id)
+  const { data: orgs } = await admin
+    .from('organizations')
+    .select('id,name,created_at')
+    .in('id', orgIds.length ? orgIds : [personalOrgId])
+
+  return reply.send(orgs ?? [])
+})
 
 app.get('/v1/policies', async (req, reply) => {
   const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)

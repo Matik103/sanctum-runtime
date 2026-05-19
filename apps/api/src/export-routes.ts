@@ -15,8 +15,7 @@ function headerKey(req: FastifyRequest): string | undefined {
   return Array.isArray(v) ? v[0] : v
 }
 
-// In-memory rate limit: one export per org per hour
-const exportCooldowns = new Map<string, number>()
+// DB-backed rate limit: persisted across redeploys via export_audit table
 
 // Cache for OIDC discovery documents: issuer → { tokenEndpoint, fetchedAt }
 const oidcDiscoveryCache = new Map<string, { tokenEndpoint: string; authorizationEndpoint: string; fetchedAt: number }>()
@@ -73,17 +72,27 @@ export async function registerExportRoutes(app: FastifyInstance) {
     const resolvedOrg = await resolveOrgId(req as SanctumReq, orgId)
     if (!resolvedOrg) return reply.status(403).send({ error: 'org_forbidden' })
 
-    // Rate limit: one export per hour per org
-    const last = exportCooldowns.get(orgId) ?? 0
-    if (Date.now() - last < 3_600_000) {
-      const nextMs = 3_600_000 - (Date.now() - last)
-      return reply.status(429).send({
-        error: 'export_rate_limited',
-        retryAfterMs: nextMs,
-        retryAfterMinutes: Math.ceil(nextMs / 60_000),
-      })
+    // Rate limit: one export per hour per org — checked in DB so it survives redeploys
+    const { data: lastExport } = await admin
+      .from('export_audit')
+      .select('created_at')
+      .eq('org_id', orgId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (lastExport?.created_at) {
+      const lastMs = new Date(lastExport.created_at as string).getTime()
+      const elapsed = Date.now() - lastMs
+      if (elapsed < 3_600_000) {
+        const nextMs = 3_600_000 - elapsed
+        return reply.status(429).send({
+          error: 'export_rate_limited',
+          retryAfterMs: nextMs,
+          retryAfterMinutes: Math.ceil(nextMs / 60_000),
+        })
+      }
     }
-    exportCooldowns.set(orgId, Date.now())
 
     const admin = createSupabaseAdmin(cfg)
     const exportedAt = new Date().toISOString()
