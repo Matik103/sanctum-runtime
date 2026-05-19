@@ -99,43 +99,77 @@ export async function registerExportRoutes(app: FastifyInstance) {
 
       const exportedAt = new Date().toISOString()
 
-      // Fetch all org data in parallel with conservative limits to stay within
-      // Supabase free-tier statement timeout (~8s). Each query is independent so
-      // a single slow table won't block the others.
-      const timeout = <T>(ms: number, fallback: T) =>
-        new Promise<T>((res) => setTimeout(() => res(fallback), ms))
+      // Lean columns only (no full payload) — stays under Supabase free-tier PostgREST timeout (~8s).
+      const queryWithTimeout = async <T>(
+        label: string,
+        run: () => PromiseLike<{ data: T | null; error: { message: string } | null }>,
+        ms = 8000,
+      ): Promise<{ data: T; warning?: string }> => {
+        try {
+          const result = await Promise.race([
+            run(),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms),
+            ),
+          ])
+          if (result.error) {
+            return { data: [] as T, warning: `${label}: ${result.error.message}` }
+          }
+          return { data: (result.data ?? []) as T }
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err)
+          return { data: [] as T, warning: `${label}: ${msg}` }
+        }
+      }
 
-      const [auditRes, runtimesRes, apiKeysRes, usageRes] = await Promise.all([
-        Promise.race([
-          admin.from('audit_events')
-            .select('id,org_id,actor,action,decision,risk_score,created_at,context,reasoning')
-            .eq('org_id', orgId).order('created_at', { ascending: false }).limit(2000),
-          timeout(6000, { data: [] as unknown[], error: null }),
-        ]),
-        Promise.race([
-          admin.from('registered_runtimes')
-            .select('id,name,status,mode,region,connected_at,last_seen_at,trust_score')
-            .eq('org_id', orgId),
-          timeout(6000, { data: [] as unknown[], error: null }),
-        ]),
-        Promise.race([
-          admin.from('api_keys')
-            .select('id,name,key_prefix,org_id,created_at,last_used_at,revoked_at')
-            .eq('org_id', orgId),
-          timeout(6000, { data: [] as unknown[], error: null }),
-        ]),
-        Promise.race([
-          admin.from('usage_events')
-            .select('metric,quantity,recorded_at')
-            .eq('org_id', orgId).order('recorded_at', { ascending: false }).limit(5000),
-          timeout(6000, { data: [] as unknown[], error: null }),
-        ]),
+      const [auditOut, runtimesOut, apiKeysOut, usageOut] = await Promise.all([
+        queryWithTimeout(
+          'audit_events',
+          () =>
+            admin
+              .from('audit_events')
+              .select(
+                'id,correlation_id,org_id,actor,action,decision,risk,reasoning,anomaly_flags,resolved_by,created_at,resolved_at',
+              )
+              .eq('org_id', orgId)
+              .order('created_at', { ascending: false })
+              .limit(1000),
+        ),
+        queryWithTimeout(
+          'registered_runtimes',
+          () =>
+            admin
+              .from('registered_runtimes')
+              .select('id,name,status,mode,region,connected_at,last_seen_at,trust_score')
+              .eq('org_id', orgId),
+        ),
+        queryWithTimeout(
+          'api_keys',
+          () =>
+            admin
+              .from('api_keys')
+              .select('id,name,key_prefix,org_id,created_at,last_used_at,revoked_at')
+              .eq('org_id', orgId),
+        ),
+        queryWithTimeout(
+          'usage_events',
+          () =>
+            admin
+              .from('usage_events')
+              .select('metric,quantity,recorded_at')
+              .eq('org_id', orgId)
+              .order('recorded_at', { ascending: false })
+              .limit(2000),
+        ),
       ])
 
-      const auditEvents = auditRes.data ?? []
-      const runtimes = runtimesRes.data ?? []
-      const apiKeys = apiKeysRes.data ?? []
-      const usageEvents = usageRes.data ?? []
+      const auditEvents = auditOut.data
+      const runtimes = runtimesOut.data
+      const apiKeys = apiKeysOut.data
+      const usageEvents = usageOut.data
+      const warnings = [auditOut, runtimesOut, apiKeysOut, usageOut]
+        .map((o) => o.warning)
+        .filter((w): w is string => Boolean(w))
 
       const totalRecords = auditEvents.length + runtimes.length + apiKeys.length + usageEvents.length
 
@@ -151,6 +185,7 @@ export async function registerExportRoutes(app: FastifyInstance) {
         export_version: '1.0',
         exported_at: exportedAt,
         org_id: orgId,
+        ...(warnings.length > 0 ? { warnings } : {}),
         record_counts: {
           audit_events: auditEvents.length,
           runtimes: runtimes.length,
@@ -171,7 +206,13 @@ export async function registerExportRoutes(app: FastifyInstance) {
         .send(JSON.stringify(payload, null, 2))
     } catch (err) {
       req.log.error({ err }, 'GDPR export failed')
-      return reply.status(500).send({ error: 'export_failed', detail: err instanceof Error ? err.message : String(err) })
+      return reply.status(500).send({
+        error: 'export_failed',
+        ...(!isProduction() && {
+          detail: err instanceof Error ? err.message : String(err),
+        }),
+        hint: 'Database query failed or timed out. Retry in a few minutes, or upgrade Supabase plan for heavier exports.',
+      })
     }
   })
 

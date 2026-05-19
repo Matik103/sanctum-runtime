@@ -87,8 +87,29 @@ export function Settings({ status }: Props) {
         setExportMsg(`Rate limited — next export available in ${body.retryAfterMinutes ?? 60} minutes.`)
         return
       }
-      if (!res.ok) throw new Error(`Export failed: ${res.status}`)
-      const blob = await res.blob()
+      if (!res.ok) {
+        let detail = `Export failed (${res.status})`
+        try {
+          const body = (await res.json()) as { detail?: string; hint?: string; error?: string }
+          if (body.hint) detail = body.hint
+          else if (body.detail) detail = body.detail
+          else if (body.error) detail = body.error.replace(/_/g, ' ')
+        } catch {
+          /* non-JSON */
+        }
+        throw new Error(detail)
+      }
+      const text = await res.text()
+      let warnNote = ''
+      try {
+        const parsed = JSON.parse(text) as { warnings?: string[] }
+        if (parsed.warnings?.length) {
+          warnNote = ` Some sections were empty (${parsed.warnings.length} query warning(s) — see file).`
+        }
+      } catch {
+        /* ignore */
+      }
+      const blob = new Blob([text], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -96,7 +117,7 @@ export function Settings({ status }: Props) {
       a.download = `sanctum-export-${orgId}-${today}.json`
       a.click()
       URL.revokeObjectURL(url)
-      setExportMsg('Export downloaded successfully.')
+      setExportMsg(`Export downloaded successfully.${warnNote}`)
     } catch (e) {
       setExportMsg(e instanceof Error ? e.message : 'Export failed')
     } finally {
