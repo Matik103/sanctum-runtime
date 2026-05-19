@@ -15,9 +15,9 @@ const GRANT_OPTIONS = [
 type Props = {
   entry: ActionResult
   queuePosition?: { current: number; total: number }
-  onApproveOnce: (grantMinutes?: number) => void
-  onAlwaysApprove: () => void
-  onDeny: () => void
+  onApproveOnce: (grantMinutes?: number) => Promise<void>
+  onAlwaysApprove: () => Promise<void>
+  onDeny: () => Promise<void>
 }
 
 export function VerificationModal({

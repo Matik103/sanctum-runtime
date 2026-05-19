@@ -37,10 +37,14 @@ const PLAN_DEFAULTS: Record<PlanId, PlanLimits> = {
 }
 
 export class EntitlementEngine {
-  constructor(private cfg: SupabaseAuthConfig) {}
+  private _admin: ReturnType<typeof createSupabaseAdmin>
+
+  constructor(private cfg: SupabaseAuthConfig) {
+    this._admin = createSupabaseAdmin(cfg)
+  }
 
   private admin() {
-    return createSupabaseAdmin(this.cfg)
+    return this._admin
   }
 
   async getPlanId(orgId: string): Promise<PlanId> {

@@ -70,6 +70,8 @@ if (isProduction()) {
     missing.push('SANCTUM_API_KEY_PEPPER (required for agent token signing)')
   if (!process.env.SUPABASE_URL?.trim())
     missing.push('SUPABASE_URL')
+  if (process.env.SUPABASE_URL?.trim() && !process.env.SUPABASE_SERVICE_ROLE_KEY?.trim())
+    missing.push('SUPABASE_SERVICE_ROLE_KEY (required when SUPABASE_URL is set)')
   if (missing.length > 0) {
     console.error('FATAL: Missing required environment variables:\n  ' + missing.join('\n  '))
     process.exit(1)
@@ -289,7 +291,6 @@ app.get('/health', async (_req, reply) => {
   let supabaseOk: boolean | null = null
   if (supabaseAuth) {
     try {
-      const { createSupabaseAdmin } = await import('./auth.js')
       const admin = createSupabaseAdmin(supabaseAuth)
       const { error } = await Promise.race([
         admin.from('organizations').select('id').limit(1),
@@ -491,9 +492,15 @@ app.get('/v1/audit', async (req, reply) => {
   return listScopedAudit(runtime, limit, picked.orgIds, scope)
 })
 
-app.get('/v1/verifications/:correlationId', async (req) => {
+app.get('/v1/verifications/:correlationId', async (req, reply) => {
   const { correlationId } = req.params as { correlationId: string }
-  return runtime.getVerificationStatus(correlationId)
+  const status = runtime.getVerificationStatus(correlationId)
+  if (!status) return reply.status(404).send({ error: 'not_found' })
+  // Scope-check: caller must belong to the org that owns this action
+  const entryOrgId = typeof status.context?.org_id === 'string' ? status.context.org_id : undefined
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
+  if (!assertAuditEntryScope(scope, entryOrgId, reply)) return
+  return status
 })
 
 app.get('/v1/orgs/:orgId/policies', async (req, reply) => {
@@ -582,14 +589,17 @@ app.post('/v1/actions/verify', {
 
   // Confirm token is not revoked (HMAC alone is insufficient — must check DB)
   if (agentClaims && supabaseAuth) {
-    const { createSupabaseAdmin: mkAdmin } = await import('./auth.js')
-    const adminClient = mkAdmin(supabaseAuth)
-    const { data: reg } = await adminClient
+    const adminClient = createSupabaseAdmin(supabaseAuth)
+    const revocationCheck = adminClient
       .from('agent_registrations')
       .select('id')
       .eq('id', agentClaims.id)
       .is('revoked_at', null)
       .maybeSingle()
+    const { data: reg } = await Promise.race([
+      revocationCheck,
+      new Promise<{ data: null }>((res) => setTimeout(() => res({ data: null }), 2000)),
+    ])
     if (!reg) return reply.status(401).send({ error: 'agent_token_revoked' })
     void adminClient
       .from('agent_registrations')
@@ -737,24 +747,25 @@ app.post('/analyze-action', async (req) => {
       ? { description: body.context }
       : (body.context ?? {})
 
-  const result = await runtime.verifyAction({
-    actor: body.actor,
-    action: body.action,
-    context,
-  })
+  // Use simulation path — no audit log entry written
+  const request = ActionRequestSchema.parse({ actor: body.actor, action: body.action, context })
+  const anomalyFlags = detectAnomalies(request)
+  const policyEval = runtime.getPolicyEngine().evaluate(request, false)
+  const risk = heuristicRiskFloor(request, anomalyFlags)
+  let decision: 'APPROVED' | 'BLOCKED' | 'REQUIRE_VERIFICATION' = 'APPROVED'
+  if (policyEval.violations.includes('policy_auto_block') || policyEval.violations.includes('condition_auto_block')) {
+    decision = 'BLOCKED'
+  } else if (policyEval.policy.requiresVerification || risk === 'high' || risk === 'medium' || anomalyFlags.length > 0) {
+    decision = 'REQUIRE_VERIFICATION'
+  }
 
   return {
-    risk: result.risk,
-    reason: result.reasoning,
-    recommendation:
-      result.decision === 'APPROVED'
-        ? 'approve'
-        : result.decision === 'BLOCKED'
-          ? 'block'
-          : 'require_verification',
-    decision: result.decision,
-    anomalyFlags: result.anomalyFlags,
-    offlineMode: result.offlineMode,
+    risk,
+    reason: policyEval.policy.reasoning ?? '',
+    recommendation: decision === 'APPROVED' ? 'approve' : decision === 'BLOCKED' ? 'block' : 'require_verification',
+    decision,
+    anomalyFlags,
+    offlineMode: false,
   }
 })
 

@@ -19,6 +19,9 @@ export async function checkActiveGrant(
   actor: string,
 ): Promise<PolicyGrant | null> {
   const admin = createSupabaseAdmin(cfg)
+  // Sanitize actor to prevent PostgREST filter injection — strip any chars that
+  // are meaningful in PostgREST's filter syntax before embedding in .or()
+  const safeActor = actor.replace(/[",\\]/g, '')
   const { data } = await admin
     .from('policy_grants')
     .select('*')
@@ -26,7 +29,7 @@ export async function checkActiveGrant(
     .eq('action', action)
     .is('revoked_at', null)
     .gt('expires_at', new Date().toISOString())
-    .or(`actor.is.null,actor.eq.${actor}`)
+    .or(`actor.is.null,actor.eq."${safeActor}"`)
     .order('expires_at', { ascending: false })
     .limit(1)
     .maybeSingle()

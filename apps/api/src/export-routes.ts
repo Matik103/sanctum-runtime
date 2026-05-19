@@ -511,9 +511,9 @@ export async function registerExportRoutes(app: FastifyInstance) {
     try {
       const identEmail = email ?? `${sub}@sso.local`
 
-      // Try to find existing user by email
-      const { data: existingUsers } = await admin.auth.admin.listUsers({ page: 1, perPage: 1 })
-      const existingUser = existingUsers?.users?.find((u) => u.email === identEmail)
+      // Look up existing user by email using admin API
+      const { data: existingUserData } = await admin.auth.admin.getUserByEmail(identEmail)
+      const existingUser = existingUserData?.user ?? null
 
       let userId: string
       if (existingUser) {

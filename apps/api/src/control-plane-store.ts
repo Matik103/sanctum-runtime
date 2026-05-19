@@ -429,7 +429,3 @@ export class ControlPlaneStore {
   }
 }
 
-export function getControlPlaneStore(): ControlPlaneStore | null {
-  const cfg = getSupabaseAuthConfig()
-  return cfg ? new ControlPlaneStore(cfg) : null
-}
