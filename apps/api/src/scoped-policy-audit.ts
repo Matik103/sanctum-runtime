@@ -2,6 +2,7 @@ import type { FastifyReply } from 'fastify'
 import type { PolicyMap } from '@sanctum-runtime/sdk'
 import type { ActionResult } from '@sanctum-runtime/sdk'
 import type { RuntimeEngine } from '@sanctum/runtime-engine'
+import { DEFAULT_POLICIES } from '@sanctum/policy-engine'
 import { ControlPlaneStore } from './control-plane-store.js'
 import { assertOrgAllowed, resolveOrgScope, type SanctumReq } from './org-scope.js'
 import { isProduction } from './security.js'
@@ -62,7 +63,7 @@ export function mergePoliciesForOrgs(
   runtime: RuntimeEngine,
   orgIds: string[],
 ): PolicyMap {
-  const merged: PolicyMap = {}
+  const merged: PolicyMap = { ...DEFAULT_POLICIES }
   for (const orgId of orgIds) {
     Object.assign(merged, runtime.getPoliciesForOrg(orgId))
   }

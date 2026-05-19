@@ -11,16 +11,13 @@ import {
 } from '../lib/api'
 
 const BUILTIN_ACTIONS = new Set([
-  'unlock_door',
-  'lock_door',
-  'send_email',
-  'delete_file',
-  'execute_terminal',
-  'access_database',
-  'create_user',
-  'transfer_funds',
-  'disable_alarm',
-  'move_robot',
+  'unlock_door', 'lock_door', 'send_email', 'delete_file', 'execute_terminal',
+  'access_database', 'create_user', 'transfer_funds', 'disable_alarm', 'move_robot',
+  'robot_arm_move', 'navigate', 'dock', 'calibrate_arm', 'grasp', 'release_payload',
+  'move_to_location', 'handover_object', 'install_package', 'kill_process', 'run_workflow',
+  'post_slack', 'update_crm', 'open_gate', 'arm_perimeter', 'stream_camera', 'dispense',
+  'move_bed', 'access_record', 'change_route', 'engage_mode', 'open_door', 'send_message',
+  'store_memory', 'place_order', 'emergency_stop', 'start_line', 'adjust_setpoint',
 ])
 
 type Props = {
@@ -159,30 +156,18 @@ export function Policies({
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
           <input
             type="text"
-            placeholder="action_name or org:action"
+            className="input"
+            placeholder="action_name  or  org_id:action_name"
             value={newAction}
-            onChange={(e) => setNewAction(e.target.value)}
+            onChange={(e) => { setNewAction(e.target.value); setError(null) }}
             onKeyDown={(e) => { if (e.key === 'Enter') void addPolicy() }}
-            style={{
-              flex: '1 1 12rem',
-              minWidth: '12rem',
-              padding: '0.5rem 0.75rem',
-              borderRadius: 8,
-              border: '1px solid var(--border)',
-              background: 'var(--surface)',
-              color: 'var(--text)',
-            }}
+            style={{ flex: '1 1 12rem', minWidth: '12rem' }}
           />
           <select
+            className="input"
             value={newMode}
             onChange={(e) => setNewMode(e.target.value as PolicyResponse)}
-            style={{
-              padding: '0.5rem 0.75rem',
-              borderRadius: 8,
-              border: '1px solid var(--border)',
-              background: 'var(--surface)',
-              color: 'var(--text)',
-            }}
+            style={{ flex: '0 0 auto' }}
           >
             <option value="approve">Approve</option>
             <option value="verify">Verify</option>
@@ -202,7 +187,24 @@ export function Policies({
         )}
       </div>
 
+      <div className="card" style={{ marginBottom: '1.25rem', borderLeft: '3px solid var(--accent)' }}>
+        <p style={{ margin: 0, fontSize: '0.82rem', lineHeight: 1.55, color: 'var(--muted)' }}>
+          <strong style={{ color: 'var(--text)' }}>Applying org-scoped policies to agents</strong>
+          <br />
+          For a policy to apply to a specific agent or org, your agent must include{' '}
+          <code style={{ fontSize: '0.8rem' }}>context: {'{'} org_id: &quot;your-org-id&quot; {'}'}</code>{' '}
+          in every <code style={{ fontSize: '0.8rem' }}>verifyAction()</code> call.
+          Policies saved here without an <code style={{ fontSize: '0.8rem' }}>org_id:</code> prefix apply globally as defaults.
+        </p>
+      </div>
+
       <div className="policy-grid">
+        {Object.entries(policies).length === 0 && (
+          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem 1rem', color: 'var(--muted)' }}>
+            <p style={{ marginBottom: '0.5rem', fontSize: '0.95rem' }}>No policies configured yet.</p>
+            <p style={{ fontSize: '0.82rem' }}>Add an action above or use Export/Import YAML to load a policy set.</p>
+          </div>
+        )}
         {Object.entries(policies).map(([action, policy]) => {
           const response = policyToResponse(policy)
           const last = audit.find((e) => e.action === action)

@@ -13,6 +13,7 @@
     "@fastify/rate-limit": "^10.3.0",
     "@fastify/websocket": "^11.2.0",
     "@sanctum-runtime/sdk": "*",
+    "@sanctum/policy-engine": "*",
     "@sanctum/runtime-engine": "*",
     "@supabase/supabase-js": "^2.105.4",
     "bcryptjs": "^3.0.2",
