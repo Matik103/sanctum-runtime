@@ -1,4 +1,4 @@
-import { createHmac } from 'crypto'
+import { createHmac, timingSafeEqual } from 'crypto'
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY?.trim()
 const FROM = process.env.NOTIFICATION_FROM_EMAIL?.trim() || 'Sanctum Runtime Alerts <alerts@sanctumruntime.com>'
@@ -20,8 +20,9 @@ export function verifyToken(token: string): { id: string; decision: 'APPROVED' |
   try {
     const [payload, sig] = token.split('.')
     if (!payload || !sig) return null
-    const expected = createHmac('sha256', signingSecret()).update(payload).digest('base64url')
-    if (expected !== sig) return null
+    const expectedBuf = Buffer.from(createHmac('sha256', signingSecret()).update(payload).digest('base64url'))
+    const sigBuf = Buffer.from(sig)
+    if (expectedBuf.length !== sigBuf.length || !timingSafeEqual(expectedBuf, sigBuf)) return null
     const data = JSON.parse(Buffer.from(payload, 'base64url').toString()) as { id: string; decision: 'APPROVED' | 'BLOCKED'; exp: number }
     if (Date.now() > data.exp) return null
     return { id: data.id, decision: data.decision }
@@ -29,6 +30,8 @@ export function verifyToken(token: string): { id: string; decision: 'APPROVED' |
     return null
   }
 }
+
+const escHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
 export async function sendVerificationEmail(opts: {
   to: string
@@ -49,7 +52,7 @@ export async function sendVerificationEmail(opts: {
   const contextRows = Object.entries(opts.context)
     .filter(([k]) => !['org_id', 'orgId'].includes(k))
     .slice(0, 8)
-    .map(([k, v]) => `<tr><td style="padding:4px 12px 4px 0;color:#9ca3af;font-size:13px">${k}</td><td style="padding:4px 0;font-size:13px;color:#f9fafb">${String(v)}</td></tr>`)
+    .map(([k, v]) => `<tr><td style="padding:4px 12px 4px 0;color:#9ca3af;font-size:13px">${escHtml(k)}</td><td style="padding:4px 0;font-size:13px;color:#f9fafb">${escHtml(String(v))}</td></tr>`)
     .join('')
 
   const riskColor = opts.risk === 'high' ? '#ef4444' : opts.risk === 'medium' ? '#f59e0b' : '#10b981'
@@ -60,8 +63,8 @@ export async function sendVerificationEmail(opts: {
     <h2 style="color:#f9fafb;margin:0 0 4px;font-size:20px">Action requires your approval</h2>
     <p style="color:#9ca3af;margin:0 0 20px;font-size:14px">An AI agent wants to perform a sensitive action. Review and decide.</p>
     <table style="width:100%;margin-bottom:20px">
-      <tr><td style="padding:4px 12px 4px 0;color:#9ca3af;font-size:13px">Agent</td><td style="padding:4px 0;font-size:13px;color:#f9fafb">${opts.actor}</td></tr>
-      <tr><td style="padding:4px 12px 4px 0;color:#9ca3af;font-size:13px">Action</td><td style="padding:4px 0;font-size:13px;color:#f9fafb"><strong>${opts.action}</strong></td></tr>
+      <tr><td style="padding:4px 12px 4px 0;color:#9ca3af;font-size:13px">Agent</td><td style="padding:4px 0;font-size:13px;color:#f9fafb">${escHtml(opts.actor)}</td></tr>
+      <tr><td style="padding:4px 12px 4px 0;color:#9ca3af;font-size:13px">Action</td><td style="padding:4px 0;font-size:13px;color:#f9fafb"><strong>${escHtml(opts.action)}</strong></td></tr>
       <tr><td style="padding:4px 12px 4px 0;color:#9ca3af;font-size:13px">Risk</td><td style="padding:4px 0;font-size:13px;color:${riskColor}">${opts.risk.toUpperCase()}</td></tr>
       ${contextRows}
     </table>
@@ -79,7 +82,7 @@ export async function sendVerificationEmail(opts: {
     body: JSON.stringify({
       from: FROM,
       to: [opts.to],
-      subject: `[Action Required] ${opts.actor} wants to ${opts.action}`,
+      subject: `[Action Required] ${opts.actor.slice(0, 80)} wants to ${opts.action.slice(0, 80)}`,
       html,
     }),
   })

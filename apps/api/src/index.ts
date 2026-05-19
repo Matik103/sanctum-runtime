@@ -62,6 +62,20 @@ import {
 } from '../../../scripts/env.ts'
 
 loadRepoEnv()
+
+// Fail fast in production if required secrets are missing
+if (isProduction()) {
+  const missing: string[] = []
+  if (!process.env.SANCTUM_API_KEY_PEPPER?.trim() && !process.env.SANCTUM_API_KEY?.trim())
+    missing.push('SANCTUM_API_KEY_PEPPER (required for agent token signing)')
+  if (!process.env.SUPABASE_URL?.trim())
+    missing.push('SUPABASE_URL')
+  if (missing.length > 0) {
+    console.error('FATAL: Missing required environment variables:\n  ' + missing.join('\n  '))
+    process.exit(1)
+  }
+}
+
 const { host, port } = resolveApiListenTarget()
 const dashboardUrl = resolveDashboardUrl()
 const forceOffline = process.env.SANCTUM_OFFLINE_MODE === 'true'
@@ -155,7 +169,7 @@ app.setErrorHandler((err, _req, reply) => {
 })
 
 function isPublicPath(path: string): boolean {
-  if (path === '/health' || path === '/v1/billing/webhook') return true
+  if (path === '/health' || path === '/v1/billing/webhook' || path === '/v1/verify-action') return true
   if (path.startsWith('/v1/sso/')) return true
   if (!isProduction()) {
     if (path === '/' || path === '/metrics' || path === '/v1/status') return true
@@ -271,25 +285,31 @@ if (supabaseAuth) {
 
 const stopWebhookWorker = supabaseAuth ? startWebhookWorker(supabaseAuth) : null
 
-app.get('/health', async () => {
-  if (isProduction()) {
-    return { ok: true }
-  }
-
-  const status = await runtime.getStatus()
-  const webhookStatus = runtime.getWebhookStatus()
-
+app.get('/health', async (_req, reply) => {
   let supabaseOk: boolean | null = null
   if (supabaseAuth) {
     try {
       const { createSupabaseAdmin } = await import('./auth.js')
       const admin = createSupabaseAdmin(supabaseAuth)
-      const { error } = await admin.from('organizations').select('id').limit(1)
+      const { error } = await Promise.race([
+        admin.from('organizations').select('id').limit(1),
+        new Promise<{ error: Error }>((res) => setTimeout(() => res({ error: new Error('timeout') }), 3000)),
+      ])
       supabaseOk = !error
     } catch {
       supabaseOk = false
     }
   }
+
+  if (isProduction()) {
+    if (supabaseAuth && !supabaseOk) {
+      return reply.status(503).send({ ok: false, reason: 'supabase_unreachable' })
+    }
+    return { ok: true }
+  }
+
+  const status = await runtime.getStatus()
+  const webhookStatus = runtime.getWebhookStatus()
 
   return {
     ok: status.runtimeOnline,
@@ -541,11 +561,11 @@ app.post('/v1/actions/verify', {
       },
     },
   },
-}, async (req) => {
+}, async (req, reply) => {
   const body = z
     .object({
-      actor: z.string(),
-      action: z.string(),
+      actor: z.string().max(512),
+      action: z.string().max(512),
       context: z.record(z.unknown()).default({}),
       offlineMode: z.boolean().optional(),
       correlationId: z.string().optional(),
@@ -560,10 +580,18 @@ app.post('/v1/actions/verify', {
     return reply.status(401).send({ error: 'invalid_agent_token' })
   }
 
-  // Update last_seen if we have a valid registration
+  // Confirm token is not revoked (HMAC alone is insufficient — must check DB)
   if (agentClaims && supabaseAuth) {
     const { createSupabaseAdmin: mkAdmin } = await import('./auth.js')
-    void mkAdmin(supabaseAuth)
+    const adminClient = mkAdmin(supabaseAuth)
+    const { data: reg } = await adminClient
+      .from('agent_registrations')
+      .select('id')
+      .eq('id', agentClaims.id)
+      .is('revoked_at', null)
+      .maybeSingle()
+    if (!reg) return reply.status(401).send({ error: 'agent_token_revoked' })
+    void adminClient
       .from('agent_registrations')
       .update({ last_seen_at: new Date().toISOString() })
       .eq('id', agentClaims.id)
@@ -583,7 +611,7 @@ app.post('/v1/actions/verify', {
   const orgId = agentClaims?.orgId ??
     (typeof body.context?.org_id === 'string' ? body.context.org_id : undefined)
 
-  const result = await traced(
+  let result = await traced(
     'action.verify',
     { actor: body.actor, action: body.action, org_id: orgId ?? '' },
     async (span) => {
@@ -689,8 +717,9 @@ app.get('/v1/verify-action', async (req, reply) => {
   const verb = parsed.decision === 'APPROVED' ? 'Approved' : 'Blocked'
   const color = parsed.decision === 'APPROVED' ? '#10b981' : '#ef4444'
   const icon = parsed.decision === 'APPROVED' ? '✓' : '✗'
+  const escHtml = (s: string) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
   return reply.type('text/html').send(
-    `<!DOCTYPE html><html><body style="background:#070b14;font-family:Inter,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0"><div style="text-align:center;color:#f9fafb;max-width:400px;padding:2rem"><div style="font-size:56px;margin-bottom:12px">${icon}</div><h1 style="color:${color};margin:0 0 12px;font-size:28px">${verb}</h1><p style="color:#9ca3af;margin:0 0 8px">Action <strong style="color:#f9fafb">${result.action}</strong> has been ${verb.toLowerCase()}.</p><p style="color:#6b7280;font-size:13px">You can close this tab.</p></div></body></html>`
+    `<!DOCTYPE html><html><body style="background:#070b14;font-family:Inter,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0"><div style="text-align:center;color:#f9fafb;max-width:400px;padding:2rem"><div style="font-size:56px;margin-bottom:12px">${icon}</div><h1 style="color:${color};margin:0 0 12px;font-size:28px">${verb}</h1><p style="color:#9ca3af;margin:0 0 8px">Action <strong style="color:#f9fafb">${escHtml(result.action)}</strong> has been ${verb.toLowerCase()}.</p><p style="color:#6b7280;font-size:13px">You can close this tab.</p></div></body></html>`
   )
 })
 

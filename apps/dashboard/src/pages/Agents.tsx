@@ -42,6 +42,9 @@ export function Agents() {
     try {
       const res = await fetch(`${apiBaseUrl}/v1/orgs/${oid}/agents`, { headers: await authHeaders() })
       if (res.ok) setAgents(await res.json() as AgentReg[])
+      else setError(`Failed to load agents: ${res.status}`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load agents')
     } finally { setLoading(false) }
   }
 
@@ -67,11 +70,16 @@ export function Agents() {
 
   const revoke = async (agentId: string, agentName: string) => {
     if (!confirm(`Revoke token for "${agentName}"? The agent will stop working immediately.`)) return
-    await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/agents/${agentId}`, {
-      method: 'DELETE',
-      headers: await authHeaders(),
-    })
-    await load()
+    try {
+      const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/agents/${agentId}`, {
+        method: 'DELETE',
+        headers: await authHeaders(),
+      })
+      if (!res.ok) { setError(`Revoke failed: ${res.status}`); return }
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Revoke failed')
+    }
   }
 
   const copyToken = () => {

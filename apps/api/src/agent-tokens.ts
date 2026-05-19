@@ -1,4 +1,4 @@
-import { createHmac } from 'crypto'
+import { createHmac, timingSafeEqual } from 'crypto'
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { createSupabaseAdmin, type SupabaseAuthConfig } from './auth.js'
@@ -34,8 +34,9 @@ export function verifyAgentToken(token: string): { id: string; orgId: string } |
   if (dotIdx < 0) return null
   const payload = rest.slice(0, dotIdx)
   const sig = rest.slice(dotIdx + 1)
-  const expected = createHmac('sha256', signingSecret()).update(payload).digest('base64url')
-  if (expected !== sig) return null
+  const expectedBuf = Buffer.from(createHmac('sha256', signingSecret()).update(payload).digest('base64url'))
+  const sigBuf = Buffer.from(sig)
+  if (expectedBuf.length !== sigBuf.length || !timingSafeEqual(expectedBuf, sigBuf)) return null
   try {
     const data = JSON.parse(Buffer.from(payload, 'base64url').toString()) as {
       id: string

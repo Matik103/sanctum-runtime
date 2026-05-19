@@ -59,12 +59,15 @@ export function defaultFingerprint(): string {
 export class ControlPlaneStore {
   private challenges: ChallengeStore
 
+  private _admin: ReturnType<typeof createSupabaseAdmin>
+
   constructor(private supabase: SupabaseAuthConfig) {
     this.challenges = new ChallengeStore(supabase)
+    this._admin = createSupabaseAdmin(supabase)
   }
 
   private admin() {
-    return createSupabaseAdmin(this.supabase)
+    return this._admin
   }
 
   async ensureOrg(orgId: string, name?: string) {
