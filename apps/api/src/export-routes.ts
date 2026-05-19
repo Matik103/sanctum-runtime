@@ -5,6 +5,7 @@ import { ControlPlaneStore } from './control-plane-store.js'
 import { getEntitlementEngine } from './entitlements.js'
 import { encryptSecret, decryptSecret, getEncryptionKey } from './crypto-utils.js'
 import { isProduction, maskWebhookUrl } from './security.js'
+import { queryWithTimeout, SUPABASE_ROW_LIMITS, verifyOrgMembership } from './supabase-limits.js'
 
 type SanctumReq = FastifyRequest & {
   sanctumUser?: { id: string; email?: string }
@@ -64,30 +65,13 @@ export async function registerExportRoutes(app: FastifyInstance) {
     return null
   }
 
-  /** Export path: never throw on Supabase slowness (free-tier PostgREST timeouts). */
   async function resolveOrgIdForExport(
     admin: ReturnType<typeof createSupabaseAdmin>,
     req: SanctumReq,
     orgIdParam: string,
   ): Promise<{ orgId: string | null; warning?: string }> {
     if (req.sanctumUser) {
-      try {
-        const result = await Promise.race([
-          admin.from('organization_members').select('org_id').eq('user_id', req.sanctumUser.id),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('organization_members timed out')), 5000),
-          ),
-        ])
-        if (result.error) {
-          return { orgId: null, warning: `organization_members: ${result.error.message}` }
-        }
-        const orgs = (result.data ?? []).map((r) => r.org_id as string)
-        if (orgs.includes(orgIdParam)) return { orgId: orgIdParam }
-        return { orgId: null }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err)
-        return { orgId: null, warning: `organization_members: ${msg}` }
-      }
+      return verifyOrgMembership(admin, req.sanctumUser.id, orgIdParam)
     }
     const key = headerKey(req)
     if (key?.startsWith('sk_sanctum_')) {
@@ -162,29 +146,6 @@ export async function registerExportRoutes(app: FastifyInstance) {
 
       const exportedAt = new Date().toISOString()
 
-      // Sequential + short timeouts — easier on Supabase free tier than parallel fan-out.
-      const queryWithTimeout = async <T>(
-        label: string,
-        run: () => PromiseLike<{ data: T | null; error: { message: string } | null }>,
-        ms = 5000,
-      ): Promise<{ data: T; warning?: string }> => {
-        try {
-          const result = await Promise.race([
-            run(),
-            new Promise<never>((_, reject) =>
-              setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms),
-            ),
-          ])
-          if (result.error) {
-            return { data: [] as T, warning: `${label}: ${result.error.message}` }
-          }
-          return { data: (result.data ?? []) as T }
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err)
-          return { data: [] as T, warning: `${label}: ${msg}` }
-        }
-      }
-
       // Base schema columns only (002) — avoids failures when 026/028 not applied yet.
       const auditOut = await queryWithTimeout(
         'audit_events',
@@ -196,7 +157,7 @@ export async function registerExportRoutes(app: FastifyInstance) {
             )
             .eq('org_id', orgId)
             .order('created_at', { ascending: false })
-            .limit(500),
+            .limit(SUPABASE_ROW_LIMITS.auditExport),
       )
       const runtimesOut = await queryWithTimeout(
         'registered_runtimes',
@@ -222,7 +183,7 @@ export async function registerExportRoutes(app: FastifyInstance) {
             .select('metric,quantity,recorded_at')
             .eq('org_id', orgId)
             .order('recorded_at', { ascending: false })
-            .limit(1000),
+            .limit(SUPABASE_ROW_LIMITS.usageExport),
       )
 
       const auditEvents = auditOut.data
@@ -230,7 +191,7 @@ export async function registerExportRoutes(app: FastifyInstance) {
       const apiKeys = apiKeysOut.data
       const usageEvents = usageOut.data
       for (const w of [auditOut, runtimesOut, apiKeysOut, usageOut]) {
-        if (w.warning) warnings.push(w.warning)
+        if (w.error) warnings.push(w.error)
       }
 
       const totalRecords = auditEvents.length + runtimes.length + apiKeys.length + usageEvents.length

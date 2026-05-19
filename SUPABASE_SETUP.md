@@ -174,3 +174,30 @@ Audit entries sync to `audit_events` when the API runs with service role configu
 - Never commit `.env` or paste **service_role** in chat/screenshots
 - Never put `SUPABASE_SERVICE_ROLE_KEY` in the dashboard static build or marketing site
 - For production, use RLS on all user tables; keep `SANCTUM_API_KEY` for scripts and JWT for dashboard operators
+
+---
+
+## Staying on the Supabase **free** plan
+
+Sanctum’s API is tuned for free-tier limits so production does not need a paid database unless you outgrow them.
+
+| Free-tier constraint | What Sanctum does |
+|---------------------|-------------------|
+| PostgREST **~8s** statement timeout | Each query capped at **5s** (`SUPABASE_QUERY_TIMEOUT_MS`) |
+| Heavy **parallel** reads time out | GDPR export + compliance reports run queries **sequentially** |
+| Large table scans | Row caps in `apps/api/src/supabase-limits.ts` (e.g. 500 audit rows/export, 2000 for compliance) |
+| `organization_members` slow | Membership lookup uses timeouts; **no throw** → avoids API 500s |
+
+### Operational habits (recommended)
+
+1. **Do not** run huge SQL exports in the Supabase SQL Editor during peak dashboard use.
+2. **GDPR export** is rate-limited to **1/hour per org** — enough for compliance, light on the DB.
+3. **Audit volume**: free tier is fine for dev/small prod; archive or upgrade if `audit_events` grows past ~100k rows and list views slow down.
+4. **Indexes**: migrations `007` and `002` already index `org_id` + `created_at` on audit — keep migrations applied (`npm run db:push`).
+5. Optional API env: `SUPABASE_QUERY_TIMEOUT_MS=5000` (default). Lower only if you still see timeouts.
+
+### When to upgrade Supabase
+
+Upgrade if you need: longer queries, more connections, daily backups, or full historical compliance exports (10k+ audit rows per report). Until then, partial exports with `warnings` in the JSON are expected and valid for GDPR.
+
+See also [supabase/README.md](./supabase/README.md) and `apps/api/src/supabase-limits.ts`.

@@ -64,6 +64,12 @@ order by 1;
 npm run env:pull    # writes VITE_SUPABASE_* + SUPABASE_* to .env
 ```
 
+## Free-tier safety
+
+The Sanctum API (`apps/api/src/supabase-limits.ts`) enforces per-query timeouts and row caps so PostgREST does not hit the free plan’s ~8s statement limit. Heavy endpoints (GDPR export, compliance reports) use **sequential** reads, not parallel fan-out.
+
+If exports return `warnings` in JSON, the database was slow or a section was capped — retry or upgrade when you need full history.
+
 ## API behavior when configured
 
 - **Audit** → upsert `audit_events`
