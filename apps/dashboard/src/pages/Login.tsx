@@ -11,16 +11,16 @@ import {
 } from 'lucide-react'
 import { LegalFooter } from '../components/LegalFooter'
 import { sanitizeApiError } from '../lib/sanitize-error'
+import { getOAuthRedirectUrl, markOauthIntent, type OauthProvider } from '../lib/oauth'
 import { getSupabase } from '../lib/supabase'
 import '../styles/auth.css'
 
 type Portal = 'operator' | 'enterprise'
 type AuthTab = 'signin' | 'signup'
 
-const SSO_PROVIDERS = [
-  { id: 'google' as const, label: 'Google Workspace' },
-  { id: 'azure' as const, label: 'Microsoft Entra ID' },
-  { id: 'github' as const, label: 'GitHub Enterprise' },
+const SSO_PROVIDERS: { id: OauthProvider; label: string; hint: string }[] = [
+  { id: 'google', label: 'Google', hint: 'Google Cloud / Workspace accounts' },
+  { id: 'github', label: 'GitHub', hint: 'GitHub.com accounts' },
 ]
 
 export function Login() {
@@ -64,7 +64,7 @@ export function Login() {
     }
   }
 
-  const signInWithSso = async (provider: 'google' | 'github' | 'azure') => {
+  const signInWithSso = async (provider: OauthProvider) => {
     setError(null)
     const sb = getSupabase()
     if (!sb) {
@@ -74,10 +74,14 @@ export function Login() {
 
     setBusy(true)
     try {
+      markOauthIntent('enterprise', provider)
       const { error: err } = await sb.auth.signInWithOAuth({
-        provider: provider === 'azure' ? 'azure' : provider,
+        provider,
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: getOAuthRedirectUrl(),
+          ...(provider === 'google'
+            ? { queryParams: { prompt: 'select_account' } }
+            : { scopes: 'read:user user:email' }),
         },
       })
       if (err) throw err
@@ -277,6 +281,7 @@ export function Login() {
                       type="button"
                       className="auth-sso-btn"
                       disabled={busy}
+                      title={p.hint}
                       onClick={() => void signInWithSso(p.id)}
                     >
                       <Shield size={16} />

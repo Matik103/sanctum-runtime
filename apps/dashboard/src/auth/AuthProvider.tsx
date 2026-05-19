@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
+import { applyOauthIntent } from '../lib/oauth'
 import { getSupabase, isSupabaseConfigured } from '../lib/supabase'
 import { Login } from '../pages/Login'
 import '../styles/auth.css'
@@ -61,9 +62,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
     })
 
-    const { data: sub } = sb.auth.onAuthStateChange((_event, next) => {
+    const { data: sub } = sb.auth.onAuthStateChange((event, next) => {
       setSession(next)
       setLoading(false)
+      if (event === 'SIGNED_IN' && next?.user) {
+        void applyOauthIntent(sb, next.user)
+      }
     })
 
     return () => sub.subscription.unsubscribe()

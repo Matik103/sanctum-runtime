@@ -32,17 +32,18 @@ Auth is **optional**: if Supabase env vars are unset, the dashboard works withou
 2. Turn **Email** on
 3. For local dev, you can disable **Confirm email** under Email settings (faster sign-up)
 
-### SSO (enterprise)
+### SSO (enterprise — Google + GitHub)
 
-Enable each provider your org uses under **Authentication** → **Providers**:
+Enable **Google** and **GitHub** under **Authentication** → **Providers**. Microsoft Entra is not used on the console.
 
 | Dashboard button | Supabase provider |
 |------------------|-------------------|
-| Google Workspace | Google |
-| Microsoft Entra ID | Azure |
-| GitHub Enterprise | GitHub |
+| Google | `google` |
+| GitHub | `github` |
 
-Set **Site URL** to your dashboard (e.g. `https://sanctum-dashboard.onrender.com`) and add the same host under **Redirect URLs**.
+Set **Site URL** to your dashboard (e.g. `https://console.sanctumruntime.com`) and add the same host under **Redirect URLs**.
+
+Step-by-step OAuth client setup: [docs/SUPABASE_SSO_SETUP.md](./docs/SUPABASE_SSO_SETUP.md).
 
 ---
 

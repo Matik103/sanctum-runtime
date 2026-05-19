@@ -45,7 +45,7 @@ function SecurityPage() {
       <section>
         <h2>Enterprise controls</h2>
         <ul>
-          <li>OIDC SSO (Google, Microsoft Entra) for Team/Enterprise plans</li>
+          <li>Dashboard SSO (Google, GitHub) and per-org OIDC for Team/Enterprise plans</li>
           <li>GDPR data export API</li>
           <li>Rate limiting, Helmet headers, structured audit export</li>
           <li>SSO client secrets encrypted at rest (operator-configured key)</li>
