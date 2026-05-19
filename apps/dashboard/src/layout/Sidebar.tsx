@@ -1,6 +1,7 @@
 import {
   Activity,
   Bell,
+  Bot,
   CheckSquare,
   CreditCard,
   FileText,
@@ -28,6 +29,7 @@ export type PageId =
   | 'policy-history'
   | 'governance'
   | 'compliance'
+  | 'agents'
   | 'devices'
   | 'fleet'
   | 'marketplace'
@@ -44,6 +46,7 @@ const NAV: { id: PageId; label: string; icon: typeof LayoutDashboard; group?: st
   { id: 'policy-history', label: 'Policy History', icon: History },
   { id: 'governance', label: 'Governance', icon: CheckSquare },
   { id: 'compliance', label: 'Compliance', icon: FileText },
+  { id: 'agents', label: 'Agents', icon: Bot },
   { id: 'devices', label: 'Devices', icon: Monitor },
   { id: 'fleet', label: 'Runtime Fleet', icon: Radio },
   { id: 'marketplace', label: 'Marketplace', icon: Package },

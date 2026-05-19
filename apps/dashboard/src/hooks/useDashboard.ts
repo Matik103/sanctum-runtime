@@ -145,8 +145,8 @@ export function useDashboard() {
   )
 
   const resolveVerificationEntry = useCallback(
-    async (entryId: string, decision: 'APPROVED' | 'BLOCKED') => {
-      await resolveVerification(entryId, decision)
+    async (entryId: string, decision: 'APPROVED' | 'BLOCKED', grantDurationMinutes?: number) => {
+      await resolveVerification(entryId, decision, { grantDurationMinutes })
       markVerificationsDismissed({ id: entryId })
       await refresh()
       const next = getPendingReviewQueue()[0]

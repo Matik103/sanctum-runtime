@@ -1,12 +1,21 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 import { actionLabel, actorLabel } from '../lib/labels'
 import { extractHeardPhrase, extractIntent } from '../lib/narrative'
 
+const GRANT_OPTIONS = [
+  { label: 'Once', minutes: undefined },
+  { label: '15 min', minutes: 15 },
+  { label: '30 min', minutes: 30 },
+  { label: '1 hour', minutes: 60 },
+  { label: '4 hours', minutes: 240 },
+  { label: '8 hours', minutes: 480 },
+] as const
+
 type Props = {
   entry: ActionResult
   queuePosition?: { current: number; total: number }
-  onApproveOnce: () => void
+  onApproveOnce: (grantMinutes?: number) => void
   onAlwaysApprove: () => void
   onDeny: () => void
 }
@@ -20,6 +29,8 @@ export function VerificationModal({
 }: Props) {
   const heard = extractHeardPhrase(entry.context)
   const intent = extractIntent(entry.context)
+  const [grantMinutes, setGrantMinutes] = useState<number | undefined>(undefined)
+  const [showGrantMenu, setShowGrantMenu] = useState(false)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -27,7 +38,7 @@ export function VerificationModal({
       if (e.key === 'a' || e.key === 'A') {
         e.preventDefault()
         if (e.shiftKey) onAlwaysApprove()
-        else onApproveOnce()
+        else onApproveOnce(grantMinutes)
       } else if (e.key === 'd' || e.key === 'D') {
         e.preventDefault()
         onDeny()
@@ -38,21 +49,16 @@ export function VerificationModal({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onApproveOnce, onAlwaysApprove, onDeny])
+  }, [onApproveOnce, onAlwaysApprove, onDeny, grantMinutes])
+
+  const selectedOption = GRANT_OPTIONS.find((o) => o.minutes === grantMinutes) ?? GRANT_OPTIONS[0]
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
       <div className="modal">
         <h2>Verification required</h2>
         {queuePosition && queuePosition.total > 1 && (
-          <p
-            style={{
-              margin: '0.35rem 0 0',
-              fontSize: '0.8rem',
-              color: 'var(--warning)',
-              fontWeight: 500,
-            }}
-          >
+          <p style={{ margin: '0.35rem 0 0', fontSize: '0.8rem', color: 'var(--warning)', fontWeight: 500 }}>
             Reviewing {queuePosition.current} of {queuePosition.total} in your queue
           </p>
         )}
@@ -72,14 +78,7 @@ export function VerificationModal({
           {heard && (
             <div style={{ marginBottom: '0.75rem' }}>
               <span className="card-label">What was said</span>
-              <p
-                style={{
-                  margin: '0.25rem 0 0',
-                  fontSize: '0.9rem',
-                  lineHeight: 1.5,
-                  fontStyle: 'italic',
-                }}
-              >
+              <p style={{ margin: '0.25rem 0 0', fontSize: '0.9rem', lineHeight: 1.5, fontStyle: 'italic' }}>
                 &ldquo;{heard}&rdquo;
               </p>
             </div>
@@ -92,9 +91,7 @@ export function VerificationModal({
           )}
           <div>
             <span className="card-label">Reason</span>
-            <p style={{ margin: '0.25rem 0 0', fontSize: '0.9rem', lineHeight: 1.5 }}>
-              {entry.reasoning}
-            </p>
+            <p style={{ margin: '0.25rem 0 0', fontSize: '0.9rem', lineHeight: 1.5 }}>{entry.reasoning}</p>
           </div>
         </div>
 
@@ -102,10 +99,66 @@ export function VerificationModal({
           Shortcuts: <kbd>A</kbd> approve · <kbd>Shift+A</kbd> always approve · <kbd>D</kbd> deny
         </p>
 
-        <div className="modal-actions">
-          <button type="button" className="btn btn-primary" onClick={onApproveOnce}>
-            Approve once
-          </button>
+        <div className="modal-actions" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
+          {/* Approve with optional duration */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 0, position: 'relative' }}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              style={{ borderRadius: grantMinutes !== undefined ? '8px 0 0 8px' : undefined, flex: 1 }}
+              onClick={() => { setShowGrantMenu(false); onApproveOnce(grantMinutes) }}
+            >
+              {grantMinutes !== undefined
+                ? `Approve for ${selectedOption.label}`
+                : 'Approve once'}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              title="Set approval duration"
+              style={{ borderLeft: '1px solid rgba(255,255,255,0.2)', borderRadius: '0 8px 8px 0', padding: '0 0.6rem' }}
+              onClick={() => setShowGrantMenu((v) => !v)}
+            >
+              ▾
+            </button>
+            {showGrantMenu && (
+              <div
+                style={{
+                  position: 'absolute', top: '110%', left: 0, zIndex: 100,
+                  background: 'var(--elevated)', border: '1px solid var(--border)',
+                  borderRadius: 8, overflow: 'hidden', minWidth: '140px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                }}
+              >
+                {GRANT_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.label}
+                    type="button"
+                    onClick={() => { setGrantMinutes(opt.minutes); setShowGrantMenu(false) }}
+                    style={{
+                      display: 'block', width: '100%', textAlign: 'left',
+                      padding: '0.55rem 1rem', background: 'none', border: 'none',
+                      color: opt.minutes === grantMinutes ? 'var(--success)' : 'var(--text)',
+                      fontSize: '0.85rem', cursor: 'pointer',
+                      borderBottom: '1px solid var(--border)',
+                    }}
+                  >
+                    {opt.label}
+                    {opt.minutes === undefined && (
+                      <span style={{ color: 'var(--muted)', fontSize: '0.75rem', marginLeft: '0.5rem' }}>default</span>
+                    )}
+                    {opt.minutes !== undefined && (
+                      <span style={{ color: 'var(--muted)', fontSize: '0.72rem', marginLeft: '0.5rem' }}>grant window</span>
+                    )}
+                  </button>
+                ))}
+                <p style={{ margin: 0, padding: '0.5rem 1rem', fontSize: '0.72rem', color: 'var(--muted)', lineHeight: 1.4 }}>
+                  Grant auto-approves the same action from this agent during the window.
+                </p>
+              </div>
+            )}
+          </div>
+
           <button type="button" className="btn btn-ghost" onClick={onAlwaysApprove}>
             Always approve
           </button>

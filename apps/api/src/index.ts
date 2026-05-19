@@ -32,6 +32,8 @@ import { registerAlertRoutes } from './alert-routes.js'
 import { AlertStore } from './alert-store.js'
 import { sendVerificationEmail, verifyToken } from './verify-email.js'
 import { loadPoliciesFromSupabase, detectAnomalies, heuristicRiskFloor } from '@sanctum/runtime-engine'
+import { verifyAgentToken, extractAgentToken, registerAgentTokenRoutes } from './agent-tokens.js'
+import { checkActiveGrant, createGrant } from './policy-grants.js'
 import {
   authenticateRequest,
   getSupabaseAuthConfig,
@@ -264,6 +266,7 @@ if (supabaseAuth) {
   await registerComplianceRoutes(app, supabaseAuth)
   await registerDelegationRoutes(app, supabaseAuth)
   await registerAlertRoutes(app)
+  await registerAgentTokenRoutes(app, supabaseAuth)
 }
 
 const stopWebhookWorker = supabaseAuth ? startWebhookWorker(supabaseAuth) : null
@@ -487,6 +490,7 @@ app.post('/v1/audit/:id/resolve', async (req, reply) => {
       decision: z.enum(['APPROVED', 'BLOCKED']),
       resolvedBy: z.string().optional(),
       note: z.string().optional(),
+      grantDurationMinutes: z.number().int().min(1).max(480).optional(), // up to 8 hours
     })
     .parse(req.body)
 
@@ -500,6 +504,25 @@ app.post('/v1/audit/:id/resolve', async (req, reply) => {
   if (!result) {
     return reply.status(404).send({ error: 'audit_entry_not_found' })
   }
+
+  // Create a time-bounded grant so the agent isn't re-interrupted during the window
+  if (
+    body.decision === 'APPROVED' &&
+    body.grantDurationMinutes &&
+    supabaseAuth &&
+    entryOrgId
+  ) {
+    const who = body.resolvedBy ?? 'operator'
+    void createGrant(
+      supabaseAuth,
+      entryOrgId,
+      result.action,
+      result.actor,
+      who,
+      body.grantDurationMinutes,
+    ).catch(() => {})
+  }
+
   return result
 })
 
@@ -529,14 +552,36 @@ app.post('/v1/actions/verify', {
     })
     .parse(req.body)
 
+  // Agent token: if present and valid, org_id is extracted from the signed token
+  // rather than trusted from context (prevents org impersonation)
+  const agentTokenRaw = extractAgentToken(req as { headers: Record<string, string | string[] | undefined> })
+  const agentClaims = agentTokenRaw ? verifyAgentToken(agentTokenRaw) : null
+  if (agentTokenRaw && !agentClaims) {
+    return reply.status(401).send({ error: 'invalid_agent_token' })
+  }
+
+  // Update last_seen if we have a valid registration
+  if (agentClaims && supabaseAuth) {
+    const { createSupabaseAdmin: mkAdmin } = await import('./auth.js')
+    void mkAdmin(supabaseAuth)
+      .from('agent_registrations')
+      .update({ last_seen_at: new Date().toISOString() })
+      .eq('id', agentClaims.id)
+      .then(() => {})
+  }
+
   const request = ActionRequestSchema.parse({
     actor: body.actor,
     action: body.action,
-    context: body.context,
+    // Inject verified org_id so policy engine scopes correctly
+    context: agentClaims
+      ? { ...body.context, org_id: agentClaims.orgId }
+      : body.context,
   })
 
-  const orgId =
-    typeof body.context?.org_id === 'string' ? body.context.org_id : undefined
+  // orgId from token takes precedence over self-reported context value
+  const orgId = agentClaims?.orgId ??
+    (typeof body.context?.org_id === 'string' ? body.context.org_id : undefined)
 
   const result = await traced(
     'action.verify',
@@ -553,6 +598,23 @@ app.post('/v1/actions/verify', {
     },
     req.id,
   )
+
+  // Time-bounded grant: if a previous approval granted this action for a window,
+  // auto-approve without interrupting the agent again
+  if (result.decision === 'REQUIRE_VERIFICATION' && supabaseAuth && orgId) {
+    try {
+      const grant = await checkActiveGrant(supabaseAuth, orgId, body.action, body.actor)
+      if (grant) {
+        const expiresStr = new Date(grant.expires_at).toLocaleTimeString()
+        const resolved = await runtime.resolveAuditEntry(result.id, {
+          decision: 'APPROVED',
+          resolvedBy: `grant:${grant.granted_by}`,
+          note: `Auto-approved by time-bounded grant (active until ${expiresStr})`,
+        })
+        if (resolved) result = resolved
+      }
+    } catch { /* non-fatal — fall through to normal verification flow */ }
+  }
 
   recordUsage(supabaseAuth, orgId, UsageMetrics.ACTION_VERIFY, 1, {
     action: body.action,

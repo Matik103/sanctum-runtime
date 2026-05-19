@@ -21,6 +21,7 @@ import { PolicyHistory } from './pages/PolicyHistory'
 import { RuntimeActivity } from './pages/RuntimeActivity'
 import { Settings } from './pages/Settings'
 import { ThreatMonitor } from './pages/ThreatMonitor'
+import { Agents } from './pages/Agents'
 import { Alerts } from './pages/Alerts'
 
 export function App() {
@@ -90,6 +91,7 @@ export function App() {
         )}
         {page === 'activity' && <RuntimeActivity audit={audit} onSelect={onSelect} />}
         {page === 'threats' && <ThreatMonitor audit={audit} onSelect={onSelect} />}
+        {page === 'agents' && <Agents />}
         {page === 'alerts' && <Alerts onPage={setPage} />}
         {page === 'policies' && (
           <Policies
@@ -118,9 +120,9 @@ export function App() {
         <VerificationModal
           entry={pendingVerification}
           queuePosition={getQueuePosition(pendingVerification.id)}
-          onApproveOnce={async () => {
+          onApproveOnce={async (grantMinutes?: number) => {
             const entry = pendingVerification
-            await resolveVerificationEntry(entry.id, 'APPROVED')
+            await resolveVerificationEntry(entry.id, 'APPROVED', grantMinutes)
             setSelected(entry)
           }}
           onAlwaysApprove={async () => {

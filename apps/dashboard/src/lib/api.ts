@@ -38,13 +38,14 @@ export type DashboardData = {
 export async function resolveVerification(
   id: string,
   decision: 'APPROVED' | 'BLOCKED',
-  note?: string,
+  opts?: { note?: string; grantDurationMinutes?: number },
 ): Promise<ActionResult> {
   return api.resolveAuditEntry(id, {
     decision,
     resolvedBy: 'dashboard-operator',
-    note,
-  })
+    note: opts?.note,
+    grantDurationMinutes: opts?.grantDurationMinutes,
+  } as Parameters<typeof api.resolveAuditEntry>[1] & { grantDurationMinutes?: number })
 }
 
 export async function fetchDashboard(): Promise<DashboardData> {
