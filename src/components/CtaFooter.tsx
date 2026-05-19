@@ -1,6 +1,16 @@
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import { consoleUrl, docsPath, enterpriseAccessUrl, githubUrl, openCorePath, privacyUrl } from "@/lib/site-links";
+import {
+  billingUrl,
+  consoleUrl,
+  cookiesUrl,
+  docsPath,
+  enterpriseAccessUrl,
+  githubUrl,
+  openCorePath,
+  privacyUrl,
+  termsUrl,
+} from "@/lib/site-links";
 import { ArrowRight } from "lucide-react";
 import logo from "@/assets/sanctum-logo.png";
 
@@ -58,8 +68,17 @@ export function CtaFooter() {
             <a href={githubUrl} target="_blank" rel="noopener noreferrer" className="hover:text-foreground">
               GitHub
             </a>
+            <a href={termsUrl} className="hover:text-foreground">
+              Terms
+            </a>
+            <a href={billingUrl} className="hover:text-foreground">
+              Billing
+            </a>
+            <a href={cookiesUrl} className="hover:text-foreground">
+              Cookies
+            </a>
             <a href={privacyUrl} className="hover:text-foreground">
-              Privacy
+              Privacy Policy
             </a>
             <span>© 2026</span>
           </div>

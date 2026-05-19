@@ -50,5 +50,10 @@ export const earlyAccessUrl = enterpriseAccessUrl;
 /** Open-source repository */
 export const githubUrl = githubRepo;
 
-/** Optional: privacy policy page or external URL */
-export const privacyUrl = readEnv("VITE_PRIVACY_URL", "/docs#open-core");
+/** Legal pages (marketing site; use full URL for Google OAuth consent screen) */
+export const privacyUrl = readEnv("VITE_PRIVACY_URL", "/privacy");
+export const termsUrl = readEnv("VITE_TERMS_URL", "/terms");
+export const billingUrl = readEnv("VITE_BILLING_URL", "/billing");
+export const cookiesUrl = readEnv("VITE_COOKIES_URL", "/cookies");
+
+export const privacyEmail = readEnv("VITE_PRIVACY_EMAIL", "privacy@sanctumruntime.com");

@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import { consoleUrl, docsPath, enterpriseAccessUrl, githubUrl } from "@/lib/site-links";
+import { consoleUrl, docsPath, enterpriseAccessUrl, githubUrl, privacyUrl } from "@/lib/site-links";
 import logo from "@/assets/sanctum-logo.png";
 
 export function Navbar() {
@@ -17,6 +17,9 @@ export function Navbar() {
           <a href="#sdk" className="hover:text-foreground transition-colors">SDK</a>
           <a href="#use-cases" className="hover:text-foreground transition-colors">Use cases</a>
           <a href="#trust" className="hover:text-foreground transition-colors">Trust</a>
+          <a href={privacyUrl} className="hover:text-foreground transition-colors">
+            Privacy Policy
+          </a>
         </nav>
         <div className="flex items-center gap-2">
           <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex text-muted-foreground hover:text-foreground">

@@ -15,6 +15,10 @@ export const publicRoutes = [
   "/sdk",
   "/security",
   "/glossary",
+  "/privacy",
+  "/terms",
+  "/billing",
+  "/cookies",
 ] as const;
 
 /** HTML routes for sitemap.xml — keep in sync with TanStack routes. */
@@ -30,6 +34,10 @@ export const sitemapPages: ReadonlyArray<{
   { path: "/sdk", changefreq: "monthly", priority: 0.85 },
   { path: "/security", changefreq: "monthly", priority: 0.8 },
   { path: "/glossary", changefreq: "monthly", priority: 0.8 },
+  { path: "/privacy", changefreq: "monthly", priority: 0.5 },
+  { path: "/terms", changefreq: "monthly", priority: 0.5 },
+  { path: "/billing", changefreq: "monthly", priority: 0.5 },
+  { path: "/cookies", changefreq: "monthly", priority: 0.5 },
 ];
 
 /** Static AI / crawler files under public/ */
