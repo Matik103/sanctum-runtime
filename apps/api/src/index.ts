@@ -75,7 +75,8 @@ function isAllowedCorsOrigin(origin: string): boolean {
   if (corsOrigins.has(origin)) return true
   try {
     const host = new URL(origin).hostname
-    return host === 'sanctumruntime.com' || host.endsWith('.sanctumruntime.com')
+    // Exact match or strict subdomain — rejects evil-sanctumruntime.com
+    return host === 'sanctumruntime.com' || /^[a-z0-9-]+\.sanctumruntime\.com$/.test(host)
   } catch {
     return false
   }
@@ -98,16 +99,19 @@ await app.register(helmet, {
   crossOriginEmbedderPolicy: false,
 })
 
+function rateLimitKey(req: import('fastify').FastifyRequest): string {
+  const fwd = req.headers['x-forwarded-for']
+  const ip = Array.isArray(fwd) ? fwd[0] : (typeof fwd === 'string' ? fwd.split(',')[0].trim() : req.ip)
+  return ip ?? req.ip
+}
+
+// Global default — 200 req/min per IP
 await app.register(rateLimit, {
   global: true,
-  max: 120,
+  max: 200,
   timeWindow: '1 minute',
-  allowList: ['127.0.0.1', '::1'],
-  keyGenerator: (req) => {
-    const fwd = req.headers['x-forwarded-for']
-    const ip = Array.isArray(fwd) ? fwd[0] : (typeof fwd === 'string' ? fwd.split(',')[0].trim() : req.ip)
-    return ip ?? req.ip
-  },
+  // No allowList — localhost bypass removed; apply limits everywhere including cloud VMs
+  keyGenerator: rateLimitKey,
   errorResponseBuilder: () => ({
     error: 'rate_limit_exceeded',
     hint: 'Too many requests — back off and retry',
@@ -352,7 +356,9 @@ app.get('/v1/orgs/:orgId/policies', async (req) => {
   return runtime.getPoliciesForOrg(orgId)
 })
 
-app.post('/v1/audit/:id/resolve', async (req, reply) => {
+app.post('/v1/audit/:id/resolve', {
+  config: { rateLimit: { max: 30, timeWindow: '1 minute', keyGenerator: rateLimitKey } },
+}, async (req, reply) => {
   const { id } = req.params as { id: string }
   const body = z
     .object({
@@ -398,7 +404,10 @@ app.post('/v1/audit/:id/resolve', async (req, reply) => {
   return result
 })
 
-app.post('/v1/actions/verify', async (req) => {
+// Tighter per-endpoint rate limits applied as route-level config
+app.post('/v1/actions/verify', {
+  config: { rateLimit: { max: 100, timeWindow: '1 minute', keyGenerator: rateLimitKey } },
+}, async (req) => {
   const body = z
     .object({
       actor: z.string(),

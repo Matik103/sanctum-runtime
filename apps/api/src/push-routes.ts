@@ -13,7 +13,9 @@ export async function registerPushRoutes(app: FastifyInstance): Promise<void> {
   if (!cfg) return
 
   // POST /v1/orgs/:orgId/push-subscriptions — register an FCM token
-  app.post('/v1/orgs/:orgId/push-subscriptions', async (req, reply) => {
+  app.post('/v1/orgs/:orgId/push-subscriptions', {
+    config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
+  }, async (req, reply) => {
     const user = (req as SanctumReq).sanctumUser
     if (!user) return reply.status(401).send({ error: 'unauthorized' })
 
