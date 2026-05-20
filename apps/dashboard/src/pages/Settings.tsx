@@ -8,6 +8,7 @@ import { riskModelMetaLine } from '../lib/risk-label'
 import { fetchUsage, usageMetricLabel, type UsageSummary } from '../lib/usage'
 import { apiBaseUrl as apiBase } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
+import { usePushNotifications } from '../hooks/usePushNotifications'
 
 async function authHeaders(json = false): Promise<Record<string, string>> {
   const token = await getAccessToken()
@@ -126,6 +127,22 @@ export function Settings({ status }: Props) {
     }
   }
 
+  const { permission: pushPermission, enable: enablePush, disable: disablePush } = usePushNotifications(orgId || null)
+  const [pushBusy, setPushBusy] = useState(false)
+
+  const handlePushToggle = async () => {
+    setPushBusy(true)
+    try {
+      if (pushPermission === 'granted') {
+        await disablePush()
+      } else {
+        await enablePush()
+      }
+    } finally {
+      setPushBusy(false)
+    }
+  }
+
   const operational = status?.runtimeOnline !== false
   const provider = status?.riskProvider ?? (status?.ollamaConnected ? 'ollama' : 'none')
   const modelReady = status?.riskModelConnected ?? status?.ollamaConnected ?? false
@@ -218,6 +235,48 @@ export function Settings({ status }: Props) {
                   {notifMsg}
                 </Alert>
               )}
+              {/* Push notifications row */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '1rem',
+                padding: '0.875rem 1rem',
+                borderRadius: '8px',
+                border: '1px solid var(--border)',
+                background: pushPermission === 'granted' ? 'color-mix(in srgb, var(--success) 6%, transparent)' : 'var(--surface-raised)',
+                marginBottom: '1.25rem',
+                maxWidth: '28rem',
+              }}>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 500, color: 'var(--foreground)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <Bell size={14} />
+                    Push alerts
+                    {pushPermission === 'granted' && (
+                      <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--success)', background: 'color-mix(in srgb, var(--success) 15%, transparent)', padding: '1px 6px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>On</span>
+                    )}
+                  </p>
+                  <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', color: 'var(--muted)', lineHeight: 1.4 }}>
+                    {pushPermission === 'denied'
+                      ? 'Blocked by browser — open Site Settings to allow notifications.'
+                      : pushPermission === 'unsupported'
+                        ? 'Not supported in this browser.'
+                        : 'Get real-time alerts on this device, even when the tab is closed.'}
+                  </p>
+                </div>
+                {pushPermission !== 'denied' && pushPermission !== 'unsupported' && (
+                  <button
+                    type="button"
+                    className={`btn ${pushPermission === 'granted' ? 'btn-secondary' : 'btn-primary'}`}
+                    disabled={pushBusy || !orgId}
+                    onClick={() => void handlePushToggle()}
+                    style={{ flexShrink: 0, fontSize: '0.8rem', padding: '0.35rem 0.9rem' }}
+                  >
+                    {pushBusy ? '…' : pushPermission === 'granted' ? 'Turn off' : 'Enable'}
+                  </button>
+                )}
+              </div>
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxWidth: '28rem' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.3rem', color: 'var(--muted)' }}>
