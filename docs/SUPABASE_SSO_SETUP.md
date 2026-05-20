@@ -95,17 +95,25 @@ Users must sign in via **Enterprise** → Google or GitHub so `portal_type` is `
 
 ---
 
-## 5. Database migrations
+## 5. Account types (console sign-up)
 
-Apply enterprise SSO helpers (if not already):
+| Type | Form | Org created |
+|------|------|-------------|
+| **Individual** | Email, password, confirm | Personal workspace `personal-…` (owner) |
+| **Organization** | Org name, primary contact, email, password, confirm | Named company org (signup user = **owner**) |
+| **Company SSO** | Sign in only → Google/GitHub | Joins existing org via `organization_domains` |
+
+## 6. Database migrations
+
+Apply auth migrations (if not already):
 
 ```bash
 npm run db:push
 ```
 
-Requires migrations **034** (`portal_type` sync) and **035** (`bootstrap_enterprise_org_for_user` RPC).
+Requires **034**–**036** (portal sync, enterprise SSO RPC, individual/organization signup).
 
-## 6. Production checklist (your project)
+## 7. Production checklist (your project)
 
 | Item | Status |
 |------|--------|
@@ -123,7 +131,7 @@ Project callback (for Google/GitHub redirect URIs):
 https://nimvcudvrhanxlcpiizz.supabase.co/auth/v1/callback
 ```
 
-## 7. Verify
+## 8. Verify
 
 1. Open `https://console.sanctumruntime.com`.
 2. Choose **Enterprise** → **Continue with Google** or **Continue with GitHub**.

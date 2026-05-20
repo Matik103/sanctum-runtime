@@ -33,6 +33,7 @@
 | 027 | `027_rls_governance_and_hardening.sql` | RLS on governance + `plans`; `is_org_member` / `is_org_role`; tighten audit/webhook/api_keys policies |
 | 034 | `034_sync_portal_type_on_auth_update.sql` | Sync `profiles.portal_type` when OAuth metadata updates |
 | 035 | `035_enterprise_org_bootstrap_rpc.sql` | `bootstrap_enterprise_org_for_user()` after Enterprise SSO |
+| 036 | `036_signup_individual_and_organization.sql` | Self-serve individual vs organization signup + org bootstrap |
 
 ## Deploy to linked project
 

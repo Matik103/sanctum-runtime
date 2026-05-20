@@ -7,15 +7,16 @@ import {
   Shield,
   ShieldCheck,
   User,
+  UserCircle,
   Zap,
 } from 'lucide-react'
 import { LegalFooter } from '../components/LegalFooter'
 import { sanitizeApiError } from '../lib/sanitize-error'
 import { getOAuthRedirectUrl, markOauthIntent, type OauthProvider } from '../lib/oauth'
 import { getSupabase } from '../lib/supabase'
+import { signupMetadata, validateSignupForm, type AccountKind } from '../lib/signup'
 import '../styles/auth.css'
 
-type Portal = 'operator' | 'enterprise'
 type AuthTab = 'signin' | 'signup'
 
 const SSO_PROVIDERS: { id: OauthProvider; label: string; hint: string }[] = [
@@ -24,37 +25,73 @@ const SSO_PROVIDERS: { id: OauthProvider; label: string; hint: string }[] = [
 ]
 
 export function Login() {
-  const [portal, setPortal] = useState<Portal>('operator')
+  const [accountKind, setAccountKind] = useState<AccountKind>('individual')
   const [tab, setTab] = useState<AuthTab>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [organizationName, setOrganizationName] = useState('')
+  const [primaryContactName, setPrimaryContactName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  const submitCredentials = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const resetFormErrors = () => {
     setError(null)
     setMessage(null)
+  }
+
+  const submitCredentials = async (e: React.FormEvent) => {
+    e.preventDefault()
+    resetFormErrors()
     const sb = getSupabase()
     if (!sb) {
       setError('Authentication is not configured on this deployment.')
       return
     }
 
+    if (tab === 'signup') {
+      const validationError = validateSignupForm({
+        accountKind,
+        email,
+        password,
+        confirmPassword,
+        organizationName,
+        primaryContactName,
+      })
+      if (validationError) {
+        setError(validationError)
+        return
+      }
+    }
+
     setBusy(true)
     try {
       if (tab === 'signup') {
+        const meta =
+          accountKind === 'organization'
+            ? signupMetadata('organization', { organizationName, primaryContactName })
+            : signupMetadata('individual', {})
+
         const { error: err } = await sb.auth.signUp({
-          email,
+          email: email.trim(),
           password,
-          options: { data: { portal_type: 'operator', auth_provider: 'email' } },
+          options: { data: meta },
         })
         if (err) throw err
-        setMessage('Account created. Check your email if confirmation is required, then sign in.')
+        setMessage(
+          accountKind === 'organization'
+            ? 'Organization account created. Confirm your email if required, then sign in.'
+            : 'Account created. Confirm your email if required, then sign in.',
+        )
         setTab('signin')
+        setPassword('')
+        setConfirmPassword('')
       } else {
-        const { error: err } = await sb.auth.signInWithPassword({ email, password })
+        const { error: err } = await sb.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        })
         if (err) throw err
       }
     } catch (err) {
@@ -79,7 +116,7 @@ export function Login() {
         provider,
         options: {
           redirectTo: getOAuthRedirectUrl(),
-          data: { portal_type: 'enterprise', auth_provider: provider },
+          data: { portal_type: 'enterprise', auth_provider: provider, signup_type: 'individual' },
           ...(provider === 'google'
             ? { queryParams: { prompt: 'select_account' } }
             : { scopes: 'read:user user:email' }),
@@ -92,6 +129,8 @@ export function Login() {
       setBusy(false)
     }
   }
+
+  const isOrgSignup = tab === 'signup' && accountKind === 'organization'
 
   return (
     <div className="auth-root">
@@ -149,132 +188,194 @@ export function Login() {
 
         <div className="auth-panel">
           <div className="auth-glass">
-            <div className="auth-mode-switch" role="tablist" aria-label="Portal type">
+            <div className="auth-mode-switch" role="tablist" aria-label="Account type">
               <button
                 type="button"
                 role="tab"
-                aria-selected={portal === 'operator'}
-                className={`auth-mode-btn ${portal === 'operator' ? 'active' : ''}`}
+                aria-selected={accountKind === 'individual'}
+                className={`auth-mode-btn ${accountKind === 'individual' ? 'active' : ''}`}
                 onClick={() => {
-                  setPortal('operator')
-                  setError(null)
+                  setAccountKind('individual')
+                  resetFormErrors()
                 }}
               >
                 <User size={15} />
-                Operator
+                Individual
               </button>
               <button
                 type="button"
                 role="tab"
-                aria-selected={portal === 'enterprise'}
-                className={`auth-mode-btn ${portal === 'enterprise' ? 'active' : ''}`}
+                aria-selected={accountKind === 'organization'}
+                className={`auth-mode-btn ${accountKind === 'organization' ? 'active' : ''}`}
                 onClick={() => {
-                  setPortal('enterprise')
-                  setError(null)
+                  setAccountKind('organization')
+                  resetFormErrors()
                 }}
               >
                 <Building2 size={15} />
-                Enterprise
+                Organization
               </button>
             </div>
 
-            {portal === 'operator' ? (
-              <>
-                <div className="auth-tabs" role="tablist" aria-label="Authentication">
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={tab === 'signin'}
-                    className={`auth-tab ${tab === 'signin' ? 'active' : ''}`}
-                    onClick={() => {
-                      setTab('signin')
-                      setError(null)
-                      setMessage(null)
-                    }}
-                  >
-                    Sign in
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={tab === 'signup'}
-                    className={`auth-tab ${tab === 'signup' ? 'active' : ''}`}
-                    onClick={() => {
-                      setTab('signup')
-                      setError(null)
-                      setMessage(null)
-                    }}
-                  >
-                    Create account
-                  </button>
+            <div className="auth-tabs" role="tablist" aria-label="Authentication">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === 'signin'}
+                className={`auth-tab ${tab === 'signin' ? 'active' : ''}`}
+                onClick={() => {
+                  setTab('signin')
+                  resetFormErrors()
+                }}
+              >
+                Sign in
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === 'signup'}
+                className={`auth-tab ${tab === 'signup' ? 'active' : ''}`}
+                onClick={() => {
+                  setTab('signup')
+                  resetFormErrors()
+                }}
+              >
+                Create account
+              </button>
+            </div>
+
+            <h2 className="auth-form-title">
+              {tab === 'signin'
+                ? accountKind === 'organization'
+                  ? 'Organization sign in'
+                  : 'Individual sign in'
+                : accountKind === 'organization'
+                  ? 'Register your organization'
+                  : 'Create individual account'}
+            </h2>
+            <p className="auth-form-sub">
+              {tab === 'signin'
+                ? 'Use the email and password for your account.'
+                : accountKind === 'organization'
+                  ? 'Creates your company workspace. You are the account owner (primary contact).'
+                  : 'Creates a personal workspace for solo operators and developers.'}
+            </p>
+
+            {error && <div className="auth-alert auth-alert--error">{error}</div>}
+            {message && <div className="auth-alert auth-alert--success">{message}</div>}
+
+            <form onSubmit={submitCredentials}>
+              {isOrgSignup && (
+                <>
+                  <div className="auth-field">
+                    <label htmlFor="auth-org-name">Organization name</label>
+                    <div className="auth-input-wrap">
+                      <Building2 size={16} />
+                      <input
+                        id="auth-org-name"
+                        className="auth-input"
+                        type="text"
+                        autoComplete="organization"
+                        required
+                        minLength={2}
+                        maxLength={120}
+                        placeholder="Acme Robotics Inc."
+                        value={organizationName}
+                        onChange={(e) => setOrganizationName(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="auth-field">
+                    <label htmlFor="auth-primary-contact">Primary contact (account owner)</label>
+                    <div className="auth-input-wrap">
+                      <UserCircle size={16} />
+                      <input
+                        id="auth-primary-contact"
+                        className="auth-input"
+                        type="text"
+                        autoComplete="name"
+                        required
+                        minLength={2}
+                        maxLength={120}
+                        placeholder="Full name of person in charge"
+                        value={primaryContactName}
+                        onChange={(e) => setPrimaryContactName(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div className="auth-field">
+                <label htmlFor="auth-email">Email</label>
+                <div className="auth-input-wrap">
+                  <Mail size={16} />
+                  <input
+                    id="auth-email"
+                    className="auth-input"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
                 </div>
+              </div>
 
-                <h2 className="auth-form-title">
-                  {tab === 'signin' ? 'Operator sign in' : 'Create operator account'}
-                </h2>
-                <p className="auth-form-sub">
-                  {tab === 'signin'
-                    ? 'Access the control plane to review verifications, policies, and audit logs.'
-                    : 'Register with your work email. Minimum 6 characters for password.'}
-                </p>
+              <div className="auth-field">
+                <label htmlFor="auth-password">Password</label>
+                <div className="auth-input-wrap">
+                  <Lock size={16} />
+                  <input
+                    id="auth-password"
+                    className="auth-input"
+                    type="password"
+                    autoComplete={tab === 'signup' ? 'new-password' : 'current-password'}
+                    required
+                    minLength={8}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
+              </div>
 
-                {error && <div className="auth-alert auth-alert--error">{error}</div>}
-                {message && (
-                  <div className="auth-alert auth-alert--success">{message}</div>
-                )}
-
-                <form onSubmit={submitCredentials}>
-                  <div className="auth-field">
-                    <label htmlFor="auth-email">Email</label>
-                    <div className="auth-input-wrap">
-                      <Mail size={16} />
-                      <input
-                        id="auth-email"
-                        className="auth-input"
-                        type="email"
-                        autoComplete="email"
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                      />
-                    </div>
+              {tab === 'signup' && (
+                <div className="auth-field">
+                  <label htmlFor="auth-confirm-password">Confirm password</label>
+                  <div className="auth-input-wrap">
+                    <Lock size={16} />
+                    <input
+                      id="auth-confirm-password"
+                      className="auth-input"
+                      type="password"
+                      autoComplete="new-password"
+                      required
+                      minLength={8}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
                   </div>
+                </div>
+              )}
 
-                  <div className="auth-field">
-                    <label htmlFor="auth-password">Password</label>
-                    <div className="auth-input-wrap">
-                      <Lock size={16} />
-                      <input
-                        id="auth-password"
-                        className="auth-input"
-                        type="password"
-                        autoComplete={tab === 'signup' ? 'new-password' : 'current-password'}
-                        required
-                        minLength={6}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                      />
-                    </div>
-                  </div>
+              <button type="submit" className="auth-submit" disabled={busy}>
+                {busy
+                  ? 'Please wait…'
+                  : tab === 'signin'
+                    ? 'Sign in'
+                    : accountKind === 'organization'
+                      ? 'Create organization account'
+                      : 'Create individual account'}
+              </button>
+            </form>
 
-                  <button type="submit" className="auth-submit" disabled={busy}>
-                    {busy
-                      ? 'Authenticating…'
-                      : tab === 'signin'
-                        ? 'Sign in to control plane'
-                        : 'Create account'}
-                  </button>
-                </form>
-              </>
-            ) : (
+            {tab === 'signin' && (
               <>
-                <h2 className="auth-form-title">Enterprise SSO</h2>
-                <p className="auth-form-sub">
-                  Sign in with your organization&apos;s Google or GitHub account.
+                <div className="auth-divider">Company SSO (existing teams)</div>
+                <p className="auth-form-sub" style={{ marginBottom: '0.75rem' }}>
+                  Already provisioned by your admin? Sign in with Google or GitHub (email domain must
+                  be mapped to your organization).
                 </p>
-
-                {error && <div className="auth-alert auth-alert--error">{error}</div>}
-
                 <div className="auth-sso-grid">
                   {SSO_PROVIDERS.map((p) => (
                     <button
@@ -290,21 +391,6 @@ export function Login() {
                     </button>
                   ))}
                 </div>
-
-                <div className="auth-divider">or</div>
-
-                <p className="auth-form-sub" style={{ marginBottom: '0.75rem' }}>
-                  Operator credentials (fallback)
-                </p>
-                <button
-                  type="button"
-                  className="auth-sso-btn"
-                  onClick={() => setPortal('operator')}
-                >
-                  <User size={16} />
-                  Use email & password
-                </button>
-
               </>
             )}
           </div>
