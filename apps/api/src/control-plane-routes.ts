@@ -7,6 +7,7 @@ import { runtimeWsHub } from './runtime-ws-hub.js'
 import { recordUsage, UsageMetrics } from './usage-store.js'
 import { getEntitlementEngine } from './entitlements.js'
 import { sendNotificationDeduped, type NotificationEvent } from './notifications.js'
+import { logDataAccess } from './data-access-log.js'
 
 function fireNotification(cfg: ReturnType<typeof getSupabaseAuthConfig>, event: NotificationEvent, cooldownMs = 3_600_000): void {
   if (!cfg) return
@@ -380,6 +381,12 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
     const scope = await resolveOrgScope(req as SanctumReq, store)
     if (orgId && scope && !scope.includes(orgId)) return []
 
+    if (orgId) {
+      logDataAccess(cfg, req, { orgId, resource: 'runtimes' })
+    } else if (scope) {
+      for (const oid of scope) logDataAccess(cfg, req, { orgId: oid, resource: 'runtimes' })
+    }
+
     const staleRuntimes = await store.markStaleOffline()
     for (const r of staleRuntimes) {
       fireNotification(cfg, {
@@ -400,6 +407,9 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
     const user = (req as SanctumReq).sanctumUser
     if (user) {
       const organizationIds = await store.getUserOrgIds(user.id)
+      for (const orgId of organizationIds) {
+        logDataAccess(cfg, req, { orgId, resource: 'operator_context' })
+      }
       return {
         defaultOrganizationId: organizationIds[0] ?? null,
         organizationIds,
@@ -408,6 +418,7 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
     const key = headerKey(req)
     if (key?.startsWith('sk_sanctum_')) {
       const keyOrg = await store.getApiKeyOrgId(key)
+      if (keyOrg) logDataAccess(cfg, req, { orgId: keyOrg, resource: 'operator_context' })
       return {
         defaultOrganizationId: keyOrg,
         organizationIds: keyOrg ? [keyOrg] : [],
@@ -422,6 +433,7 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
     const runtimes = filterByScope(await store.listRuntimes(), scope)
     const runtime = runtimes.find((r) => r.id === runtimeId)
     if (!runtime) return reply.status(404).send({ error: 'runtime_not_found' })
+    logDataAccess(cfg, req, { orgId: runtime.org_id, resource: 'runtime', resourceId: runtimeId })
     const agents = await store.listAgents(runtimeId)
     return { runtime, agents }
   })
@@ -472,9 +484,10 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
     const scope = await resolveOrgScope(req as SanctumReq, store)
     const agents = await store.listAgents(runtimeId)
     if (scope === null) return agents
-    const allowed = new Set(
-      filterByScope(await store.listRuntimes(), scope).map((r) => r.id),
-    )
+    const allowedRuntimes = filterByScope(await store.listRuntimes(), scope)
+    const allowed = new Set(allowedRuntimes.map((r) => r.id))
+    const seenOrgs = new Set(allowedRuntimes.map((r) => r.org_id))
+    for (const orgId of seenOrgs) logDataAccess(cfg, req, { orgId, resource: 'agents' })
     return agents.filter((a) => allowed.has(a.runtime_id))
   })
 
@@ -483,6 +496,11 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
     const scope = await resolveOrgScope(req as SanctumReq, store)
     if (q.org_id && scope && !scope.includes(q.org_id)) return []
     const orgId = q.org_id || undefined
+    if (orgId) {
+      logDataAccess(cfg, req, { orgId, resource: 'events' })
+    } else if (scope) {
+      for (const oid of scope) logDataAccess(cfg, req, { orgId: oid, resource: 'events' })
+    }
     const events = await store.listEvents({
       orgId,
       limit: q.limit ? Number(q.limit) : 100,
