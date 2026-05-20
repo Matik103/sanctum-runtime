@@ -449,6 +449,44 @@ app.post('/v1/actions/verify', {
     decision: result.decision,
   })
 
+  // Quota warning / exceeded — fire-and-forget, no impact on verify latency
+  if (supabaseAuth && orgId) {
+    const entEngine = getEntitlementEngine(supabaseAuth)
+    void entEngine.checkEventQuota(orgId).then(async (quota) => {
+      if (quota.limit === null) return
+      const prefs = await entEngine.getNotificationPrefs(orgId)
+      const warnThreshold = Math.floor(quota.limit * (prefs.quotaWarningPct / 100))
+      const usedPct = Math.round((quota.used / quota.limit) * 100)
+      if (quota.used >= quota.limit) {
+        sendNotificationDeduped(
+          {
+            type: 'quota.exceeded',
+            orgId,
+            title: 'Event quota exceeded',
+            body: `Your organisation has used ${quota.used.toLocaleString()} of ${quota.limit.toLocaleString()} events this month. Further actions may be blocked. Upgrade your plan to continue.`,
+            severity: 'critical',
+            data: { used: quota.used, limit: quota.limit, pct: usedPct },
+          },
+          { email: prefs.email, slackWebhookUrl: prefs.slackWebhookUrl, notificationWebhookUrl: prefs.notificationWebhookUrl },
+          3_600_000, // 1h cooldown — repeat hourly until resolved
+        )
+      } else if (quota.used >= warnThreshold) {
+        sendNotificationDeduped(
+          {
+            type: 'quota.warning',
+            orgId,
+            title: `Approaching event quota (${usedPct}% used)`,
+            body: `Your organisation has used ${quota.used.toLocaleString()} of ${quota.limit.toLocaleString()} events this month. Upgrade before you hit the limit.`,
+            severity: 'warning',
+            data: { used: quota.used, limit: quota.limit, pct: usedPct },
+          },
+          { email: prefs.email, slackWebhookUrl: prefs.slackWebhookUrl, notificationWebhookUrl: prefs.notificationWebhookUrl },
+          21_600_000, // 6h cooldown
+        )
+      }
+    }).catch(() => { /* best-effort */ })
+  }
+
   // Persist alert + notify on anomaly spikes (BLOCKED or anomaly flags present)
   if (supabaseAuth && orgId && (result.decision === 'BLOCKED' || result.anomalyFlags.length > 0)) {
     const severity = result.decision === 'BLOCKED' ? 'critical' : 'warning'

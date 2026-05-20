@@ -337,6 +337,15 @@ export class ControlPlaneStore {
     return data as RuntimeEvent
   }
 
+  async getRuntimeById(runtimeId: string): Promise<RegisteredRuntime | null> {
+    const { data } = await this.admin()
+      .from('registered_runtimes')
+      .select('*')
+      .eq('id', runtimeId)
+      .maybeSingle()
+    return (data ?? null) as RegisteredRuntime | null
+  }
+
   async listRuntimes(orgId?: string): Promise<RegisteredRuntime[]> {
     const admin = this.admin()
     let q = admin.from('registered_runtimes').select('*').order('last_seen_at', {
@@ -374,7 +383,7 @@ export class ControlPlaneStore {
     return (data ?? []) as RuntimeEvent[]
   }
 
-  async markStaleOffline(staleMs = 120_000): Promise<number> {
+  async markStaleOffline(staleMs = 120_000): Promise<Array<{ id: string; org_id: string; name: string }>> {
     const cutoff = new Date(Date.now() - staleMs).toISOString()
     const admin = this.admin()
     const { data, error } = await admin
@@ -382,9 +391,9 @@ export class ControlPlaneStore {
       .update({ status: 'offline' })
       .eq('status', 'online')
       .lt('last_seen_at', cutoff)
-      .select('id')
+      .select('id, org_id, name')
     if (error) throw new Error(error.message)
-    return data?.length ?? 0
+    return (data ?? []) as Array<{ id: string; org_id: string; name: string }>
   }
 
   async getUserOrgIds(userId: string): Promise<string[]> {

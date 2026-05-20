@@ -6,6 +6,19 @@ import { OrchestrationStore } from './orchestration-store.js'
 import { runtimeWsHub } from './runtime-ws-hub.js'
 import { recordUsage, UsageMetrics } from './usage-store.js'
 import { getEntitlementEngine } from './entitlements.js'
+import { sendNotificationDeduped, type NotificationEvent } from './notifications.js'
+
+function fireNotification(cfg: ReturnType<typeof getSupabaseAuthConfig>, event: NotificationEvent, cooldownMs = 3_600_000): void {
+  if (!cfg) return
+  const eng = getEntitlementEngine(cfg)
+  void eng.getNotificationPrefs(event.orgId).then((prefs) => {
+    sendNotificationDeduped(event, {
+      email: prefs.email,
+      slackWebhookUrl: prefs.slackWebhookUrl,
+      notificationWebhookUrl: prefs.notificationWebhookUrl,
+    }, cooldownMs)
+  }).catch(() => { /* best-effort */ })
+}
 
 const modeSchema = z.enum(['cloud', 'edge', 'airgap', 'hybrid'])
 
@@ -183,6 +196,24 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
 
     try {
       const runtime = await store.reattestRuntime(runtimeId, body.attestation)
+
+      // Fire notification for failed or low-trust attestations
+      if (runtime.attestation_status === 'failed' || (runtime.trust_score ?? 1) < 0.5) {
+        const isTampered = (runtime.trust_score ?? 1) < 0.2
+        fireNotification(cfg, {
+          type: isTampered ? 'runtime.tampered' : 'runtime.attestation_failed',
+          orgId,
+          title: isTampered
+            ? `Runtime tampered: ${runtimeId}`
+            : `Attestation failed: ${runtimeId}`,
+          body: isTampered
+            ? `Runtime "${runtimeId}" has a trust score of ${((runtime.trust_score ?? 0) * 100).toFixed(0)}% — possible tampering detected.`
+            : `Runtime "${runtimeId}" attestation failed with status "${runtime.attestation_status}" (trust score: ${((runtime.trust_score ?? 0) * 100).toFixed(0)}%).`,
+          severity: isTampered ? 'emergency' : 'critical',
+          data: { runtimeId, trustScore: runtime.trust_score, attestationStatus: runtime.attestation_status },
+        }, 3_600_000)
+      }
+
       return {
         runtimeId: runtime.id,
         trustScore: runtime.trust_score,
@@ -215,12 +246,41 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
 
     try {
       const ip = extractIp(req)
+      const prevRuntime = await store.getRuntimeById(runtimeId)
+      const wasOffline = prevRuntime?.status === 'offline'
+
       const runtime = await store.heartbeat(runtimeId, {
         telemetry: { ...(body.telemetry ?? {}), ...(ip ? { lastIp: ip } : {}) },
         currentTask: body.currentTask,
         activeModel: body.activeModel,
         status: body.status,
       })
+
+      // runtime.reconnected — was offline, now sending heartbeat again
+      if (wasOffline && body.status !== 'offline') {
+        fireNotification(cfg, {
+          type: 'runtime.reconnected',
+          orgId,
+          title: `Runtime back online: ${prevRuntime?.name ?? runtimeId}`,
+          body: `Runtime "${prevRuntime?.name ?? runtimeId}" has reconnected and is sending heartbeats again.`,
+          severity: 'info',
+          data: { runtimeId, runtimeName: prevRuntime?.name },
+        }, 300_000)
+      }
+
+      // runtime.high_memory — telemetry reports memory above 90%
+      const memPct = typeof body.telemetry?.memoryUsagePct === 'number' ? body.telemetry.memoryUsagePct : null
+      if (memPct !== null && memPct >= 90) {
+        fireNotification(cfg, {
+          type: 'runtime.high_memory',
+          orgId,
+          title: `High memory on runtime ${prevRuntime?.name ?? runtimeId}`,
+          body: `Runtime is using ${memPct}% memory. Consider restarting or scaling.`,
+          severity: memPct >= 95 ? 'critical' : 'warning',
+          data: { runtimeId, memoryUsagePct: memPct },
+        }, 1_800_000)
+      }
+
       const commands =
         body.status === 'offline' || runtimeWsHub.isConnected(runtimeId)
           ? []
@@ -231,7 +291,6 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
                 payload: c.payload,
               })),
             )
-      // Record ~1 minute of runtime uptime per heartbeat (approx 60s interval)
       recordUsage(cfg, orgId, UsageMetrics.RUNTIME_HOURS, 1 / 60)
       return {
         ok: true,
@@ -293,6 +352,19 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
     const scope = await resolveOrgScope(req as SanctumReq, store)
     if (!assertOrgAllowed(scope, orgId, reply)) return
 
+    // Fire notifications for security-relevant runtime events
+    const LOOP_EVENTS = ['loop_detected', 'agent.loop_detected', 'infinite_loop', 'runaway_agent']
+    if (LOOP_EVENTS.includes(body.eventType)) {
+      fireNotification(cfg, {
+        type: 'agent.loop_detected',
+        orgId,
+        title: `Agent loop detected on runtime ${runtimeId}`,
+        body: `Agent ${body.agentId ?? 'unknown'} triggered a loop event (${body.eventType}).`,
+        severity: 'critical',
+        data: { runtimeId, agentId: body.agentId, eventType: body.eventType },
+      }, 900_000)
+    }
+
     const event = await store.insertEvent({
       orgId,
       runtimeId,
@@ -307,7 +379,19 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
     const orgId = (req.query as { org_id?: string }).org_id
     const scope = await resolveOrgScope(req as SanctumReq, store)
     if (orgId && scope && !scope.includes(orgId)) return []
-    await store.markStaleOffline()
+
+    const staleRuntimes = await store.markStaleOffline()
+    for (const r of staleRuntimes) {
+      fireNotification(cfg, {
+        type: 'runtime.offline',
+        orgId: r.org_id,
+        title: `Runtime offline: ${r.name}`,
+        body: `Runtime "${r.name}" (${r.id}) stopped sending heartbeats and has been marked offline.`,
+        severity: 'warning',
+        data: { runtimeId: r.id, runtimeName: r.name },
+      }, 1_800_000) // 30 min cooldown per runtime
+    }
+
     const runtimes = await store.listRuntimes(orgId || undefined)
     return filterByScope(runtimes, scope)
   })
