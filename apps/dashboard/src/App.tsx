@@ -22,6 +22,7 @@ import { RuntimeActivity } from './pages/RuntimeActivity'
 import { Settings } from './pages/Settings'
 import { ThreatMonitor } from './pages/ThreatMonitor'
 import { Alerts } from './pages/Alerts'
+import { PwaInstallBanner } from './components/PwaInstallBanner'
 
 export function App() {
   const online = useNetworkStatus()
@@ -53,6 +54,7 @@ export function App() {
 
       <MainCanvas>
         <ErrorBoundary>
+        <PwaInstallBanner />
         {!online && (
           <div className="alert alert--warn" role="alert" style={{ marginBottom: '1rem' }}>
             <div className="alert__body">

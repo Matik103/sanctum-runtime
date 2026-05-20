@@ -29,6 +29,7 @@ import { registerRuntimeWsRoutes } from './runtime-ws-routes.js'
 import { runtimeWsHub } from './runtime-ws-hub.js'
 import { registerAlertRoutes } from './alert-routes.js'
 import { AlertStore } from './alert-store.js'
+import { initVapid, registerPushRoutes, sendPushToOrg } from './web-push.js'
 import {
   authenticateRequest,
   getSupabaseAuthConfig,
@@ -41,6 +42,7 @@ import {
 } from '../../../scripts/env.ts'
 
 loadRepoEnv()
+initVapid()
 const { host, port } = resolveApiListenTarget()
 const dashboardUrl = resolveDashboardUrl()
 const forceOffline = process.env.SANCTUM_OFFLINE_MODE === 'true'
@@ -234,6 +236,10 @@ if (supabaseAuth) {
   await registerGovernanceRoutes(app, supabaseAuth)
   await registerComplianceRoutes(app, supabaseAuth)
   await registerAlertRoutes(app)
+  registerPushRoutes(app, supabaseAuth, async (req) => {
+    const b = req.body as { org_id?: string; context?: { org_id?: string } } | undefined
+    return (b?.org_id ?? (b?.context?.org_id as string | undefined)) ?? null
+  })
 }
 
 const stopWebhookWorker = supabaseAuth ? startWebhookWorker(supabaseAuth) : null
@@ -469,6 +475,19 @@ app.post('/v1/actions/verify', async (req) => {
       )
     }).catch(() => { /* best-effort */ })
   }
+
+
+  // Push notification when agent requires verification and dashboard may be closed
+  if (result.decision === 'REQUIRE_VERIFICATION' && supabaseAuth && orgId) {
+    void sendPushToOrg(supabaseAuth, orgId, {
+      title: 'Verification Required',
+      body: `${body.actor} wants to ${body.action} — tap to review`,
+      tag: `verify-${result.id}`,
+      url: `/?page=activity`,
+      data: { entryId: result.id, action: body.action, actor: body.actor, risk: result.risk },
+    }).catch(() => {})
+  }
+
 
   return result
 })
