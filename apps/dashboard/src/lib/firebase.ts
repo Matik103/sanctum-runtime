@@ -39,15 +39,8 @@ export async function requestFcmToken(): Promise<string | null> {
   const m = getFirebaseMessaging()
   if (!m) return null
 
-  let swReg = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js')
-  if (!swReg) {
-    swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' })
-    await swReg.update()
-  }
-
-  // Send Firebase config to the SW so it can initialise messaging for background push
-  const sw = swReg.installing ?? swReg.waiting ?? swReg.active
-  sw?.postMessage({ type: 'FIREBASE_CONFIG', config: firebaseConfig })
+  // Use the single unified SW (Workbox + FCM) registered by VitePWA
+  const swReg = await navigator.serviceWorker.ready
 
   try {
     return await getToken(m, { vapidKey, serviceWorkerRegistration: swReg })
