@@ -384,17 +384,71 @@ export function sendNotification(event: NotificationEvent, prefs?: OrgNotificati
   void Promise.allSettled(tasks)
 }
 
-/** Deduplication: suppress repeated alerts for the same org+event within the cooldown window. */
-const alertCooldowns = new Map<string, number>()
+// ── Deduplication ─────────────────────────────────────────────────────────────
+// In-memory cache is the fast path; Supabase is the source of truth across restarts.
 
+const alertCooldowns = new Map<string, number>()
+let dedupInitialised = false
+
+async function loadDedupState(): Promise<void> {
+  if (dedupInitialised) return
+  dedupInitialised = true
+  try {
+    const { getSupabaseAuthConfig, createSupabaseAdmin } = await import('./auth.js')
+    const cfg = getSupabaseAuthConfig()
+    if (!cfg) return
+    const db = createSupabaseAdmin(cfg)
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    const { data } = await db
+      .from('notification_dedup_log')
+      .select('org_id, event_type, last_sent_at')
+      .gte('last_sent_at', since)
+    for (const row of data ?? []) {
+      const key = `${row.org_id}:${row.event_type}`
+      alertCooldowns.set(key, new Date(row.last_sent_at).getTime())
+    }
+    console.log(`[notifications] dedup state loaded (${data?.length ?? 0} entries)`)
+  } catch (e) {
+    console.warn('[notifications] dedup state load failed:', e)
+  }
+}
+
+async function persistDedupEntry(orgId: string, eventType: string): Promise<void> {
+  try {
+    const { getSupabaseAuthConfig, createSupabaseAdmin } = await import('./auth.js')
+    const cfg = getSupabaseAuthConfig()
+    if (!cfg) return
+    const db = createSupabaseAdmin(cfg)
+    await db.from('notification_dedup_log').upsert(
+      { org_id: orgId, event_type: eventType, last_sent_at: new Date().toISOString() },
+      { onConflict: 'org_id,event_type' },
+    )
+  } catch (e) {
+    console.warn('[notifications] dedup persist failed:', e)
+  }
+}
+
+/** Deduplication: suppress repeated alerts for the same org+event within the cooldown window.
+ *  State survives API restarts via Supabase — no alert spam after redeploys. */
 export function sendNotificationDeduped(
   event: NotificationEvent,
   prefs?: OrgNotificationPrefs,
   cooldownMs = 3_600_000,
 ): void {
   const key = `${event.orgId}:${event.type}`
+
+  // Warm cache from DB on first call (non-blocking — if DB unavailable, in-memory still works)
+  void loadDedupState()
+
   const last = alertCooldowns.get(key) ?? 0
   if (Date.now() - last < cooldownMs) return
+
   alertCooldowns.set(key, Date.now())
+  void persistDedupEntry(event.orgId, event.type)
   sendNotification(event, prefs)
+}
+
+/** Pre-warm the dedup cache at startup so the first call is always accurate. */
+export function initDedupCache(): void {
+  void loadDedupState()
 }

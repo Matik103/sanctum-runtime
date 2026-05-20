@@ -22,7 +22,7 @@ import { registerPolicyVersionRoutes } from './policy-versions.js'
 import { startWebhookWorker } from './webhook-queue.js'
 import { riskModelBreaker } from './circuit-breaker.js'
 import { traced } from './telemetry.js'
-import { sendNotificationDeduped, sendVerificationEmail } from './notifications.js'
+import { sendNotificationDeduped, sendVerificationEmail, initDedupCache } from './notifications.js'
 import { getEntitlementEngine } from './entitlements.js'
 import { recordUsage, UsageMetrics } from './usage-store.js'
 import { registerRuntimeWsRoutes } from './runtime-ws-routes.js'
@@ -169,6 +169,7 @@ app.addHook('onRequest', async (req, reply) => {
 })
 
 await runtime.init()
+if (supabaseAuth) initDedupCache()
 if (process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY?.trim()) {
   const count = Object.keys(runtime.getPolicyEngine().getPolicies()).length
   console.log(`Supabase policy store active (${count} policies loaded/seeded)`)
