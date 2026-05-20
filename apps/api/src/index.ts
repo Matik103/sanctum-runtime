@@ -34,6 +34,7 @@ import { sendVerificationEmail, verifyToken } from './verify-email.js'
 import { loadPoliciesFromSupabase, detectAnomalies, heuristicRiskFloor } from '@sanctum/runtime-engine'
 import { verifyAgentToken, extractAgentToken, registerAgentTokenRoutes } from './agent-tokens.js'
 import { checkActiveGrant, createGrant } from './policy-grants.js'
+import { initVapid, registerPushRoutes, sendPushToOrg } from './web-push.js'
 import {
   authenticateRequest,
   getSupabaseAuthConfig,
@@ -62,6 +63,7 @@ import {
 } from '../../../scripts/env.ts'
 
 loadRepoEnv()
+initVapid()
 
 // Fail fast in production if required secrets are missing
 if (isProduction()) {
@@ -283,6 +285,14 @@ if (supabaseAuth) {
   await registerDelegationRoutes(app, supabaseAuth)
   await registerAlertRoutes(app)
   await registerAgentTokenRoutes(app, supabaseAuth)
+
+  if (supabaseAuth) {
+    const pushCfg = supabaseAuth
+    registerPushRoutes(app, pushCfg, async (req) => {
+      const scope = await resolveRouteOrgScope(req as SanctumReq, pushCfg)
+      return scope.orgIds[0] ?? null
+    })
+  }
 }
 
 const stopWebhookWorker = supabaseAuth ? startWebhookWorker(supabaseAuth) : null
@@ -692,9 +702,20 @@ app.post('/v1/actions/verify', {
     }).catch(() => { /* best-effort */ })
   }
 
-  // Out-of-band email verification — send approve/deny links when dashboard may be closed
+  // Out-of-band notifications — push + email when dashboard may be closed
   if (result.decision === 'REQUIRE_VERIFICATION' && supabaseAuth && orgId) {
     const entEngine = getEntitlementEngine(supabaseAuth)
+
+    // Browser push notification (instant, works even if tab is closed)
+    void sendPushToOrg(supabaseAuth, orgId, {
+      title: 'Verification Required',
+      body: `${body.actor} wants to ${body.action} — tap to review`,
+      tag: `verify-${result.id}`,
+      url: `/?page=activity`,
+      data: { entryId: result.id, action: body.action, actor: body.actor, risk: result.risk },
+    }).catch(() => {})
+
+    // Email verification with approve/deny links
     void entEngine.getNotificationPrefs(orgId).then(async (prefs) => {
       if (prefs.email) {
         await sendVerificationEmail({
