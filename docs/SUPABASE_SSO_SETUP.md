@@ -95,13 +95,46 @@ Users must sign in via **Enterprise** → Google or GitHub so `portal_type` is `
 
 ---
 
-## 5. Verify
+## 5. Database migrations
 
-1. Open `https://console.sanctumruntime.com` (or local `npm run dev` dashboard).
+Apply enterprise SSO helpers (if not already):
+
+```bash
+npm run db:push
+```
+
+Requires migrations **034** (`portal_type` sync) and **035** (`bootstrap_enterprise_org_for_user` RPC).
+
+## 6. Production checklist (your project)
+
+| Item | Status |
+|------|--------|
+| Supabase Site URL = `https://console.sanctumruntime.com` | ✓ (from your screenshot) |
+| Redirect URLs include `https://console.sanctumruntime.com/**` | ✓ |
+| Google provider enabled + keys saved | ✓ |
+| GitHub provider enabled + keys saved | ✓ |
+| `organization_domains` rows for your company email domain | You configured in DB |
+| Render dashboard: `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` | Confirm on Render |
+| `npm run db:push` for migration 035 | Run locally |
+
+Project callback (for Google/GitHub redirect URIs):
+
+```text
+https://nimvcudvrhanxlcpiizz.supabase.co/auth/v1/callback
+```
+
+## 7. Verify
+
+1. Open `https://console.sanctumruntime.com`.
 2. Choose **Enterprise** → **Continue with Google** or **Continue with GitHub**.
-3. Complete OAuth → you should land signed in on the control plane.
+3. Sign in with an email on a mapped domain (e.g. `@yourcompany.com` in `organization_domains`).
+4. Console runs `bootstrap_enterprise_org_for_user` and opens the control plane.
+
+**Operator** sign-up (email/password) is unchanged — use the **Operator** tab for personal `personal-…` workspaces.
 
 If redirect fails, re-check **Redirect URLs** in Supabase and the callback URL in Google/GitHub.
+
+If you see **No organization access**, your domain is not in `organization_domains` or `verified` is false — fix in SQL and click **Retry**.
 
 ---
 
