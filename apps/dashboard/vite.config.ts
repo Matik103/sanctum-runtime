@@ -37,7 +37,7 @@ export default defineConfig(({ mode, command }) => {
       react(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon.png', 'favicon-512.png', 'apple-touch-icon.png'],
+        includeAssets: ['favicon.png', 'favicon-512.png', 'apple-touch-icon.png', 'sanctum-logo.png'],
         manifest: {
           name: 'Sanctum Runtime Companion',
           short_name: 'Sanctum',

@@ -2,6 +2,16 @@
 
 The console at **https://console.sanctumruntime.com** doubles as the **mobile trust control layer** — not a separate native app.
 
+## Brand / notification icons (production)
+
+Use these stable URLs (see `docs/BRAND_ASSETS.md`):
+
+| Use | URL |
+|-----|-----|
+| FCM notification icon | https://console.sanctumruntime.com/favicon-512.png |
+| PWA install icon | https://console.sanctumruntime.com/favicon-512.png |
+| Wordmark | https://console.sanctumruntime.com/sanctum-logo.png |
+
 ## What users get
 
 - **Install to home screen** (Android Chrome, desktop, iOS Safari 16.4+)

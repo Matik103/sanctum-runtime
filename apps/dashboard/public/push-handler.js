@@ -10,7 +10,7 @@ self.addEventListener('push', (event) => {
 
   const options = {
     body: payload.body,
-    icon: '/favicon-512.png',
+    icon: payload.icon || '/favicon-512.png',
     badge: '/favicon.png',
     tag: payload.tag || 'sanctum-alert',
     data: { url: payload.url || '/' },

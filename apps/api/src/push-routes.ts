@@ -95,10 +95,21 @@ export async function registerPushRoutes(app: FastifyInstance): Promise<void> {
   })
 }
 
+const DEFAULT_PUSH_ICON =
+  process.env.SANCTUM_PUSH_ICON_URL?.trim() ||
+  'https://console.sanctumruntime.com/favicon-512.png'
+
 /** Send web push to all devices for a user (no-op if VAPID not configured). */
 export async function sendPushToUser(
   userId: string,
-  payload: { title: string; body: string; url?: string; tag?: string; requireInteraction?: boolean },
+  payload: {
+    title: string
+    body: string
+    url?: string
+    tag?: string
+    requireInteraction?: boolean
+    icon?: string
+  },
 ): Promise<void> {
   const cfg = getSupabaseAuthConfig()
   const publicKey = process.env.VAPID_PUBLIC_KEY?.trim() || process.env.VITE_VAPID_PUBLIC_KEY?.trim()
@@ -117,7 +128,10 @@ export async function sendPushToUser(
   try {
     const webpush = await import('web-push')
     webpush.setVapidDetails(subject, publicKey, privateKey)
-    const body = JSON.stringify(payload)
+    const body = JSON.stringify({
+      icon: DEFAULT_PUSH_ICON,
+      ...payload,
+    })
     await Promise.allSettled(
       rows.map((row) => {
         const sub = row.subscription as webpush.PushSubscription
