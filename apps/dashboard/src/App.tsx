@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 import { ActionDrawer } from './components/ActionDrawer'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -23,11 +23,17 @@ import { Settings } from './pages/Settings'
 import { ThreatMonitor } from './pages/ThreatMonitor'
 import { Alerts } from './pages/Alerts'
 import { PwaInstallBanner } from './components/PwaInstallBanner'
+import { fetchMyOrgs } from './lib/fleet'
 
 export function App() {
   const online = useNetworkStatus()
   const [page, setPage] = useState<PageId>('overview')
   const [selected, setSelected] = useState<ActionResult | null>(null)
+  const [orgId, setOrgId] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetchMyOrgs().then((orgs) => { if (orgs[0]) setOrgId(orgs[0].org_id) }).catch(() => {})
+  }, [])
   const {
     audit,
     policies,
@@ -50,7 +56,7 @@ export function App() {
 
   return (
     <div className="shell">
-      <Sidebar page={page} onPage={setPage} status={status} />
+      <Sidebar page={page} onPage={setPage} status={status} orgId={orgId} />
 
       <MainCanvas>
         <ErrorBoundary>

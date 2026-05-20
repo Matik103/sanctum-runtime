@@ -22,14 +22,13 @@ import { registerPolicyVersionRoutes } from './policy-versions.js'
 import { startWebhookWorker } from './webhook-queue.js'
 import { riskModelBreaker } from './circuit-breaker.js'
 import { traced } from './telemetry.js'
-import { sendNotificationDeduped } from './notifications.js'
+import { sendNotificationDeduped, sendVerificationEmail } from './notifications.js'
 import { getEntitlementEngine } from './entitlements.js'
 import { recordUsage, UsageMetrics } from './usage-store.js'
 import { registerRuntimeWsRoutes } from './runtime-ws-routes.js'
 import { runtimeWsHub } from './runtime-ws-hub.js'
 import { registerAlertRoutes } from './alert-routes.js'
 import { AlertStore } from './alert-store.js'
-import { initVapid, registerPushRoutes, sendPushToOrg } from './web-push.js'
 import {
   authenticateRequest,
   getSupabaseAuthConfig,
@@ -42,7 +41,6 @@ import {
 } from '../../../scripts/env.ts'
 
 loadRepoEnv()
-initVapid()
 const { host, port } = resolveApiListenTarget()
 const dashboardUrl = resolveDashboardUrl()
 const forceOffline = process.env.SANCTUM_OFFLINE_MODE === 'true'
@@ -236,10 +234,6 @@ if (supabaseAuth) {
   await registerGovernanceRoutes(app, supabaseAuth)
   await registerComplianceRoutes(app, supabaseAuth)
   await registerAlertRoutes(app)
-  registerPushRoutes(app, supabaseAuth, async (req) => {
-    const b = req.body as { org_id?: string; context?: { org_id?: string } } | undefined
-    return (b?.org_id ?? (b?.context?.org_id as string | undefined)) ?? null
-  })
 }
 
 const stopWebhookWorker = supabaseAuth ? startWebhookWorker(supabaseAuth) : null
@@ -477,14 +471,30 @@ app.post('/v1/actions/verify', async (req) => {
   }
 
 
-  // Push notification when agent requires verification and dashboard may be closed
+  // Alert + email when agent requires human verification
   if (result.decision === 'REQUIRE_VERIFICATION' && supabaseAuth && orgId) {
-    void sendPushToOrg(supabaseAuth, orgId, {
-      title: 'Verification Required',
-      body: `${body.actor} wants to ${body.action} — tap to review`,
-      tag: `verify-${result.id}`,
-      url: `/?page=activity`,
-      data: { entryId: result.id, action: body.action, actor: body.actor, risk: result.risk },
+    const alertStore = new AlertStore(supabaseAuth)
+    void alertStore.createAlert({
+      org_id: orgId,
+      severity: 'warning',
+      type: 'agent.require_verification',
+      title: `Verification required: ${body.action}`,
+      message: `${body.actor} wants to perform "${body.action}" and is waiting for your approval.`,
+      channels: ['in_app', 'email'],
+      metadata: { action: body.action, actor: body.actor, risk: result.risk, entryId: result.id },
+    }).catch(() => {})
+
+    void getEntitlementEngine(supabaseAuth).getNotificationPrefs(orgId).then(async (prefs) => {
+      if (prefs.email) {
+        await sendVerificationEmail({
+          to: prefs.email,
+          actor: body.actor,
+          action: body.action,
+          risk: result.risk,
+          orgId,
+          dashboardUrl,
+        })
+      }
     }).catch(() => {})
   }
 
