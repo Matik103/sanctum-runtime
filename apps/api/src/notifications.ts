@@ -47,6 +47,7 @@ interface OrgNotificationPrefs {
   email?: string | null
   slackWebhookUrl?: string | null
   notificationWebhookUrl?: string | null
+  orgId?: string | null
 }
 
 // ── Email (Resend) ────────────────────────────────────────────────────────────
@@ -364,6 +365,16 @@ export function sendNotification(event: NotificationEvent, prefs?: OrgNotificati
   if (email)      tasks.push(sendResend(event, email).catch((e) => console.warn('[notifications] email error:', e)))
   if (slackUrl)   tasks.push(sendSlack(event, slackUrl).catch((e) => console.warn('[notifications] slack error:', e)))
   if (webhookUrl) tasks.push(sendWebhook(event, webhookUrl).catch((e) => console.warn('[notifications] webhook error:', e)))
+
+  // FCM push — lazy-import to avoid loading firebase-admin when push is unused
+  tasks.push(
+    import('./fcm.js').then(async ({ sendFcmToOrg }) => {
+      const { getSupabaseAuthConfig } = await import('./auth.js')
+      const cfg = getSupabaseAuthConfig()
+      if (!cfg) return
+      await sendFcmToOrg(event, cfg)
+    }).catch((e) => console.warn('[notifications] push error:', e))
+  )
 
   if (tasks.length === 0) {
     console.warn(`[notifications] ${(event.severity ?? 'info').toUpperCase()} [${event.type}] org=${event.orgId}: ${event.title}`)

@@ -28,6 +28,7 @@ import { recordUsage, UsageMetrics } from './usage-store.js'
 import { registerRuntimeWsRoutes } from './runtime-ws-routes.js'
 import { runtimeWsHub } from './runtime-ws-hub.js'
 import { registerAlertRoutes } from './alert-routes.js'
+import { registerPushRoutes } from './push-routes.js'
 import { AlertStore } from './alert-store.js'
 import {
   authenticateRequest,
@@ -234,6 +235,7 @@ if (supabaseAuth) {
   await registerGovernanceRoutes(app, supabaseAuth)
   await registerComplianceRoutes(app, supabaseAuth)
   await registerAlertRoutes(app)
+  await registerPushRoutes(app)
 }
 
 const stopWebhookWorker = supabaseAuth ? startWebhookWorker(supabaseAuth) : null
