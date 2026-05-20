@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
-import { BarChart3, Bell, Download, Settings2 } from 'lucide-react'
+import { BarChart3, Bell, Download, Settings2, Smartphone } from 'lucide-react'
+import { useAuth } from '../auth/AuthProvider'
+import { usePushNotifications } from '../hooks/usePushNotifications'
 import type { RuntimeStatus } from '@sanctum-runtime/sdk/browser'
 import { Alert } from '../components/ui/Alert'
 import { fetchMyOrgs, type FleetOrg } from '../lib/fleet'
@@ -27,6 +29,8 @@ type NotificationPrefs = {
 type Props = { status: RuntimeStatus | null }
 
 export function Settings({ status }: Props) {
+  const { user } = useAuth()
+  const push = usePushNotifications(Boolean(user))
   const [orgs, setOrgs] = useState<FleetOrg[]>([])
   const [orgId, setOrgId] = useState('')
   const [usage, setUsage] = useState<UsageSummary | null>(null)
@@ -346,6 +350,63 @@ export function Settings({ status }: Props) {
               </div>
               <p className="hint-line" style={{ marginTop: '0.75rem' }}>
                 Email alerts require an active email integration on your deployment.
+              </p>
+            </div>
+          </section>
+
+          <section className="section">
+            <div className="section__header">
+              <h2>
+                <Smartphone size={18} style={{ verticalAlign: 'middle', marginRight: '0.4rem' }} />
+                Mobile push (PWA)
+              </h2>
+              <p>
+                Verification alerts on your phone when Sanctum is installed to the home screen.
+                See <a href="https://github.com/Matik103/sanctum-runtime/blob/main/docs/PWA_MOBILE.md" target="_blank" rel="noreferrer">PWA setup</a>.
+              </p>
+            </div>
+            <div className="section__body">
+              {push.error && <Alert variant="error">{push.error}</Alert>}
+              <dl className="detail-list" style={{ marginBottom: '1rem' }}>
+                <div>
+                  <dt>Browser support</dt>
+                  <dd>{push.permission === 'unsupported' ? 'Not supported' : 'Available'}</dd>
+                </div>
+                <div>
+                  <dt>Server push</dt>
+                  <dd>
+                    <span className={`badge ${push.vapidConfigured ? 'success' : 'neutral'}`}>
+                      {push.vapidConfigured ? 'Configured' : 'Not configured'}
+                    </span>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Registered devices</dt>
+                  <dd>{push.deviceCount}</dd>
+                </div>
+              </dl>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={push.busy || push.permission === 'unsupported' || !push.vapidConfigured}
+                  onClick={() => void push.subscribe()}
+                >
+                  {push.busy ? 'Working…' : 'Enable push notifications'}
+                </button>
+                {push.deviceCount > 0 && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    disabled={push.busy}
+                    onClick={() => void push.unsubscribe()}
+                  >
+                    Remove this device
+                  </button>
+                )}
+              </div>
+              <p className="hint-line" style={{ marginTop: '0.75rem' }}>
+                Install the console as a PWA first (Add to Home Screen). iOS requires iOS 16.4+ for web push.
               </p>
             </div>
           </section>

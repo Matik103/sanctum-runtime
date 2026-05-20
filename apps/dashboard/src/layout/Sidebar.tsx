@@ -37,6 +37,16 @@ export type PageId =
   | 'billing'
   | 'settings'
 
+/** Reduced nav for mobile companion (installed PWA / narrow viewport). */
+export const COMPANION_NAV_IDS: PageId[] = [
+  'overview',
+  'activity',
+  'threats',
+  'alerts',
+  'audit',
+  'settings',
+]
+
 const NAV: { id: PageId; label: string; icon: typeof LayoutDashboard; group?: string }[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'activity', label: 'Runtime Activity', icon: Activity },
@@ -59,25 +69,29 @@ type Props = {
   page: PageId
   onPage: (p: PageId) => void
   status: RuntimeStatus | null
+  companionMode?: boolean
 }
 
-export function Sidebar({ page, onPage, status }: Props) {
+export function Sidebar({ page, onPage, status, companionMode }: Props) {
   const { user, signOut } = useAuth()
   const risk = riskModelStatusLine(status)
+  const navItems = companionMode
+    ? NAV.filter((n) => COMPANION_NAV_IDS.includes(n.id))
+    : NAV
 
   return (
     <aside className="sidebar">
       <div className="brand-block">
         <div className="mc-badge">
           <span className="mc-badge__dot" aria-hidden />
-          Control plane
+          {companionMode ? 'Companion' : 'Control plane'}
         </div>
         <div className="brand-title">Sanctum</div>
-        <div className="brand-sub">Runtime Trust Layer</div>
+        <div className="brand-sub">{companionMode ? 'Mobile trust layer' : 'Runtime Trust Layer'}</div>
       </div>
 
       <nav>
-        {NAV.map(({ id, label, icon: Icon }) => (
+        {navItems.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             type="button"

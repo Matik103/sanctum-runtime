@@ -2,6 +2,9 @@ import { useState } from 'react'
 import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 import { ActionDrawer } from './components/ActionDrawer'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { MobileCompanionHeader } from './components/MobileCompanionHeader'
+import { PwaInstallBanner } from './components/PwaInstallBanner'
+import { useCompanionMode } from './hooks/useCompanionMode'
 import { useNetworkStatus } from './hooks/useNetworkStatus'
 import { ReviewQueueBanner, summarizePendingActions } from './components/ReviewQueueBanner'
 import { VerificationModal } from './components/VerificationModal'
@@ -25,6 +28,7 @@ import { Agents } from './pages/Agents'
 import { Alerts } from './pages/Alerts'
 export function App() {
   const online = useNetworkStatus()
+  const companionMode = useCompanionMode()
   const [page, setPage] = useState<PageId>('overview')
   const [selected, setSelected] = useState<ActionResult | null>(null)
   const [modalError, setModalError] = useState<string | null>(null)
@@ -87,6 +91,9 @@ export function App() {
             status={status}
             onSelect={onSelect}
             lastRefreshed={lastRefreshed}
+            companionMode={companionMode}
+            pendingReviewCount={pendingReviewCount}
+            onOpenReview={pendingReviewCount > 0 ? openNextPendingReview : undefined}
           />
         )}
         {page === 'activity' && <RuntimeActivity audit={audit} onSelect={onSelect} />}

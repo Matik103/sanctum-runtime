@@ -4,6 +4,7 @@ import { AuthProvider } from './auth/AuthProvider'
 import { App } from './App'
 import './styles.css'
 import './styles/shell.css'
+import './styles/pwa.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

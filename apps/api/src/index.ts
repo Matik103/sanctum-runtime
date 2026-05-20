@@ -29,6 +29,7 @@ import { recordUsage, UsageMetrics } from './usage-store.js'
 import { registerRuntimeWsRoutes } from './runtime-ws-routes.js'
 import { runtimeWsHub } from './runtime-ws-hub.js'
 import { registerAlertRoutes } from './alert-routes.js'
+import { registerPushRoutes } from './push-routes.js'
 import { AlertStore } from './alert-store.js'
 import { sendVerificationEmail, verifyToken } from './verify-email.js'
 import { loadPoliciesFromSupabase, detectAnomalies, heuristicRiskFloor } from '@sanctum/runtime-engine'
@@ -282,6 +283,7 @@ if (supabaseAuth) {
   await registerComplianceRoutes(app, supabaseAuth)
   await registerDelegationRoutes(app, supabaseAuth)
   await registerAlertRoutes(app)
+  await registerPushRoutes(app)
   await registerAgentTokenRoutes(app, supabaseAuth)
 }
 
