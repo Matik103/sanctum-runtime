@@ -349,6 +349,7 @@ app.get('/health', async (_req, reply) => {
 
   const status = await runtime.getStatus()
   const webhookStatus = runtime.getWebhookStatus()
+  const mem = process.memoryUsage()
 
   return {
     ok: status.runtimeOnline,
