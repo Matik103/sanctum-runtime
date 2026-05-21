@@ -109,6 +109,7 @@ export async function sendPushToUser(
     tag?: string
     requireInteraction?: boolean
     icon?: string
+    data?: Record<string, unknown>
   },
 ): Promise<void> {
   const cfg = getSupabaseAuthConfig()

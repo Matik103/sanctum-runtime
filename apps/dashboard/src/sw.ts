@@ -108,15 +108,53 @@ onBackgroundMessage(messaging, (payload) => {
   } as any)
 })
 
-// Open/focus app on notification click
+// ── Raw VAPID web-push (server uses webpush.sendNotification, not FCM) ─────
+self.addEventListener('push', (event) => {
+  if (!event.data) return
+  let payload: {
+    title?: string
+    body?: string
+    tag?: string
+    icon?: string
+    badge?: string
+    url?: string
+    data?: Record<string, unknown>
+    requireInteraction?: boolean
+  } = {}
+  try { payload = event.data.json() } catch { payload = { body: event.data.text() } }
+
+  event.waitUntil(
+    self.registration.showNotification(payload.title ?? 'Sanctum Alert', {
+      body: payload.body ?? '',
+      icon: payload.icon ?? '/icon-192.png',
+      badge: payload.badge ?? '/favicon.png',
+      tag: payload.tag ?? 'sanctum-alert',
+      requireInteraction: Boolean(payload.requireInteraction),
+      data: { url: payload.url ?? '/', ...(payload.data ?? {}) },
+    } as NotificationOptions),
+  )
+})
+
+// Open/focus app on notification click — deep-link to verification page when available
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
+  const data = (event.notification.data ?? {}) as { url?: string; entryId?: string; type?: string }
+  // Prefer explicit URL; else build a deep-link for verification notifications
+  const target = data.url
+    ?? (data.type === 'agent.require_verification' && data.entryId
+      ? `/?page=activity&verify=${encodeURIComponent(data.entryId)}`
+      : '/')
+
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
       for (const client of list) {
-        if ('focus' in client) return (client as WindowClient).focus()
+        if ('focus' in client) {
+          const win = client as WindowClient
+          if ('navigate' in win) void win.navigate(target).catch(() => {})
+          return win.focus()
+        }
       }
-      return self.clients.openWindow('/')
+      return self.clients.openWindow(target)
     }),
   )
 })

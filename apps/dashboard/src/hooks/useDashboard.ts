@@ -212,5 +212,6 @@ export function useDashboard() {
     openNextPendingReview,
     dismissCurrentAndAdvance,
     resolveVerificationEntry,
+    showVerification,
   }
 }

@@ -1,6 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
+import { getAccessToken } from '../lib/supabase'
 
 const API_BASE = import.meta.env.VITE_SANCTUM_API_URL ?? ''
+
+async function authJsonHeaders(): Promise<HeadersInit> {
+  const token = await getAccessToken()
+  const h: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (token) h['Authorization'] = `Bearer ${token}`
+  return h
+}
 
 type PushState = 'idle' | 'subscribing' | 'subscribed' | 'unsupported' | 'denied'
 
@@ -63,14 +71,19 @@ export function usePushNotifications() {
         applicationServerKey: urlBase64ToUint8Array(vapidKey) as unknown as ArrayBuffer,
       })
 
-      await fetch(`${API_BASE}/v1/push/subscribe`, {
+      const res = await fetch(`${API_BASE}/v1/push/subscribe`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authJsonHeaders(),
         body: JSON.stringify({
           subscription: sub.toJSON(),
           userAgent: navigator.userAgent,
         }),
       })
+      if (!res.ok) {
+        // Server refused (likely no org/user) — keep SW subscription so we can retry later
+        setState('idle')
+        return
+      }
 
       setState('subscribed')
     } catch {
@@ -87,9 +100,9 @@ export function usePushNotifications() {
         setState('idle')
         return
       }
-      await fetch(`${API_BASE}/v1/push/subscribe`, {
+      await fetch(`${API_BASE}/v1/push/unsubscribe`, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authJsonHeaders(),
         body: JSON.stringify({ endpoint: sub.endpoint }),
       })
       await sub.unsubscribe()

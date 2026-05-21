@@ -30,7 +30,7 @@ import { recordUsage, UsageMetrics } from './usage-store.js'
 import { registerRuntimeWsRoutes } from './runtime-ws-routes.js'
 import { runtimeWsHub } from './runtime-ws-hub.js'
 import { registerAlertRoutes } from './alert-routes.js'
-import { registerPushRoutes } from './push-routes.js'
+import { registerPushRoutes, sendPushToUser } from './push-routes.js'
 import { AlertStore } from './alert-store.js'
 import { sendVerificationEmail, verifyToken } from './verify-email.js'
 import { loadPoliciesFromSupabase, detectAnomalies, heuristicRiskFloor } from '@sanctum/runtime-engine'
@@ -806,6 +806,28 @@ app.post('/v1/actions/verify', {
         })
       }
     }).catch(() => {})
+
+    // Push notification to all org members' PWA devices — taps deep-link to the verify queue
+    void (async () => {
+      try {
+        const admin = createSupabaseAdmin(supabaseAuth)
+        const { data: members } = await admin
+          .from('organization_members')
+          .select('user_id')
+          .eq('org_id', orgId)
+        if (!members?.length) return
+        await Promise.allSettled(
+          members.map((m) => sendPushToUser(m.user_id as string, {
+            title: `Verification required: ${body.action}`,
+            body: `${body.actor} is waiting on your approval (risk ${(result.risk * 100).toFixed(0)}%).`,
+            tag: `verify:${result.id}`,
+            requireInteraction: true,
+            url: `/?page=activity&verify=${encodeURIComponent(result.id)}`,
+            data: { entryId: result.id, type: 'agent.require_verification', orgId },
+          })),
+        )
+      } catch { /* best-effort */ }
+    })()
   }
 
   return result

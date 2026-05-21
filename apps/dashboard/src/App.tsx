@@ -54,11 +54,28 @@ export function App() {
     openNextPendingReview,
     dismissCurrentAndAdvance,
     resolveVerificationEntry,
+    showVerification,
     apiError,
     retryDelayMs,
     lastRefreshed,
     refresh,
   } = useDashboard()
+
+  // Deep-link from push notification tap: open the verification modal for ?verify=<id>
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const verifyId = params.get('verify')
+    if (!verifyId) return
+    const match = audit.find((e) => e.id === verifyId && e.decision === 'REQUIRE_VERIFICATION')
+    if (match) {
+      showVerification(match)
+      // Strip the param so refresh doesn't reopen it forever
+      params.delete('verify')
+      const qs = params.toString()
+      window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''))
+    }
+  }, [audit, showVerification])
 
   const { pendingCount: offlinePending, syncing: offlineSyncing } = useOfflineQueue(() => { void refresh() })
 
