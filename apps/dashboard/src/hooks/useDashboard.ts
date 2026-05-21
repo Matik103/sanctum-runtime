@@ -9,6 +9,15 @@ import {
 import { apiBaseUrl } from '../lib/api-url'
 import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 
+const BASE_POLL_MS  = 5_000
+const MAX_BACKOFF_MS = 300_000  // 5 min cap
+
+function computeBackoff(n: number): number {
+  const base = Math.min(BASE_POLL_MS * Math.pow(2, n), MAX_BACKOFF_MS)
+  const jitter = base * 0.1 * (Math.random() * 2 - 1)  // ±10% to spread retries
+  return Math.round(base + jitter)
+}
+
 const DISMISSED_KEY = 'sanctum-dismissed-verifications'
 
 function loadDismissedIds(): Set<string> {
@@ -33,6 +42,7 @@ export function useDashboard() {
     status: null,
   })
   const [apiError, setApiError] = useState<string | null>(null)
+  const [retryDelayMs, setRetryDelayMs] = useState<number | null>(null)
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null)
   const [, bumpDismissed] = useState(0)
   const [pendingVerification, setPendingVerification] = useState<ActionResult | null>(
@@ -40,6 +50,8 @@ export function useDashboard() {
   )
   const dismissedVerificationIds = useRef<Set<string>>(loadDismissedIds())
   const auditRef = useRef<ActionResult[]>([])
+  const consecutiveErrors = useRef(0)
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const markVerificationsDismissed = useCallback(
     (scope: 'all' | { action: string } | { id: string }) => {
@@ -78,6 +90,8 @@ export function useDashboard() {
       setData(next)
       setLastRefreshed(new Date())
       setApiError(null)
+      consecutiveErrors.current = 0
+      setRetryDelayMs(null)
 
       const dismissed = dismissedVerificationIds.current
       setPendingVerification((cur) => {
@@ -85,6 +99,10 @@ export function useDashboard() {
         if (dismissed.has(cur.id)) return null
         return cur
       })
+
+      // Success — schedule next poll at normal cadence
+      if (retryTimer.current) clearTimeout(retryTimer.current)
+      retryTimer.current = setTimeout(() => { void refresh() }, BASE_POLL_MS)
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Failed to reach runtime API'
       const networkFailed =
@@ -98,13 +116,21 @@ export function useDashboard() {
             ? 'API reached but returned 401 — sign in or check your API key.'
             : msg,
       )
+
+      // Exponential backoff: 5s → 10s → 20s → … → 5min cap
+      consecutiveErrors.current += 1
+      const delay = computeBackoff(consecutiveErrors.current)
+      setRetryDelayMs(delay)
+      if (retryTimer.current) clearTimeout(retryTimer.current)
+      retryTimer.current = setTimeout(() => { void refresh() }, delay)
     }
-  }, [])
+  }, [])  // stable: all mutable state accessed via refs or stable setters
 
   useEffect(() => {
-    refresh()
-    const id = setInterval(() => refresh(), 5000)
-    return () => clearInterval(id)
+    void refresh()
+    return () => {
+      if (retryTimer.current) clearTimeout(retryTimer.current)
+    }
   }, [refresh])
 
   const setPolicy = async (action: string, response: PolicyResponse) => {
@@ -170,6 +196,7 @@ export function useDashboard() {
     ...data,
     lastRefreshed,
     apiError,
+    retryDelayMs,
     refresh,
     setPolicy,
     replacePolicies,

@@ -49,6 +49,7 @@ export function App() {
     dismissCurrentAndAdvance,
     resolveVerificationEntry,
     apiError,
+    retryDelayMs,
     lastRefreshed,
   } = useDashboard()
 
@@ -73,6 +74,13 @@ export function App() {
             <div className="alert__body">
               <strong>API unreachable</strong>
               <p style={{ margin: '0.5rem 0 0' }}>{apiError}</p>
+              {retryDelayMs !== null && (
+                <p style={{ margin: '0.35rem 0 0', fontSize: '0.8rem', opacity: 0.65 }}>
+                  Retrying in ~{retryDelayMs >= 60_000
+                    ? `${Math.round(retryDelayMs / 60_000)}m`
+                    : `${Math.round(retryDelayMs / 1000)}s`}
+                </p>
+              )}
             </div>
           </div>
         )}
