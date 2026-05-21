@@ -1,6 +1,6 @@
 import { Component, type ReactNode } from 'react'
 
-type Props = { children: ReactNode; fallback?: ReactNode }
+type Props = { children: ReactNode; fallback?: ReactNode; page?: string }
 type State = { error: Error | null }
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -11,7 +11,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: { componentStack: string }) {
-    console.error('[ErrorBoundary]', error, info.componentStack)
+    console.error(`[ErrorBoundary${this.props.page ? `:${this.props.page}` : ''}]`, error, info.componentStack)
   }
 
   render() {
@@ -25,7 +25,9 @@ export class ErrorBoundary extends Component<Props, State> {
           border: '1px solid var(--danger, #ef4444)',
           background: 'color-mix(in srgb, var(--danger, #ef4444) 10%, transparent)',
         }}>
-          <p style={{ fontWeight: 600, margin: '0 0 0.5rem' }}>Something went wrong</p>
+          <p style={{ fontWeight: 600, margin: '0 0 0.25rem' }}>
+            {this.props.page ? `${this.props.page} failed to load` : 'Something went wrong'}
+          </p>
           <p style={{ fontSize: '0.82rem', color: 'var(--muted)', margin: '0 0 1rem', fontFamily: 'monospace' }}>
             {this.state.error.message}
           </p>

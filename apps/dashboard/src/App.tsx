@@ -24,6 +24,7 @@ import { ThreatMonitor } from './pages/ThreatMonitor'
 import { Alerts } from './pages/Alerts'
 import { PwaInstallBanner } from './components/PwaInstallBanner'
 import { fetchMyOrgs } from './lib/fleet'
+import { useOfflineQueue } from './hooks/useOfflineQueue'
 
 export function App() {
   const online = useNetworkStatus()
@@ -53,6 +54,8 @@ export function App() {
     lastRefreshed,
   } = useDashboard()
 
+  const { pendingCount: offlinePending, syncing: offlineSyncing } = useOfflineQueue(() => { void refresh() })
+
   const onSelect = (e: ActionResult) => setSelected(e)
 
   return (
@@ -60,13 +63,22 @@ export function App() {
       <Sidebar page={page} onPage={setPage} status={status} orgId={orgId} />
 
       <MainCanvas>
-        <ErrorBoundary>
         <PwaInstallBanner />
         {!online && (
           <div className="alert alert--warn" role="alert" style={{ marginBottom: '1rem' }}>
             <div className="alert__body">
               <strong>You are offline.</strong> Dashboard data may be stale. Reconnect to resume live updates.
+              {offlinePending > 0 && (
+                <span style={{ marginLeft: '0.5rem', fontSize: '0.82rem' }}>
+                  {offlinePending} action{offlinePending > 1 ? 's' : ''} queued to sync.
+                </span>
+              )}
             </div>
+          </div>
+        )}
+        {offlineSyncing && (
+          <div className="alert alert--info" role="status" style={{ marginBottom: '1rem' }}>
+            <div className="alert__body">Syncing offline changes…</div>
           </div>
         )}
         {apiError && (
@@ -96,36 +108,33 @@ export function App() {
         )}
 
         {page === 'overview' && (
-          <Overview
-            audit={audit}
-            policies={policies}
-            status={status}
-            onSelect={onSelect}
-            lastRefreshed={lastRefreshed}
-          />
+          <ErrorBoundary page="Overview">
+            <Overview audit={audit} policies={policies} status={status} onSelect={onSelect} lastRefreshed={lastRefreshed} />
+          </ErrorBoundary>
         )}
-        {page === 'activity' && <RuntimeActivity audit={audit} onSelect={onSelect} />}
-        {page === 'threats' && <ThreatMonitor audit={audit} onSelect={onSelect} />}
-        {page === 'alerts' && <Alerts />}
+        {page === 'activity' && <ErrorBoundary page="Runtime Activity"><RuntimeActivity audit={audit} onSelect={onSelect} /></ErrorBoundary>}
+        {page === 'threats' && <ErrorBoundary page="Threat Monitor"><ThreatMonitor audit={audit} onSelect={onSelect} /></ErrorBoundary>}
+        {page === 'alerts' && <ErrorBoundary page="Alerts"><Alerts /></ErrorBoundary>}
         {page === 'policies' && (
-          <Policies
-            policies={policies}
-            audit={audit}
-            supabaseConfigured={status?.supabaseConfigured}
-            onSetPolicy={setPolicy}
-            onPoliciesChange={replacePolicies}
-          />
+          <ErrorBoundary page="Policies">
+            <Policies
+              policies={policies}
+              audit={audit}
+              supabaseConfigured={status?.supabaseConfigured}
+              onSetPolicy={setPolicy}
+              onPoliciesChange={replacePolicies}
+            />
+          </ErrorBoundary>
         )}
-        {page === 'policy-history' && <PolicyHistory />}
-        {page === 'governance' && <Governance />}
-        {page === 'compliance' && <Compliance />}
-        {page === 'devices' && <Devices status={status} />}
-        {page === 'fleet' && <Fleet />}
-        {page === 'marketplace' && <Marketplace />}
-        {page === 'audit' && <AuditLogs audit={audit} onSelect={onSelect} />}
-        {page === 'billing' && <Billing />}
-        {page === 'settings' && <Settings status={status} />}
-        </ErrorBoundary>
+        {page === 'policy-history' && <ErrorBoundary page="Policy History"><PolicyHistory /></ErrorBoundary>}
+        {page === 'governance' && <ErrorBoundary page="Governance"><Governance /></ErrorBoundary>}
+        {page === 'compliance' && <ErrorBoundary page="Compliance"><Compliance /></ErrorBoundary>}
+        {page === 'devices' && <ErrorBoundary page="Devices"><Devices status={status} /></ErrorBoundary>}
+        {page === 'fleet' && <ErrorBoundary page="Runtime Fleet"><Fleet /></ErrorBoundary>}
+        {page === 'marketplace' && <ErrorBoundary page="Marketplace"><Marketplace /></ErrorBoundary>}
+        {page === 'audit' && <ErrorBoundary page="Audit Logs"><AuditLogs audit={audit} onSelect={onSelect} /></ErrorBoundary>}
+        {page === 'billing' && <ErrorBoundary page="Billing"><Billing /></ErrorBoundary>}
+        {page === 'settings' && <ErrorBoundary page="Settings"><Settings status={status} /></ErrorBoundary>}
       </MainCanvas>
 
       <ActionDrawer entry={selected} onClose={() => setSelected(null)} />

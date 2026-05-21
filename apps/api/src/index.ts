@@ -20,6 +20,7 @@ import { registerGovernanceRoutes } from './governance.js'
 import { registerComplianceRoutes } from './compliance.js'
 import { registerPolicyVersionRoutes } from './policy-versions.js'
 import { startWebhookWorker } from './webhook-queue.js'
+import { startEmailQueueWorker } from './email-queue-worker.js'
 import { riskModelBreaker } from './circuit-breaker.js'
 import { traced } from './telemetry.js'
 import { sendNotificationDeduped, sendVerificationEmail, initDedupCache } from './notifications.js'
@@ -244,6 +245,7 @@ if (supabaseAuth) {
 }
 
 const stopWebhookWorker = supabaseAuth ? startWebhookWorker(supabaseAuth) : null
+const stopEmailQueueWorker = supabaseAuth ? startEmailQueueWorker(supabaseAuth) : null
 
 app.get('/health', async () => {
   const status = await runtime.getStatus()
@@ -650,6 +652,7 @@ try {
 const shutdown = async (signal: string) => {
   console.log(`Received ${signal} — shutting down`)
   stopWebhookWorker?.()
+  stopEmailQueueWorker?.()
   await app.close()
   process.exit(0)
 }

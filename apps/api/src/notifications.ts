@@ -160,32 +160,54 @@ async function sendResend(event: NotificationEvent, to: string): Promise<void> {
     : sev === 'warning'  ? '[WARNING]'
     : '[INFO]'
 
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from,
-      to: [to],
-      subject: `${prefix} ${event.title}`,
-      html: buildHtml(event),
-      text: [
-        event.title,
-        '',
-        event.body,
-        '',
-        `Event:    ${event.type}`,
-        `Org:      ${event.orgId}`,
-        `Severity: ${sev}`,
-        `Time:     ${new Date().toISOString()}`,
-        '',
-        'Manage notification preferences in your Sanctum dashboard.',
-      ].join('\n'),
-    }),
-  })
-  if (!res.ok) {
-    const err = await res.text().catch(() => String(res.status))
-    throw new Error(`Resend HTTP ${res.status}: ${err}`)
+  const subject = `${prefix} ${event.title}`
+  const html = buildHtml(event)
+  const text = [
+    event.title,
+    '',
+    event.body,
+    '',
+    `Event:    ${event.type}`,
+    `Org:      ${event.orgId}`,
+    `Severity: ${sev}`,
+    `Time:     ${new Date().toISOString()}`,
+    '',
+    'Manage notification preferences in your Sanctum dashboard.',
+  ].join('\n')
+
+  let lastErr: string | undefined
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from, to: [to], subject, html, text }),
+    })
+    if (res.ok) return
+    lastErr = `Resend HTTP ${res.status}: ${await res.text().catch(() => String(res.status))}`
+  } catch (e) {
+    lastErr = e instanceof Error ? e.message : String(e)
   }
+
+  // Transient failure — enqueue for background retry before propagating
+  try {
+    const { getSupabaseAuthConfig, createSupabaseAdmin } = await import('./auth.js')
+    const cfg = getSupabaseAuthConfig()
+    if (cfg) {
+      await createSupabaseAdmin(cfg).from('email_queue').insert({
+        org_id: event.orgId,
+        recipient: to,
+        subject,
+        html,
+        text_body: text,
+        last_error: lastErr?.slice(0, 500),
+        next_attempt_at: new Date(Date.now() + 5 * 60_000).toISOString(), // retry in 5min
+      })
+    }
+  } catch {
+    /* best-effort — don't mask the original error */
+  }
+
+  throw new Error(lastErr ?? 'Resend failed')
 }
 
 // ── Slack ─────────────────────────────────────────────────────────────────────
