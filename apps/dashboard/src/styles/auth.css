@@ -666,3 +666,79 @@
     transform: rotate(360deg);
   }
 }
+
+@media (max-width: 900px) {
+  .auth-root {
+    min-height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .auth-shell {
+    align-items: start;
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-shell {
+    min-height: auto;
+    padding: 0.75rem 0.75rem 1rem;
+  }
+
+  .auth-brand h1 {
+    font-size: 1.58rem;
+    line-height: 1.14;
+    letter-spacing: 0;
+  }
+
+  .auth-brand__tagline {
+    margin-top: 0.75rem;
+    font-size: 0.9rem;
+    line-height: 1.45;
+  }
+
+  .auth-brand__stats {
+    flex-direction: row;
+    gap: 0.45rem;
+    margin-top: 1rem;
+  }
+
+  .auth-stat {
+    flex: 1 1 0;
+    max-width: none;
+    min-width: 0;
+    padding: 0.65rem 0.5rem;
+    border-radius: 10px;
+    text-align: center;
+  }
+
+  .auth-stat__label {
+    font-size: 0.55rem;
+    letter-spacing: 0.05em;
+  }
+
+  .auth-stat__value {
+    font-size: 1rem;
+    margin-top: 0.2rem;
+  }
+
+  .auth-panel {
+    margin-top: 0.15rem;
+  }
+
+  .auth-glass,
+  .auth-glass--compact,
+  .auth-glass--expanded {
+    border-radius: 16px;
+    padding: 1rem;
+  }
+
+  .auth-compact-nav {
+    gap: 0.45rem;
+  }
+
+  .auth-compact-nav__sep {
+    display: none;
+  }
+}

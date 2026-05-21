@@ -128,7 +128,7 @@ export function Billing() {
           <h1>Billing & Usage</h1>
           <p>Infrastructure-based billing — events, runtimes, and orchestration hours</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <div className="responsive-action-row">
           {orgs.length > 1 && (
             <select
               className="input"

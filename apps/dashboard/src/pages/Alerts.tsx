@@ -333,7 +333,7 @@ export function Alerts({ onPage }: { onPage?: (p: PageId) => void }) {
             ))}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: selected ? '1fr 1fr' : '1fr', gap: '1.5rem' }}>
+          <div className="responsive-split" style={{ gridTemplateColumns: selected ? '1fr 1fr' : '1fr', gap: '1.5rem' }}>
             <div className="table-wrap">
               <table className="data">
                 <thead>
@@ -444,7 +444,7 @@ export function Alerts({ onPage }: { onPage?: (p: PageId) => void }) {
                 )}
 
                 {selected.status !== 'resolved' && (
-                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+                  <div className="responsive-action-row" style={{ marginTop: '1rem' }}>
                     {selected.status === 'open' && (
                       <button type="button" className="btn btn-sm" disabled={busy} onClick={() => void acknowledge(selected.id)}>
                         <Clock size={12} style={{ marginRight: '0.3rem' }} />
@@ -479,7 +479,7 @@ export function Alerts({ onPage }: { onPage?: (p: PageId) => void }) {
                 <Settings2 size={14} style={{ verticalAlign: 'middle', marginRight: '0.4rem' }} />
                 New alert rule
               </strong>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', maxWidth: '36rem' }}>
+              <div className="responsive-form-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '0.75rem', maxWidth: '36rem' }}>
                 <div style={{ gridColumn: '1 / -1' }}>
                   <label style={{ fontSize: '0.78rem', color: 'var(--muted)', display: 'block', marginBottom: '0.25rem' }}>Rule name</label>
                   <input className="input" placeholder="e.g. Block spike alert" value={newRule.name}
@@ -533,7 +533,7 @@ export function Alerts({ onPage }: { onPage?: (p: PageId) => void }) {
                   </div>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+              <div className="responsive-action-row" style={{ marginTop: '1rem' }}>
                 <button type="button" className="btn btn-primary" disabled={busy || !newRule.name} onClick={() => void createRule()}>
                   {busy ? 'Creating…' : 'Create rule'}
                 </button>

@@ -114,7 +114,7 @@ export function Compliance() {
           <h1>Compliance</h1>
           <p>SOC2, audit evidence, and compliance reporting</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <div className="responsive-action-row">
           <input type="date" className="input" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={{ fontSize: '0.85rem' }} />
           <span style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>→</span>
           <input type="date" className="input" value={endDate} onChange={(e) => setEndDate(e.target.value)} style={{ fontSize: '0.85rem' }} />
@@ -178,7 +178,7 @@ export function Compliance() {
           />
 
           {tab === 'report' && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+            <div className="responsive-split" style={{ gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
               <div className="table-wrap">
                 <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid var(--border)' }}>
                   <strong style={{ fontSize: '0.9rem' }}>Policy changes</strong>
@@ -249,7 +249,7 @@ export function Compliance() {
           {tab === 'anomalies' && (
             <div className="card">
               <strong style={{ fontSize: '0.9rem' }}>Risk distribution</strong>
-              <div style={{ display: 'flex', gap: '2rem', marginTop: '1rem' }}>
+              <div className="responsive-action-row" style={{ gap: '2rem', marginTop: '1rem' }}>
                 {Object.entries(report.risk_distribution).map(([level, count]) => (
                   <div key={level} style={{ textAlign: 'center' }}>
                     <div style={{

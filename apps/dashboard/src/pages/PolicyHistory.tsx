@@ -123,7 +123,7 @@ export function PolicyHistory() {
               value={summary}
               onChange={(e) => setSummary(e.target.value)}
             />
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <div className="responsive-action-row">
               <button type="button" className="btn btn-primary" disabled={busy} onClick={() => void saveSnapshot()}>
                 {busy ? 'Saving…' : 'Save'}
               </button>
@@ -133,7 +133,7 @@ export function PolicyHistory() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: selected ? '1fr 1fr' : '1fr', gap: '1.5rem' }}>
+      <div className="responsive-split" style={{ gridTemplateColumns: selected ? '1fr 1fr' : '1fr', gap: '1.5rem' }}>
         <div className="table-wrap">
           <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <History size={16} />

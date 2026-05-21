@@ -49,7 +49,6 @@ export const COMPANION_NAV_IDS: PageId[] = [
   'activity',
   'threats',
   'alerts',
-  'audit',
   'settings',
 ]
 
@@ -123,7 +122,7 @@ export function Sidebar({ page, onPage, status, orgId, companionMode }: Props) {
           {/* Mobile-only: More button (hidden on desktop via CSS) */}
           <button
             type="button"
-            className="nav-item nav-item--more"
+            className={`nav-item nav-item--more ${overflowItems.some((item) => item.id === page) ? 'active' : ''}`}
             onClick={() => setMoreOpen(true)}
             aria-label="More options"
           >

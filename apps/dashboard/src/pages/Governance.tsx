@@ -236,7 +236,7 @@ export function Governance() {
           {newWf !== null && (
             <div className="card" style={{ marginBottom: '1.5rem' }}>
               <strong style={{ fontSize: '0.9rem' }}>New approval workflow</strong>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '0.75rem', marginTop: '0.75rem', alignItems: 'end' }}>
+              <div className="responsive-form-grid" style={{ gridTemplateColumns: '1fr 1fr auto', gap: '0.75rem', marginTop: '0.75rem', alignItems: 'end' }}>
                 <div>
                   <label style={{ fontSize: '0.8rem', color: 'var(--muted)', display: 'block', marginBottom: '0.25rem' }}>Name</label>
                   <input className="input" placeholder="e.g. Financial actions" value={newWf.name ?? ''} onChange={(e) => setNewWf(w => ({ ...w, name: e.target.value }))} style={{ width: '100%' }} />
@@ -250,7 +250,7 @@ export function Governance() {
                   <input className="input" type="number" min={5} max={1440} value={newWf.expiry_minutes ?? 60} onChange={(e) => setNewWf(w => ({ ...w, expiry_minutes: Number(e.target.value) }))} style={{ width: '6rem' }} />
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+              <div className="responsive-action-row" style={{ marginTop: '0.75rem' }}>
                 <button type="button" className="btn btn-primary" disabled={busy || !newWf.name || !newWf.action_pattern} onClick={() => void saveWorkflow()}>
                   {busy ? 'Saving…' : 'Save workflow'}
                 </button>
