@@ -541,4 +541,37 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
     const interval = setInterval(tick, 3000)
     req.raw.on('close', () => clearInterval(interval))
   })
+
+  app.delete('/v1/runtimes/:runtimeId', async (req, reply) => {
+    const { runtimeId } = req.params as { runtimeId: string }
+    const scope = await resolveOrgScope(req as SanctumReq, store)
+    const orgId = await store.getRuntimeOrgId(runtimeId)
+    if (!orgId) return reply.status(404).send({ error: 'runtime_not_found' })
+    if (!assertOrgAllowed(scope, orgId, reply)) return
+    await store.deleteRuntime(runtimeId)
+    await store.insertEvent({
+      orgId,
+      runtimeId,
+      eventType: 'runtime.deleted',
+      payload: { deletedBy: (req as SanctumReq).sanctumUser?.id ?? 'api_key' },
+    })
+    return reply.status(204).send()
+  })
+
+  app.delete('/v1/runtimes/:runtimeId/agents/:agentId', async (req, reply) => {
+    const { runtimeId, agentId } = req.params as { runtimeId: string; agentId: string }
+    const scope = await resolveOrgScope(req as SanctumReq, store)
+    const orgId = await store.getRuntimeOrgId(runtimeId)
+    if (!orgId) return reply.status(404).send({ error: 'runtime_not_found' })
+    if (!assertOrgAllowed(scope, orgId, reply)) return
+    await store.deleteAgent(runtimeId, agentId)
+    await store.insertEvent({
+      orgId,
+      runtimeId,
+      agentId,
+      eventType: 'agent.deleted',
+      payload: { deletedBy: (req as SanctumReq).sanctumUser?.id ?? 'api_key' },
+    })
+    return reply.status(204).send()
+  })
 }

@@ -11,9 +11,35 @@ declare const self: ServiceWorkerGlobalScope & {
   __WB_MANIFEST: Array<{ url: string; revision: string | null }>
 }
 
+// Bump this whenever the caching strategy or app shell changes.
+// Old caches whose name doesn't match are deleted on activate.
+const SW_VERSION = '3'
+
+const CACHE_NAMES = {
+  api:        `sanctum-api-v${SW_VERSION}`,
+  fontsCss:   `google-fonts-stylesheets-v${SW_VERSION}`,
+  fontsFiles: `google-fonts-webfonts-v${SW_VERSION}`,
+  images:     `images-v${SW_VERSION}`,
+}
+
 clientsClaim()
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
+
+// Delete stale versioned caches from previous SW installs
+self.addEventListener('activate', (event) => {
+  const keep = new Set(Object.values(CACHE_NAMES))
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(
+        keys
+          .filter((k) => k.startsWith('sanctum-') || k.startsWith('google-fonts-') || k.startsWith('images-'))
+          .filter((k) => !keep.has(k))
+          .map((k) => caches.delete(k)),
+      ),
+    ),
+  )
+})
 
 // App-shell navigation fallback
 registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html'), {
@@ -24,7 +50,7 @@ registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html'), {
 registerRoute(
   ({ url }) => url.pathname.startsWith('/v1/') || url.pathname.startsWith('/api/'),
   new NetworkFirst({
-    cacheName: 'sanctum-api',
+    cacheName: CACHE_NAMES.api,
     networkTimeoutSeconds: 10,
     plugins: [
       new ExpirationPlugin({ maxEntries: 60, maxAgeSeconds: 5 * 60 }),
@@ -36,14 +62,14 @@ registerRoute(
 registerRoute(
   ({ url }) => url.origin === 'https://fonts.googleapis.com',
   new CacheFirst({
-    cacheName: 'google-fonts-stylesheets',
+    cacheName: CACHE_NAMES.fontsCss,
     plugins: [new ExpirationPlugin({ maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 })],
   }),
 )
 registerRoute(
   ({ url }) => url.origin === 'https://fonts.gstatic.com',
   new CacheFirst({
-    cacheName: 'google-fonts-webfonts',
+    cacheName: CACHE_NAMES.fontsFiles,
     plugins: [new ExpirationPlugin({ maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 })],
   }),
 )
@@ -52,7 +78,7 @@ registerRoute(
 registerRoute(
   ({ request }) => request.destination === 'image',
   new StaleWhileRevalidate({
-    cacheName: 'images',
+    cacheName: CACHE_NAMES.images,
     plugins: [new ExpirationPlugin({ maxEntries: 60, maxAgeSeconds: 30 * 24 * 60 * 60 })],
   }),
 )

@@ -210,7 +210,7 @@ app.get('/', async () => ({
     webhooks: 'GET /v1/webhooks/status',
     apiKeys: 'GET|POST /v1/api-keys · DELETE /v1/api-keys/:id',
     runtimes:
-      'POST /v1/runtimes/connect · POST …/attest · GET …/trust · heartbeat/agents/events',
+      'POST /v1/runtimes/connect · POST …/attest · GET …/trust · heartbeat/agents/events · DELETE /v1/runtimes/:id · DELETE …/agents/:agentId',
     fleet: 'GET /v1/fleet/map · deployment-groups · POST /v1/orchestration/dispatch',
     operatorContext: 'GET /v1/operator/context',
     eventStream: 'GET /v1/events/stream (SSE)',
@@ -247,9 +247,15 @@ if (supabaseAuth) {
 const stopWebhookWorker = supabaseAuth ? startWebhookWorker(supabaseAuth) : null
 const stopEmailQueueWorker = supabaseAuth ? startEmailQueueWorker(supabaseAuth) : null
 
+// Fast readiness probe — returns 200 as soon as the process is listening.
+// Use this as Render's "Health Check Path" so cold-start DB latency does not
+// cause the platform to restart the container before it is ready.
+app.get('/readiness', async () => ({ ready: true }))
+
 app.get('/health', async () => {
   const status = await runtime.getStatus()
   const webhookStatus = runtime.getWebhookStatus()
+  const mem = process.memoryUsage()
 
   let supabaseOk: boolean | null = null
   if (supabaseAuth) {
@@ -283,6 +289,12 @@ app.get('/health', async () => {
       urlCount: webhookStatus.urlCount,
     },
     wsConnections: runtimeWsHub.connectedCount(),
+    memory: {
+      rssmb:      Math.round(mem.rss / 1024 / 1024),
+      heapUsedMb: Math.round(mem.heapUsed / 1024 / 1024),
+      heapTotalMb: Math.round(mem.heapTotal / 1024 / 1024),
+      externalMb: Math.round(mem.external / 1024 / 1024),
+    },
   }
 })
 
@@ -594,6 +606,11 @@ app.get('/metrics', async (_req, reply) => {
   const status = await runtime.getStatus()
   const policies = runtime.getPolicyEngine().getPolicies()
   const policyCount = Object.keys(policies).length
+  const mem = process.memoryUsage()
+  const rssMb      = Math.round(mem.rss / 1024 / 1024)
+  const heapUsedMb = Math.round(mem.heapUsed / 1024 / 1024)
+  const heapTotalMb = Math.round(mem.heapTotal / 1024 / 1024)
+  const externalMb = Math.round(mem.external / 1024 / 1024)
   const lines = [
     '# HELP sanctum_audit_entries_total Total audit entries in memory',
     '# TYPE sanctum_audit_entries_total gauge',
@@ -610,6 +627,18 @@ app.get('/metrics', async (_req, reply) => {
     '# HELP sanctum_runtime_up Runtime engine status (1=online 0=offline)',
     '# TYPE sanctum_runtime_up gauge',
     `sanctum_runtime_up ${status.runtimeOnline ? 1 : 0}`,
+    '# HELP sanctum_process_rss_mb Resident set size in MiB',
+    '# TYPE sanctum_process_rss_mb gauge',
+    `sanctum_process_rss_mb ${rssMb}`,
+    '# HELP sanctum_process_heap_used_mb V8 heap used in MiB',
+    '# TYPE sanctum_process_heap_used_mb gauge',
+    `sanctum_process_heap_used_mb ${heapUsedMb}`,
+    '# HELP sanctum_process_heap_total_mb V8 heap total in MiB',
+    '# TYPE sanctum_process_heap_total_mb gauge',
+    `sanctum_process_heap_total_mb ${heapTotalMb}`,
+    '# HELP sanctum_process_external_mb V8 external memory in MiB',
+    '# TYPE sanctum_process_external_mb gauge',
+    `sanctum_process_external_mb ${externalMb}`,
   ]
   return reply.type('text/plain; version=0.0.4; charset=utf-8').send(lines.join('\n') + '\n')
 })

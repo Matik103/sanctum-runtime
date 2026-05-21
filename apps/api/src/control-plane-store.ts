@@ -348,7 +348,7 @@ export class ControlPlaneStore {
 
   async listRuntimes(orgId?: string): Promise<RegisteredRuntime[]> {
     const admin = this.admin()
-    let q = admin.from('registered_runtimes').select('*').order('last_seen_at', {
+    let q = admin.from('registered_runtimes').select('*').is('deleted_at', null).order('last_seen_at', {
       ascending: false,
       nullsFirst: false,
     })
@@ -363,6 +363,7 @@ export class ControlPlaneStore {
     let q = admin
       .from('registered_agents')
       .select('*, registered_runtimes(name)')
+      .is('deleted_at', null)
       .order('last_seen_at', { ascending: false })
     if (runtimeId) q = q.eq('runtime_id', runtimeId)
     const { data, error } = await q.limit(500)
@@ -372,6 +373,35 @@ export class ControlPlaneStore {
       const { registered_runtimes: _, ...rest } = row
       return { ...rest, runtime_name: rt?.name } as RegisteredAgent & { runtime_name?: string }
     })
+  }
+
+  async deleteRuntime(runtimeId: string): Promise<void> {
+    const now = new Date().toISOString()
+    const admin = this.admin()
+    const { error } = await admin
+      .from('registered_runtimes')
+      .update({ deleted_at: now, status: 'offline' })
+      .eq('id', runtimeId)
+      .is('deleted_at', null)
+    if (error) throw new Error(error.message)
+    // Cascade soft-delete to all agents on this runtime
+    await admin
+      .from('registered_agents')
+      .update({ deleted_at: now })
+      .eq('runtime_id', runtimeId)
+      .is('deleted_at', null)
+  }
+
+  async deleteAgent(runtimeId: string, agentId: string): Promise<void> {
+    const now = new Date().toISOString()
+    const admin = this.admin()
+    const { error } = await admin
+      .from('registered_agents')
+      .update({ deleted_at: now })
+      .eq('runtime_id', runtimeId)
+      .eq('agent_id', agentId)
+      .is('deleted_at', null)
+    if (error) throw new Error(error.message)
   }
 
   async listEvents(opts: { orgId?: string; limit?: number }): Promise<RuntimeEvent[]> {
