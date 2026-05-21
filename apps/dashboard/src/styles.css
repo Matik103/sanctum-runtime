@@ -1034,6 +1034,44 @@ tr.key-row--pending td {
   border-color: rgba(239, 68, 68, 0.15);
 }
 
+/* ——— Mobile More panel ——— */
+
+/* Hidden on desktop; shown via mobile media query below */
+.nav-item--more {
+  display: none;
+}
+
+.nav-item--more__badge {
+  position: absolute;
+  top: -5px;
+  right: -6px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 1;
+  min-width: 14px;
+  height: 14px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+}
+
+.more-panel-backdrop {
+  display: none;
+}
+
+.more-panel {
+  display: none;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
 /* ——— Responsive layout ——— */
 
 @media (max-width: 1200px) {
@@ -1091,14 +1129,29 @@ tr.key-row--pending td {
     gap: 0.25rem;
     padding: 0.45rem 0.55rem;
     min-width: 4.25rem;
+    min-height: 44px;
     font-size: 0.62rem;
     text-align: center;
     margin-bottom: 0;
   }
 
+  /* Show More button only on mobile */
+  .nav-item--more {
+    display: flex;
+    position: sticky;
+    right: 0;
+    background: linear-gradient(90deg, transparent, #0c1220 40%);
+    flex-shrink: 0;
+  }
+
   .nav-label {
     line-height: 1.15;
     white-space: nowrap;
+  }
+
+  /* 44px min tap target for all buttons on mobile */
+  .btn {
+    min-height: 44px;
   }
 
   .main {
@@ -1132,6 +1185,7 @@ tr.key-row--pending td {
   .input {
     min-width: 0;
     width: 100%;
+    min-height: 44px;
   }
 
   .grid-4 {
@@ -1176,6 +1230,111 @@ tr.key-row--pending td {
   table.data td.audit-record-cell {
     max-width: 14rem;
   }
+
+  /* More panel — backdrop */
+  .more-panel-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 34;
+    background: rgba(0, 0, 0, 0.55);
+  }
+
+  /* More panel — slide-up sheet */
+  .more-panel {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 35;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px 20px 0 0;
+    padding: 1rem 1.25rem calc(6rem + env(safe-area-inset-bottom, 0px));
+    gap: 0.25rem;
+    animation: slideUp 0.22s ease;
+    box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.4);
+  }
+
+  .more-panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 0.85rem;
+    margin-bottom: 0.25rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .more-panel__title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1rem;
+  }
+
+  .more-panel__close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--elevated);
+    color: var(--muted);
+    cursor: pointer;
+  }
+
+  .more-panel__row {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    width: 100%;
+    min-height: 52px;
+    padding: 0.75rem 0.5rem;
+    background: none;
+    border: none;
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 0.92rem;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.12s;
+  }
+
+  .more-panel__row:hover {
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .more-panel__row--danger {
+    color: #fca5a5;
+  }
+
+  .more-panel__status {
+    padding: 0.75rem 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.82rem;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    margin: 0.25rem 0;
+  }
+
+  .more-panel__user {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding-top: 0.25rem;
+  }
+
+  .more-panel__email {
+    font-size: 0.8rem;
+    color: var(--muted);
+    padding: 0.5rem 0.5rem 0.25rem;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1192,10 +1351,15 @@ tr.key-row--pending td {
     min-width: 3.75rem;
     padding: 0.4rem 0.45rem;
     font-size: 0.58rem;
+    min-height: 44px;
   }
 
   .response-select {
     flex-direction: column;
+  }
+
+  .response-btn {
+    min-height: 44px;
   }
 }
 

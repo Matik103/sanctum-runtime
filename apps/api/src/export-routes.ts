@@ -146,7 +146,7 @@ export async function registerExportRoutes(app: FastifyInstance) {
 
       const exportedAt = new Date().toISOString()
 
-      // Base schema columns only (002) — avoids failures when 026/028 not applied yet.
+      // Base schema columns only — avoids failures when newer migrations not applied yet.
       const auditOut = await queryWithTimeout(
         'audit_events',
         () =>

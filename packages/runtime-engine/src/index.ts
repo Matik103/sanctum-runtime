@@ -327,22 +327,33 @@ export class RuntimeEngine {
           decision = 'BLOCKED'
           risk = 'high'
         }
+
+        // Belt-and-suspenders: if model failed and policy requires verification,
+        // never silently approve — hold for operator review
+        if (decision === 'APPROVED' && policyEval.policy.requiresVerification) {
+          decision = 'REQUIRE_VERIFICATION'
+          console.warn(`[sanctum] Risk model failed; action "${request.action}" held for verification (requiresVerification=true)`)
+        }
       }
     } else {
+      // Offline / heuristics-only path
       risk = mergeRisk(risk, riskFloor)
       decision = resolveDecision({
         policy: policyEval.policy,
         risk,
         anomalyFlags,
       })
+
+      // Explicit offline safety net: if policy requires human verification,
+      // never approve automatically when the risk model is unavailable.
+      if (decision === 'APPROVED' && policyEval.policy.requiresVerification) {
+        decision = 'REQUIRE_VERIFICATION'
+        console.warn(`[sanctum] Offline: action "${request.action}" held for verification (requiresVerification=true)`)
+      }
     }
 
-    if (
-      decision === 'APPROVED' &&
-      policyEval.policy.requiresVerification &&
-      !policyEval.violations.length &&
-      !policyEval.policy.autoBlock
-    ) {
+    // Final safety net: catch any path that might have slipped through
+    if (decision === 'APPROVED' && policyEval.policy.requiresVerification) {
       decision = 'REQUIRE_VERIFICATION'
     }
 
@@ -383,6 +394,20 @@ export class RuntimeEngine {
 
     await this.auditStore.append(result)
     await maybeSyncAuditToSupabase(result)
+
+    // Warn when verification is required but the system is degraded — operator
+    // notifications may not reach their destination
+    if (
+      result.decision === 'REQUIRE_VERIFICATION' &&
+      result.offlineMode
+    ) {
+      console.warn(
+        `[sanctum] REQUIRE_VERIFICATION raised in offline/degraded mode ` +
+        `(evaluationMode=${result.evaluationMode}) — ` +
+        `actor="${request.actor}" action="${request.action}" id=${result.id}. ` +
+        `Verify push/email notifications are reachable.`,
+      )
+    }
 
     const hookEvent = webhookEventForDecision(result.decision, false)
     if (hookEvent) void dispatchWebhooks(hookEvent, result)

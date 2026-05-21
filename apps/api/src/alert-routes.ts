@@ -37,7 +37,7 @@ function assertOrgAllowed(
 }
 
 const severityEnum = z.enum(['info', 'warning', 'critical', 'emergency'])
-const channelEnum = z.enum(['email', 'slack', 'webhook', 'dashboard'])
+const channelEnum = z.enum(['email', 'slack', 'webhook', 'dashboard', 'push'])
 
 export async function registerAlertRoutes(app: FastifyInstance): Promise<void> {
   const cfg = getSupabaseAuthConfig()

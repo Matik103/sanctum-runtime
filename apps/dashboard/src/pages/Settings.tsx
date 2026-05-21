@@ -10,6 +10,7 @@ import { riskModelMetaLine } from '../lib/risk-label'
 import { fetchUsage, usageMetricLabel, type UsageSummary } from '../lib/usage'
 import { apiBaseUrl as apiBase } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
+import { usePushNotifications } from '../hooks/usePushNotifications'
 
 async function authHeaders(json = false): Promise<Record<string, string>> {
   const token = await getAccessToken()
@@ -161,19 +162,19 @@ export function Settings({ status }: Props) {
     }
   }
 
-  const clearWebhook = async (field: 'slack_webhook_url' | 'notification_webhook_url') => {
+  const { permission: pushPermission, enable: enablePush, disable: disablePush } = usePushNotifications(orgId || null)
+  const [pushBusy, setPushBusy] = useState(false)
+
+  const handlePushToggle = async () => {
+    setPushBusy(true)
     try {
-      const res = await fetch(`${apiBase}/v1/orgs/${orgId}/notifications`, {
-        method: 'PATCH',
-        headers: await authHeaders(true),
-        body: JSON.stringify({ [field]: null }),
-      })
-      if (!res.ok) throw new Error(`Failed: ${res.status}`)
-      const updated = await res.json() as NotificationPrefs
-      setNotifPrefs(updated)
-      setNotifMsg('Webhook removed.')
-    } catch (e) {
-      setNotifMsg(e instanceof Error ? e.message : 'Failed to remove webhook')
+      if (pushPermission === 'granted') {
+        await disablePush()
+      } else {
+        await enablePush()
+      }
+    } finally {
+      setPushBusy(false)
     }
   }
 
@@ -269,6 +270,48 @@ export function Settings({ status }: Props) {
                   {notifMsg}
                 </Alert>
               )}
+              {/* Push notifications row */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '1rem',
+                padding: '0.875rem 1rem',
+                borderRadius: '8px',
+                border: '1px solid var(--border)',
+                background: pushPermission === 'granted' ? 'color-mix(in srgb, var(--success) 6%, transparent)' : 'var(--surface-raised)',
+                marginBottom: '1.25rem',
+                maxWidth: '28rem',
+              }}>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 500, color: 'var(--foreground)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <Bell size={14} />
+                    Push alerts
+                    {pushPermission === 'granted' && (
+                      <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--success)', background: 'color-mix(in srgb, var(--success) 15%, transparent)', padding: '1px 6px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>On</span>
+                    )}
+                  </p>
+                  <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', color: 'var(--muted)', lineHeight: 1.4 }}>
+                    {pushPermission === 'denied'
+                      ? 'Blocked by browser — open Site Settings to allow notifications.'
+                      : pushPermission === 'unsupported'
+                        ? 'Not supported in this browser.'
+                        : 'Get real-time alerts on this device, even when the tab is closed.'}
+                  </p>
+                </div>
+                {pushPermission !== 'denied' && pushPermission !== 'unsupported' && (
+                  <button
+                    type="button"
+                    className={`btn ${pushPermission === 'granted' ? 'btn-secondary' : 'btn-primary'}`}
+                    disabled={pushBusy || !orgId}
+                    onClick={() => void handlePushToggle()}
+                    style={{ flexShrink: 0, fontSize: '0.8rem', padding: '0.35rem 0.9rem' }}
+                  >
+                    {pushBusy ? '…' : pushPermission === 'granted' ? 'Turn off' : 'Enable'}
+                  </button>
+                )}
+              </div>
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxWidth: '28rem' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.3rem', color: 'var(--muted)' }}>
@@ -350,63 +393,6 @@ export function Settings({ status }: Props) {
               </div>
               <p className="hint-line" style={{ marginTop: '0.75rem' }}>
                 Email alerts require an active email integration on your deployment.
-              </p>
-            </div>
-          </section>
-
-          <section className="section">
-            <div className="section__header">
-              <h2>
-                <Smartphone size={18} style={{ verticalAlign: 'middle', marginRight: '0.4rem' }} />
-                Mobile push (PWA)
-              </h2>
-              <p>
-                Verification alerts on your phone when Sanctum is installed to the home screen.
-                See <a href="https://github.com/Matik103/sanctum-runtime/blob/main/docs/PWA_MOBILE.md" target="_blank" rel="noreferrer">PWA setup</a>.
-              </p>
-            </div>
-            <div className="section__body">
-              {push.error && <Alert variant="error">{push.error}</Alert>}
-              <dl className="detail-list" style={{ marginBottom: '1rem' }}>
-                <div>
-                  <dt>Browser support</dt>
-                  <dd>{push.permission === 'unsupported' ? 'Not supported' : 'Available'}</dd>
-                </div>
-                <div>
-                  <dt>Server push</dt>
-                  <dd>
-                    <span className={`badge ${push.vapidConfigured ? 'success' : 'neutral'}`}>
-                      {push.vapidConfigured ? 'Configured' : 'Not configured'}
-                    </span>
-                  </dd>
-                </div>
-                <div>
-                  <dt>Registered devices</dt>
-                  <dd>{push.deviceCount}</dd>
-                </div>
-              </dl>
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  disabled={push.busy || push.permission === 'unsupported' || !push.vapidConfigured}
-                  onClick={() => void push.subscribe()}
-                >
-                  {push.busy ? 'Working…' : 'Enable push notifications'}
-                </button>
-                {push.deviceCount > 0 && (
-                  <button
-                    type="button"
-                    className="btn btn-ghost"
-                    disabled={push.busy}
-                    onClick={() => void push.unsubscribe()}
-                  >
-                    Remove this device
-                  </button>
-                )}
-              </div>
-              <p className="hint-line" style={{ marginTop: '0.75rem' }}>
-                Install the console as a PWA first (Add to Home Screen). iOS requires iOS 16.4+ for web push.
               </p>
             </div>
           </section>

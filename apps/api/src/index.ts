@@ -21,9 +21,10 @@ import { registerComplianceRoutes } from './compliance.js'
 import { registerPolicyVersionRoutes } from './policy-versions.js'
 import { registerDelegationRoutes } from './delegation.js'
 import { startWebhookWorker } from './webhook-queue.js'
+import { startEmailQueueWorker } from './email-queue-worker.js'
 import { riskModelBreaker } from './circuit-breaker.js'
 import { traced } from './telemetry.js'
-import { sendNotificationDeduped } from './notifications.js'
+import { sendNotificationDeduped, sendVerificationEmail, initDedupCache } from './notifications.js'
 import { getEntitlementEngine } from './entitlements.js'
 import { recordUsage, UsageMetrics } from './usage-store.js'
 import { registerRuntimeWsRoutes } from './runtime-ws-routes.js'
@@ -113,7 +114,8 @@ function isAllowedCorsOrigin(origin: string): boolean {
   if (corsOrigins.has(origin)) return true
   try {
     const host = new URL(origin).hostname
-    return host === 'sanctumruntime.com' || host.endsWith('.sanctumruntime.com')
+    // Exact match or strict subdomain — rejects evil-sanctumruntime.com
+    return host === 'sanctumruntime.com' || /^[a-z0-9-]+\.sanctumruntime\.com$/.test(host)
   } catch {
     return false
   }
@@ -139,16 +141,19 @@ await app.register(helmet, {
   crossOriginEmbedderPolicy: false,
 })
 
+function rateLimitKey(req: import('fastify').FastifyRequest): string {
+  const fwd = req.headers['x-forwarded-for']
+  const ip = Array.isArray(fwd) ? fwd[0] : (typeof fwd === 'string' ? fwd.split(',')[0].trim() : req.ip)
+  return ip ?? req.ip
+}
+
+// Global default — 200 req/min per IP
 await app.register(rateLimit, {
   global: true,
-  max: 120,
+  max: 200,
   timeWindow: '1 minute',
-  allowList: ['127.0.0.1', '::1'],
-  keyGenerator: (req) => {
-    const fwd = req.headers['x-forwarded-for']
-    const ip = Array.isArray(fwd) ? fwd[0] : (typeof fwd === 'string' ? fwd.split(',')[0].trim() : req.ip)
-    return ip ?? req.ip
-  },
+  // No allowList — localhost bypass removed; apply limits everywhere including cloud VMs
+  keyGenerator: rateLimitKey,
   errorResponseBuilder: () => ({
     error: 'rate_limit_exceeded',
     hint: 'Too many requests — back off and retry',
@@ -216,6 +221,7 @@ app.addHook('onRequest', async (req, reply) => {
 })
 
 await runtime.init()
+if (supabaseAuth) initDedupCache()
 if (process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY?.trim()) {
   const count = Object.keys(runtime.getPolicyEngine().getPolicies()).length
   console.log(`Supabase policy store active (${count} policies loaded/seeded)`)
@@ -258,11 +264,38 @@ app.get('/', async () => {
     url: publicApiUrl,
     docs: publicDocsUrl,
     dashboard: dashboardUrl,
-    auth: supabaseAuth ? 'Supabase JWT or X-Sanctum-Key' : apiKey ? 'X-Sanctum-Key' : 'none (local dev)',
+    auth: supabaseAuth
+      ? 'Supabase JWT (Bearer) or X-Sanctum-Key'
+      : apiKey
+        ? 'X-Sanctum-Key required'
+        : 'none (local dev)',
     endpoints: {
       health: 'GET /health',
       status: 'GET /v1/status',
       verify: 'POST /v1/actions/verify',
+      audit: 'GET /v1/audit',
+      resolve: 'POST /v1/audit/:id/resolve',
+      verification: 'GET /v1/verifications/:correlationId',
+      orgPolicies: 'GET /v1/orgs/:orgId/policies',
+      policies: 'GET|POST /v1/policies',
+      policyByAction: 'PATCH|DELETE /v1/policies/:action',
+      policiesYaml: 'GET /v1/policies/export.yaml · POST /v1/policies/import.yaml',
+      webhooks: 'GET /v1/webhooks/status',
+      apiKeys: 'GET|POST /v1/api-keys · DELETE /v1/api-keys/:id',
+      runtimes:
+        'POST /v1/runtimes/connect · POST …/attest · GET …/trust · heartbeat/agents/events · DELETE /v1/runtimes/:id · DELETE …/agents/:agentId',
+      fleet: 'GET /v1/fleet/map · deployment-groups · POST /v1/orchestration/dispatch',
+      operatorContext: 'GET /v1/operator/context',
+      eventStream: 'GET /v1/events/stream (SSE)',
+      runtimeWs: 'WS /v1/runtimes/ws?runtimeId=',
+      agentMemory: 'GET|PUT|DELETE /v1/runtimes/:id/agents/:agentId/memory/:key',
+      marketplace: 'GET /v1/marketplace/packages · install · connect hints',
+      usage: 'GET /v1/usage?org_id=',
+      billing: 'GET /v1/billing/plan · POST /v1/billing/checkout · POST /v1/billing/webhook',
+      export: 'GET /v1/orgs/:orgId/export.json · GET /v1/orgs/:orgId/export/history',
+      notifications: 'GET|PATCH /v1/orgs/:orgId/notifications',
+      sso: 'GET|PUT /v1/orgs/:orgId/sso · GET /v1/sso/:orgId/login',
+      analyze: 'POST /analyze-action',
     },
   }
 })
@@ -288,6 +321,10 @@ if (supabaseAuth) {
 }
 
 const stopWebhookWorker = supabaseAuth ? startWebhookWorker(supabaseAuth) : null
+const stopEmailQueueWorker = supabaseAuth ? startEmailQueueWorker(supabaseAuth) : null
+
+// Fast readiness probe
+app.get('/readiness', async () => ({ ready: true }))
 
 app.get('/health', async (_req, reply) => {
   let supabaseOk: boolean | null = null
@@ -325,6 +362,12 @@ app.get('/health', async (_req, reply) => {
     supabase: supabaseOk,
     webhooks: { configured: webhookStatus.configured },
     wsConnections: runtimeWsHub.connectedCount(),
+    memory: {
+      rssmb:      Math.round(mem.rss / 1024 / 1024),
+      heapUsedMb: Math.round(mem.heapUsed / 1024 / 1024),
+      heapTotalMb: Math.round(mem.heapTotal / 1024 / 1024),
+      externalMb: Math.round(mem.external / 1024 / 1024),
+    },
   }
 })
 
@@ -512,7 +555,9 @@ app.get('/v1/orgs/:orgId/policies', async (req, reply) => {
   return runtime.getPoliciesForOrg(orgId)
 })
 
-app.post('/v1/audit/:id/resolve', async (req, reply) => {
+app.post('/v1/audit/:id/resolve', {
+  config: { rateLimit: { max: 30, timeWindow: '1 minute', keyGenerator: rateLimitKey } },
+}, async (req, reply) => {
   const { id } = req.params as { id: string }
   const body = z
     .object({
@@ -555,6 +600,7 @@ app.post('/v1/audit/:id/resolve', async (req, reply) => {
   return result
 })
 
+// Tighter per-endpoint rate limits applied as route-level config
 app.post('/v1/actions/verify', {
   config: {
     rateLimit: {
@@ -661,6 +707,44 @@ app.post('/v1/actions/verify', {
     decision: result.decision,
   })
 
+  // Quota warning / exceeded — fire-and-forget, no impact on verify latency
+  if (supabaseAuth && orgId) {
+    const entEngine = getEntitlementEngine(supabaseAuth)
+    void entEngine.checkEventQuota(orgId).then(async (quota) => {
+      if (quota.limit === null) return
+      const prefs = await entEngine.getNotificationPrefs(orgId)
+      const warnThreshold = Math.floor(quota.limit * (prefs.quotaWarningPct / 100))
+      const usedPct = Math.round((quota.used / quota.limit) * 100)
+      if (quota.used >= quota.limit) {
+        sendNotificationDeduped(
+          {
+            type: 'quota.exceeded',
+            orgId,
+            title: 'Event quota exceeded',
+            body: `Your organisation has used ${quota.used.toLocaleString()} of ${quota.limit.toLocaleString()} events this month. Further actions may be blocked. Upgrade your plan to continue.`,
+            severity: 'critical',
+            data: { used: quota.used, limit: quota.limit, pct: usedPct },
+          },
+          { email: prefs.email, slackWebhookUrl: prefs.slackWebhookUrl, notificationWebhookUrl: prefs.notificationWebhookUrl },
+          3_600_000, // 1h cooldown — repeat hourly until resolved
+        )
+      } else if (quota.used >= warnThreshold) {
+        sendNotificationDeduped(
+          {
+            type: 'quota.warning',
+            orgId,
+            title: `Approaching event quota (${usedPct}% used)`,
+            body: `Your organisation has used ${quota.used.toLocaleString()} of ${quota.limit.toLocaleString()} events this month. Upgrade before you hit the limit.`,
+            severity: 'warning',
+            data: { used: quota.used, limit: quota.limit, pct: usedPct },
+          },
+          { email: prefs.email, slackWebhookUrl: prefs.slackWebhookUrl, notificationWebhookUrl: prefs.notificationWebhookUrl },
+          21_600_000, // 6h cooldown
+        )
+      }
+    }).catch(() => { /* best-effort */ })
+  }
+
   // Persist alert + notify on anomaly spikes (BLOCKED or anomaly flags present)
   if (supabaseAuth && orgId && (result.decision === 'BLOCKED' || result.anomalyFlags.length > 0)) {
     const severity = result.decision === 'BLOCKED' ? 'critical' : 'warning'
@@ -694,8 +778,20 @@ app.post('/v1/actions/verify', {
     }).catch(() => { /* best-effort */ })
   }
 
-  // Out-of-band email verification — send approve/deny links when dashboard may be closed
+
+  // Alert + email when agent requires human verification
   if (result.decision === 'REQUIRE_VERIFICATION' && supabaseAuth && orgId) {
+    const alertStore = new AlertStore(supabaseAuth)
+    void alertStore.createAlert({
+      org_id: orgId,
+      severity: 'warning',
+      type: 'agent.require_verification',
+      title: `Verification required: ${body.action}`,
+      message: `${body.actor} wants to perform "${body.action}" and is waiting for your approval.`,
+      channels: ['in_app', 'email'],
+      metadata: { action: body.action, actor: body.actor, risk: result.risk, entryId: result.id },
+    }).catch(() => {})
+
     const entEngine = getEntitlementEngine(supabaseAuth)
     void entEngine.getNotificationPrefs(orgId).then(async (prefs) => {
       if (prefs.email) {
@@ -776,6 +872,11 @@ app.get('/metrics', async (_req, reply) => {
   const status = await runtime.getStatus()
   const policies = runtime.getPolicyEngine().getPolicies()
   const policyCount = Object.keys(policies).length
+  const mem = process.memoryUsage()
+  const rssMb      = Math.round(mem.rss / 1024 / 1024)
+  const heapUsedMb = Math.round(mem.heapUsed / 1024 / 1024)
+  const heapTotalMb = Math.round(mem.heapTotal / 1024 / 1024)
+  const externalMb = Math.round(mem.external / 1024 / 1024)
   const lines = [
     '# HELP sanctum_audit_entries_total Total audit entries in memory',
     '# TYPE sanctum_audit_entries_total gauge',
@@ -792,6 +893,18 @@ app.get('/metrics', async (_req, reply) => {
     '# HELP sanctum_runtime_up Runtime engine status (1=online 0=offline)',
     '# TYPE sanctum_runtime_up gauge',
     `sanctum_runtime_up ${status.runtimeOnline ? 1 : 0}`,
+    '# HELP sanctum_process_rss_mb Resident set size in MiB',
+    '# TYPE sanctum_process_rss_mb gauge',
+    `sanctum_process_rss_mb ${rssMb}`,
+    '# HELP sanctum_process_heap_used_mb V8 heap used in MiB',
+    '# TYPE sanctum_process_heap_used_mb gauge',
+    `sanctum_process_heap_used_mb ${heapUsedMb}`,
+    '# HELP sanctum_process_heap_total_mb V8 heap total in MiB',
+    '# TYPE sanctum_process_heap_total_mb gauge',
+    `sanctum_process_heap_total_mb ${heapTotalMb}`,
+    '# HELP sanctum_process_external_mb V8 external memory in MiB',
+    '# TYPE sanctum_process_external_mb gauge',
+    `sanctum_process_external_mb ${externalMb}`,
   ]
   return reply.type('text/plain; version=0.0.4; charset=utf-8').send(lines.join('\n') + '\n')
 })
@@ -834,6 +947,7 @@ try {
 const shutdown = async (signal: string) => {
   console.log(`Received ${signal} — shutting down`)
   stopWebhookWorker?.()
+  stopEmailQueueWorker?.()
   await app.close()
   process.exit(0)
 }

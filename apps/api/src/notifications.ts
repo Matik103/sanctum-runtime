@@ -47,6 +47,7 @@ interface OrgNotificationPrefs {
   email?: string | null
   slackWebhookUrl?: string | null
   notificationWebhookUrl?: string | null
+  orgId?: string | null
 }
 
 // ── Email (Resend) ────────────────────────────────────────────────────────────
@@ -146,7 +147,7 @@ function buildHtml(event: NotificationEvent): string {
 
 async function sendResend(event: NotificationEvent, to: string): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey) return
+  if (!apiKey) throw new Error('RESEND_API_KEY not set')
 
   const from =
     process.env.NOTIFICATION_FROM_EMAIL ??
@@ -159,32 +160,54 @@ async function sendResend(event: NotificationEvent, to: string): Promise<void> {
     : sev === 'warning'  ? '[WARNING]'
     : '[INFO]'
 
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from,
-      to: [to],
-      subject: `${prefix} ${event.title}`,
-      html: buildHtml(event),
-      text: [
-        event.title,
-        '',
-        event.body,
-        '',
-        `Event:    ${event.type}`,
-        `Org:      ${event.orgId}`,
-        `Severity: ${sev}`,
-        `Time:     ${new Date().toISOString()}`,
-        '',
-        'Manage notification preferences in your Sanctum dashboard.',
-      ].join('\n'),
-    }),
-  })
-  if (!res.ok) {
-    const err = await res.text().catch(() => String(res.status))
-    console.warn('[notifications] Resend delivery failed:', err)
+  const subject = `${prefix} ${event.title}`
+  const html = buildHtml(event)
+  const text = [
+    event.title,
+    '',
+    event.body,
+    '',
+    `Event:    ${event.type}`,
+    `Org:      ${event.orgId}`,
+    `Severity: ${sev}`,
+    `Time:     ${new Date().toISOString()}`,
+    '',
+    'Manage notification preferences in your Sanctum dashboard.',
+  ].join('\n')
+
+  let lastErr: string | undefined
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from, to: [to], subject, html, text }),
+    })
+    if (res.ok) return
+    lastErr = `Resend HTTP ${res.status}: ${await res.text().catch(() => String(res.status))}`
+  } catch (e) {
+    lastErr = e instanceof Error ? e.message : String(e)
   }
+
+  // Transient failure — enqueue for background retry before propagating
+  try {
+    const { getSupabaseAuthConfig, createSupabaseAdmin } = await import('./auth.js')
+    const cfg = getSupabaseAuthConfig()
+    if (cfg) {
+      await createSupabaseAdmin(cfg).from('email_queue').insert({
+        org_id: event.orgId,
+        recipient: to,
+        subject,
+        html,
+        text_body: text,
+        last_error: lastErr?.slice(0, 500),
+        next_attempt_at: new Date(Date.now() + 5 * 60_000).toISOString(), // retry in 5min
+      })
+    }
+  } catch {
+    /* best-effort — don't mask the original error */
+  }
+
+  throw new Error(lastErr ?? 'Resend failed')
 }
 
 // ── Slack ─────────────────────────────────────────────────────────────────────
@@ -221,7 +244,7 @@ async function sendSlack(event: NotificationEvent, webhookUrl: string): Promise<
   })
   if (!res.ok) {
     const err = await res.text().catch(() => String(res.status))
-    console.warn('[notifications] Slack delivery failed:', err)
+    throw new Error(`Slack HTTP ${res.status}: ${err}`)
   }
 }
 
@@ -243,41 +266,189 @@ async function sendWebhook(event: NotificationEvent, webhookUrl: string): Promis
   })
   if (!res.ok) {
     const err = await res.text().catch(() => String(res.status))
-    console.warn('[notifications] Webhook delivery failed:', err)
+    throw new Error(`Webhook HTTP ${res.status}: ${err}`)
+  }
+}
+
+// ── Ops alert ─────────────────────────────────────────────────────────────────
+// Fired when every configured channel fails. Emits a structured log line that
+// any log drain (Render, Datadog, Papertrail) can alert on, and optionally POSTs
+// to OPS_ALERT_WEBHOOK_URL (PagerDuty, OpsGenie, a separate Slack workspace, etc.)
+
+type ChannelFailure = { channel: string; error: string }
+
+async function sendOpsAlert(event: NotificationEvent, failures: ChannelFailure[]): Promise<void> {
+  const payload = {
+    alert: 'SANCTUM_NOTIFICATION_FAILURE',
+    severity: event.severity ?? 'info',
+    eventType: event.type,
+    orgId: event.orgId,
+    title: event.title,
+    failedChannels: failures,
+    timestamp: new Date().toISOString(),
+  }
+
+  // Structured log — searchable by any log drain
+  console.error('[SANCTUM-OPS-ALERT] All notification channels failed:', JSON.stringify(payload))
+
+  const opsWebhook = process.env.OPS_ALERT_WEBHOOK_URL
+  if (!opsWebhook) return
+
+  try {
+    const res = await fetch(opsWebhook, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Sanctum-Alert': 'notification_failure',
+      },
+      body: JSON.stringify(payload),
+    })
+    if (!res.ok) {
+      console.error('[SANCTUM-OPS-ALERT] Ops webhook returned', res.status)
+    }
+  } catch (e) {
+    console.error('[SANCTUM-OPS-ALERT] Ops webhook unreachable:', e)
   }
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export function sendNotification(event: NotificationEvent, prefs?: OrgNotificationPrefs): void {
-  const email = prefs?.email ?? process.env.NOTIFICATION_TO_EMAIL
-  const slackUrl = prefs?.slackWebhookUrl ?? process.env.SLACK_WEBHOOK_URL
+  void _sendWithFailover(event, prefs)
+}
+
+async function _sendWithFailover(
+  event: NotificationEvent,
+  prefs?: OrgNotificationPrefs,
+): Promise<void> {
+  const email      = prefs?.email                  ?? process.env.NOTIFICATION_TO_EMAIL
+  const slackUrl   = prefs?.slackWebhookUrl        ?? process.env.SLACK_WEBHOOK_URL
   const webhookUrl = prefs?.notificationWebhookUrl ?? process.env.NOTIFICATION_WEBHOOK_URL
 
-  const tasks: Promise<void>[] = []
-  if (email)      tasks.push(sendResend(event, email).catch((e) => console.warn('[notifications] email error:', e)))
-  if (slackUrl)   tasks.push(sendSlack(event, slackUrl).catch((e) => console.warn('[notifications] slack error:', e)))
-  if (webhookUrl) tasks.push(sendWebhook(event, webhookUrl).catch((e) => console.warn('[notifications] webhook error:', e)))
+  // Primary channels participate in the failover logic
+  type Channel = { name: string; fn: () => Promise<void> }
+  const primary: Channel[] = []
+  if (email)      primary.push({ name: 'email',   fn: () => sendResend(event, email) })
+  if (slackUrl)   primary.push({ name: 'slack',   fn: () => sendSlack(event, slackUrl) })
+  if (webhookUrl) primary.push({ name: 'webhook', fn: () => sendWebhook(event, webhookUrl) })
 
-  if (tasks.length === 0) {
-    console.warn(`[notifications] ${(event.severity ?? 'info').toUpperCase()} [${event.type}] org=${event.orgId}: ${event.title}`)
+  if (primary.length === 0) {
+    // No channels configured — loud log so this is discoverable
+    console.warn(
+      `[notifications] No channels configured — ${(event.severity ?? 'info').toUpperCase()} ` +
+      `[${event.type}] org=${event.orgId}: ${event.title}`,
+    )
     return
   }
 
-  void Promise.allSettled(tasks)
+  const sev = event.severity ?? 'info'
+  const useParallel = sev === 'critical' || sev === 'emergency'
+  const failures: ChannelFailure[] = []
+
+  if (useParallel) {
+    // Critical / emergency: fire every channel simultaneously for maximum coverage
+    const settled = await Promise.allSettled(primary.map((c) => c.fn()))
+    let anyOk = false
+    for (let i = 0; i < primary.length; i++) {
+      if (settled[i].status === 'fulfilled') {
+        anyOk = true
+      } else {
+        const reason = (settled[i] as PromiseRejectedResult).reason
+        failures.push({ channel: primary[i].name, error: String(reason) })
+        console.warn(`[notifications] ${primary[i].name} failed for ${event.type}:`, reason)
+      }
+    }
+    if (!anyOk) await sendOpsAlert(event, failures)
+  } else {
+    // Info / warning: sequential failover — try each channel in order, stop at first success
+    for (const channel of primary) {
+      try {
+        await channel.fn()
+        return // delivered — done
+      } catch (e) {
+        failures.push({ channel: channel.name, error: String(e) })
+        console.warn(`[notifications] ${channel.name} failed, trying next channel:`, e)
+      }
+    }
+    // Every configured channel failed
+    await sendOpsAlert(event, failures)
+  }
+
+  // Web push is always attempted in parallel as a secondary channel.
+  // Its failure does not trigger the ops alert — if no tokens are registered this is normal.
+  void import('./fcm.js').then(async ({ sendFcmToOrg }) => {
+    const { getSupabaseAuthConfig } = await import('./auth.js')
+    const cfg = getSupabaseAuthConfig()
+    if (!cfg) return
+    await sendFcmToOrg(event, cfg)
+  }).catch((e) => console.warn('[notifications] push error:', e))
 }
 
-/** Deduplication: suppress repeated alerts for the same org+event within the cooldown window. */
-const alertCooldowns = new Map<string, number>()
+// ── Deduplication ─────────────────────────────────────────────────────────────
+// In-memory cache is the fast path; Supabase is the source of truth across restarts.
 
+const alertCooldowns = new Map<string, number>()
+let dedupInitialised = false
+
+async function loadDedupState(): Promise<void> {
+  if (dedupInitialised) return
+  dedupInitialised = true
+  try {
+    const { getSupabaseAuthConfig, createSupabaseAdmin } = await import('./auth.js')
+    const cfg = getSupabaseAuthConfig()
+    if (!cfg) return
+    const db = createSupabaseAdmin(cfg)
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    const { data } = await db
+      .from('notification_dedup_log')
+      .select('org_id, event_type, last_sent_at')
+      .gte('last_sent_at', since)
+    for (const row of data ?? []) {
+      const key = `${row.org_id}:${row.event_type}`
+      alertCooldowns.set(key, new Date(row.last_sent_at).getTime())
+    }
+    console.log(`[notifications] dedup state loaded (${data?.length ?? 0} entries)`)
+  } catch (e) {
+    console.warn('[notifications] dedup state load failed:', e)
+  }
+}
+
+async function persistDedupEntry(orgId: string, eventType: string): Promise<void> {
+  try {
+    const { getSupabaseAuthConfig, createSupabaseAdmin } = await import('./auth.js')
+    const cfg = getSupabaseAuthConfig()
+    if (!cfg) return
+    const db = createSupabaseAdmin(cfg)
+    await db.from('notification_dedup_log').upsert(
+      { org_id: orgId, event_type: eventType, last_sent_at: new Date().toISOString() },
+      { onConflict: 'org_id,event_type' },
+    )
+  } catch (e) {
+    console.warn('[notifications] dedup persist failed:', e)
+  }
+}
+
+/** Deduplication: suppress repeated alerts for the same org+event within the cooldown window.
+ *  State survives API restarts via Supabase — no alert spam after redeploys. */
 export function sendNotificationDeduped(
   event: NotificationEvent,
   prefs?: OrgNotificationPrefs,
   cooldownMs = 3_600_000,
 ): void {
   const key = `${event.orgId}:${event.type}`
+
+  // Warm cache from DB on first call (non-blocking — if DB unavailable, in-memory still works)
+  void loadDedupState()
+
   const last = alertCooldowns.get(key) ?? 0
   if (Date.now() - last < cooldownMs) return
+
   alertCooldowns.set(key, Date.now())
+  void persistDedupEntry(event.orgId, event.type)
   sendNotification(event, prefs)
+}
+
+/** Pre-warm the dedup cache at startup so the first call is always accurate. */
+export function initDedupCache(): void {
+  void loadDedupState()
 }
