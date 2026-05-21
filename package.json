@@ -36,6 +36,9 @@
     "dev:runtime": "concurrently -n api,dash -c blue,magenta \"npm run dev:api\" \"node scripts/wait-for-api.mjs && npm run dev:dashboard\"",
     "dev:all": "concurrently -n api,dash,site -c blue,magenta,green \"npm run dev:api\" \"npm run dev:dashboard\" \"npm run dev\"",
     "smoke": "tsx scripts/smoke-test.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "test:webhook": "node scripts/test-render-webhook.mjs",
     "monitor": "tsx scripts/live-monitor.ts",
     "premonitor": "node scripts/ensure-env.mjs",
@@ -155,6 +158,7 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.0.4",
+    "chokidar": "^5.0.0",
     "concurrently": "^9.1.2",
     "dotenv": "^16.6.1",
     "eslint": "^9.32.0",
@@ -162,15 +166,17 @@
     "eslint-plugin-prettier": "^5.2.6",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
+    "fake-indexeddb": "^6.2.5",
     "globals": "^15.15.0",
+    "happy-dom": "^15.11.7",
+    "lru-cache": "^11.3.6",
     "nitro": "^3.0.1-alpha.2",
     "prettier": "^3.7.3",
+    "readdirp": "^5.0.0",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
     "vite": "^7.3.1",
-    "chokidar": "^5.0.0",
-    "lru-cache": "^11.3.6",
-    "readdirp": "^5.0.0"
+    "vitest": "^2.1.9"
   }
 }
