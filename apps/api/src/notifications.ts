@@ -147,7 +147,7 @@ function buildHtml(event: NotificationEvent): string {
 
 async function sendResend(event: NotificationEvent, to: string): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey) return
+  if (!apiKey) throw new Error('RESEND_API_KEY not set')
 
   const from =
     process.env.NOTIFICATION_FROM_EMAIL ??
@@ -184,7 +184,7 @@ async function sendResend(event: NotificationEvent, to: string): Promise<void> {
   })
   if (!res.ok) {
     const err = await res.text().catch(() => String(res.status))
-    console.warn('[notifications] Resend delivery failed:', err)
+    throw new Error(`Resend HTTP ${res.status}: ${err}`)
   }
 }
 
@@ -222,7 +222,7 @@ async function sendSlack(event: NotificationEvent, webhookUrl: string): Promise<
   })
   if (!res.ok) {
     const err = await res.text().catch(() => String(res.status))
-    console.warn('[notifications] Slack delivery failed:', err)
+    throw new Error(`Slack HTTP ${res.status}: ${err}`)
   }
 }
 
@@ -244,7 +244,7 @@ async function sendWebhook(event: NotificationEvent, webhookUrl: string): Promis
   })
   if (!res.ok) {
     const err = await res.text().catch(() => String(res.status))
-    console.warn('[notifications] Webhook delivery failed:', err)
+    throw new Error(`Webhook HTTP ${res.status}: ${err}`)
   }
 }
 
@@ -354,34 +354,118 @@ export async function sendVerificationEmail(opts: VerificationEmailOptions): Pro
   }
 }
 
+// ── Ops alert ─────────────────────────────────────────────────────────────────
+// Fired when every configured channel fails. Emits a structured log line that
+// any log drain (Render, Datadog, Papertrail) can alert on, and optionally POSTs
+// to OPS_ALERT_WEBHOOK_URL (PagerDuty, OpsGenie, a separate Slack workspace, etc.)
+
+type ChannelFailure = { channel: string; error: string }
+
+async function sendOpsAlert(event: NotificationEvent, failures: ChannelFailure[]): Promise<void> {
+  const payload = {
+    alert: 'SANCTUM_NOTIFICATION_FAILURE',
+    severity: event.severity ?? 'info',
+    eventType: event.type,
+    orgId: event.orgId,
+    title: event.title,
+    failedChannels: failures,
+    timestamp: new Date().toISOString(),
+  }
+
+  // Structured log — searchable by any log drain
+  console.error('[SANCTUM-OPS-ALERT] All notification channels failed:', JSON.stringify(payload))
+
+  const opsWebhook = process.env.OPS_ALERT_WEBHOOK_URL
+  if (!opsWebhook) return
+
+  try {
+    const res = await fetch(opsWebhook, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Sanctum-Alert': 'notification_failure',
+      },
+      body: JSON.stringify(payload),
+    })
+    if (!res.ok) {
+      console.error('[SANCTUM-OPS-ALERT] Ops webhook returned', res.status)
+    }
+  } catch (e) {
+    console.error('[SANCTUM-OPS-ALERT] Ops webhook unreachable:', e)
+  }
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export function sendNotification(event: NotificationEvent, prefs?: OrgNotificationPrefs): void {
-  const email = prefs?.email ?? process.env.NOTIFICATION_TO_EMAIL
-  const slackUrl = prefs?.slackWebhookUrl ?? process.env.SLACK_WEBHOOK_URL
+  void _sendWithFailover(event, prefs)
+}
+
+async function _sendWithFailover(
+  event: NotificationEvent,
+  prefs?: OrgNotificationPrefs,
+): Promise<void> {
+  const email      = prefs?.email                  ?? process.env.NOTIFICATION_TO_EMAIL
+  const slackUrl   = prefs?.slackWebhookUrl        ?? process.env.SLACK_WEBHOOK_URL
   const webhookUrl = prefs?.notificationWebhookUrl ?? process.env.NOTIFICATION_WEBHOOK_URL
 
-  const tasks: Promise<void>[] = []
-  if (email)      tasks.push(sendResend(event, email).catch((e) => console.warn('[notifications] email error:', e)))
-  if (slackUrl)   tasks.push(sendSlack(event, slackUrl).catch((e) => console.warn('[notifications] slack error:', e)))
-  if (webhookUrl) tasks.push(sendWebhook(event, webhookUrl).catch((e) => console.warn('[notifications] webhook error:', e)))
+  // Primary channels participate in the failover logic
+  type Channel = { name: string; fn: () => Promise<void> }
+  const primary: Channel[] = []
+  if (email)      primary.push({ name: 'email',   fn: () => sendResend(event, email) })
+  if (slackUrl)   primary.push({ name: 'slack',   fn: () => sendSlack(event, slackUrl) })
+  if (webhookUrl) primary.push({ name: 'webhook', fn: () => sendWebhook(event, webhookUrl) })
 
-  // FCM push — lazy-import to avoid loading firebase-admin when push is unused
-  tasks.push(
-    import('./fcm.js').then(async ({ sendFcmToOrg }) => {
-      const { getSupabaseAuthConfig } = await import('./auth.js')
-      const cfg = getSupabaseAuthConfig()
-      if (!cfg) return
-      await sendFcmToOrg(event, cfg)
-    }).catch((e) => console.warn('[notifications] push error:', e))
-  )
-
-  if (tasks.length === 0) {
-    console.warn(`[notifications] ${(event.severity ?? 'info').toUpperCase()} [${event.type}] org=${event.orgId}: ${event.title}`)
+  if (primary.length === 0) {
+    // No channels configured — loud log so this is discoverable
+    console.warn(
+      `[notifications] No channels configured — ${(event.severity ?? 'info').toUpperCase()} ` +
+      `[${event.type}] org=${event.orgId}: ${event.title}`,
+    )
     return
   }
 
-  void Promise.allSettled(tasks)
+  const sev = event.severity ?? 'info'
+  const useParallel = sev === 'critical' || sev === 'emergency'
+  const failures: ChannelFailure[] = []
+
+  if (useParallel) {
+    // Critical / emergency: fire every channel simultaneously for maximum coverage
+    const settled = await Promise.allSettled(primary.map((c) => c.fn()))
+    let anyOk = false
+    for (let i = 0; i < primary.length; i++) {
+      if (settled[i].status === 'fulfilled') {
+        anyOk = true
+      } else {
+        const reason = (settled[i] as PromiseRejectedResult).reason
+        failures.push({ channel: primary[i].name, error: String(reason) })
+        console.warn(`[notifications] ${primary[i].name} failed for ${event.type}:`, reason)
+      }
+    }
+    if (!anyOk) await sendOpsAlert(event, failures)
+  } else {
+    // Info / warning: sequential failover — try each channel in order, stop at first success
+    for (const channel of primary) {
+      try {
+        await channel.fn()
+        return // delivered — done
+      } catch (e) {
+        failures.push({ channel: channel.name, error: String(e) })
+        console.warn(`[notifications] ${channel.name} failed, trying next channel:`, e)
+      }
+    }
+    // Every configured channel failed
+    await sendOpsAlert(event, failures)
+  }
+
+  // FCM push is always attempted in parallel as a secondary channel.
+  // Its failure does not trigger the ops alert — if no tokens are registered this is normal.
+  void import('./fcm.js').then(async ({ sendFcmToOrg }) => {
+    const { getSupabaseAuthConfig } = await import('./auth.js')
+    const cfg = getSupabaseAuthConfig()
+    if (!cfg) return
+    await sendFcmToOrg(event, cfg)
+  }).catch((e) => console.warn('[notifications] push error:', e))
 }
 
 // ── Deduplication ─────────────────────────────────────────────────────────────
