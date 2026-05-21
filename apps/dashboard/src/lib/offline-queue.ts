@@ -12,6 +12,12 @@ export type QueuedMutation =
   | { type: 'resolve_verification'; entryId: string; decision: 'APPROVED' | 'BLOCKED' }
   | { type: 'update_policy'; action: string; response: 'approve' | 'verify' | 'block' }
 
+/** Stable key used to deduplicate mutations — last write wins for the same logical op. */
+function dedupKey(m: QueuedMutation): string {
+  if (m.type === 'resolve_verification') return `resolve:${m.entryId}`
+  return `policy:${m.action}`
+}
+
 type QueueEntry = {
   id: string
   mutation: QueuedMutation
@@ -44,10 +50,22 @@ function tx(
 
 export async function enqueue(mutation: QueuedMutation): Promise<void> {
   const db = await openDb()
+  // Dedup: if an entry for the same logical operation already exists, replace it
+  // so clicking "approve" 3× offline only sends one request on sync.
+  const key = dedupKey(mutation)
+  const existing = await new Promise<QueueEntry | undefined>((resolve, reject) => {
+    const t = db.transaction(STORE, 'readonly')
+    const req = t.objectStore(STORE).getAll()
+    req.onsuccess = () => {
+      const all = req.result as QueueEntry[]
+      resolve(all.find((e) => dedupKey(e.mutation) === key))
+    }
+    req.onerror = () => reject(req.error)
+  })
   const entry: QueueEntry = {
-    id: crypto.randomUUID(),
+    id: existing?.id ?? crypto.randomUUID(),
     mutation,
-    queuedAt: Date.now(),
+    queuedAt: existing?.queuedAt ?? Date.now(),
   }
   await tx(db, 'readwrite', (s) => s.put(entry))
 }

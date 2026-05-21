@@ -812,7 +812,10 @@ app.post('/v1/actions/verify', {
 })
 
 // One-time email approve/deny link (no auth — HMAC token is the proof)
-app.get('/v1/verify-action', async (req, reply) => {
+// Rate-limited to 10/min per IP to prevent token brute-force
+app.get('/v1/verify-action', {
+  config: { rateLimit: { max: 10, timeWindow: '1 minute', keyGenerator: rateLimitKey } },
+}, async (req, reply) => {
   const { token } = req.query as { token?: string }
   if (!token) return reply.status(400).send({ error: 'missing_token' })
   const parsed = verifyToken(token)

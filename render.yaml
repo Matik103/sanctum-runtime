@@ -17,7 +17,7 @@ services:
       - key: NODE_VERSION
         value: "22"
       - key: SANCTUM_OFFLINE_MODE
-        value: "true"
+        value: "false"
       - key: SANCTUM_RISK_PROVIDER
         value: "none"
       - key: SANCTUM_API_KEY
@@ -52,6 +52,6 @@ services:
       - key: VITE_MARKETING_URL
         value: https://www.sanctumruntime.com
       - key: VITE_SUPABASE_URL
-        value: https://nimvcudvrhanxlcpiizz.supabase.co
+        sync: false
       - key: VITE_SUPABASE_ANON_KEY
         sync: false
