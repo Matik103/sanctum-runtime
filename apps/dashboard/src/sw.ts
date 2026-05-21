@@ -13,7 +13,7 @@ declare const self: ServiceWorkerGlobalScope & {
 
 // Bump this whenever the caching strategy or app shell changes.
 // Old caches whose name doesn't match are deleted on activate.
-const SW_VERSION = '4'
+const SW_VERSION = '5'
 
 const CACHE_NAMES = {
   api:        `sanctum-api-v${SW_VERSION}`,
@@ -25,6 +25,12 @@ const CACHE_NAMES = {
 clientsClaim()
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
+
+// Activate new SW immediately on install so the installed PWA picks up
+// changes on next launch without requiring the user to close all tabs.
+self.addEventListener('install', () => {
+  void self.skipWaiting()
+})
 
 // Delete stale versioned caches from previous SW installs
 self.addEventListener('activate', (event) => {
