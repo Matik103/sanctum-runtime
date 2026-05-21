@@ -13,7 +13,7 @@ declare const self: ServiceWorkerGlobalScope & {
 
 // Bump this whenever the caching strategy or app shell changes.
 // Old caches whose name doesn't match are deleted on activate.
-const SW_VERSION = '3'
+const SW_VERSION = '4'
 
 const CACHE_NAMES = {
   api:        `sanctum-api-v${SW_VERSION}`,

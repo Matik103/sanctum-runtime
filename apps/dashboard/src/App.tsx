@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 import { ActionDrawer } from './components/ActionDrawer'
 import { ErrorBoundary } from './components/ErrorBoundary'
-import { MobileCompanionHeader } from './components/MobileCompanionHeader'
 import { PwaInstallBanner } from './components/PwaInstallBanner'
 import { useCompanionMode } from './hooks/useCompanionMode'
 import { useNetworkStatus } from './hooks/useNetworkStatus'
@@ -83,7 +82,7 @@ export function App() {
 
   return (
     <div className="shell">
-      <Sidebar page={page} onPage={setPage} status={status} orgId={orgId} />
+      <Sidebar page={page} onPage={setPage} status={status} orgId={orgId} companionMode={companionMode} />
 
       <MainCanvas>
         <PwaInstallBanner />
@@ -132,7 +131,16 @@ export function App() {
 
         {page === 'overview' && (
           <ErrorBoundary page="Overview">
-            <Overview audit={audit} policies={policies} status={status} onSelect={onSelect} lastRefreshed={lastRefreshed} />
+            <Overview
+              audit={audit}
+              policies={policies}
+              status={status}
+              onSelect={onSelect}
+              lastRefreshed={lastRefreshed}
+              companionMode={companionMode}
+              pendingReviewCount={pendingReviewCount}
+              onOpenReview={openNextPendingReview}
+            />
           </ErrorBoundary>
         )}
         {page === 'activity' && <ErrorBoundary page="Runtime Activity"><RuntimeActivity audit={audit} onSelect={onSelect} /></ErrorBoundary>}

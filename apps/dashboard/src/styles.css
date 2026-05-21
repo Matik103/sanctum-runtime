@@ -1311,6 +1311,22 @@ tr.key-row--pending td {
     color: #fca5a5;
   }
 
+  .more-panel__row--active {
+    background: rgba(79, 124, 255, 0.12);
+    color: var(--link);
+  }
+
+  .more-panel__section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
+    border-bottom: 1px solid var(--border);
+    max-height: 50vh;
+    overflow-y: auto;
+  }
+
   .more-panel__status {
     padding: 0.75rem 0.5rem;
     display: flex;
