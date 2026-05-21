@@ -52,6 +52,7 @@ export function App() {
     apiError,
     retryDelayMs,
     lastRefreshed,
+    refresh,
   } = useDashboard()
 
   const { pendingCount: offlinePending, syncing: offlineSyncing } = useOfflineQueue(() => { void refresh() })

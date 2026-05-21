@@ -47,7 +47,7 @@ export function Login() {
         const { error: err } = await sb.auth.signUp({
           email,
           password,
-          options: { data: { portal_type: 'operator', auth_provider: 'email' } },
+          options: { emailRedirectTo: window.location.origin },
         })
         if (err) throw err
         setMessage('Account created. Check your email if confirmation is required, then sign in.')
@@ -77,7 +77,6 @@ export function Login() {
         provider: provider === 'azure' ? 'azure' : provider,
         options: {
           redirectTo: window.location.origin,
-          data: { portal_type: 'enterprise', auth_provider: provider },
         },
       })
       if (err) throw err

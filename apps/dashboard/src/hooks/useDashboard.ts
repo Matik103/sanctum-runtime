@@ -70,7 +70,7 @@ export function useDashboard() {
           dismissed.add(e.id)
         }
       }
-      if ('id' in scope) dismissed.add(scope.id)
+      if (scope !== 'all' && 'id' in scope) dismissed.add(scope.id)
       saveDismissedIds(dismissed)
       setPendingVerification(null)
       bumpDismissed((n) => n + 1)

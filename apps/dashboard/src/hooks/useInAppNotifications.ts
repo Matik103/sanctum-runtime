@@ -37,7 +37,7 @@ async function fetchRecentAlerts(): Promise<InAppNotification[]> {
   if (token) headers['Authorization'] = `Bearer ${token}`
 
   const res = await fetch(
-    `${apiBaseUrl()}/v1/alerts?status=open&limit=20`,
+    `${apiBaseUrl}/v1/alerts?status=open&limit=20`,
     { headers },
   )
   if (!res.ok) return []

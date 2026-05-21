@@ -1,5 +1,5 @@
 import { AlertCircle, AlertTriangle, CheckCircle2, Info } from 'lucide-react'
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 
 type Variant = 'error' | 'success' | 'info' | 'warn'
 
@@ -14,12 +14,13 @@ type Props = {
   variant?: Variant
   children: ReactNode
   onDismiss?: () => void
+  style?: CSSProperties
 }
 
-export function Alert({ variant = 'info', children, onDismiss }: Props) {
+export function Alert({ variant = 'info', children, onDismiss, style }: Props) {
   const Icon = icons[variant]
   return (
-    <div className={`alert alert--${variant}`} role="alert">
+    <div className={`alert alert--${variant}`} role="alert" style={style}>
       <Icon size={18} className="alert__icon" aria-hidden />
       <div className="alert__body">{children}</div>
       {onDismiss && (
