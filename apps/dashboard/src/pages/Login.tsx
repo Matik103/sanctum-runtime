@@ -127,7 +127,6 @@ export function Login() {
         provider,
         options: {
           redirectTo: getOAuthRedirectUrl(),
-          data: { portal_type: 'enterprise', auth_provider: provider, signup_type: 'individual' },
           ...(provider === 'google'
             ? { queryParams: { prompt: 'select_account' } }
             : { scopes: 'read:user user:email' }),

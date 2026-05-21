@@ -10,7 +10,6 @@ import { riskModelMetaLine } from '../lib/risk-label'
 import { fetchUsage, usageMetricLabel, type UsageSummary } from '../lib/usage'
 import { apiBaseUrl as apiBase } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
-import { usePushNotifications } from '../hooks/usePushNotifications'
 
 async function authHeaders(json = false): Promise<Record<string, string>> {
   const token = await getAccessToken()
@@ -130,6 +129,22 @@ export function Settings({ status }: Props) {
     }
   }
 
+  const clearWebhook = async (field: 'slack_webhook_url' | 'notification_webhook_url') => {
+    if (!orgId) return
+    try {
+      const res = await fetch(`${apiBase}/v1/orgs/${orgId}/notifications`, {
+        method: 'PATCH',
+        headers: await authHeaders(true),
+        body: JSON.stringify({ [field]: null }),
+      })
+      if (!res.ok) throw new Error(`Clear failed: ${res.status}`)
+      const updated = await res.json() as NotificationPrefs
+      setNotifPrefs(updated)
+    } catch (e) {
+      setNotifMsg(e instanceof Error ? e.message : 'Clear failed')
+    }
+  }
+
   const saveNotifPrefs = async () => {
     setNotifBusy(true)
     setNotifMsg(null)
@@ -162,7 +177,7 @@ export function Settings({ status }: Props) {
     }
   }
 
-  const { permission: pushPermission, enable: enablePush, disable: disablePush } = usePushNotifications(orgId || null)
+  const { permission: pushPermission, subscribe: enablePush, unsubscribe: disablePush } = usePushNotifications(Boolean(orgId))
   const [pushBusy, setPushBusy] = useState(false)
 
   const handlePushToggle = async () => {
