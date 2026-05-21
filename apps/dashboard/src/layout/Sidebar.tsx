@@ -7,13 +7,16 @@ import {
   FileText,
   History,
   LayoutDashboard,
+  LogOut,
   Monitor,
+  MoreHorizontal,
   Package,
   Radio,
   ScrollText,
   Settings,
   Shield,
   ShieldAlert,
+  X,
 } from 'lucide-react'
 import type { RuntimeStatus } from '@sanctum-runtime/sdk/browser'
 import { useAuth } from '../auth/AuthProvider'
@@ -66,8 +69,15 @@ export function Sidebar({ page, onPage, status, orgId }: Props) {
   const { user, signOut } = useAuth()
   const risk = riskModelStatusLine(status)
   const [panelOpen, setPanelOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
 
   const { notifications, unread, markAllRead } = useInAppNotifications(orgId)
+
+  function openNotifications() {
+    setMoreOpen(false)
+    setPanelOpen(true)
+    markAllRead()
+  }
 
   return (
     <>
@@ -93,13 +103,31 @@ export function Sidebar({ page, onPage, status, orgId }: Props) {
               <span className="nav-label">{label}</span>
             </button>
           ))}
+
+          {/* Mobile-only: More button (hidden on desktop via CSS) */}
+          <button
+            type="button"
+            className="nav-item nav-item--more"
+            onClick={() => setMoreOpen(true)}
+            aria-label="More options"
+          >
+            <span style={{ position: 'relative', display: 'inline-flex' }}>
+              <MoreHorizontal size={17} strokeWidth={1.75} aria-hidden />
+              {unread > 0 && (
+                <span className="nav-item--more__badge" aria-hidden>
+                  {unread > 9 ? '9+' : unread}
+                </span>
+              )}
+            </span>
+            <span className="nav-label">More</span>
+          </button>
         </nav>
 
         <div className="sidebar-footer">
           {/* Notification bell */}
           <button
             type="button"
-            onClick={() => { setPanelOpen(true); markAllRead() }}
+            onClick={openNotifications}
             aria-label={unread > 0 ? `${unread} unread notifications` : 'Notifications'}
             style={{
               display: 'flex',
@@ -168,9 +196,83 @@ export function Sidebar({ page, onPage, status, orgId }: Props) {
         </div>
       </aside>
 
+      {/* Mobile "More" slide-up panel */}
+      {moreOpen && (
+        <>
+          <div
+            className="more-panel-backdrop"
+            onClick={() => setMoreOpen(false)}
+            aria-hidden
+          />
+          <div className="more-panel" role="dialog" aria-label="More options">
+            <div className="more-panel__header">
+              <span className="more-panel__title">Sanctum</span>
+              <button
+                type="button"
+                className="more-panel__close"
+                onClick={() => setMoreOpen(false)}
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Notification row */}
+            <button
+              type="button"
+              className="more-panel__row"
+              onClick={openNotifications}
+            >
+              <span style={{ position: 'relative', display: 'inline-flex' }}>
+                <Bell size={18} strokeWidth={1.75} />
+                {unread > 0 && (
+                  <span className="nav-item--more__badge" aria-hidden>
+                    {unread > 9 ? '9+' : unread}
+                  </span>
+                )}
+              </span>
+              <span>Notifications</span>
+              {unread > 0 && (
+                <span className="badge warning" style={{ marginLeft: 'auto', fontSize: '0.68rem' }}>
+                  {unread} new
+                </span>
+              )}
+            </button>
+
+            {/* Runtime status */}
+            <div className="more-panel__status">
+              <div>
+                <span className={`status-dot ${risk.dot}`} />
+                {risk.label}
+              </div>
+              <div>
+                Runtime{' '}
+                <strong style={{ color: status?.runtimeOnline === false ? 'var(--danger)' : 'var(--success)' }}>
+                  {status?.runtimeOnline === false ? 'offline' : 'active'}
+                </strong>
+              </div>
+            </div>
+
+            {/* User + sign-out */}
+            {isSupabaseConfigured && user && (
+              <div className="more-panel__user">
+                <span className="more-panel__email">{user.email}</span>
+                <button
+                  type="button"
+                  className="more-panel__row more-panel__row--danger"
+                  onClick={() => { setMoreOpen(false); signOut() }}
+                >
+                  <LogOut size={18} strokeWidth={1.75} />
+                  <span>Sign out</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
       {panelOpen && (
         <>
-          {/* Backdrop */}
           <div
             onClick={() => setPanelOpen(false)}
             style={{ position: 'fixed', inset: 0, zIndex: 999, background: 'rgba(0,0,0,0.4)' }}
