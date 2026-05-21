@@ -87,6 +87,7 @@ export function Sidebar({ page, onPage, status, orgId, companionMode }: Props) {
 
   const { notifications, unread, markAllRead } = useInAppNotifications(orgId)
   const navItems = companionMode ? NAV.filter((n) => COMPANION_NAV_IDS.includes(n.id)) : NAV
+  const overflowItems = companionMode ? NAV.filter((n) => !COMPANION_NAV_IDS.includes(n.id)) : []
 
   function openNotifications() {
     setMoreOpen(false)
@@ -231,6 +232,23 @@ export function Sidebar({ page, onPage, status, orgId, companionMode }: Props) {
                 <X size={18} />
               </button>
             </div>
+
+            {/* Overflow pages — the items that don't fit in the bottom tab bar */}
+            {overflowItems.length > 0 && (
+              <div className="more-panel__section">
+                {overflowItems.map(({ id, label, icon: Icon }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    className={`more-panel__row ${page === id ? 'more-panel__row--active' : ''}`}
+                    onClick={() => { setMoreOpen(false); onPage(id) }}
+                  >
+                    <Icon size={18} strokeWidth={1.75} aria-hidden />
+                    <span>{label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Notification row */}
             <button
