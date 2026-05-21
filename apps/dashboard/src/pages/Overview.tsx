@@ -1,4 +1,5 @@
 import type { ActionResult, PolicyMap, RuntimeStatus } from '@sanctum-runtime/sdk/browser'
+import { CompanionOverview } from '../components/CompanionOverview'
 import { decisionTone, timeAgo } from '../lib/format'
 import { actionLabel, decisionLabel } from '../lib/labels'
 import { auditRecordHeadline } from '../lib/narrative'
@@ -11,6 +12,9 @@ type Props = {
   status: RuntimeStatus | null
   onSelect: (e: ActionResult) => void
   lastRefreshed: Date | null
+  companionMode?: boolean
+  pendingReviewCount?: number
+  onOpenReview?: () => void
 }
 
 export function Overview({
@@ -19,6 +23,9 @@ export function Overview({
   status,
   onSelect,
   lastRefreshed,
+  companionMode,
+  pendingReviewCount = 0,
+  onOpenReview,
 }: Props) {
   const approved = audit.filter((e) => e.decision === 'APPROVED').length
   const blocked = audit.filter((e) => e.decision === 'BLOCKED').length
@@ -33,6 +40,25 @@ export function Overview({
   const threats = blockedOrHeld + flagged
   const hasThreat = threats > 0
   const bars = sparkBars(audit)
+
+  if (companionMode) {
+    return (
+      <>
+        <header className="page-header">
+          <div>
+            <h1>Runtime status</h1>
+            <p>Mobile supervision for autonomous systems</p>
+          </div>
+        </header>
+        <CompanionOverview
+          audit={audit}
+          pendingReviewCount={pendingReviewCount}
+          onSelect={onSelect}
+          onOpenReview={onOpenReview}
+        />
+      </>
+    )
+  }
 
   return (
     <>

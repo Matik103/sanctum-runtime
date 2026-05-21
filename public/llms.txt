@@ -9,6 +9,11 @@
 - API: https://api.sanctumruntime.com/
 - Open source: https://github.com/Matik103/sanctum-runtime
 
+## Crawlers
+
+- Sitemap: https://www.sanctumruntime.com/sitemap.xml
+- robots.txt: https://www.sanctumruntime.com/robots.txt
+
 ## Machine-readable pages
 
 - Docs: https://www.sanctumruntime.com/docs

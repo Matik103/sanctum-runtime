@@ -62,6 +62,14 @@ export type ActionResult = z.infer<typeof ActionResultSchema>
 export const AuditEntrySchema = ActionResultSchema
 export type AuditEntry = ActionResult
 
+export const PolicyConditionSchema = z.object({
+  field: z.string(),  // 'actor', 'action', 'context.amount', 'context.path', etc.
+  op: z.enum(['gt', 'lt', 'gte', 'lte', 'eq', 'neq', 'contains', 'startsWith', 'endsWith', 'matches']),
+  value: z.union([z.string(), z.number(), z.boolean()]),
+  result: z.enum(['block', 'verify', 'approve']),
+})
+export type PolicyCondition = z.infer<typeof PolicyConditionSchema>
+
 export const ActionPolicySchema = z.object({
   requiresVerification: z.boolean().default(false),
   autoBlock: z.boolean().default(false),
@@ -69,6 +77,7 @@ export const ActionPolicySchema = z.object({
   allowedActors: z.array(z.string()).optional(),
   /** Custom instructions for the risk model when scoring this action (OSS). */
   riskPrompt: z.string().max(8000).optional(),
+  conditions: z.array(PolicyConditionSchema).optional(),
 })
 
 export type ActionPolicy = z.infer<typeof ActionPolicySchema>

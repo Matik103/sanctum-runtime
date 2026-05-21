@@ -451,3 +451,7 @@ export class RuntimeEngine {
     }
   }
 }
+
+export { registerAnomalyRule, type AnomalyRule, detectAnomalies } from './anomaly.js'
+export { loadPoliciesFromSupabase } from './supabase-policies.js'
+export { heuristicRiskFloor } from './risk-heuristics.js'

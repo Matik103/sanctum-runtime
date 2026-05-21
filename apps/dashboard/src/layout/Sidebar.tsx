@@ -2,6 +2,7 @@ import { useState } from 'react'
 import {
   Activity,
   Bell,
+  Bot,
   CheckSquare,
   CreditCard,
   FileText,
@@ -34,12 +35,23 @@ export type PageId =
   | 'policy-history'
   | 'governance'
   | 'compliance'
+  | 'agents'
   | 'devices'
   | 'fleet'
   | 'marketplace'
   | 'audit'
   | 'billing'
   | 'settings'
+
+/** Reduced nav for mobile companion (installed PWA / narrow viewport). */
+export const COMPANION_NAV_IDS: PageId[] = [
+  'overview',
+  'activity',
+  'threats',
+  'alerts',
+  'audit',
+  'settings',
+]
 
 const NAV: { id: PageId; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'overview',       label: 'Overview',         icon: LayoutDashboard },
@@ -50,6 +62,7 @@ const NAV: { id: PageId; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'policy-history', label: 'Policy History',    icon: History },
   { id: 'governance',     label: 'Governance',        icon: CheckSquare },
   { id: 'compliance',     label: 'Compliance',        icon: FileText },
+  { id: 'agents',         label: 'Agents',            icon: Bot },
   { id: 'devices',        label: 'Devices',           icon: Monitor },
   { id: 'fleet',          label: 'Runtime Fleet',     icon: Radio },
   { id: 'marketplace',    label: 'Marketplace',       icon: Package },
@@ -63,15 +76,17 @@ type Props = {
   onPage: (p: PageId) => void
   status: RuntimeStatus | null
   orgId?: string | null
+  companionMode?: boolean
 }
 
-export function Sidebar({ page, onPage, status, orgId }: Props) {
+export function Sidebar({ page, onPage, status, orgId, companionMode }: Props) {
   const { user, signOut } = useAuth()
   const risk = riskModelStatusLine(status)
   const [panelOpen, setPanelOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
 
   const { notifications, unread, markAllRead } = useInAppNotifications(orgId)
+  const navItems = companionMode ? NAV.filter((n) => COMPANION_NAV_IDS.includes(n.id)) : NAV
 
   function openNotifications() {
     setMoreOpen(false)
@@ -85,14 +100,14 @@ export function Sidebar({ page, onPage, status, orgId }: Props) {
         <div className="brand-block">
           <div className="mc-badge">
             <span className="mc-badge__dot" aria-hidden />
-            Control plane
+            {companionMode ? 'Companion' : 'Control plane'}
           </div>
           <div className="brand-title">Sanctum</div>
-          <div className="brand-sub">Runtime Trust Layer</div>
+          <div className="brand-sub">{companionMode ? 'Mobile trust layer' : 'Runtime Trust Layer'}</div>
         </div>
 
         <nav>
-          {NAV.map(({ id, label, icon: Icon }) => (
+          {navItems.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               type="button"

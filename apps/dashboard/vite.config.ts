@@ -43,7 +43,7 @@ export default defineConfig(({ mode, command }) => {
         injectManifest: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         },
-        includeAssets: ['favicon.png', 'apple-touch-icon.png', 'favicon-512.png', 'icon-192.png', 'icon-384.png', 'offline.html'],
+        includeAssets: ['favicon.png', 'apple-touch-icon.png', 'favicon-512.png', 'icon-192.png', 'icon-384.png', 'sanctum-logo.png'],
         manifest: {
           name: 'Sanctum Runtime Console',
           short_name: 'Sanctum',
@@ -64,15 +64,6 @@ export default defineConfig(({ mode, command }) => {
             { src: '/icon-384.png',          sizes: '384x384', type: 'image/png' },
             { src: '/favicon-512.png',       sizes: '512x512', type: 'image/png' },
             { src: '/favicon-512.png',       sizes: '512x512', type: 'image/png', purpose: 'maskable' },
-          ],
-          screenshots: [
-            {
-              src: '/favicon-512.png',
-              sizes: '512x512',
-              type: 'image/png',
-              form_factor: 'narrow',
-              label: 'Sanctum Runtime Console',
-            },
           ],
           shortcuts: [
             {
@@ -95,7 +86,10 @@ export default defineConfig(({ mode, command }) => {
       }),
     ],
     envDir: repoRoot,
-    envPrefix: ['VITE_', 'SUPABASE_'],
+    envPrefix: ['VITE_'],
+    build: {
+      sourcemap: false,
+    },
     define: {
       'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(
         env.VITE_SUPABASE_URL ?? env.SUPABASE_URL ?? '',
@@ -113,6 +107,7 @@ export default defineConfig(({ mode, command }) => {
       'import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID':JSON.stringify(env.VITE_FIREBASE_MESSAGING_SENDER_ID ?? ''),
       'import.meta.env.VITE_FIREBASE_APP_ID':             JSON.stringify(env.VITE_FIREBASE_APP_ID ?? ''),
       'import.meta.env.VITE_FIREBASE_VAPID_KEY':          JSON.stringify(env.VITE_FIREBASE_VAPID_KEY ?? ''),
+      'import.meta.env.VITE_VAPID_PUBLIC_KEY':            JSON.stringify(env.VITE_VAPID_PUBLIC_KEY ?? ''),
     },
   }
 

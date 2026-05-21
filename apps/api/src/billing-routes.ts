@@ -197,8 +197,12 @@ export async function registerBillingRoutes(app: FastifyInstance) {
   }, async (req, reply) => {
     const secret = process.env.PADDLE_WEBHOOK_SECRET
     if (!secret) {
-      app.log.error('[billing/webhook] PADDLE_WEBHOOK_SECRET not set — rejecting webhook')
-      return reply.status(400).send({ error: 'webhook_not_configured' })
+      const { isProduction } = await import('./security.js')
+      if (isProduction()) {
+        app.log.error('[billing/webhook] PADDLE_WEBHOOK_SECRET not set — rejecting webhook')
+        return reply.status(503).send({ error: 'webhook_not_configured' })
+      }
+      app.log.warn('[billing/webhook] PADDLE_WEBHOOK_SECRET not set — skipping signature check')
     } else {
       // Paddle Billing signature: "ts=<epoch>;h1=<hmac>"
       const sigHeader = req.headers['paddle-signature'] as string | undefined

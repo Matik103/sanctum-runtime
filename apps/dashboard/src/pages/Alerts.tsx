@@ -5,11 +5,13 @@ import {
   CheckCircle2,
   Circle,
   Clock,
+  ExternalLink,
   Plus,
   Settings2,
   Trash2,
   Zap,
 } from 'lucide-react'
+import type { PageId } from '../layout/Sidebar'
 import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
 import { Alert } from '../components/ui/Alert'
@@ -109,7 +111,7 @@ const EVENT_TYPES = [
   'billing.payment_failed',
 ]
 
-export function Alerts() {
+export function Alerts({ onPage }: { onPage?: (p: PageId) => void }) {
   const [orgId, setOrgId] = useState('')
   const [tab, setTab] = useState<'incidents' | 'rules'>('incidents')
   const [statusFilter, setStatusFilter] = useState<AlertStatus | 'all'>('open')
@@ -610,8 +612,14 @@ export function Alerts() {
         <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--muted)' }}>
           <AlertTriangle size={13} style={{ verticalAlign: 'middle', marginRight: '0.3rem', color: 'var(--warn, #f59e0b)' }} />
           Alerts are sent via <strong>alerts@sanctumruntime.com</strong>. Configure delivery channels in{' '}
-          <button type="button" className="btn btn-ghost" style={{ fontSize: '0.8rem', padding: 0, display: 'inline', color: 'var(--primary)' }}>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ fontSize: '0.8rem', padding: 0, display: 'inline', color: 'var(--primary)' }}
+            onClick={() => onPage?.('settings')}
+          >
             Settings → Notifications
+            <ExternalLink size={11} style={{ marginLeft: '0.25rem', verticalAlign: 'middle' }} />
           </button>.
         </p>
       </div>

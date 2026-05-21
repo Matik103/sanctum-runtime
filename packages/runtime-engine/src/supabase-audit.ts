@@ -42,7 +42,7 @@ function rowToActionResult(row: AuditRow): ActionResult {
       resolvedAt: row.resolved_at ?? payload.resolvedAt,
       timestamp: row.created_at ?? payload.timestamp,
       context: {
-        ...(payload.context ?? {}),
+        ...(row.context ?? payload.context ?? {}),
         ...(row.org_id ? { org_id: row.org_id } : {}),
       },
     } as ActionResult
@@ -53,7 +53,10 @@ function rowToActionResult(row: AuditRow): ActionResult {
     correlationId: row.correlation_id,
     actor: row.actor,
     action: row.action,
-    context: row.org_id ? { org_id: row.org_id } : {},
+    context: {
+      ...(row.context ?? {}),
+      ...(row.org_id ? { org_id: row.org_id } : {}),
+    },
     decision: row.decision as ActionResult['decision'],
     risk: (row.risk ?? 'low') as ActionResult['risk'],
     reasoning: row.reasoning ?? '',
@@ -88,6 +91,7 @@ export async function maybeSyncAuditToSupabase(entry: ActionResult): Promise<voi
       human_record: entry.humanRecord ?? null,
       human_resolution: entry.humanResolution ?? null,
       anomaly_flags: entry.anomalyFlags ?? [],
+      context: entry.context ?? {},
       resolved_by: (entry as unknown as { resolvedBy?: string }).resolvedBy ?? null,
       payload: entry,
       created_at: entry.timestamp,

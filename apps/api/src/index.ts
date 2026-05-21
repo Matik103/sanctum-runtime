@@ -19,6 +19,7 @@ import { registerExportRoutes } from './export-routes.js'
 import { registerGovernanceRoutes } from './governance.js'
 import { registerComplianceRoutes } from './compliance.js'
 import { registerPolicyVersionRoutes } from './policy-versions.js'
+import { registerDelegationRoutes } from './delegation.js'
 import { startWebhookWorker } from './webhook-queue.js'
 import { startEmailQueueWorker } from './email-queue-worker.js'
 import { riskModelBreaker } from './circuit-breaker.js'
@@ -31,11 +32,31 @@ import { runtimeWsHub } from './runtime-ws-hub.js'
 import { registerAlertRoutes } from './alert-routes.js'
 import { registerPushRoutes } from './push-routes.js'
 import { AlertStore } from './alert-store.js'
+import { sendVerificationEmail, verifyToken } from './verify-email.js'
+import { loadPoliciesFromSupabase, detectAnomalies, heuristicRiskFloor } from '@sanctum/runtime-engine'
+import { verifyAgentToken, extractAgentToken, registerAgentTokenRoutes } from './agent-tokens.js'
+import { checkActiveGrant, createGrant } from './policy-grants.js'
 import {
   authenticateRequest,
   getSupabaseAuthConfig,
   isSupabaseAuthEnabled,
 } from './auth.js'
+import {
+  internalErrorBody,
+  isProduction,
+  metricsAuthorized,
+} from './security.js'
+import {
+  assertAuditEntryScope,
+  listScopedAudit,
+  mergePoliciesForOrgs,
+  pickScopedOrgs,
+  policyStorageKey,
+  resolveRouteOrgScope,
+} from './scoped-policy-audit.js'
+import { assertOrgAllowed, type SanctumReq } from './org-scope.js'
+import { ControlPlaneStore } from './control-plane-store.js'
+import { createSupabaseAdmin } from './auth.js'
 import {
   loadRepoEnv,
   resolveApiListenTarget,
@@ -43,6 +64,22 @@ import {
 } from '../../../scripts/env.ts'
 
 loadRepoEnv()
+
+// Fail fast in production if required secrets are missing
+if (isProduction()) {
+  const missing: string[] = []
+  if (!process.env.SANCTUM_API_KEY_PEPPER?.trim() && !process.env.SANCTUM_API_KEY?.trim())
+    missing.push('SANCTUM_API_KEY_PEPPER (required for agent token signing)')
+  if (!process.env.SUPABASE_URL?.trim())
+    missing.push('SUPABASE_URL')
+  if (process.env.SUPABASE_URL?.trim() && !process.env.SUPABASE_SERVICE_ROLE_KEY?.trim())
+    missing.push('SUPABASE_SERVICE_ROLE_KEY (required when SUPABASE_URL is set)')
+  if (missing.length > 0) {
+    console.error('FATAL: Missing required environment variables:\n  ' + missing.join('\n  '))
+    process.exit(1)
+  }
+}
+
 const { host, port } = resolveApiListenTarget()
 const dashboardUrl = resolveDashboardUrl()
 const forceOffline = process.env.SANCTUM_OFFLINE_MODE === 'true'
@@ -55,6 +92,7 @@ const runtime = new RuntimeEngine({
 
 const app = Fastify({
   logger: true,
+  trustProxy: true,
   bodyLimit: 512 * 1024, // 512 KB
   genReqId: () => crypto.randomUUID(),
 })
@@ -85,7 +123,10 @@ function isAllowedCorsOrigin(origin: string): boolean {
 
 await app.register(cors, {
   origin: (origin, cb) => {
-    if (!origin) return cb(null, true)
+    if (!origin) {
+      cb(null, !isProduction())
+      return
+    }
     cb(null, isAllowedCorsOrigin(origin))
   },
   methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -132,20 +173,26 @@ app.setErrorHandler((err, _req, reply) => {
     })
   }
   app.log.error(err)
-  const detail = err instanceof Error ? err.message : undefined
-  return reply.status(500).send({
-    error: 'internal_error',
-    ...(detail && { detail }),
-  })
+  return reply.status(500).send(internalErrorBody(err))
 })
 
-const AUTH_BYPASS = new Set(['/health', '/', '/metrics', '/v1/billing/webhook', '/v1/status'])
+function isPublicPath(path: string): boolean {
+  if (path === '/health' || path === '/v1/billing/webhook' || path === '/v1/verify-action') return true
+  if (path.startsWith('/v1/sso/')) return true
+  if (!isProduction()) {
+    if (path === '/' || path === '/metrics' || path === '/v1/status') return true
+  }
+  return false
+}
 
 app.addHook('onRequest', async (req, reply) => {
   if (req.method === 'OPTIONS') return
 
   const path = req.url.split('?')[0]
-  if (AUTH_BYPASS.has(path)) return
+  if (path === '/metrics' && !metricsAuthorized(req.headers)) {
+    return reply.status(404).send({ error: 'not_found' })
+  }
+  if (isPublicPath(path)) return
 
   const auth = await authenticateRequest(req.headers, {
     supabase: supabaseAuth,
@@ -155,9 +202,13 @@ app.addHook('onRequest', async (req, reply) => {
   if (!auth.ok) {
     return reply.status(401).send({
       error: 'unauthorized',
-      hint: isSupabaseAuthEnabled()
-        ? 'Sign in via the dashboard (Bearer JWT) or send X-Sanctum-Key for scripts'
-        : 'Set X-Sanctum-Key or configure Supabase auth',
+      ...(isProduction()
+        ? {}
+        : {
+            hint: isSupabaseAuthEnabled()
+              ? 'Sign in via the dashboard (Bearer JWT) or send X-Sanctum-Key'
+              : 'Set X-Sanctum-Key or configure Supabase auth',
+          }),
     })
   }
 
@@ -176,6 +227,20 @@ if (process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || process.env.VITE_SUPABASE_S
   console.log(`Supabase policy store active (${count} policies loaded/seeded)`)
 }
 
+// Realtime policy sync — keeps in-memory engine consistent across horizontal instances
+if (supabaseAuth) {
+  const realtimeAdmin = createSupabaseAdmin(supabaseAuth)
+  realtimeAdmin
+    .channel('policy-sync')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'runtime_policies' }, () => {
+      void loadPoliciesFromSupabase().then((policies) => {
+        if (policies) runtime.getPolicyEngine().mergePolicies(policies)
+      }).catch(() => {})
+    })
+    .subscribe()
+  console.log('[sanctum] Realtime policy sync active')
+}
+
 const publicApiUrl =
   process.env.SANCTUM_PUBLIC_API_URL?.trim() ||
   process.env.SANCTUM_API_URL?.trim() ||
@@ -185,46 +250,55 @@ const publicApiUrl =
 const publicDocsUrl =
   process.env.SANCTUM_DOCS_URL?.trim() || 'https://www.sanctumruntime.com/docs'
 
-app.get('/', async () => ({
-  name: 'Sanctum Runtime API',
-  version: '0.1.0',
-  url: publicApiUrl,
-  docs: publicDocsUrl,
-  dashboard: dashboardUrl,
-  auth: supabaseAuth
-    ? 'Supabase JWT (Bearer) or X-Sanctum-Key'
-    : apiKey
-      ? 'X-Sanctum-Key required'
-      : 'none (local dev)',
-  endpoints: {
-    health: 'GET /health',
-    status: 'GET /v1/status',
-    verify: 'POST /v1/actions/verify',
-    audit: 'GET /v1/audit',
-    resolve: 'POST /v1/audit/:id/resolve',
-    verification: 'GET /v1/verifications/:correlationId',
-    orgPolicies: 'GET /v1/orgs/:orgId/policies',
-    policies: 'GET|POST /v1/policies',
-    policyByAction: 'PATCH|DELETE /v1/policies/:action',
-    policiesYaml: 'GET /v1/policies/export.yaml · POST /v1/policies/import.yaml',
-    webhooks: 'GET /v1/webhooks/status',
-    apiKeys: 'GET|POST /v1/api-keys · DELETE /v1/api-keys/:id',
-    runtimes:
-      'POST /v1/runtimes/connect · POST …/attest · GET …/trust · heartbeat/agents/events · DELETE /v1/runtimes/:id · DELETE …/agents/:agentId',
-    fleet: 'GET /v1/fleet/map · deployment-groups · POST /v1/orchestration/dispatch',
-    operatorContext: 'GET /v1/operator/context',
-    eventStream: 'GET /v1/events/stream (SSE)',
-    runtimeWs: 'WS /v1/runtimes/ws?runtimeId=',
-    agentMemory: 'GET|PUT|DELETE /v1/runtimes/:id/agents/:agentId/memory/:key',
-    marketplace: 'GET /v1/marketplace/packages · install · connect hints',
-    usage: 'GET /v1/usage?org_id=',
-    billing: 'GET /v1/billing/plan · POST /v1/billing/checkout · POST /v1/billing/webhook',
-    export: 'GET /v1/orgs/:orgId/export.json · GET /v1/orgs/:orgId/export/history',
-    notifications: 'GET|PATCH /v1/orgs/:orgId/notifications',
-    sso: 'GET|PUT /v1/orgs/:orgId/sso · GET /v1/sso/:orgId/login',
-    analyze: 'POST /analyze-action',
-  },
-}))
+app.get('/', async () => {
+  if (isProduction()) {
+    return {
+      name: 'Sanctum Runtime API',
+      health: '/health',
+      docs: publicDocsUrl,
+    }
+  }
+  return {
+    name: 'Sanctum Runtime API',
+    version: '0.1.0',
+    url: publicApiUrl,
+    docs: publicDocsUrl,
+    dashboard: dashboardUrl,
+    auth: supabaseAuth
+      ? 'Supabase JWT (Bearer) or X-Sanctum-Key'
+      : apiKey
+        ? 'X-Sanctum-Key required'
+        : 'none (local dev)',
+    endpoints: {
+      health: 'GET /health',
+      status: 'GET /v1/status',
+      verify: 'POST /v1/actions/verify',
+      audit: 'GET /v1/audit',
+      resolve: 'POST /v1/audit/:id/resolve',
+      verification: 'GET /v1/verifications/:correlationId',
+      orgPolicies: 'GET /v1/orgs/:orgId/policies',
+      policies: 'GET|POST /v1/policies',
+      policyByAction: 'PATCH|DELETE /v1/policies/:action',
+      policiesYaml: 'GET /v1/policies/export.yaml · POST /v1/policies/import.yaml',
+      webhooks: 'GET /v1/webhooks/status',
+      apiKeys: 'GET|POST /v1/api-keys · DELETE /v1/api-keys/:id',
+      runtimes:
+        'POST /v1/runtimes/connect · POST …/attest · GET …/trust · heartbeat/agents/events · DELETE /v1/runtimes/:id · DELETE …/agents/:agentId',
+      fleet: 'GET /v1/fleet/map · deployment-groups · POST /v1/orchestration/dispatch',
+      operatorContext: 'GET /v1/operator/context',
+      eventStream: 'GET /v1/events/stream (SSE)',
+      runtimeWs: 'WS /v1/runtimes/ws?runtimeId=',
+      agentMemory: 'GET|PUT|DELETE /v1/runtimes/:id/agents/:agentId/memory/:key',
+      marketplace: 'GET /v1/marketplace/packages · install · connect hints',
+      usage: 'GET /v1/usage?org_id=',
+      billing: 'GET /v1/billing/plan · POST /v1/billing/checkout · POST /v1/billing/webhook',
+      export: 'GET /v1/orgs/:orgId/export.json · GET /v1/orgs/:orgId/export/history',
+      notifications: 'GET|PATCH /v1/orgs/:orgId/notifications',
+      sso: 'GET|PUT /v1/orgs/:orgId/sso · GET /v1/sso/:orgId/login',
+      analyze: 'POST /analyze-action',
+    },
+  }
+})
 
 if (supabaseAuth) {
   await registerApiKeyRoutes(app, supabaseAuth)
@@ -240,54 +314,53 @@ if (supabaseAuth) {
   await registerPolicyVersionRoutes(app, supabaseAuth)
   await registerGovernanceRoutes(app, supabaseAuth)
   await registerComplianceRoutes(app, supabaseAuth)
+  await registerDelegationRoutes(app, supabaseAuth)
   await registerAlertRoutes(app)
   await registerPushRoutes(app)
+  await registerAgentTokenRoutes(app, supabaseAuth)
 }
 
 const stopWebhookWorker = supabaseAuth ? startWebhookWorker(supabaseAuth) : null
 const stopEmailQueueWorker = supabaseAuth ? startEmailQueueWorker(supabaseAuth) : null
 
-// Fast readiness probe — returns 200 as soon as the process is listening.
-// Use this as Render's "Health Check Path" so cold-start DB latency does not
-// cause the platform to restart the container before it is ready.
+// Fast readiness probe
 app.get('/readiness', async () => ({ ready: true }))
 
-app.get('/health', async () => {
-  const status = await runtime.getStatus()
-  const webhookStatus = runtime.getWebhookStatus()
-  const mem = process.memoryUsage()
-
+app.get('/health', async (_req, reply) => {
   let supabaseOk: boolean | null = null
   if (supabaseAuth) {
     try {
-      const { createSupabaseAdmin } = await import('./auth.js')
       const admin = createSupabaseAdmin(supabaseAuth)
-      const { error } = await admin.from('organizations').select('id').limit(1)
+      const { error } = await Promise.race([
+        admin.from('organizations').select('id').limit(1),
+        new Promise<{ error: Error }>((res) => setTimeout(() => res({ error: new Error('timeout') }), 3000)),
+      ])
       supabaseOk = !error
     } catch {
       supabaseOk = false
     }
   }
 
+  if (isProduction()) {
+    if (supabaseAuth && !supabaseOk) {
+      return reply.status(503).send({ ok: false, reason: 'supabase_unreachable' })
+    }
+    return { ok: true }
+  }
+
+  const status = await runtime.getStatus()
+  const webhookStatus = runtime.getWebhookStatus()
+
   return {
     ok: status.runtimeOnline,
     riskModel: {
       provider: status.riskProvider,
       connected: status.riskModelConnected,
-      endpoint: status.riskEndpoint ?? null,
     },
-    audit: {
-      count: status.auditCount,
-      supabaseConfigured: status.supabaseConfigured,
-    },
-    policies: {
-      count: status.policyCount,
-    },
+    audit: { count: status.auditCount },
+    policies: { count: status.policyCount },
     supabase: supabaseOk,
-    webhooks: {
-      configured: webhookStatus.configured,
-      urlCount: webhookStatus.urlCount,
-    },
+    webhooks: { configured: webhookStatus.configured },
     wsConnections: runtimeWsHub.connectedCount(),
     memory: {
       rssmb:      Math.round(mem.rss / 1024 / 1024),
@@ -300,7 +373,48 @@ app.get('/health', async () => {
 
 app.get('/v1/status', async () => runtime.getStatus())
 
-app.get('/v1/policies', async () => runtime.getPolicyEngine().getPolicies())
+// List orgs the caller belongs to, and ensure their personal org exists
+app.get('/v1/orgs', async (req, reply) => {
+  if (!supabaseAuth) return reply.send([])
+  const user = (req as SanctumReq).sanctumUser
+  if (!user) return reply.status(401).send({ error: 'unauthorized' })
+
+  const store = new ControlPlaneStore(supabaseAuth)
+  const admin = createSupabaseAdmin(supabaseAuth)
+
+  // Derive personal org ID from user UUID
+  const personalOrgId = 'personal-' + user.id.replace(/-/g, '').slice(0, 12)
+
+  // Ensure personal org exists (idempotent)
+  await admin.from('organizations').upsert(
+    { id: personalOrgId, name: user.email ?? personalOrgId },
+    { onConflict: 'id', ignoreDuplicates: true },
+  ).catch(() => {})
+  await admin.from('organization_members').upsert(
+    { org_id: personalOrgId, user_id: user.id, role: 'owner' },
+    { onConflict: 'org_id,user_id', ignoreDuplicates: true },
+  ).catch(() => {})
+
+  const orgIds = await store.getUserOrgIds(user.id)
+  const { data: orgs } = await admin
+    .from('organizations')
+    .select('id,name,created_at')
+    .in('id', orgIds.length ? orgIds : [personalOrgId])
+
+  return reply.send(orgs ?? [])
+})
+
+app.get('/v1/policies', async (req, reply) => {
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
+  const q = req.query as { org_id?: string }
+  const picked = pickScopedOrgs(scope, q.org_id)
+  if ('status' in picked) return reply.status(picked.status).send(picked.body)
+  if (scope === null && picked.orgIds.length === 0) {
+    return runtime.getPolicyEngine().getPolicies()
+  }
+  const orgIds = picked.orgIds.length > 0 ? picked.orgIds : scope ?? []
+  return mergePoliciesForOrgs(runtime, orgIds)
+})
 
 const policyPatchSchema = z.object({
   requiresVerification: z.boolean().optional(),
@@ -316,33 +430,93 @@ const policyActionSchema = z
   .max(256)
   .regex(/^[a-zA-Z0-9_.:@/-]+$/)
 
-app.post('/v1/policies', async (req) => {
+// Simulate what would happen for a given action — no audit log entry created
+app.post('/v1/policies/simulate', async (req) => {
+  const body = z
+    .object({
+      actor: z.string().min(1),
+      action: z.string().min(1),
+      context: z.record(z.unknown()).default({}),
+    })
+    .parse(req.body)
+  const request = ActionRequestSchema.parse(body)
+  const anomalyFlags = detectAnomalies(request)
+  const policyEval = runtime.getPolicyEngine().evaluate(request, false)
+  const risk = heuristicRiskFloor(request, anomalyFlags)
+  let decision: 'APPROVED' | 'BLOCKED' | 'REQUIRE_VERIFICATION' = 'APPROVED'
+  if (policyEval.violations.includes('policy_auto_block') || policyEval.violations.includes('condition_auto_block')) {
+    decision = 'BLOCKED'
+  } else if (policyEval.policy.requiresVerification || risk === 'high' || risk === 'medium' || anomalyFlags.length > 0) {
+    decision = 'REQUIRE_VERIFICATION'
+  }
+  return {
+    simulation: true,
+    decision,
+    risk,
+    policyPath: policyEval.policyPath,
+    anomalyFlags,
+    conditionMatched: policyEval.policyPath.includes('.condition['),
+    policyFlags: {
+      autoBlock: policyEval.policy.autoBlock,
+      requiresVerification: policyEval.policy.requiresVerification,
+      blockWhenOffline: policyEval.policy.blockWhenOffline,
+      allowedActors: policyEval.policy.allowedActors ?? [],
+      conditions: policyEval.policy.conditions ?? [],
+    },
+  }
+})
+
+app.post('/v1/policies', async (req, reply) => {
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
   const body = z
     .object({
       action: policyActionSchema,
+      org_id: z.string().min(1).max(128).optional(),
     })
     .merge(policyPatchSchema)
     .parse(req.body)
-  const { action, ...patch } = body
-  return runtime.getPolicyEngine().createPolicy(action, patch)
+  const picked = pickScopedOrgs(scope, body.org_id, { requireSingle: true })
+  if ('status' in picked) return reply.status(picked.status).send(picked.body)
+  const orgId = picked.orgIds[0]
+  const { action, org_id: _org, ...patch } = body
+  const key = policyStorageKey(action, orgId, scope)
+  return runtime.getPolicyEngine().createPolicy(key, patch)
 })
 
-app.patch('/v1/policies/:action', async (req) => {
+app.patch('/v1/policies/:action', async (req, reply) => {
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
   const action = policyActionSchema.parse((req.params as { action: string }).action)
+  const q = req.query as { org_id?: string }
   const body = policyPatchSchema.parse(req.body)
-  return await runtime.getPolicyEngine().updatePolicy(action, body)
+  const picked = pickScopedOrgs(scope, q.org_id, { requireSingle: true })
+  if ('status' in picked) return reply.status(picked.status).send(picked.body)
+  const key = policyStorageKey(action, picked.orgIds[0], scope)
+  return await runtime.getPolicyEngine().updatePolicy(key, body)
 })
 
-app.delete('/v1/policies/:action', async (req) => {
+app.delete('/v1/policies/:action', async (req, reply) => {
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
   const action = policyActionSchema.parse((req.params as { action: string }).action)
-  return runtime.getPolicyEngine().deletePolicy(action)
+  const q = req.query as { org_id?: string }
+  const picked = pickScopedOrgs(scope, q.org_id, { requireSingle: true })
+  if ('status' in picked) return reply.status(picked.status).send(picked.body)
+  const key = policyStorageKey(action, picked.orgIds[0], scope)
+  return runtime.getPolicyEngine().deletePolicy(key)
 })
 
-app.get('/v1/policies/export.yaml', async (_req, reply) => {
+app.get('/v1/policies/export.yaml', async (req, reply) => {
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
+  if (scope !== null) {
+    return reply.status(403).send({ error: 'org_scoped_export_forbidden' })
+  }
   return reply.type('text/yaml; charset=utf-8').send(runtime.exportPoliciesYaml())
 })
 
-app.post('/v1/policies/import.yaml', async (req) => {
+app.post('/v1/policies/import.yaml', async (req, reply) => {
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
+  if (scope !== null) {
+    return reply.status(403).send({ error: 'org_scoped_import_forbidden' })
+  }
   const body = z
     .object({
       yaml: z.string().min(1),
@@ -354,20 +528,30 @@ app.post('/v1/policies/import.yaml', async (req) => {
 
 app.get('/v1/webhooks/status', async () => runtime.getWebhookStatus())
 
-app.get('/v1/audit', async (req) => {
+app.get('/v1/audit', async (req, reply) => {
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
   const q = req.query as { limit?: string; org_id?: string }
   const limit = Math.min(500, Math.max(1, Number(q.limit ?? 50) || 50))
-  const orgId = q.org_id
-  return runtime.listAudit(limit, orgId)
+  const picked = pickScopedOrgs(scope, q.org_id)
+  if ('status' in picked) return reply.status(picked.status).send(picked.body)
+  return listScopedAudit(runtime, limit, picked.orgIds, scope)
 })
 
-app.get('/v1/verifications/:correlationId', async (req) => {
+app.get('/v1/verifications/:correlationId', async (req, reply) => {
   const { correlationId } = req.params as { correlationId: string }
-  return runtime.getVerificationStatus(correlationId)
+  const status = runtime.getVerificationStatus(correlationId)
+  if (!status) return reply.status(404).send({ error: 'not_found' })
+  // Scope-check: caller must belong to the org that owns this action
+  const entryOrgId = typeof status.context?.org_id === 'string' ? status.context.org_id : undefined
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
+  if (!assertAuditEntryScope(scope, entryOrgId, reply)) return
+  return status
 })
 
-app.get('/v1/orgs/:orgId/policies', async (req) => {
+app.get('/v1/orgs/:orgId/policies', async (req, reply) => {
   const { orgId } = req.params as { orgId: string }
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
+  if (!assertOrgAllowed(scope, orgId, reply)) return
   return runtime.getPoliciesForOrg(orgId)
 })
 
@@ -380,69 +564,112 @@ app.post('/v1/audit/:id/resolve', {
       decision: z.enum(['APPROVED', 'BLOCKED']),
       resolvedBy: z.string().optional(),
       note: z.string().optional(),
+      grantDurationMinutes: z.number().int().min(1).max(480).optional(), // up to 8 hours
     })
     .parse(req.body)
 
-  // Enforce org scope when Supabase auth is active.
-  if (supabaseAuth) {
-    const entry = runtime.getAuditStore().getById(id)
-    const entryOrgId =
-      entry && typeof entry.context?.org_id === 'string'
-        ? entry.context.org_id
-        : undefined
-    if (entryOrgId) {
-      const { ControlPlaneStore } = await import('./control-plane-store.js')
-      const store = new ControlPlaneStore(supabaseAuth)
-      const user = (req as { sanctumUser?: { id: string } }).sanctumUser
-      let allowedOrgs: string[] | null = null
-      if (user) {
-        allowedOrgs = await store.getUserOrgIds(user.id)
-      } else {
-        const key = Array.isArray(req.headers['x-sanctum-key'])
-          ? req.headers['x-sanctum-key'][0]
-          : req.headers['x-sanctum-key']
-        if (key?.startsWith('sk_sanctum_')) {
-          const orgId = await store.getApiKeyOrgId(key)
-          allowedOrgs = orgId ? [orgId] : []
-        }
-      }
-      if (allowedOrgs !== null && !allowedOrgs.includes(entryOrgId)) {
-        return reply.status(403).send({ error: 'org_forbidden' })
-      }
-    }
-  }
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
+  const entry = runtime.getAuditStore().getById(id)
+  const entryOrgId =
+    entry && typeof entry.context?.org_id === 'string' ? entry.context.org_id : undefined
+  if (!assertAuditEntryScope(scope, entryOrgId, reply)) return
 
   const result = await runtime.resolveAuditEntry(id, body)
   if (!result) {
     return reply.status(404).send({ error: 'audit_entry_not_found' })
   }
+
+  // Create a time-bounded grant so the agent isn't re-interrupted during the window
+  if (
+    body.decision === 'APPROVED' &&
+    body.grantDurationMinutes &&
+    supabaseAuth &&
+    entryOrgId
+  ) {
+    const who = body.resolvedBy ?? 'operator'
+    void createGrant(
+      supabaseAuth,
+      entryOrgId,
+      result.action,
+      result.actor,
+      who,
+      body.grantDurationMinutes,
+    ).catch(() => {})
+  }
+
   return result
 })
 
 // Tighter per-endpoint rate limits applied as route-level config
 app.post('/v1/actions/verify', {
-  config: { rateLimit: { max: 100, timeWindow: '1 minute', keyGenerator: rateLimitKey } },
-}, async (req) => {
+  config: {
+    rateLimit: {
+      max: 30,
+      timeWindow: '1 minute',
+      keyGenerator: (req: import('fastify').FastifyRequest) => {
+        // Rate-limit per actor field in body if present, otherwise fall back to IP
+        const body = req.body as Record<string, unknown> | null
+        const actor = typeof body?.actor === 'string' ? body.actor : null
+        const fwd = req.headers['x-forwarded-for']
+        const ip = Array.isArray(fwd) ? fwd[0] : (typeof fwd === 'string' ? fwd.split(',')[0].trim() : req.ip)
+        return actor ? `actor:${actor}` : (ip ?? req.ip)
+      },
+    },
+  },
+}, async (req, reply) => {
   const body = z
     .object({
-      actor: z.string(),
-      action: z.string(),
+      actor: z.string().max(512),
+      action: z.string().max(512),
       context: z.record(z.unknown()).default({}),
       offlineMode: z.boolean().optional(),
       correlationId: z.string().optional(),
     })
     .parse(req.body)
 
+  // Agent token: if present and valid, org_id is extracted from the signed token
+  // rather than trusted from context (prevents org impersonation)
+  const agentTokenRaw = extractAgentToken(req as { headers: Record<string, string | string[] | undefined> })
+  const agentClaims = agentTokenRaw ? verifyAgentToken(agentTokenRaw) : null
+  if (agentTokenRaw && !agentClaims) {
+    return reply.status(401).send({ error: 'invalid_agent_token' })
+  }
+
+  // Confirm token is not revoked (HMAC alone is insufficient — must check DB)
+  if (agentClaims && supabaseAuth) {
+    const adminClient = createSupabaseAdmin(supabaseAuth)
+    const revocationCheck = adminClient
+      .from('agent_registrations')
+      .select('id')
+      .eq('id', agentClaims.id)
+      .is('revoked_at', null)
+      .maybeSingle()
+    const { data: reg } = await Promise.race([
+      revocationCheck,
+      new Promise<{ data: null }>((res) => setTimeout(() => res({ data: null }), 2000)),
+    ])
+    if (!reg) return reply.status(401).send({ error: 'agent_token_revoked' })
+    void adminClient
+      .from('agent_registrations')
+      .update({ last_seen_at: new Date().toISOString() })
+      .eq('id', agentClaims.id)
+      .then(() => {})
+  }
+
   const request = ActionRequestSchema.parse({
     actor: body.actor,
     action: body.action,
-    context: body.context,
+    // Inject verified org_id so policy engine scopes correctly
+    context: agentClaims
+      ? { ...body.context, org_id: agentClaims.orgId }
+      : body.context,
   })
 
-  const orgId =
-    typeof body.context?.org_id === 'string' ? body.context.org_id : undefined
+  // orgId from token takes precedence over self-reported context value
+  const orgId = agentClaims?.orgId ??
+    (typeof body.context?.org_id === 'string' ? body.context.org_id : undefined)
 
-  const result = await traced(
+  let result = await traced(
     'action.verify',
     { actor: body.actor, action: body.action, org_id: orgId ?? '' },
     async (span) => {
@@ -457,6 +684,23 @@ app.post('/v1/actions/verify', {
     },
     req.id,
   )
+
+  // Time-bounded grant: if a previous approval granted this action for a window,
+  // auto-approve without interrupting the agent again
+  if (result.decision === 'REQUIRE_VERIFICATION' && supabaseAuth && orgId) {
+    try {
+      const grant = await checkActiveGrant(supabaseAuth, orgId, body.action, body.actor)
+      if (grant) {
+        const expiresStr = new Date(grant.expires_at).toLocaleTimeString()
+        const resolved = await runtime.resolveAuditEntry(result.id, {
+          decision: 'APPROVED',
+          resolvedBy: `grant:${grant.granted_by}`,
+          note: `Auto-approved by time-bounded grant (active until ${expiresStr})`,
+        })
+        if (resolved) result = resolved
+      }
+    } catch { /* non-fatal — fall through to normal verification flow */ }
+  }
 
   recordUsage(supabaseAuth, orgId, UsageMetrics.ACTION_VERIFY, 1, {
     action: body.action,
@@ -548,22 +792,43 @@ app.post('/v1/actions/verify', {
       metadata: { action: body.action, actor: body.actor, risk: result.risk, entryId: result.id },
     }).catch(() => {})
 
-    void getEntitlementEngine(supabaseAuth).getNotificationPrefs(orgId).then(async (prefs) => {
+    const entEngine = getEntitlementEngine(supabaseAuth)
+    void entEngine.getNotificationPrefs(orgId).then(async (prefs) => {
       if (prefs.email) {
         await sendVerificationEmail({
           to: prefs.email,
+          actionId: result.id,
           actor: body.actor,
           action: body.action,
+          context: body.context,
           risk: result.risk,
-          orgId,
-          dashboardUrl,
+          publicApiUrl: publicApiUrl ?? `http://localhost:${port}`,
         })
       }
     }).catch(() => {})
   }
 
-
   return result
+})
+
+// One-time email approve/deny link (no auth — HMAC token is the proof)
+app.get('/v1/verify-action', async (req, reply) => {
+  const { token } = req.query as { token?: string }
+  if (!token) return reply.status(400).send({ error: 'missing_token' })
+  const parsed = verifyToken(token)
+  if (!parsed) return reply.status(400).send({ error: 'invalid_or_expired_token' })
+  const result = await runtime.resolveAuditEntry(parsed.id, {
+    decision: parsed.decision,
+    resolvedBy: 'email-link',
+  })
+  if (!result) return reply.status(404).send({ error: 'verification_not_found' })
+  const verb = parsed.decision === 'APPROVED' ? 'Approved' : 'Blocked'
+  const color = parsed.decision === 'APPROVED' ? '#10b981' : '#ef4444'
+  const icon = parsed.decision === 'APPROVED' ? '✓' : '✗'
+  const escHtml = (s: string) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+  return reply.type('text/html').send(
+    `<!DOCTYPE html><html><body style="background:#070b14;font-family:Inter,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0"><div style="text-align:center;color:#f9fafb;max-width:400px;padding:2rem"><div style="font-size:56px;margin-bottom:12px">${icon}</div><h1 style="color:${color};margin:0 0 12px;font-size:28px">${verb}</h1><p style="color:#9ca3af;margin:0 0 8px">Action <strong style="color:#f9fafb">${escHtml(result.action)}</strong> has been ${verb.toLowerCase()}.</p><p style="color:#6b7280;font-size:13px">You can close this tab.</p></div></body></html>`
+  )
 })
 
 app.post('/analyze-action', async (req) => {
@@ -580,24 +845,25 @@ app.post('/analyze-action', async (req) => {
       ? { description: body.context }
       : (body.context ?? {})
 
-  const result = await runtime.verifyAction({
-    actor: body.actor,
-    action: body.action,
-    context,
-  })
+  // Use simulation path — no audit log entry written
+  const request = ActionRequestSchema.parse({ actor: body.actor, action: body.action, context })
+  const anomalyFlags = detectAnomalies(request)
+  const policyEval = runtime.getPolicyEngine().evaluate(request, false)
+  const risk = heuristicRiskFloor(request, anomalyFlags)
+  let decision: 'APPROVED' | 'BLOCKED' | 'REQUIRE_VERIFICATION' = 'APPROVED'
+  if (policyEval.violations.includes('policy_auto_block') || policyEval.violations.includes('condition_auto_block')) {
+    decision = 'BLOCKED'
+  } else if (policyEval.policy.requiresVerification || risk === 'high' || risk === 'medium' || anomalyFlags.length > 0) {
+    decision = 'REQUIRE_VERIFICATION'
+  }
 
   return {
-    risk: result.risk,
-    reason: result.reasoning,
-    recommendation:
-      result.decision === 'APPROVED'
-        ? 'approve'
-        : result.decision === 'BLOCKED'
-          ? 'block'
-          : 'require_verification',
-    decision: result.decision,
-    anomalyFlags: result.anomalyFlags,
-    offlineMode: result.offlineMode,
+    risk,
+    reason: policyEval.policy.reasoning ?? '',
+    recommendation: decision === 'APPROVED' ? 'approve' : decision === 'BLOCKED' ? 'block' : 'require_verification',
+    decision,
+    anomalyFlags,
+    offlineMode: false,
   }
 })
 

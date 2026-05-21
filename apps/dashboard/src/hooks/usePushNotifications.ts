@@ -1,89 +1,151 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { requestFcmToken, getFirebaseMessaging, onMessage } from '../lib/firebase'
+import { useCallback, useEffect, useState } from 'react'
 import { apiBaseUrl } from '../lib/api-url'
+import { pushSupported, urlBase64ToUint8Array } from '../lib/push'
 import { getAccessToken } from '../lib/supabase'
 
-const TOKEN_KEY = 'sanctum-fcm-token'
+const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY?.trim() ?? ''
 
-async function registerToken(orgId: string, token: string): Promise<void> {
-  const jwt = await getAccessToken()
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (jwt) headers['Authorization'] = `Bearer ${jwt}`
-  await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/push-subscriptions`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ token, deviceName: navigator.userAgent.slice(0, 100) }),
-  })
+type PushStatus = {
+  subscribed: boolean
+  permission: NotificationPermission | 'unsupported'
+  vapidConfigured: boolean
+  deviceCount: number
+  error: string | null
+  busy: boolean
 }
 
-async function unregisterToken(orgId: string, token: string): Promise<void> {
-  const jwt = await getAccessToken()
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (jwt) headers['Authorization'] = `Bearer ${jwt}`
-  await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/push-subscriptions`, {
-    method: 'DELETE',
-    headers,
-    body: JSON.stringify({ token }),
-  })
-}
+export function usePushNotifications(enabled: boolean): PushStatus & {
+  subscribe: () => Promise<boolean>
+  unsubscribe: () => Promise<boolean>
+} {
+  const [subscribed, setSubscribed] = useState(false)
+  const [deviceCount, setDeviceCount] = useState(0)
+  const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>(
+    pushSupported() ? Notification.permission : 'unsupported',
+  )
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
 
-export type PushPermissionState = 'default' | 'granted' | 'denied' | 'unsupported'
-
-export function usePushNotifications(orgId: string | null | undefined) {
-  const [permission, setPermission] = useState<PushPermissionState>('default')
-  const tokenRef = useRef<string | null>(null)
+  const refreshStatus = useCallback(async () => {
+    if (!enabled || !pushSupported()) return
+    try {
+      const token = await getAccessToken()
+      if (!token) return
+      const res = await fetch(`${apiBaseUrl}/v1/push/status`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) return
+      const body = (await res.json()) as { deviceCount?: number; vapidConfigured?: boolean }
+      setDeviceCount(body.deviceCount ?? 0)
+    } catch {
+      /* ignore */
+    }
+  }, [enabled])
 
   useEffect(() => {
-    if (!('Notification' in window)) {
-      setPermission('unsupported')
-      return
-    }
-    const current = Notification.permission as PushPermissionState
-    setPermission(current)
-    if (current === 'granted') {
-      tokenRef.current = localStorage.getItem(TOKEN_KEY)
-    }
-  }, [])
+    if (!enabled) return
+    setPermission(pushSupported() ? Notification.permission : 'unsupported')
+    void refreshStatus()
+  }, [enabled, refreshStatus])
 
-  // Listen for foreground messages and show a browser notification
-  useEffect(() => {
-    if (permission !== 'granted') return
-    const m = getFirebaseMessaging()
-    if (!m) return
-    const unsub = onMessage(m, (payload) => {
-      const title = payload.notification?.title ?? 'Sanctum Alert'
-      const body  = payload.notification?.body  ?? ''
-      if (Notification.permission === 'granted') {
-        new Notification(title, { body, icon: '/favicon-512.png', badge: '/favicon.png' })
+  const subscribe = useCallback(async () => {
+    if (!pushSupported()) {
+      setError('Push notifications are not supported in this browser.')
+      return false
+    }
+    if (!vapidPublicKey) {
+      setError('Push is not configured on this deployment (missing VAPID public key).')
+      return false
+    }
+
+    setBusy(true)
+    setError(null)
+    try {
+      const perm = await Notification.requestPermission()
+      setPermission(perm)
+      if (perm !== 'granted') {
+        setError('Notification permission denied.')
+        return false
       }
-    })
-    return unsub
-  }, [permission])
 
-  const enable = useCallback(async () => {
-    if (!orgId) return
-    if (!('Notification' in window)) return
+      const reg = await navigator.serviceWorker.ready
+      let sub = await reg.pushManager.getSubscription()
+      if (!sub) {
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+        })
+      }
 
-    const perm = await Notification.requestPermission()
-    setPermission(perm as PushPermissionState)
-    if (perm !== 'granted') return
+      const token = await getAccessToken()
+      if (!token) throw new Error('Sign in required')
 
-    const token = await requestFcmToken()
-    if (!token) return
+      const res = await fetch(`${apiBaseUrl}/v1/push/subscribe`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          subscription: sub.toJSON(),
+          userAgent: navigator.userAgent,
+        }),
+      })
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string; detail?: string }
+        throw new Error(body.detail ?? body.error ?? `Subscribe failed (${res.status})`)
+      }
 
-    tokenRef.current = token
-    localStorage.setItem(TOKEN_KEY, token)
-    await registerToken(orgId, token).catch((e) => console.warn('[push] register failed:', e))
-  }, [orgId])
+      setSubscribed(true)
+      await refreshStatus()
+      return true
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to enable push')
+      return false
+    } finally {
+      setBusy(false)
+    }
+  }, [refreshStatus])
 
-  const disable = useCallback(async () => {
-    if (!orgId) return
-    const token = tokenRef.current ?? localStorage.getItem(TOKEN_KEY)
-    if (!token) return
-    await unregisterToken(orgId, token).catch((e) => console.warn('[push] unregister failed:', e))
-    localStorage.removeItem(TOKEN_KEY)
-    tokenRef.current = null
-  }, [orgId])
+  const unsubscribe = useCallback(async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      const reg = await navigator.serviceWorker.ready
+      const sub = await reg.pushManager.getSubscription()
+      if (sub) {
+        const token = await getAccessToken()
+        if (token) {
+          await fetch(`${apiBaseUrl}/v1/push/unsubscribe`, {
+            method: 'DELETE',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ endpoint: sub.endpoint }),
+          })
+        }
+        await sub.unsubscribe()
+      }
+      setSubscribed(false)
+      await refreshStatus()
+      return true
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to disable push')
+      return false
+    } finally {
+      setBusy(false)
+    }
+  }, [refreshStatus])
 
-  return { permission, enable, disable }
+  return {
+    subscribed,
+    permission,
+    vapidConfigured: Boolean(vapidPublicKey),
+    deviceCount,
+    error,
+    busy,
+    subscribe,
+    unsubscribe,
+  }
 }

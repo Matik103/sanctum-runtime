@@ -13,6 +13,7 @@ import {
   defaultDescription,
   organizationJsonLd,
   pageSeo,
+  searchVerificationMeta,
   siteName,
   softwareApplicationJsonLd,
 } from "@/lib/seo";
@@ -40,7 +41,9 @@ function NotFoundComponent() {
 }
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
-  console.error(error);
+  if (import.meta.env.DEV) {
+    console.error(error);
+  }
   const router = useRouter();
 
   return (
@@ -84,6 +87,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       ...defaultHead.meta,
+      ...searchVerificationMeta(),
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { name: "robots", content: "index, follow" },

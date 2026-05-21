@@ -37,10 +37,14 @@ const PLAN_DEFAULTS: Record<PlanId, PlanLimits> = {
 }
 
 export class EntitlementEngine {
-  constructor(private cfg: SupabaseAuthConfig) {}
+  private _admin: ReturnType<typeof createSupabaseAdmin>
+
+  constructor(private cfg: SupabaseAuthConfig) {
+    this._admin = createSupabaseAdmin(cfg)
+  }
 
   private admin() {
-    return createSupabaseAdmin(this.cfg)
+    return this._admin
   }
 
   async getPlanId(orgId: string): Promise<PlanId> {
@@ -117,10 +121,11 @@ export class EntitlementEngine {
       from.setHours(0, 0, 0, 0)
       const { data } = await this.admin()
         .from('usage_events')
-        .select('quantity')
+        .select('quantity.sum()')
         .eq('org_id', orgId)
         .gte('recorded_at', from.toISOString())
-      return (data ?? []).reduce((sum, r) => sum + (Number(r.quantity) || 0), 0)
+        .single()
+      return Number((data as unknown as { sum: number } | null)?.sum ?? 0)
     } catch {
       return 0
     }

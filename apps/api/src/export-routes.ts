@@ -4,6 +4,8 @@ import { createSupabaseAdmin, getSupabaseAuthConfig } from './auth.js'
 import { ControlPlaneStore } from './control-plane-store.js'
 import { getEntitlementEngine } from './entitlements.js'
 import { encryptSecret, decryptSecret, getEncryptionKey } from './crypto-utils.js'
+import { isProduction, maskWebhookUrl } from './security.js'
+import { queryWithTimeout, SUPABASE_ROW_LIMITS, verifyOrgMembership } from './supabase-limits.js'
 
 type SanctumReq = FastifyRequest & {
   sanctumUser?: { id: string; email?: string }
@@ -13,6 +15,8 @@ function headerKey(req: FastifyRequest): string | undefined {
   const v = req.headers['x-sanctum-key']
   return Array.isArray(v) ? v[0] : v
 }
+
+// DB-backed rate limit: persisted across redeploys via export_audit table
 
 // Cache for OIDC discovery documents: issuer → { tokenEndpoint, fetchedAt }
 const oidcDiscoveryCache = new Map<string, { tokenEndpoint: string; authorizationEndpoint: string; fetchedAt: number }>()
@@ -61,85 +65,193 @@ export async function registerExportRoutes(app: FastifyInstance) {
     return null
   }
 
+  async function resolveOrgIdForExport(
+    admin: ReturnType<typeof createSupabaseAdmin>,
+    req: SanctumReq,
+    orgIdParam: string,
+  ): Promise<{ orgId: string | null; warning?: string }> {
+    if (req.sanctumUser) {
+      return verifyOrgMembership(admin, req.sanctumUser.id, orgIdParam)
+    }
+    const key = headerKey(req)
+    if (key?.startsWith('sk_sanctum_')) {
+      try {
+        const keyOrg = await store.getApiKeyOrgId(key)
+        if (keyOrg === orgIdParam) return { orgId: orgIdParam }
+        return { orgId: null }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        return { orgId: null, warning: `api_key: ${msg}` }
+      }
+    }
+    return { orgId: null }
+  }
+
   // ── GDPR Data Export ────────────────────────────────────────────────────────
 
   // GET /v1/orgs/:orgId/export.json
   app.get('/v1/orgs/:orgId/export.json', async (req, reply) => {
     const { orgId } = req.params as { orgId: string }
-    const resolvedOrg = await resolveOrgId(req as SanctumReq, orgId)
-    if (!resolvedOrg) return reply.status(403).send({ error: 'org_forbidden' })
+    const warnings: string[] = []
 
-    const admin = createSupabaseAdmin(cfg)
+    try {
+      const admin = createSupabaseAdmin(cfg)
 
-    // Rate limit: one export per hour per org — checked in DB so it survives redeploys
-    const { data: lastExport } = await admin
-      .from('export_audit')
-      .select('created_at')
-      .eq('org_id', orgId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    if (lastExport?.created_at) {
-      const lastMs = new Date(lastExport.created_at as string).getTime()
-      const elapsed = Date.now() - lastMs
-      if (elapsed < 3_600_000) {
-        const nextMs = 3_600_000 - elapsed
-        return reply.status(429).send({
-          error: 'export_rate_limited',
-          retryAfterMs: nextMs,
-          retryAfterMinutes: Math.ceil(nextMs / 60_000),
-        })
+      const membership = await resolveOrgIdForExport(admin, req as SanctumReq, orgId)
+      if (membership.warning) warnings.push(membership.warning)
+      if (!membership.orgId) {
+        if (membership.warning) {
+          return reply.status(503).send({
+            error: 'export_unavailable',
+            warnings,
+            hint: 'Could not verify org membership (database slow or timed out). Retry in a few minutes.',
+          })
+        }
+        return reply.status(403).send({ error: 'org_forbidden' })
       }
+
+      // Rate limit: one export per hour per org (best-effort — skip if table slow/missing)
+      try {
+        const { data: lastExport, error: rateErr } = await Promise.race([
+          admin
+            .from('export_audit')
+            .select('created_at')
+            .eq('org_id', orgId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('export_audit rate check timed out')), 4000),
+          ),
+        ])
+        if (rateErr) {
+          warnings.push(`export_audit: ${rateErr.message}`)
+        } else if (lastExport?.created_at) {
+          const lastMs = new Date(lastExport.created_at as string).getTime()
+          const elapsed = Date.now() - lastMs
+          if (elapsed < 3_600_000) {
+            const nextMs = 3_600_000 - elapsed
+            return reply.status(429).send({
+              error: 'export_rate_limited',
+              retryAfterMs: nextMs,
+              retryAfterMinutes: Math.ceil(nextMs / 60_000),
+            })
+          }
+        }
+      } catch (err) {
+        warnings.push(
+          `export_audit: ${err instanceof Error ? err.message : String(err)}`,
+        )
+      }
+
+      const exportedAt = new Date().toISOString()
+
+      // Base schema columns only — avoids failures when newer migrations not applied yet.
+      const auditOut = await queryWithTimeout(
+        'audit_events',
+        () =>
+          admin
+            .from('audit_events')
+            .select(
+              'id,correlation_id,org_id,actor,action,decision,risk,reasoning,created_at,resolved_at',
+            )
+            .eq('org_id', orgId)
+            .order('created_at', { ascending: false })
+            .limit(SUPABASE_ROW_LIMITS.auditExport),
+      )
+      const runtimesOut = await queryWithTimeout(
+        'registered_runtimes',
+        () =>
+          admin
+            .from('registered_runtimes')
+            .select('id,name,status,mode,region,connected_at,last_seen_at,trust_score')
+            .eq('org_id', orgId),
+      )
+      const apiKeysOut = await queryWithTimeout(
+        'api_keys',
+        () =>
+          admin
+            .from('api_keys')
+            .select('id,name,key_prefix,org_id,created_at,last_used_at,revoked_at')
+            .eq('org_id', orgId),
+      )
+      const usageOut = await queryWithTimeout(
+        'usage_events',
+        () =>
+          admin
+            .from('usage_events')
+            .select('metric,quantity,recorded_at')
+            .eq('org_id', orgId)
+            .order('recorded_at', { ascending: false })
+            .limit(SUPABASE_ROW_LIMITS.usageExport),
+      )
+
+      const auditEvents = auditOut.data
+      const runtimes = runtimesOut.data
+      const apiKeys = apiKeysOut.data
+      const usageEvents = usageOut.data
+      for (const w of [auditOut, runtimesOut, apiKeysOut, usageOut]) {
+        if (w.error) warnings.push(w.error)
+      }
+
+      const totalRecords = auditEvents.length + runtimes.length + apiKeys.length + usageEvents.length
+
+      // Log export in audit table (best-effort)
+      try {
+        const { error: logErr } = await admin.from('export_audit').insert({
+          org_id: orgId,
+          requested_by: (req as SanctumReq).sanctumUser?.email ?? 'api_key',
+          export_type: 'full',
+          record_count: totalRecords,
+        })
+        if (logErr) warnings.push(`export_audit log: ${logErr.message}`)
+      } catch (err) {
+        warnings.push(
+          `export_audit log: ${err instanceof Error ? err.message : String(err)}`,
+        )
+      }
+
+      const payload = {
+        export_version: '1.0',
+        exported_at: exportedAt,
+        org_id: orgId,
+        ...(warnings.length > 0 ? { warnings } : {}),
+        record_counts: {
+          audit_events: auditEvents.length,
+          runtimes: runtimes.length,
+          api_keys: apiKeys.length,
+          usage_events: usageEvents.length,
+        },
+        data: {
+          audit_events: auditEvents,
+          runtimes,
+          api_keys: apiKeys,
+          usage_events: usageEvents,
+        },
+      }
+
+      return reply
+        .header('Content-Disposition', `attachment; filename="sanctum-export-${orgId}-${exportedAt.slice(0, 10)}.json"`)
+        .type('application/json')
+        .send(JSON.stringify(payload, null, 2))
+    } catch (err) {
+      req.log.error({ err }, 'GDPR export failed')
+      const msg = err instanceof Error ? err.message : String(err)
+      warnings.push(msg)
+      // Still return a downloadable file so operators get something + error context.
+      const fallback = {
+        export_version: '1.0',
+        exported_at: new Date().toISOString(),
+        org_id: orgId,
+        warnings,
+        record_counts: { audit_events: 0, runtimes: 0, api_keys: 0, usage_events: 0 },
+        data: { audit_events: [], runtimes: [], api_keys: [], usage_events: [] },
+      }
+      return reply
+        .header('Content-Disposition', `attachment; filename="sanctum-export-${orgId}-partial.json"`)
+        .type('application/json')
+        .send(JSON.stringify(fallback, null, 2))
     }
-
-    const exportedAt = new Date().toISOString()
-
-    // Fetch all org data in parallel
-    const [auditRes, runtimesRes, apiKeysRes, usageRes] = await Promise.allSettled([
-      admin.from('audit_events').select('*').eq('org_id', orgId).order('created_at', { ascending: false }).limit(10000),
-      admin.from('registered_runtimes').select('id,name,status,mode,region,connected_at,last_seen_at,attestation_report,trust_score').eq('org_id', orgId),
-      admin.from('api_keys').select('id,name,key_prefix,org_id,created_at,last_used_at,revoked_at').eq('org_id', orgId),
-      admin.from('usage_events').select('metric,quantity,metadata,recorded_at').eq('org_id', orgId).order('recorded_at', { ascending: false }).limit(50000),
-    ])
-
-    const auditEvents = auditRes.status === 'fulfilled' ? (auditRes.value.data ?? []) : []
-    const runtimes = runtimesRes.status === 'fulfilled' ? (runtimesRes.value.data ?? []) : []
-    const apiKeys = apiKeysRes.status === 'fulfilled' ? (apiKeysRes.value.data ?? []) : []
-    const usageEvents = usageRes.status === 'fulfilled' ? (usageRes.value.data ?? []) : []
-
-    const totalRecords = auditEvents.length + runtimes.length + apiKeys.length + usageEvents.length
-
-    // Log export in audit table
-    await admin.from('export_audit').insert({
-      org_id: orgId,
-      requested_by: (req as SanctumReq).sanctumUser?.email ?? 'api_key',
-      export_type: 'full',
-      record_count: totalRecords,
-    }).catch(() => { /* best-effort */ })
-
-    const payload = {
-      export_version: '1.0',
-      exported_at: exportedAt,
-      org_id: orgId,
-      record_counts: {
-        audit_events: auditEvents.length,
-        runtimes: runtimes.length,
-        api_keys: apiKeys.length,
-        usage_events: usageEvents.length,
-      },
-      data: {
-        audit_events: auditEvents,
-        runtimes,
-        api_keys: apiKeys, // no key_hash included
-        usage_events: usageEvents,
-      },
-    }
-
-    return reply
-      .header('Content-Disposition', `attachment; filename="sanctum-export-${orgId}-${exportedAt.slice(0, 10)}.json"`)
-      .type('application/json')
-      .send(JSON.stringify(payload, null, 2))
   })
 
   // GET /v1/orgs/:orgId/export/history
@@ -345,19 +457,39 @@ export async function registerExportRoutes(app: FastifyInstance) {
       return reply.status(502).send({ error: 'token_exchange_error', detail: err instanceof Error ? err.message : String(err) })
     }
 
-    // Parse JWT claims from id_token (no signature verification — we fetched it directly from the IDP)
+    // Decode JWT claims from id_token.
+    // Signature verification is omitted because we received this token directly
+    // from the IDP token_endpoint over TLS — it cannot be forged in transit.
+    // We DO validate iss, aud, and exp to prevent token reuse and misconfiguration.
     let idClaims: Record<string, unknown> = {}
     const idToken = tokenResponse['id_token'] as string | undefined
     if (idToken) {
       try {
         const parts = idToken.split('.')
         if (parts.length >= 2) {
-          const payload = parts[1]
-          // Base64url → base64
-          const b64 = payload.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(payload.length / 4) * 4, '=')
+          const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(parts[1].length / 4) * 4, '=')
           idClaims = JSON.parse(Buffer.from(b64, 'base64').toString('utf8')) as Record<string, unknown>
         }
-      } catch { /* best-effort, continue with empty claims */ }
+      } catch { /* malformed JWT — idClaims stays empty, identity check below will catch it */ }
+    }
+
+    // Validate standard claims — reject tokens that look replayed or misconfigured
+    const now = Math.floor(Date.now() / 1000)
+    const iss = idClaims['iss'] as string | undefined
+    const aud = idClaims['aud'] as string | string[] | undefined
+    const exp = idClaims['exp'] as number | undefined
+    const expectedIss = (ssoConfig.oidc_issuer as string).replace(/\/$/, '')
+    const clientId = ssoConfig.oidc_client_id as string
+
+    if (iss && iss.replace(/\/$/, '') !== expectedIss) {
+      return reply.status(401).send({ error: 'sso_token_issuer_mismatch', expected: expectedIss, got: iss })
+    }
+    const audList = Array.isArray(aud) ? aud : (aud ? [aud] : [])
+    if (audList.length > 0 && !audList.includes(clientId)) {
+      return reply.status(401).send({ error: 'sso_token_audience_mismatch' })
+    }
+    if (exp && exp < now) {
+      return reply.status(401).send({ error: 'sso_token_expired' })
     }
 
     // Apply attribute_map if provided (maps IDP claim names to Sanctum fields)
@@ -379,9 +511,9 @@ export async function registerExportRoutes(app: FastifyInstance) {
     try {
       const identEmail = email ?? `${sub}@sso.local`
 
-      // Try to find existing user by email
-      const { data: existingUsers } = await admin.auth.admin.listUsers({ page: 1, perPage: 1 })
-      const existingUser = existingUsers?.users?.find((u) => u.email === identEmail)
+      // Look up existing user by email using admin API
+      const { data: existingUserData } = await admin.auth.admin.getUserByEmail(identEmail)
+      const existingUser = existingUserData?.user ?? null
 
       let userId: string
       if (existingUser) {
@@ -457,7 +589,19 @@ export async function registerExportRoutes(app: FastifyInstance) {
       .eq('org_id', orgId)
       .maybeSingle()
 
-    return data ?? {}
+    if (!data) return {
+      notification_email: null,
+      slack_webhook_configured: false,
+      notification_webhook_configured: false,
+      quota_warning_pct: 80,
+    }
+    return {
+      notification_email: data.notification_email,
+      // Never return raw webhook URLs to the client — just whether they're set
+      slack_webhook_configured: Boolean(data.slack_webhook_url),
+      notification_webhook_configured: Boolean(data.notification_webhook_url),
+      quota_warning_pct: data.quota_warning_pct ?? 80,
+    }
   })
 
   // PATCH /v1/orgs/:orgId/notifications
@@ -468,6 +612,7 @@ export async function registerExportRoutes(app: FastifyInstance) {
 
     const body = z.object({
       notification_email: z.string().email().nullable().optional(),
+      // Webhooks: omit key = keep existing; null = clear; string = update
       slack_webhook_url: z.string().url().nullable().optional(),
       notification_webhook_url: z.string().url().nullable().optional(),
       quota_warning_pct: z.number().int().min(50).max(100).optional(),
@@ -476,12 +621,24 @@ export async function registerExportRoutes(app: FastifyInstance) {
     const admin = createSupabaseAdmin(cfg)
     const { data, error } = await admin
       .from('org_plans')
-      .update({ ...body, updated_at: new Date().toISOString() })
-      .eq('org_id', orgId)
+      .upsert(
+        { org_id: orgId, ...body, updated_at: new Date().toISOString() },
+        { onConflict: 'org_id', ignoreDuplicates: false },
+      )
       .select('notification_email,slack_webhook_url,notification_webhook_url,quota_warning_pct')
       .single()
 
-    if (error) return reply.status(500).send({ error: 'notification_prefs_failed', detail: error.message })
-    return data
+    if (error) {
+      return reply.status(500).send({
+        error: 'notification_prefs_failed',
+        ...(!isProduction() && { detail: error.message }),
+      })
+    }
+    return {
+      notification_email: data.notification_email,
+      slack_webhook_configured: Boolean(data.slack_webhook_url),
+      notification_webhook_configured: Boolean(data.notification_webhook_url),
+      quota_warning_pct: data.quota_warning_pct ?? 80,
+    }
   })
 }

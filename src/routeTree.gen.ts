@@ -10,16 +10,28 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WhatIsSanctumRuntimeRouteImport } from './routes/what-is-sanctum-runtime'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SecurityRouteImport } from './routes/security'
 import { Route as SdkRouteImport } from './routes/sdk'
+import { Route as RefundRouteImport } from './routes/refund'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as GlossaryRouteImport } from './routes/glossary'
 import { Route as DocsRouteImport } from './routes/docs'
+import { Route as CookiesRouteImport } from './routes/cookies'
+import { Route as ContactRouteImport } from './routes/contact'
+import { Route as BillingRouteImport } from './routes/billing'
 import { Route as ArchitectureRouteImport } from './routes/architecture'
 import { Route as IndexRouteImport } from './routes/index'
 
 const WhatIsSanctumRuntimeRoute = WhatIsSanctumRuntimeRouteImport.update({
   id: '/what-is-sanctum-runtime',
   path: '/what-is-sanctum-runtime',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SecurityRoute = SecurityRouteImport.update({
@@ -32,6 +44,21 @@ const SdkRoute = SdkRouteImport.update({
   path: '/sdk',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RefundRoute = RefundRouteImport.update({
+  id: '/refund',
+  path: '/refund',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GlossaryRoute = GlossaryRouteImport.update({
   id: '/glossary',
   path: '/glossary',
@@ -40,6 +67,21 @@ const GlossaryRoute = GlossaryRouteImport.update({
 const DocsRoute = DocsRouteImport.update({
   id: '/docs',
   path: '/docs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CookiesRoute = CookiesRouteImport.update({
+  id: '/cookies',
+  path: '/cookies',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BillingRoute = BillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ArchitectureRoute = ArchitectureRouteImport.update({
@@ -56,29 +98,50 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/architecture': typeof ArchitectureRoute
+  '/billing': typeof BillingRoute
+  '/contact': typeof ContactRoute
+  '/cookies': typeof CookiesRoute
   '/docs': typeof DocsRoute
   '/glossary': typeof GlossaryRoute
+  '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
+  '/refund': typeof RefundRoute
   '/sdk': typeof SdkRoute
   '/security': typeof SecurityRoute
+  '/terms': typeof TermsRoute
   '/what-is-sanctum-runtime': typeof WhatIsSanctumRuntimeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/architecture': typeof ArchitectureRoute
+  '/billing': typeof BillingRoute
+  '/contact': typeof ContactRoute
+  '/cookies': typeof CookiesRoute
   '/docs': typeof DocsRoute
   '/glossary': typeof GlossaryRoute
+  '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
+  '/refund': typeof RefundRoute
   '/sdk': typeof SdkRoute
   '/security': typeof SecurityRoute
+  '/terms': typeof TermsRoute
   '/what-is-sanctum-runtime': typeof WhatIsSanctumRuntimeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/architecture': typeof ArchitectureRoute
+  '/billing': typeof BillingRoute
+  '/contact': typeof ContactRoute
+  '/cookies': typeof CookiesRoute
   '/docs': typeof DocsRoute
   '/glossary': typeof GlossaryRoute
+  '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
+  '/refund': typeof RefundRoute
   '/sdk': typeof SdkRoute
   '/security': typeof SecurityRoute
+  '/terms': typeof TermsRoute
   '/what-is-sanctum-runtime': typeof WhatIsSanctumRuntimeRoute
 }
 export interface FileRouteTypes {
@@ -86,38 +149,66 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/architecture'
+    | '/billing'
+    | '/contact'
+    | '/cookies'
     | '/docs'
     | '/glossary'
+    | '/pricing'
+    | '/privacy'
+    | '/refund'
     | '/sdk'
     | '/security'
+    | '/terms'
     | '/what-is-sanctum-runtime'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/architecture'
+    | '/billing'
+    | '/contact'
+    | '/cookies'
     | '/docs'
     | '/glossary'
+    | '/pricing'
+    | '/privacy'
+    | '/refund'
     | '/sdk'
     | '/security'
+    | '/terms'
     | '/what-is-sanctum-runtime'
   id:
     | '__root__'
     | '/'
     | '/architecture'
+    | '/billing'
+    | '/contact'
+    | '/cookies'
     | '/docs'
     | '/glossary'
+    | '/pricing'
+    | '/privacy'
+    | '/refund'
     | '/sdk'
     | '/security'
+    | '/terms'
     | '/what-is-sanctum-runtime'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ArchitectureRoute: typeof ArchitectureRoute
+  BillingRoute: typeof BillingRoute
+  ContactRoute: typeof ContactRoute
+  CookiesRoute: typeof CookiesRoute
   DocsRoute: typeof DocsRoute
   GlossaryRoute: typeof GlossaryRoute
+  PricingRoute: typeof PricingRoute
+  PrivacyRoute: typeof PrivacyRoute
+  RefundRoute: typeof RefundRoute
   SdkRoute: typeof SdkRoute
   SecurityRoute: typeof SecurityRoute
+  TermsRoute: typeof TermsRoute
   WhatIsSanctumRuntimeRoute: typeof WhatIsSanctumRuntimeRoute
 }
 
@@ -128,6 +219,13 @@ declare module '@tanstack/react-router' {
       path: '/what-is-sanctum-runtime'
       fullPath: '/what-is-sanctum-runtime'
       preLoaderRoute: typeof WhatIsSanctumRuntimeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/security': {
@@ -144,6 +242,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SdkRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/refund': {
+      id: '/refund'
+      path: '/refund'
+      fullPath: '/refund'
+      preLoaderRoute: typeof RefundRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/glossary': {
       id: '/glossary'
       path: '/glossary'
@@ -156,6 +275,27 @@ declare module '@tanstack/react-router' {
       path: '/docs'
       fullPath: '/docs'
       preLoaderRoute: typeof DocsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cookies': {
+      id: '/cookies'
+      path: '/cookies'
+      fullPath: '/cookies'
+      preLoaderRoute: typeof CookiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/billing': {
+      id: '/billing'
+      path: '/billing'
+      fullPath: '/billing'
+      preLoaderRoute: typeof BillingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/architecture': {
@@ -178,10 +318,17 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ArchitectureRoute: ArchitectureRoute,
+  BillingRoute: BillingRoute,
+  ContactRoute: ContactRoute,
+  CookiesRoute: CookiesRoute,
   DocsRoute: DocsRoute,
   GlossaryRoute: GlossaryRoute,
+  PricingRoute: PricingRoute,
+  PrivacyRoute: PrivacyRoute,
+  RefundRoute: RefundRoute,
   SdkRoute: SdkRoute,
   SecurityRoute: SecurityRoute,
+  TermsRoute: TermsRoute,
   WhatIsSanctumRuntimeRoute: WhatIsSanctumRuntimeRoute,
 }
 export const routeTree = rootRouteImport

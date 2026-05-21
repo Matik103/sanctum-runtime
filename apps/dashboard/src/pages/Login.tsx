@@ -6,64 +6,113 @@ import {
   Mail,
   Shield,
   ShieldCheck,
-  User,
+  UserCircle,
   Zap,
+  ArrowLeft,
 } from 'lucide-react'
-import { docsUrl } from '../lib/site-links'
+import { LegalFooter } from '../components/LegalFooter'
+import { sanitizeApiError } from '../lib/sanitize-error'
+import { getOAuthRedirectUrl, markOauthIntent, type OauthProvider } from '../lib/oauth'
 import { getSupabase } from '../lib/supabase'
+import { signupMetadata, validateSignupForm, type AccountKind } from '../lib/signup'
 import '../styles/auth.css'
 
-type Portal = 'operator' | 'enterprise'
-type AuthTab = 'signin' | 'signup'
+/** Default landing: short individual sign-in. Other flows expand the card. */
+type AuthPanel = 'signin' | 'signup-individual' | 'signup-organization' | 'sso'
 
-const SSO_PROVIDERS = [
-  { id: 'google' as const, label: 'Google Workspace' },
-  { id: 'azure' as const, label: 'Microsoft Entra ID' },
-  { id: 'github' as const, label: 'GitHub Enterprise' },
+const SSO_PROVIDERS: { id: OauthProvider; label: string; hint: string }[] = [
+  { id: 'google', label: 'Google', hint: 'Google Cloud / Workspace accounts' },
+  { id: 'github', label: 'GitHub', hint: 'GitHub.com accounts' },
 ]
 
 export function Login() {
-  const [portal, setPortal] = useState<Portal>('operator')
-  const [tab, setTab] = useState<AuthTab>('signin')
+  const [panel, setPanel] = useState<AuthPanel>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [organizationName, setOrganizationName] = useState('')
+  const [primaryContactName, setPrimaryContactName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  const submitCredentials = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const isCompact = panel === 'signin'
+
+  const resetFormErrors = () => {
     setError(null)
     setMessage(null)
+  }
+
+  const goToPanel = (next: AuthPanel) => {
+    setPanel(next)
+    resetFormErrors()
+  }
+
+  const submitCredentials = async (e: React.FormEvent) => {
+    e.preventDefault()
+    resetFormErrors()
     const sb = getSupabase()
     if (!sb) {
       setError('Authentication is not configured on this deployment.')
       return
     }
 
+    const isSignup = panel === 'signup-individual' || panel === 'signup-organization'
+    const accountKind: AccountKind =
+      panel === 'signup-organization' ? 'organization' : 'individual'
+
+    if (isSignup) {
+      const validationError = validateSignupForm({
+        accountKind,
+        email,
+        password,
+        confirmPassword,
+        organizationName,
+        primaryContactName,
+      })
+      if (validationError) {
+        setError(validationError)
+        return
+      }
+    }
+
     setBusy(true)
     try {
-      if (tab === 'signup') {
+      if (isSignup) {
+        const meta =
+          accountKind === 'organization'
+            ? signupMetadata('organization', { organizationName, primaryContactName })
+            : signupMetadata('individual', {})
+
         const { error: err } = await sb.auth.signUp({
-          email,
+          email: email.trim(),
           password,
-          options: { emailRedirectTo: window.location.origin },
+          options: { data: meta },
         })
         if (err) throw err
-        setMessage('Account created. Check your email if confirmation is required, then sign in.')
-        setTab('signin')
+        setMessage(
+          accountKind === 'organization'
+            ? 'Organization account created. Confirm your email if required, then sign in.'
+            : 'Account created. Confirm your email if required, then sign in.',
+        )
+        setPassword('')
+        setConfirmPassword('')
+        goToPanel('signin')
       } else {
-        const { error: err } = await sb.auth.signInWithPassword({ email, password })
+        const { error: err } = await sb.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        })
         if (err) throw err
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Authentication failed')
+      setError(sanitizeApiError(err, 'Authentication failed'))
     } finally {
       setBusy(false)
     }
   }
 
-  const signInWithSso = async (provider: 'google' | 'github' | 'azure') => {
+  const signInWithSso = async (provider: OauthProvider) => {
     setError(null)
     const sb = getSupabase()
     if (!sb) {
@@ -73,19 +122,57 @@ export function Login() {
 
     setBusy(true)
     try {
+      markOauthIntent('enterprise', provider)
       const { error: err } = await sb.auth.signInWithOAuth({
-        provider: provider === 'azure' ? 'azure' : provider,
+        provider,
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: getOAuthRedirectUrl(),
+          data: { portal_type: 'enterprise', auth_provider: provider, signup_type: 'individual' },
+          ...(provider === 'google'
+            ? { queryParams: { prompt: 'select_account' } }
+            : { scopes: 'read:user user:email' }),
         },
       })
       if (err) throw err
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'SSO sign-in failed. Contact your administrator.')
+      setError(sanitizeApiError(err, 'SSO sign-in failed. Contact your administrator.'))
     } finally {
       setBusy(false)
     }
   }
+
+  const title =
+    panel === 'signin'
+      ? 'Operator sign in'
+      : panel === 'signup-individual'
+        ? 'Create individual account'
+        : panel === 'signup-organization'
+          ? 'Register your organization'
+          : 'Company SSO'
+
+  const subtitle =
+    panel === 'signin'
+      ? 'Access the control plane to review verifications, policies, and audit logs.'
+      : panel === 'signup-individual'
+        ? 'Personal workspace for solo operators and developers.'
+        : panel === 'signup-organization'
+          ? 'You will be the account owner (primary contact).'
+          : 'Sign in with Google or GitHub when your admin mapped your email domain.'
+
+  const submitLabel =
+    panel === 'signin'
+      ? busy
+        ? 'Authenticating…'
+        : 'Sign in to control plane'
+      : panel === 'signup-individual'
+        ? busy
+          ? 'Please wait…'
+          : 'Create individual account'
+        : panel === 'signup-organization'
+          ? busy
+            ? 'Please wait…'
+            : 'Create organization account'
+          : ''
 
   return (
     <div className="auth-root">
@@ -142,133 +229,26 @@ export function Login() {
         </aside>
 
         <div className="auth-panel">
-          <div className="auth-glass">
-            <div className="auth-mode-switch" role="tablist" aria-label="Portal type">
+          <div className={`auth-glass ${isCompact ? 'auth-glass--compact' : 'auth-glass--expanded'}`}>
+            {!isCompact && (
               <button
                 type="button"
-                role="tab"
-                aria-selected={portal === 'operator'}
-                className={`auth-mode-btn ${portal === 'operator' ? 'active' : ''}`}
-                onClick={() => {
-                  setPortal('operator')
-                  setError(null)
-                }}
+                className="auth-back"
+                onClick={() => goToPanel('signin')}
               >
-                <User size={15} />
-                Operator
+                <ArrowLeft size={14} />
+                Back to sign in
               </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={portal === 'enterprise'}
-                className={`auth-mode-btn ${portal === 'enterprise' ? 'active' : ''}`}
-                onClick={() => {
-                  setPortal('enterprise')
-                  setError(null)
-                }}
-              >
-                <Building2 size={15} />
-                Enterprise
-              </button>
-            </div>
+            )}
 
-            {portal === 'operator' ? (
-              <>
-                <div className="auth-tabs" role="tablist" aria-label="Authentication">
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={tab === 'signin'}
-                    className={`auth-tab ${tab === 'signin' ? 'active' : ''}`}
-                    onClick={() => {
-                      setTab('signin')
-                      setError(null)
-                      setMessage(null)
-                    }}
-                  >
-                    Sign in
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={tab === 'signup'}
-                    className={`auth-tab ${tab === 'signup' ? 'active' : ''}`}
-                    onClick={() => {
-                      setTab('signup')
-                      setError(null)
-                      setMessage(null)
-                    }}
-                  >
-                    Create account
-                  </button>
-                </div>
+            <h2 className="auth-form-title">{title}</h2>
+            <p className={`auth-form-sub ${isCompact ? 'auth-form-sub--compact' : ''}`}>{subtitle}</p>
 
-                <h2 className="auth-form-title">
-                  {tab === 'signin' ? 'Operator sign in' : 'Create operator account'}
-                </h2>
-                <p className="auth-form-sub">
-                  {tab === 'signin'
-                    ? 'Access the control plane to review verifications, policies, and audit logs.'
-                    : 'Register with your work email. Minimum 6 characters for password.'}
-                </p>
+            {error && <div className="auth-alert auth-alert--error">{error}</div>}
+            {message && <div className="auth-alert auth-alert--success">{message}</div>}
 
-                {error && <div className="auth-alert auth-alert--error">{error}</div>}
-                {message && (
-                  <div className="auth-alert auth-alert--success">{message}</div>
-                )}
-
-                <form onSubmit={submitCredentials}>
-                  <div className="auth-field">
-                    <label htmlFor="auth-email">Email</label>
-                    <div className="auth-input-wrap">
-                      <Mail size={16} />
-                      <input
-                        id="auth-email"
-                        className="auth-input"
-                        type="email"
-                        autoComplete="email"
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="auth-field">
-                    <label htmlFor="auth-password">Password</label>
-                    <div className="auth-input-wrap">
-                      <Lock size={16} />
-                      <input
-                        id="auth-password"
-                        className="auth-input"
-                        type="password"
-                        autoComplete={tab === 'signup' ? 'new-password' : 'current-password'}
-                        required
-                        minLength={6}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <button type="submit" className="auth-submit" disabled={busy}>
-                    {busy
-                      ? 'Authenticating…'
-                      : tab === 'signin'
-                        ? 'Sign in to control plane'
-                        : 'Create account'}
-                  </button>
-                </form>
-              </>
-            ) : (
-              <>
-                <h2 className="auth-form-title">Enterprise SSO</h2>
-                <p className="auth-form-sub">
-                  Sign in with your organization&apos;s identity provider.
-                </p>
-
-                {error && <div className="auth-alert auth-alert--error">{error}</div>}
-
+            {panel === 'sso' ? (
+              <div className="auth-sso-panel">
                 <div className="auth-sso-grid">
                   {SSO_PROVIDERS.map((p) => (
                     <button
@@ -276,6 +256,7 @@ export function Login() {
                       type="button"
                       className="auth-sso-btn"
                       disabled={busy}
+                      title={p.hint}
                       onClick={() => void signInWithSso(p.id)}
                     >
                       <Shield size={16} />
@@ -283,38 +264,146 @@ export function Login() {
                     </button>
                   ))}
                 </div>
+              </div>
+            ) : (
+              <form onSubmit={submitCredentials}>
+                {panel === 'signup-organization' && (
+                  <>
+                    <div className="auth-field">
+                      <label htmlFor="auth-org-name">Organization name</label>
+                      <div className="auth-input-wrap">
+                        <Building2 size={16} />
+                        <input
+                          id="auth-org-name"
+                          className="auth-input"
+                          type="text"
+                          autoComplete="organization"
+                          required
+                          minLength={2}
+                          maxLength={120}
+                          placeholder="Acme Robotics Inc."
+                          value={organizationName}
+                          onChange={(e) => setOrganizationName(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="auth-field">
+                      <label htmlFor="auth-primary-contact">Primary contact (account owner)</label>
+                      <div className="auth-input-wrap">
+                        <UserCircle size={16} />
+                        <input
+                          id="auth-primary-contact"
+                          className="auth-input"
+                          type="text"
+                          autoComplete="name"
+                          required
+                          minLength={2}
+                          maxLength={120}
+                          placeholder="Full name of person in charge"
+                          value={primaryContactName}
+                          onChange={(e) => setPrimaryContactName(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
 
-                <div className="auth-divider">or</div>
+                <div className="auth-field">
+                  <label htmlFor="auth-email">Email</label>
+                  <div className="auth-input-wrap">
+                    <Mail size={16} />
+                    <input
+                      id="auth-email"
+                      className="auth-input"
+                      type="email"
+                      autoComplete="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                  </div>
+                </div>
 
-                <p className="auth-form-sub" style={{ marginBottom: '0.75rem' }}>
-                  Operator credentials (fallback)
-                </p>
+                <div className="auth-field">
+                  <label htmlFor="auth-password">Password</label>
+                  <div className="auth-input-wrap">
+                    <Lock size={16} />
+                    <input
+                      id="auth-password"
+                      className="auth-input"
+                      type="password"
+                      autoComplete={
+                        panel === 'signin' ? 'current-password' : 'new-password'
+                      }
+                      required
+                      minLength={panel === 'signin' ? 6 : 8}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {panel !== 'signin' && (
+                  <div className="auth-field">
+                    <label htmlFor="auth-confirm-password">Confirm password</label>
+                    <div className="auth-input-wrap">
+                      <Lock size={16} />
+                      <input
+                        id="auth-confirm-password"
+                        className="auth-input"
+                        type="password"
+                        autoComplete="new-password"
+                        required
+                        minLength={8}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <button type="submit" className="auth-submit" disabled={busy}>
+                  {submitLabel}
+                </button>
+              </form>
+            )}
+
+            {isCompact && (
+              <nav className="auth-compact-nav" aria-label="More sign-in options">
                 <button
                   type="button"
-                  className="auth-sso-btn"
-                  onClick={() => setPortal('operator')}
+                  className="auth-compact-nav__link"
+                  onClick={() => goToPanel('signup-individual')}
                 >
-                  <User size={16} />
-                  Use email & password
+                  Create account
                 </button>
-
-              </>
+                <span className="auth-compact-nav__sep" aria-hidden>
+                  ·
+                </span>
+                <button
+                  type="button"
+                  className="auth-compact-nav__link"
+                  onClick={() => goToPanel('signup-organization')}
+                >
+                  Register organization
+                </button>
+                <span className="auth-compact-nav__sep" aria-hidden>
+                  ·
+                </span>
+                <button
+                  type="button"
+                  className="auth-compact-nav__link"
+                  onClick={() => goToPanel('sso')}
+                >
+                  Company SSO
+                </button>
+              </nav>
             )}
           </div>
         </div>
       </div>
 
-      <footer className="auth-footer">
-        Sanctum Runtime · Trusted execution layer ·{' '}
-        <a
-          href={docsUrl}
-          target="_blank"
-          rel="noreferrer"
-          style={{ color: '#93b4ff' }}
-        >
-          Documentation
-        </a>
-      </footer>
+      <LegalFooter className="auth-footer" />
     </div>
   )
 }

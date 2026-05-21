@@ -1,5 +1,18 @@
 import type { ActionRequest } from '@sanctum-runtime/sdk'
 
+/** Custom anomaly rule — return flag strings to add, or empty array if no anomaly. */
+export type AnomalyRule = (request: ActionRequest) => string[]
+
+const customRules: AnomalyRule[] = []
+
+/**
+ * Register a custom anomaly detection rule. Rules are called on every action
+ * alongside built-in detection. Call this at startup before serving requests.
+ */
+export function registerAnomalyRule(rule: AnomalyRule): void {
+  customRules.push(rule)
+}
+
 // Actions considered sensitive for off-hours access (checked in UTC)
 const OFF_HOURS_SENSITIVE = new Set([
   'unlock_door',
@@ -88,6 +101,13 @@ export function detectAnomalies(request: ActionRequest): string[] {
         flags.push('privilege_escalation_chain')
         break
       }
+    }
+  }
+
+  for (const rule of customRules) {
+    const extra = rule(request)
+    for (const flag of extra) {
+      if (!flags.includes(flag)) flags.push(flag)
     }
   }
 

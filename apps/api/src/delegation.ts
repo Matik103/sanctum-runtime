@@ -5,8 +5,38 @@
  * helpers to validate whether a child agent is authorised to perform an
  * action on behalf of its parent.
  */
+import type { FastifyInstance, FastifyRequest } from 'fastify'
+import { z } from 'zod'
 import type { SupabaseAuthConfig } from './auth.js'
 import { createSupabaseAdmin } from './auth.js'
+import { assertOrgRole, type OrgRole } from './rbac.js'
+import { ControlPlaneStore } from './control-plane-store.js'
+import { headerKey, type SanctumReq } from './org-scope.js'
+import { isProduction } from './security.js'
+
+async function requireOrgAccess(
+  req: SanctumReq,
+  cfg: SupabaseAuthConfig,
+  orgId: string,
+  minRole: OrgRole,
+): Promise<{ ok: true; userId?: string } | { ok: false }> {
+  if (req.sanctumUser) {
+    try {
+      await assertOrgRole(cfg, orgId, req.sanctumUser.id, minRole)
+      return { ok: true, userId: req.sanctumUser.id }
+    } catch {
+      return { ok: false }
+    }
+  }
+  const key = headerKey(req)
+  if (key?.startsWith('sk_sanctum_')) {
+    const store = new ControlPlaneStore(cfg)
+    const keyOrg = await store.getApiKeyOrgId(key)
+    if (keyOrg === orgId) return { ok: true }
+    return { ok: false }
+  }
+  return { ok: false }
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -197,4 +227,88 @@ export function enrichAuditWithDelegation(
       delegation_depth: chain.length,
     },
   }
+}
+
+// ─── HTTP Routes ──────────────────────────────────────────────────────────────
+
+const GrantSchema = z.object({
+  parentAgentId: z.string().min(1),
+  childAgentId: z.string().min(1),
+  grantedActions: z.array(z.string()).optional(),
+  expiresAt: z.string().datetime().optional(),
+})
+
+const ValidateSchema = z.object({
+  parentAgentId: z.string().min(1),
+  childAgentId: z.string().min(1),
+  action: z.string().min(1),
+})
+
+export function registerDelegationRoutes(app: FastifyInstance, cfg: SupabaseAuthConfig) {
+  app.get('/v1/orgs/:orgId/delegations', async (req, reply) => {
+    const { orgId } = req.params as { orgId: string }
+    const access = await requireOrgAccess(req as SanctumReq, cfg, orgId, 'member')
+    if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
+
+    const admin = createSupabaseAdmin(cfg)
+    const { data, error } = await admin
+      .from('agent_delegations')
+      .select('*')
+      .eq('org_id', orgId)
+      .is('revoked_at', null)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      return reply.status(500).send({
+        error: 'delegation_list_failed',
+        ...(!isProduction() && { detail: error.message }),
+      })
+    }
+    return reply.send(data ?? [])
+  })
+
+  app.post('/v1/orgs/:orgId/delegations', async (req, reply) => {
+    const { orgId } = req.params as { orgId: string }
+    const access = await requireOrgAccess(req as SanctumReq, cfg, orgId, 'admin')
+    if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
+
+    const parsed = GrantSchema.safeParse(req.body)
+    if (!parsed.success) {
+      return reply.status(400).send({ error: 'invalid_body', detail: parsed.error.flatten() })
+    }
+    const body = parsed.data
+
+    const id = await grantDelegation(cfg, orgId, {
+      parentAgentId: body.parentAgentId,
+      childAgentId: body.childAgentId,
+      grantedActions: body.grantedActions,
+      expiresAt: body.expiresAt ? new Date(body.expiresAt) : undefined,
+    })
+    return reply.status(201).send({ id })
+  })
+
+  // Revoke a delegation grant
+  app.delete('/v1/orgs/:orgId/delegations/:delegationId', async (req, reply) => {
+    const { orgId, delegationId } = req.params as { orgId: string; delegationId: string }
+    const access = await requireOrgAccess(req as SanctumReq, cfg, orgId, 'admin')
+    if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
+
+    await revokeDelegation(cfg, delegationId, orgId)
+    return reply.status(204).send()
+  })
+
+  app.post('/v1/orgs/:orgId/delegations/validate', async (req, reply) => {
+    const { orgId } = req.params as { orgId: string }
+    const access = await requireOrgAccess(req as SanctumReq, cfg, orgId, 'member')
+    if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
+
+    const parsed = ValidateSchema.safeParse(req.body)
+    if (!parsed.success) {
+      return reply.status(400).send({ error: 'invalid_body', detail: parsed.error.flatten() })
+    }
+    const { parentAgentId, childAgentId, action } = parsed.data
+
+    const result = await validateDelegation(cfg, orgId, parentAgentId, childAgentId, action)
+    return reply.send(result)
+  })
 }

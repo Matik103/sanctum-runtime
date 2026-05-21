@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react'
 import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 import { ActionDrawer } from './components/ActionDrawer'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { MobileCompanionHeader } from './components/MobileCompanionHeader'
+import { PwaInstallBanner } from './components/PwaInstallBanner'
+import { useCompanionMode } from './hooks/useCompanionMode'
 import { useNetworkStatus } from './hooks/useNetworkStatus'
 import { ReviewQueueBanner, summarizePendingActions } from './components/ReviewQueueBanner'
 import { VerificationModal } from './components/VerificationModal'
@@ -21,16 +24,18 @@ import { PolicyHistory } from './pages/PolicyHistory'
 import { RuntimeActivity } from './pages/RuntimeActivity'
 import { Settings } from './pages/Settings'
 import { ThreatMonitor } from './pages/ThreatMonitor'
+import { Agents } from './pages/Agents'
 import { Alerts } from './pages/Alerts'
-import { PwaInstallBanner } from './components/PwaInstallBanner'
 import { fetchMyOrgs } from './lib/fleet'
 import { useOfflineQueue } from './hooks/useOfflineQueue'
 
 export function App() {
   const online = useNetworkStatus()
+  const companionMode = useCompanionMode()
   const [page, setPage] = useState<PageId>('overview')
   const [selected, setSelected] = useState<ActionResult | null>(null)
   const [orgId, setOrgId] = useState<string | null>(null)
+  const [modalError, setModalError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchMyOrgs().then((orgs) => { if (orgs[0]) setOrgId(orgs[0].org_id) }).catch(() => {})
@@ -115,6 +120,7 @@ export function App() {
         )}
         {page === 'activity' && <ErrorBoundary page="Runtime Activity"><RuntimeActivity audit={audit} onSelect={onSelect} /></ErrorBoundary>}
         {page === 'threats' && <ErrorBoundary page="Threat Monitor"><ThreatMonitor audit={audit} onSelect={onSelect} /></ErrorBoundary>}
+        {page === 'agents' && <ErrorBoundary page="Agents"><Agents /></ErrorBoundary>}
         {page === 'alerts' && <ErrorBoundary page="Alerts"><Alerts /></ErrorBoundary>}
         {page === 'policies' && (
           <ErrorBoundary page="Policies">
@@ -141,24 +147,50 @@ export function App() {
       <ActionDrawer entry={selected} onClose={() => setSelected(null)} />
 
       {pendingVerification && (
-        <VerificationModal
-          entry={pendingVerification}
-          queuePosition={getQueuePosition(pendingVerification.id)}
-          onApproveOnce={async () => {
-            const entry = pendingVerification
-            await resolveVerificationEntry(entry.id, 'APPROVED')
-            setSelected(entry)
-          }}
-          onAlwaysApprove={async () => {
-            const entry = pendingVerification
-            await setPolicy(entry.action, 'approve')
-            await resolveVerificationEntry(entry.id, 'APPROVED')
-            markVerificationsDismissed({ action: entry.action })
-          }}
-          onDeny={async () => {
-            await resolveVerificationEntry(pendingVerification.id, 'BLOCKED')
-          }}
-        />
+        <>
+          {modalError && (
+            <div className="alert alert--error" role="alert" style={{ position: 'fixed', top: '1rem', left: '50%', transform: 'translateX(-50%)', zIndex: 9999, minWidth: 320 }}>
+              <div className="alert__body">
+                <strong>Action failed</strong>
+                <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem' }}>{modalError}</p>
+              </div>
+              <button type="button" onClick={() => setModalError(null)} style={{ marginLeft: '1rem', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
+            </div>
+          )}
+          <VerificationModal
+            entry={pendingVerification}
+            queuePosition={getQueuePosition(pendingVerification.id)}
+            onApproveOnce={async (grantMinutes?: number) => {
+              try {
+                const entry = pendingVerification
+                await resolveVerificationEntry(entry.id, 'APPROVED', grantMinutes)
+                setSelected(entry)
+                setModalError(null)
+              } catch (e) {
+                setModalError(e instanceof Error ? e.message : 'Failed to approve')
+              }
+            }}
+            onAlwaysApprove={async () => {
+              try {
+                const entry = pendingVerification
+                await setPolicy(entry.action, 'approve')
+                await resolveVerificationEntry(entry.id, 'APPROVED')
+                markVerificationsDismissed({ action: entry.action })
+                setModalError(null)
+              } catch (e) {
+                setModalError(e instanceof Error ? e.message : 'Failed to set policy')
+              }
+            }}
+            onDeny={async () => {
+              try {
+                await resolveVerificationEntry(pendingVerification.id, 'BLOCKED')
+                setModalError(null)
+              } catch (e) {
+                setModalError(e instanceof Error ? e.message : 'Failed to deny')
+              }
+            }}
+          />
+        </>
       )}
     </div>
   )

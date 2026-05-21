@@ -1,50 +1,33 @@
-import { useState, useEffect } from 'react'
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt(): Promise<void>
-  readonly userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
-}
+import { Download, X } from 'lucide-react'
+import { usePwa } from '../hooks/usePwa'
 
 export function PwaInstallBanner() {
-  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
-  const [dismissed, setDismissed] = useState(() =>
-    localStorage.getItem('pwa-install-dismissed') === '1',
-  )
+  const { canInstall, promptInstall, dismissInstallBanner, isStandalone } = usePwa()
 
-  useEffect(() => {
-    const handler = (e: Event) => {
-      e.preventDefault()
-      setInstallPrompt(e as BeforeInstallPromptEvent)
-    }
-    window.addEventListener('beforeinstallprompt', handler)
-    return () => window.removeEventListener('beforeinstallprompt', handler)
-  }, [])
-
-  if (!installPrompt || dismissed) return null
-
-  const handleInstall = async () => {
-    if (!installPrompt) return
-    await installPrompt.prompt()
-    const { outcome } = await installPrompt.userChoice
-    if (outcome === 'accepted') setInstallPrompt(null)
-  }
-
-  const handleDismiss = () => {
-    localStorage.setItem('pwa-install-dismissed', '1')
-    setDismissed(true)
-  }
+  if (isStandalone || !canInstall) return null
 
   return (
-    <div className="alert alert--info" role="banner" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-      <span style={{ flex: 1 }}>
-        <strong>Install Sanctum</strong> — add to your home screen for instant access on mobile.
-      </span>
-      <button type="button" className="btn btn--sm btn--primary" onClick={handleInstall}>
-        Install
-      </button>
-      <button type="button" className="btn btn--sm btn--ghost" onClick={handleDismiss} aria-label="Dismiss">
-        ✕
-      </button>
+    <div className="pwa-install-banner" role="region" aria-label="Install Sanctum">
+      <div className="pwa-install-banner__icon" aria-hidden>
+        <Download size={20} />
+      </div>
+      <div className="pwa-install-banner__copy">
+        <strong>Install Sanctum Companion</strong>
+        <p>Add to your home screen for runtime verifications, alerts, and one-tap approvals.</p>
+      </div>
+      <div className="pwa-install-banner__actions">
+        <button type="button" className="btn btn-primary btn-sm" onClick={() => void promptInstall()}>
+          Install
+        </button>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          aria-label="Dismiss install prompt"
+          onClick={dismissInstallBanner}
+        >
+          <X size={16} />
+        </button>
+      </div>
     </div>
   )
 }

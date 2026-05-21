@@ -17,6 +17,9 @@ export function Navbar() {
           <a href="#sdk" className="hover:text-foreground transition-colors">SDK</a>
           <a href="#use-cases" className="hover:text-foreground transition-colors">Use cases</a>
           <a href="#trust" className="hover:text-foreground transition-colors">Trust</a>
+          <Link to="/privacy" className="hover:text-foreground transition-colors">
+            Privacy Policy
+          </Link>
         </nav>
         <div className="flex items-center gap-2">
           <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex text-muted-foreground hover:text-foreground">

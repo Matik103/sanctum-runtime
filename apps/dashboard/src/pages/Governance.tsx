@@ -5,6 +5,7 @@ import { getAccessToken } from '../lib/supabase'
 import { timeAgo } from '../lib/format'
 import { Alert } from '../components/ui/Alert'
 import { TabBar } from '../components/ui/TabBar'
+import { fetchMyOrgs } from '../lib/fleet'
 
 type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'expired' | 'escalated'
 
@@ -29,8 +30,6 @@ type Workflow = {
   escalation_after_minutes?: number
   is_active: boolean
 }
-
-type Props = { orgId?: string }
 
 async function authHeaders(): Promise<Record<string, string>> {
   const token = await getAccessToken()
@@ -58,7 +57,8 @@ function statusBadge(status: ApprovalStatus) {
   return map[status] ?? 'neutral'
 }
 
-export function Governance({ orgId }: Props) {
+export function Governance() {
+  const [orgId, setOrgId] = useState('')
   const [approvals, setApprovals] = useState<PendingApproval[]>([])
   const [workflows, setWorkflows] = useState<Workflow[]>([])
   const [tab, setTab] = useState<'approvals' | 'workflows'>('approvals')
@@ -68,6 +68,10 @@ export function Governance({ orgId }: Props) {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ text: string; variant: 'success' | 'error' } | null>(null)
   const [newWf, setNewWf] = useState<Partial<Workflow> | null>(null)
+
+  useEffect(() => {
+    fetchMyOrgs().then((orgs) => { if (orgs[0]) setOrgId(orgs[0].org_id) }).catch(() => {})
+  }, [])
 
   const load = async () => {
     if (!orgId) return

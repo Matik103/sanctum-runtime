@@ -18,6 +18,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify'
 import type { SupabaseAuthConfig } from './auth.js'
 import { createSupabaseAdmin } from './auth.js'
 import { ControlPlaneStore } from './control-plane-store.js'
+import { queryWithTimeout, SUPABASE_ROW_LIMITS } from './supabase-limits.js'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -88,37 +89,44 @@ export async function generateComplianceReport(
   const start = startDate.toISOString()
   const end = endDate.toISOString()
 
-  // Fetch audit events in the time window
-  const [auditRes, exportRes, runtimesRes] = await Promise.allSettled([
-    admin
-      .from('audit_events')
-      .select('id,action,decision,anomaly_flags,actor,context,created_at')
-      .eq('org_id', orgId)
-      .gte('created_at', start)
-      .lte('created_at', end)
-      .order('created_at', { ascending: false })
-      .limit(10000),
+  // Sequential reads — avoids free-tier PostgREST timeout from parallel fan-out.
+  const auditRes = await queryWithTimeout(
+    'audit_events',
+    () =>
+      admin
+        .from('audit_events')
+        .select('id,action,decision,anomaly_flags,resolved_by,actor,created_at')
+        .eq('org_id', orgId)
+        .gte('created_at', start)
+        .lte('created_at', end)
+        .order('created_at', { ascending: false })
+        .limit(SUPABASE_ROW_LIMITS.auditCompliance),
+  )
+  const exportRes = await queryWithTimeout(
+    'export_audit',
+    () =>
+      admin
+        .from('export_audit')
+        .select('requested_by,record_count,created_at')
+        .eq('org_id', orgId)
+        .gte('created_at', start)
+        .lte('created_at', end)
+        .order('created_at', { ascending: false })
+        .limit(SUPABASE_ROW_LIMITS.exportAuditHistory),
+  )
+  const runtimesRes = await queryWithTimeout(
+    'registered_runtimes',
+    () =>
+      admin
+        .from('registered_runtimes')
+        .select('id,connected_at,last_seen_at')
+        .eq('org_id', orgId)
+        .limit(SUPABASE_ROW_LIMITS.runtimesList),
+  )
 
-    admin
-      .from('export_audit')
-      .select('requested_by,record_count,created_at')
-      .eq('org_id', orgId)
-      .gte('created_at', start)
-      .lte('created_at', end)
-      .order('created_at', { ascending: false }),
-
-    admin
-      .from('registered_runtimes')
-      .select('id,connected_at,last_seen_at')
-      .eq('org_id', orgId),
-  ])
-
-  const auditEvents =
-    auditRes.status === 'fulfilled' ? (auditRes.value.data ?? []) : []
-  const exportRows =
-    exportRes.status === 'fulfilled' ? (exportRes.value.data ?? []) : []
-  const runtimes =
-    runtimesRes.status === 'fulfilled' ? (runtimesRes.value.data ?? []) : []
+  const auditEvents = auditRes.data
+  const exportRows = exportRes.data
+  const runtimes = runtimesRes.data
 
   // Summary stats
   let blockedActions = 0
@@ -137,7 +145,7 @@ export async function generateComplianceReport(
     if (decision === 'BLOCKED') blockedActions++
     if (decision === 'REQUIRE_VERIFICATION') verifiedActions++
     if (flags.length > 0) anomalyFlagsTotal += flags.length
-    if (ctx.resolved_at) humanReviews++
+    if (evt.resolved_by) humanReviews++
 
     if (risk === 'high') riskDist.high++
     else if (risk === 'medium') riskDist.medium++
@@ -163,7 +171,7 @@ export async function generateComplianceReport(
       .gte('created_at', start)
       .lte('created_at', end)
       .order('created_at', { ascending: false })
-      .limit(500)
+      .limit(SUPABASE_ROW_LIMITS.policySnapshots)
 
     policyChanges = (snapshots ?? []).map((s) => ({
       action: (s.change_summary as string | undefined) ?? 'policy_snapshot',
@@ -254,57 +262,66 @@ async function generateSoc2Report(
   const start = startDate.toISOString()
   const end = endDate.toISOString()
 
-  // Gather evidence counts in parallel
-  const [auditCount, blockedCount, apiKeyCount, exportCount, runtimeCount, approvalCount] =
-    await Promise.all([
-      admin
-        .from('audit_events')
-        .select('id', { count: 'exact', head: true })
-        .eq('org_id', orgId)
-        .gte('created_at', start)
-        .lte('created_at', end)
-        .then((r) => r.count ?? 0),
+  // Head-only counts, sequential — light on free tier but avoids 6-way parallel load.
+  const countHead = async (
+    label: string,
+    run: () => PromiseLike<{ count: number | null; error: { message: string } | null }>,
+  ): Promise<number> => {
+    try {
+      const r = await run()
+      if (r.error) {
+        console.warn(`[supabase] soc2 ${label}: ${r.error.message}`)
+        return 0
+      }
+      return r.count ?? 0
+    } catch {
+      return 0
+    }
+  }
 
-      admin
-        .from('audit_events')
-        .select('id', { count: 'exact', head: true })
-        .eq('org_id', orgId)
-        .eq('decision', 'BLOCKED')
-        .gte('created_at', start)
-        .lte('created_at', end)
-        .then((r) => r.count ?? 0),
-
-      admin
-        .from('api_keys')
-        .select('id', { count: 'exact', head: true })
-        .eq('org_id', orgId)
-        .is('revoked_at', null)
-        .then((r) => r.count ?? 0),
-
-      admin
-        .from('export_audit')
-        .select('id', { count: 'exact', head: true })
-        .eq('org_id', orgId)
-        .gte('created_at', start)
-        .lte('created_at', end)
-        .then((r) => r.count ?? 0),
-
-      admin
-        .from('registered_runtimes')
-        .select('id', { count: 'exact', head: true })
-        .eq('org_id', orgId)
-        .then((r) => r.count ?? 0),
-
-      // Pending approvals (governance table — may not exist yet, so swallow errors)
-      Promise.resolve(
-        admin
-          .from('pending_approvals')
-          .select('id', { count: 'exact', head: true })
-          .eq('org_id', orgId)
-          .gte('created_at', start)
-          .lte('created_at', end),
-      ).then((r) => r.count ?? 0).catch(() => 0 as number),
-    ])
+  const auditCount = await countHead('audit_events', () =>
+    admin
+      .from('audit_events')
+      .select('id', { count: 'exact', head: true })
+      .eq('org_id', orgId)
+      .gte('created_at', start)
+      .lte('created_at', end),
+  )
+  const blockedCount = await countHead('audit_blocked', () =>
+    admin
+      .from('audit_events')
+      .select('id', { count: 'exact', head: true })
+      .eq('org_id', orgId)
+      .eq('decision', 'BLOCKED')
+      .gte('created_at', start)
+      .lte('created_at', end),
+  )
+  const apiKeyCount = await countHead('api_keys', () =>
+    admin
+      .from('api_keys')
+      .select('id', { count: 'exact', head: true })
+      .eq('org_id', orgId)
+      .is('revoked_at', null),
+  )
+  const exportCount = await countHead('export_audit', () =>
+    admin
+      .from('export_audit')
+      .select('id', { count: 'exact', head: true })
+      .eq('org_id', orgId)
+      .gte('created_at', start)
+      .lte('created_at', end),
+  )
+  const runtimeCount = await countHead('registered_runtimes', () =>
+    admin.from('registered_runtimes').select('id', { count: 'exact', head: true }).eq('org_id', orgId),
+  )
+  const approvalCount = await countHead('pending_approvals', () =>
+    admin
+      .from('pending_approvals')
+      .select('id', { count: 'exact', head: true })
+      .eq('org_id', orgId)
+      .gte('created_at', start)
+      .lte('created_at', end),
+  )
 
   const criteria: Soc2CriterionStatus[] = [
     {
@@ -388,7 +405,7 @@ async function generateAnomalyTimeline(
     .eq('org_id', orgId)
     .gte('created_at', startDate.toISOString())
     .order('created_at', { ascending: true })
-    .limit(20000)
+    .limit(SUPABASE_ROW_LIMITS.auditTimeline)
 
   if (error || !data) return []
 

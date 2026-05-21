@@ -134,8 +134,12 @@ export function useDashboard() {
   }, [refresh])
 
   const setPolicy = async (action: string, response: PolicyResponse) => {
-    const policies = await updatePolicyResponse(action, response)
-    setData((d) => ({ ...d, policies }))
+    try {
+      const policies = await updatePolicyResponse(action, response)
+      setData((d) => ({ ...d, policies }))
+    } catch (e) {
+      setApiError(e instanceof Error ? e.message : 'Failed to update policy')
+    }
   }
 
   const replacePolicies = (policies: DashboardData['policies']) => {
@@ -182,8 +186,8 @@ export function useDashboard() {
   )
 
   const resolveVerificationEntry = useCallback(
-    async (entryId: string, decision: 'APPROVED' | 'BLOCKED') => {
-      await resolveVerification(entryId, decision)
+    async (entryId: string, decision: 'APPROVED' | 'BLOCKED', grantDurationMinutes?: number) => {
+      await resolveVerification(entryId, decision, { grantDurationMinutes })
       markVerificationsDismissed({ id: entryId })
       await refresh()
       const next = getPendingReviewQueue()[0]

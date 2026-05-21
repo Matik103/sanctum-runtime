@@ -2,6 +2,7 @@ import { createHash, randomBytes } from 'node:crypto'
 import { ChallengeStore } from './challenge-store.js'
 import { evaluateAndTokenize, type AttestationReport } from './attestation.js'
 import { createSupabaseAdmin, type SupabaseAuthConfig } from './auth.js'
+import { queryWithTimeout, SUPABASE_ROW_LIMITS } from './supabase-limits.js'
 import { recordUsage, UsageMetrics } from './usage-store.js'
 
 export type RuntimeMode = 'cloud' | 'edge' | 'airgap' | 'hybrid'
@@ -58,12 +59,15 @@ export function defaultFingerprint(): string {
 export class ControlPlaneStore {
   private challenges: ChallengeStore
 
+  private _admin: ReturnType<typeof createSupabaseAdmin>
+
   constructor(private supabase: SupabaseAuthConfig) {
     this.challenges = new ChallengeStore(supabase)
+    this._admin = createSupabaseAdmin(supabase)
   }
 
   private admin() {
-    return createSupabaseAdmin(this.supabase)
+    return this._admin
   }
 
   async ensureOrg(orgId: string, name?: string) {
@@ -353,7 +357,7 @@ export class ControlPlaneStore {
       nullsFirst: false,
     })
     if (orgId) q = q.eq('org_id', orgId)
-    const { data, error } = await q.limit(200)
+    const { data, error } = await q.limit(SUPABASE_ROW_LIMITS.runtimesList)
     if (error) throw new Error(error.message)
     return (data ?? []) as RegisteredRuntime[]
   }
@@ -366,7 +370,7 @@ export class ControlPlaneStore {
       .is('deleted_at', null)
       .order('last_seen_at', { ascending: false })
     if (runtimeId) q = q.eq('runtime_id', runtimeId)
-    const { data, error } = await q.limit(500)
+    const { data, error } = await q.limit(SUPABASE_ROW_LIMITS.agentsList)
     if (error) throw new Error(error.message)
     return (data ?? []).map((row: Record<string, unknown>) => {
       const rt = row.registered_runtimes as { name?: string } | null
@@ -408,7 +412,8 @@ export class ControlPlaneStore {
     const admin = this.admin()
     let q = admin.from('runtime_events').select('*').order('created_at', { ascending: false })
     if (opts.orgId) q = q.eq('org_id', opts.orgId)
-    const { data, error } = await q.limit(opts.limit ?? 100)
+    const eventCap = SUPABASE_ROW_LIMITS.runtimeEventsList
+    const { data, error } = await q.limit(Math.min(opts.limit ?? eventCap, eventCap))
     if (error) throw new Error(error.message)
     return (data ?? []) as RuntimeEvent[]
   }
@@ -428,12 +433,15 @@ export class ControlPlaneStore {
 
   async getUserOrgIds(userId: string): Promise<string[]> {
     const admin = this.admin()
-    const { data, error } = await admin
-      .from('organization_members')
-      .select('org_id')
-      .eq('user_id', userId)
-    if (error) throw new Error(error.message)
-    return (data ?? []).map((r) => r.org_id as string)
+    const result = await queryWithTimeout<{ org_id: string }[]>(
+      'organization_members',
+      () => admin.from('organization_members').select('org_id').eq('user_id', userId),
+    )
+    if (result.error) {
+      console.warn(`[supabase] getUserOrgIds: ${result.error}`)
+      return []
+    }
+    return result.data.map((r) => r.org_id as string)
   }
 
   async getApiKeyOrgId(presentedKey: string): Promise<string | null> {
@@ -460,7 +468,3 @@ export class ControlPlaneStore {
   }
 }
 
-export function getControlPlaneStore(): ControlPlaneStore | null {
-  const cfg = getSupabaseAuthConfig()
-  return cfg ? new ControlPlaneStore(cfg) : null
-}

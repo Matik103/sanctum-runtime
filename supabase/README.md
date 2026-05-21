@@ -1,6 +1,6 @@
 # Supabase schema (Sanctum)
 
-## Migrations (001–023)
+## Migrations (001–027)
 
 | # | File | Objects |
 |---|------|---------|
@@ -27,6 +27,13 @@
 | 021 | `021_marketplace_expand_catalog.sql` | +6 integration packages |
 | 022 | `022_marketplace_twelve_categories.sql` | 12 categories, +6 primary packages |
 | 023 | `023_billing_plans.sql` | `plans`, `org_plans`, free-plan trigger |
+| 024 | `024_notifications_sso.sql` | `sso_configs`, `export_audit`, notification columns on `org_plans` |
+| 025 | `025_governance.sql` | `approval_workflows`, `pending_approvals`, `policy_snapshots`, `agent_delegations`, `webhook_queue` |
+| 026 | `026_audit_compliance_columns.sql` | `audit_events.anomaly_flags`, `resolved_by` |
+| 027 | `027_rls_governance_and_hardening.sql` | RLS on governance + `plans`; `is_org_member` / `is_org_role`; tighten audit/webhook/api_keys policies |
+| 034 | `034_sync_portal_type_on_auth_update.sql` | Sync `profiles.portal_type` when OAuth metadata updates |
+| 035 | `035_enterprise_org_bootstrap_rpc.sql` | `bootstrap_enterprise_org_for_user()` after Enterprise SSO |
+| 036 | `036_signup_individual_and_organization.sql` | Self-serve individual vs organization signup + org bootstrap |
 
 ## Deploy to linked project
 
@@ -45,6 +52,13 @@ select count(*) from public.runtime_packages where visibility = 'public';  -- ex
 select count(*) from public.plans;                                         -- expect 4
 select count(*) from public.organizations o
   left join public.org_plans p on p.org_id = o.id where p.org_id is null;  -- expect 0
+
+-- After 027: every public table should have RLS on
+select c.relname, c.relrowsecurity
+from pg_class c
+join pg_namespace n on n.oid = c.relnamespace
+where n.nspname = 'public' and c.relkind = 'r'
+order by 1;
 ```
 
 ## Local env
@@ -52,6 +66,12 @@ select count(*) from public.organizations o
 ```bash
 npm run env:pull    # writes VITE_SUPABASE_* + SUPABASE_* to .env
 ```
+
+## Free-tier safety
+
+The Sanctum API (`apps/api/src/supabase-limits.ts`) enforces per-query timeouts and row caps so PostgREST does not hit the free plan’s ~8s statement limit. Heavy endpoints (GDPR export, compliance reports) use **sequential** reads, not parallel fan-out.
+
+If exports return `warnings` in JSON, the database was slow or a section was capped — retry or upgrade when you need full history.
 
 ## API behavior when configured
 

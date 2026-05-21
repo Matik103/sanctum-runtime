@@ -270,112 +270,6 @@ async function sendWebhook(event: NotificationEvent, webhookUrl: string): Promis
   }
 }
 
-// ── Verification request email ────────────────────────────────────────────────
-
-export interface VerificationEmailOptions {
-  to: string
-  actor: string
-  action: string
-  risk: number
-  orgId: string
-  dashboardUrl?: string
-}
-
-export async function sendVerificationEmail(opts: VerificationEmailOptions): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey) return
-
-  const from =
-    process.env.NOTIFICATION_FROM_EMAIL ??
-    'Sanctum Runtime <alerts@sanctumruntime.com>'
-
-  const dashboard = opts.dashboardUrl ?? process.env.DASHBOARD_URL ?? 'https://console.sanctumruntime.com'
-  const actorEsc = opts.actor.slice(0, 80).replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]!))
-  const actionEsc = opts.action.slice(0, 80).replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]!))
-  const riskPct = Math.round(opts.risk * 100)
-  const riskColor = opts.risk >= 0.7 ? '#ef4444' : opts.risk >= 0.4 ? '#f59e0b' : '#3b82f6'
-  const activityUrl = `${dashboard}/?page=activity`
-
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#09090b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#09090b;padding:32px 16px;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="background:#111113;border:1px solid #27272a;border-radius:8px;overflow:hidden;max-width:600px;">
-        <tr>
-          <td style="background:#0f0f11;padding:20px 32px;border-bottom:1px solid #27272a;">
-            <span style="font-size:15px;font-weight:600;color:#f4f4f5;letter-spacing:-0.02em;">Sanctum Runtime</span>
-            <span style="display:inline-block;margin-left:12px;background:#f59e0b22;color:#f59e0b;font-size:11px;font-weight:600;padding:3px 10px;border-radius:4px;border:1px solid #f59e0b44;text-transform:uppercase;letter-spacing:0.05em;">Action Pending</span>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:32px;">
-            <p style="margin:0 0 8px;font-size:11px;color:#52525b;text-transform:uppercase;letter-spacing:0.08em;">agent.require_verification</p>
-            <h1 style="margin:0 0 16px;font-size:20px;font-weight:600;color:#f4f4f5;line-height:1.3;">An agent is waiting for your approval</h1>
-            <p style="margin:0 0 24px;font-size:14px;color:#a1a1aa;line-height:1.6;">
-              <strong style="color:#f4f4f5;">${actorEsc}</strong> wants to perform
-              <strong style="color:#f4f4f5;">${actionEsc}</strong>.
-              This action requires manual verification before it can proceed.
-            </p>
-            <table cellpadding="0" cellspacing="0" style="background:#0f0f11;border:1px solid #27272a;border-radius:6px;padding:12px 16px;width:100%;margin-bottom:28px;">
-              <tr>
-                <td style="font-size:12px;color:#52525b;padding-right:16px;">Actor</td>
-                <td style="font-size:12px;color:#d1d5db;font-family:ui-monospace,monospace;">${actorEsc}</td>
-              </tr>
-              <tr>
-                <td style="font-size:12px;color:#52525b;padding-right:16px;padding-top:6px;">Action</td>
-                <td style="font-size:12px;color:#d1d5db;font-family:ui-monospace,monospace;padding-top:6px;">${actionEsc}</td>
-              </tr>
-              <tr>
-                <td style="font-size:12px;color:#52525b;padding-right:16px;padding-top:6px;">Risk score</td>
-                <td style="font-size:12px;font-weight:600;color:${riskColor};padding-top:6px;">${riskPct}%</td>
-              </tr>
-            </table>
-            <a href="${activityUrl}" style="display:inline-block;background:#2563eb;color:#fff;font-size:14px;font-weight:500;padding:10px 22px;border-radius:6px;text-decoration:none;">
-              Review in dashboard →
-            </a>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:16px 32px;border-top:1px solid #27272a;">
-            <p style="margin:0;font-size:12px;color:#52525b;">
-              Sanctum Runtime · Manage alerts in <a href="${dashboard}/?page=settings" style="color:#3b82f6;text-decoration:none;">settings</a>
-            </p>
-          </td>
-        </tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`
-
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from,
-      to: [opts.to],
-      subject: `[Action Required] ${opts.actor.slice(0, 60)} wants to ${opts.action.slice(0, 60)}`,
-      html,
-      text: [
-        `Verification required: ${opts.actor} wants to ${opts.action}`,
-        '',
-        `Risk score: ${riskPct}%`,
-        '',
-        `Review and approve or deny in your Sanctum dashboard:`,
-        activityUrl,
-        '',
-        'Manage notification preferences in settings.',
-      ].join('\n'),
-    }),
-  })
-  if (!res.ok) {
-    const err = await res.text().catch(() => String(res.status))
-    console.warn('[notifications] verification email failed:', err)
-  }
-}
-
 // ── Ops alert ─────────────────────────────────────────────────────────────────
 // Fired when every configured channel fails. Emits a structured log line that
 // any log drain (Render, Datadog, Papertrail) can alert on, and optionally POSTs
@@ -480,7 +374,7 @@ async function _sendWithFailover(
     await sendOpsAlert(event, failures)
   }
 
-  // FCM push is always attempted in parallel as a secondary channel.
+  // Web push is always attempted in parallel as a secondary channel.
   // Its failure does not trigger the ops alert — if no tokens are registered this is normal.
   void import('./fcm.js').then(async ({ sendFcmToOrg }) => {
     const { getSupabaseAuthConfig } = await import('./auth.js')
