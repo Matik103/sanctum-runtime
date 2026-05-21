@@ -5,6 +5,7 @@ import { getSupabaseAuthConfig, createSupabaseAdmin } from './auth.js'
 import { ControlPlaneStore } from './control-plane-store.js'
 import { getEntitlementEngine, PLAN_DEFAULTS, type PlanId } from './entitlements.js'
 import { getUsageStore } from './usage-store.js'
+import { sendNotificationDeduped } from './notifications.js'
 
 type SanctumReq = FastifyRequest & {
   sanctumUser?: { id: string; email?: string }
@@ -198,6 +199,7 @@ export async function registerBillingRoutes(app: FastifyInstance) {
     if (!secret) {
       const { isProduction } = await import('./security.js')
       if (isProduction()) {
+        app.log.error('[billing/webhook] PADDLE_WEBHOOK_SECRET not set — rejecting webhook')
         return reply.status(503).send({ error: 'webhook_not_configured' })
       }
       app.log.warn('[billing/webhook] PADDLE_WEBHOOK_SECRET not set — skipping signature check')
@@ -293,6 +295,40 @@ export async function registerBillingRoutes(app: FastifyInstance) {
       }
 
       app.log.info({ orgId: passthrough, planId }, '[billing/webhook] plan updated')
+
+      // Notify org of plan change
+      void entitlements.getNotificationPrefs(passthrough).then((prefs) => {
+        sendNotificationDeduped(
+          {
+            type: 'billing.plan_changed',
+            orgId: passthrough,
+            title: `Plan updated: ${planId}`,
+            body: `Your Sanctum plan has been updated to "${planId}". Changes take effect immediately.`,
+            severity: 'info',
+            data: { planId, eventType },
+          },
+          { email: prefs.email, slackWebhookUrl: prefs.slackWebhookUrl, notificationWebhookUrl: prefs.notificationWebhookUrl },
+          86_400_000, // 24h cooldown — plan changes are rare
+        )
+      }).catch(() => {})
+    }
+
+    // Payment failure events
+    if (eventType === 'transaction.payment_failed' || eventType === 'subscription.payment_failed') {
+      void entitlements.getNotificationPrefs(passthrough).then((prefs) => {
+        sendNotificationDeduped(
+          {
+            type: 'billing.payment_failed',
+            orgId: passthrough,
+            title: 'Payment failed',
+            body: 'A payment for your Sanctum subscription failed. Please update your payment method to avoid service interruption.',
+            severity: 'critical',
+            data: { eventType },
+          },
+          { email: prefs.email, slackWebhookUrl: prefs.slackWebhookUrl, notificationWebhookUrl: prefs.notificationWebhookUrl },
+          3_600_000,
+        )
+      }).catch(() => {})
     }
 
     return reply.status(200).send({ ok: true })

@@ -3,7 +3,7 @@ import type { WebSocket } from 'ws'
 import { z } from 'zod'
 import { authenticateRequest, getSupabaseAuthConfig } from './auth.js'
 import { ControlPlaneStore } from './control-plane-store.js'
-import { runtimeWsHub, type WsConnectedMessage } from './runtime-ws-hub.js'
+import { runtimeWsHub, MAX_CONNECTIONS_PER_ORG, type WsConnectedMessage } from './runtime-ws-hub.js'
 
 export async function registerRuntimeWsRoutes(app: FastifyInstance) {
   const cfg = getSupabaseAuthConfig()
@@ -62,11 +62,19 @@ export async function registerRuntimeWsRoutes(app: FastifyInstance) {
       }
     }
 
-    runtimeWsHub.register(runtimeId, socket)
+    const reg = runtimeWsHub.register(runtimeId, socket, orgId)
+    if (!reg.ok) {
+      const hint = reg.reason === 'org_limit_reached'
+        ? `Organisation has reached the ${MAX_CONNECTIONS_PER_ORG}-connection limit`
+        : 'Server connection limit reached — retry later'
+      socket.close(4429, hint)
+      return
+    }
 
     const hello: WsConnectedMessage = { type: 'connected', runtimeId }
     socket.send(JSON.stringify(hello))
 
+    // JSON-level ping/pong for SDK clients that can't send native WS frames
     socket.on('message', (raw) => {
       try {
         const text = typeof raw === 'string' ? raw : raw.toString('utf8')

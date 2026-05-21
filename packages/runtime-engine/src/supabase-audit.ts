@@ -14,7 +14,6 @@ type AuditRow = {
   human_resolution: string | null
   anomaly_flags: string[] | null
   resolved_by: string | null
-  context: Record<string, unknown> | null
   payload: Record<string, unknown>
   created_at: string
   resolved_at: string | null
@@ -92,8 +91,8 @@ export async function maybeSyncAuditToSupabase(entry: ActionResult): Promise<voi
       human_record: entry.humanRecord ?? null,
       human_resolution: entry.humanResolution ?? null,
       anomaly_flags: entry.anomalyFlags ?? [],
-      resolved_by: (entry as unknown as { resolvedBy?: string }).resolvedBy ?? null,
       context: entry.context ?? {},
+      resolved_by: (entry as unknown as { resolvedBy?: string }).resolvedBy ?? null,
       payload: entry,
       created_at: entry.timestamp,
       resolved_at: entry.resolvedAt ?? null,

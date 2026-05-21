@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
+import { EnterpriseOrgGate } from '../components/EnterpriseOrgGate'
 import { getSupabase, isSupabaseConfigured } from '../lib/supabase'
 import { Login } from '../pages/Login'
 import '../styles/auth.css'
@@ -104,5 +105,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return <Login />
   }
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={value}>
+      <EnterpriseOrgGate>{children}</EnterpriseOrgGate>
+    </AuthContext.Provider>
+  )
 }

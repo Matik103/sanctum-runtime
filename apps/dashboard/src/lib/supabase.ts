@@ -25,7 +25,19 @@ export async function getAccessToken(): Promise<string | undefined> {
   const sb = getSupabase()
   if (!sb) return undefined
   const { data } = await sb.auth.getSession()
-  return data.session?.access_token
+  const session = data.session
+  if (!session) return undefined
+
+  // Proactively refresh if the token expires within the next 60 seconds.
+  // autoRefreshToken handles background refresh, but network latency can still
+  // cause 401s on API calls that land just as the old token expires.
+  const expiresAt = session.expires_at  // Unix timestamp in seconds (from Supabase)
+  if (expiresAt && expiresAt - Math.floor(Date.now() / 1000) < 60) {
+    const { data: refreshed } = await sb.auth.refreshSession()
+    return refreshed.session?.access_token ?? session.access_token
+  }
+
+  return session.access_token
 }
 
 export type { Session }

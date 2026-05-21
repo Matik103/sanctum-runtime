@@ -125,6 +125,23 @@ export function Settings({ status }: Props) {
     }
   }
 
+  const clearWebhook = async (field: 'slack_webhook_url' | 'notification_webhook_url') => {
+    if (!orgId) return
+    try {
+      const res = await fetch(`${apiBase}/v1/orgs/${orgId}/notifications`, {
+        method: 'PATCH',
+        headers: await authHeaders(true),
+        body: JSON.stringify({ [field]: null }),
+      })
+      if (!res.ok) throw new Error(`Failed: ${res.status}`)
+      const updated = await res.json() as NotificationPrefs
+      setNotifPrefs(updated)
+      setNotifMsg('Webhook removed.')
+    } catch (e) {
+      setNotifMsg(e instanceof Error ? e.message : 'Failed to remove webhook')
+    }
+  }
+
   const saveNotifPrefs = async () => {
     setNotifBusy(true)
     setNotifMsg(null)
@@ -154,22 +171,6 @@ export function Settings({ status }: Props) {
       setNotifMsg(e instanceof Error ? e.message : 'Save failed')
     } finally {
       setNotifBusy(false)
-    }
-  }
-
-  const clearWebhook = async (field: 'slack_webhook_url' | 'notification_webhook_url') => {
-    try {
-      const res = await fetch(`${apiBase}/v1/orgs/${orgId}/notifications`, {
-        method: 'PATCH',
-        headers: await authHeaders(true),
-        body: JSON.stringify({ [field]: null }),
-      })
-      if (!res.ok) throw new Error(`Failed: ${res.status}`)
-      const updated = await res.json() as NotificationPrefs
-      setNotifPrefs(updated)
-      setNotifMsg('Webhook removed.')
-    } catch (e) {
-      setNotifMsg(e instanceof Error ? e.message : 'Failed to remove webhook')
     }
   }
 

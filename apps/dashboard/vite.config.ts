@@ -37,7 +37,13 @@ export default defineConfig(({ mode, command }) => {
       react(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon.png', 'apple-touch-icon.png', 'favicon-512.png'],
+        strategies: 'injectManifest',
+        srcDir: 'src',
+        filename: 'sw.ts',
+        injectManifest: {
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        },
+        includeAssets: ['favicon.png', 'apple-touch-icon.png', 'favicon-512.png', 'icon-192.png', 'icon-384.png', 'sanctum-logo.png'],
         manifest: {
           name: 'Sanctum Runtime Console',
           short_name: 'Sanctum',
@@ -47,42 +53,32 @@ export default defineConfig(({ mode, command }) => {
           display: 'standalone',
           orientation: 'any',
           scope: '/',
-          start_url: '/',
+          start_url: '/?source=pwa',
+          id: '/',
+          lang: 'en',
           categories: ['productivity', 'security'],
           icons: [
-            { src: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
-            { src: '/favicon-512.png', sizes: '512x512', type: 'image/png' },
-            { src: '/favicon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+            { src: '/favicon.png',          sizes: '32x32',   type: 'image/png' },
+            { src: '/apple-touch-icon.png',  sizes: '180x180', type: 'image/png' },
+            { src: '/icon-192.png',          sizes: '192x192', type: 'image/png' },
+            { src: '/icon-384.png',          sizes: '384x384', type: 'image/png' },
+            { src: '/favicon-512.png',       sizes: '512x512', type: 'image/png' },
+            { src: '/favicon-512.png',       sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           ],
           shortcuts: [
             {
               name: 'Pending Verifications',
               short_name: 'Verify',
               description: 'Review pending action verifications',
-              url: '/?page=activity',
-              icons: [{ src: '/favicon-512.png', sizes: '512x512' }],
+              url: '/?page=activity&source=shortcut',
+              icons: [{ src: '/icon-192.png', sizes: '192x192' }],
             },
             {
-              name: 'Runtime Activity',
-              short_name: 'Activity',
-              description: 'Live runtime action feed',
-              url: '/?page=activity',
-              icons: [{ src: '/favicon-512.png', sizes: '512x512' }],
-            },
-          ],
-        },
-        workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-          runtimeCaching: [
-            {
-              urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-              handler: 'CacheFirst',
-              options: { cacheName: 'google-fonts-cache', expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 } },
-            },
-            {
-              urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-              handler: 'CacheFirst',
-              options: { cacheName: 'gstatic-fonts-cache', expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 } },
+              name: 'Alert Feed',
+              short_name: 'Alerts',
+              description: 'Live alert and anomaly feed',
+              url: '/?page=alerts&source=shortcut',
+              icons: [{ src: '/icon-192.png', sizes: '192x192' }],
             },
           ],
         },
@@ -104,6 +100,14 @@ export default defineConfig(({ mode, command }) => {
       'import.meta.env.VITE_SANCTUM_API_URL': JSON.stringify(
         env.VITE_SANCTUM_API_URL ?? env.SANCTUM_API_URL ?? '',
       ),
+      'import.meta.env.VITE_FIREBASE_API_KEY':            JSON.stringify(env.VITE_FIREBASE_API_KEY ?? ''),
+      'import.meta.env.VITE_FIREBASE_AUTH_DOMAIN':        JSON.stringify(env.VITE_FIREBASE_AUTH_DOMAIN ?? ''),
+      'import.meta.env.VITE_FIREBASE_PROJECT_ID':         JSON.stringify(env.VITE_FIREBASE_PROJECT_ID ?? ''),
+      'import.meta.env.VITE_FIREBASE_STORAGE_BUCKET':     JSON.stringify(env.VITE_FIREBASE_STORAGE_BUCKET ?? ''),
+      'import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID':JSON.stringify(env.VITE_FIREBASE_MESSAGING_SENDER_ID ?? ''),
+      'import.meta.env.VITE_FIREBASE_APP_ID':             JSON.stringify(env.VITE_FIREBASE_APP_ID ?? ''),
+      'import.meta.env.VITE_FIREBASE_VAPID_KEY':          JSON.stringify(env.VITE_FIREBASE_VAPID_KEY ?? ''),
+      'import.meta.env.VITE_VAPID_PUBLIC_KEY':            JSON.stringify(env.VITE_VAPID_PUBLIC_KEY ?? ''),
     },
   }
 
