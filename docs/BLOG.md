@@ -28,8 +28,16 @@ Public index: **https://www.sanctumruntime.com/blog**
 | Robotics / embodied | `embodied-ai-robotics-policy-gate` |
 | vs guardrails | `sanctum-vs-guardrails` |
 | Mobile / HITL | `mobile-pwa-runtime-verification` |
-| MCP / LangChain | *(future)* `mcp-server-action-gate` |
-| ROS2 | *(future)* `ros2-safety-policy-runtime` |
+| MCP / LangChain | `mcp-server-action-gate`, `langchain-agent-middleware-verification` |
+| ROS2 | `ros2-safety-policy-runtime` |
+| Compliance | `soc2-nist-ai-rmf-runtime-evidence` |
+| Fleet ops | `fleet-kill-switch-autonomous-systems` |
+| Smart home | `smart-home-ai-unlock-door-policy` |
+| Humanoids | `humanoid-robot-physical-action-gate` |
+| Healthcare | `healthcare-robotics-phi-policy-packs` |
+| Security | `signed-action-tokens-executor-verification`, `indirect-prompt-injection-source-trust` |
+| Local / Ollama | `local-ollama-offline-runtime-trust` |
+| Workflows | `workflow-automation-ai-governance` |
 
 ## Do not
 

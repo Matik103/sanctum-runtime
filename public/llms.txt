@@ -11,17 +11,30 @@
 
 ## Crawlers
 
+- Sitemap index: https://www.sanctumruntime.com/sitemap-index.xml
 - Sitemap: https://www.sanctumruntime.com/sitemap.xml
 - robots.txt: https://www.sanctumruntime.com/robots.txt
+- Blog: https://www.sanctumruntime.com/blog
 
-## Blog (SEO + AI discovery)
+## Blog (17 articles)
 
-- Index: https://www.sanctumruntime.com/blog
-- Runtime trust layer for AI agents: https://www.sanctumruntime.com/blog/runtime-trust-layer-for-ai-agents
-- AI agent action approval: https://www.sanctumruntime.com/blog/ai-agent-action-approval-before-execution
-- Embodied AI and robotics policy gate: https://www.sanctumruntime.com/blog/embodied-ai-robotics-policy-gate
-- Sanctum vs guardrails: https://www.sanctumruntime.com/blog/sanctum-vs-guardrails
-- Mobile PWA verification: https://www.sanctumruntime.com/blog/mobile-pwa-runtime-verification
+- https://www.sanctumruntime.com/blog/runtime-trust-layer-for-ai-agents
+- https://www.sanctumruntime.com/blog/mcp-server-action-gate
+- https://www.sanctumruntime.com/blog/ai-agent-action-approval-before-execution
+- https://www.sanctumruntime.com/blog/embodied-ai-robotics-policy-gate
+- https://www.sanctumruntime.com/blog/humanoid-robot-physical-action-gate
+- https://www.sanctumruntime.com/blog/ros2-safety-policy-runtime
+- https://www.sanctumruntime.com/blog/smart-home-ai-unlock-door-policy
+- https://www.sanctumruntime.com/blog/langchain-agent-middleware-verification
+- https://www.sanctumruntime.com/blog/indirect-prompt-injection-source-trust
+- https://www.sanctumruntime.com/blog/signed-action-tokens-executor-verification
+- https://www.sanctumruntime.com/blog/soc2-nist-ai-rmf-runtime-evidence
+- https://www.sanctumruntime.com/blog/fleet-kill-switch-autonomous-systems
+- https://www.sanctumruntime.com/blog/local-ollama-offline-runtime-trust
+- https://www.sanctumruntime.com/blog/workflow-automation-ai-governance
+- https://www.sanctumruntime.com/blog/healthcare-robotics-phi-policy-packs
+- https://www.sanctumruntime.com/blog/sanctum-vs-guardrails
+- https://www.sanctumruntime.com/blog/mobile-pwa-runtime-verification
 
 ## Machine-readable pages
 
