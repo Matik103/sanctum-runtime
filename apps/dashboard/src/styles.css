@@ -197,6 +197,10 @@ h3 {
   box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.15), 0 8px 32px rgba(239, 68, 68, 0.08);
 }
 
+.card.glow-warn {
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.18), 0 8px 32px rgba(245, 158, 11, 0.09);
+}
+
 .card-label {
   color: var(--muted);
   font-size: 0.72rem;
@@ -1022,6 +1026,53 @@ table.data td.audit-record-cell {
   font-family: ui-monospace, monospace;
   font-size: 0.8rem;
   color: var(--muted);
+}
+
+/* Fleet / KPI layout */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.85rem;
+  margin-bottom: 1.5rem;
+}
+
+.kpi-card {
+  background: var(--elevated, rgba(255,255,255,0.04));
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  text-align: center;
+}
+
+.kpi-card__label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 0 0 0.35rem;
+}
+
+.kpi-card__value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1;
+}
+
+.section-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 1.5rem 0 0.65rem;
+}
+
+.panel-glass {
+  background: rgba(255,255,255,0.025);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem;
 }
 
 .hint-line {

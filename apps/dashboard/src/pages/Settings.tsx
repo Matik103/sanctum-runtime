@@ -174,13 +174,13 @@ export function Settings({ status }: Props) {
     }
   }
 
-  const { permission: pushPermission, subscribe: enablePush, unsubscribe: disablePush } = usePushNotifications(Boolean(orgId))
+  const { state: pushState, subscribe: enablePush, unsubscribe: disablePush } = usePushNotifications()
   const [pushBusy, setPushBusy] = useState(false)
 
   const handlePushToggle = async () => {
     setPushBusy(true)
     try {
-      if (pushPermission === 'granted') {
+      if (pushState === 'subscribed') {
         await disablePush()
       } else {
         await enablePush()

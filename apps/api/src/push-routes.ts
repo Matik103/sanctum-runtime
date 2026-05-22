@@ -32,6 +32,10 @@ export async function registerPushRoutes(app: FastifyInstance): Promise<void> {
   const vapidPublic = process.env.VITE_VAPID_PUBLIC_KEY?.trim() || process.env.VAPID_PUBLIC_KEY?.trim()
   const vapidPrivate = process.env.VAPID_PRIVATE_KEY?.trim()
 
+  app.get('/v1/push/vapid-key', async (_req, reply) => {
+    return reply.send({ publicKey: vapidPublic ?? null })
+  })
+
   app.get('/v1/push/status', async (req, reply) => {
     const user = (req as SanctumReq).sanctumUser
     if (!user) return reply.status(401).send({ error: 'unauthorized' })
