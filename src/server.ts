@@ -66,8 +66,19 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
   return brandedErrorResponse();
 }
 
+/** Apex → www (Search Console / canonical host is www.sanctumruntime.com). */
+function redirectApexToWww(request: Request): Response | null {
+  const url = new URL(request.url);
+  if (url.hostname !== "sanctumruntime.com") return null;
+  url.hostname = "www.sanctumruntime.com";
+  return Response.redirect(url.toString(), 308);
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    const apexRedirect = redirectApexToWww(request);
+    if (apexRedirect) return apexRedirect;
+
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);

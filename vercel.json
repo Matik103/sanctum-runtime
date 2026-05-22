@@ -3,5 +3,25 @@
   "installCommand": "npm ci",
   "buildCommand": "npm run build:vercel",
   "framework": null,
-  "outputDirectory": ".vercel/output"
+  "outputDirectory": ".vercel/output",
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "sanctumruntime.com" }],
+      "destination": "https://www.sanctumruntime.com/:path*",
+      "permanent": true,
+      "statusCode": 308
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=63072000; includeSubDomains; preload"
+        }
+      ]
+    }
+  ]
 }

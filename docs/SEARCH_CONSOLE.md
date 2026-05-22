@@ -1,6 +1,17 @@
 # Search Console & Bing Webmaster
 
-Marketing site: **https://www.sanctumruntime.com**
+Marketing site: **https://www.sanctumruntime.com** (canonical — not the bare apex)
+
+## HTTPS / “HTTPS not evaluated” (Google Page Experience)
+
+If Search Console flags **`https://sanctumruntime.com/`** (no `www`):
+
+- That host only **redirects** to `https://www.sanctumruntime.com/` — Google may report “HTTPS not evaluated” on the redirect URL itself. That is expected.
+- **Fix in GSC:** Use property **`https://www.sanctumruntime.com`** as primary (matches sitemap + canonicals).
+- **Fix in Vercel:** `vercel.json` sends **308** apex → www + HSTS; redeploy marketing site after merge.
+- After deploy: **URL inspection** → `https://sanctumruntime.com/` → should show redirect to www over HTTPS → **Validate fix** on the HTTPS report.
+
+Do **not** submit `https://sanctumruntime.com/` as the homepage in sitemap (already uses `www` only).
 
 ## Already in good shape (production)
 
