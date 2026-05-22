@@ -8,6 +8,7 @@ import { riskModelMetaLine } from '../lib/risk-label'
 import { fetchUsage, usageMetricLabel, type UsageSummary } from '../lib/usage'
 import { apiBaseUrl as apiBase } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
+import { usePushNotifications } from '../hooks/usePushNotifications'
 
 async function authHeaders(json = false): Promise<Record<string, string>> {
   const token = await getAccessToken()
