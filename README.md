@@ -1,13 +1,40 @@
 # Sanctum Runtime
 
-**The open-source gate between autonomous AI and the real world.**  
-One runtime for **agents, robots, smart home, industrial systems, and workflows** — verify every action *before* it runs, with policies, human approval, local or cloud LLMs, and audit logs developers actually want to read.
+**The runtime trust boundary for autonomous systems.**
+
+Every meaningful agent — LLM, robot, MCP server, computer-use, workflow bot — eventually needs a *trusted place* where **proposed action becomes permitted action**. Sanctum is that place. We sign it, score its blast radius, classify its source trust, require human approval if the policy says so, and emit a short-lived token the executor must verify before the side effect runs.
+
+Not a chat guardrail. Not an audit log. **The boundary.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 [![npm @sanctum-runtime/sdk](https://img.shields.io/npm/v/@sanctum-runtime/sdk?label=npm%20sdk)](https://www.npmjs.com/package/@sanctum-runtime/sdk)
 [![GitHub stars](https://img.shields.io/github/stars/Matik103/sanctum-runtime?style=social)](https://github.com/Matik103/sanctum-runtime)
 
-**About this repo:** Open-source trust layer for autonomous AI — gate agent, robot, smart home, and industrial actions before they run. Policies, HITL, Ollama/OpenAI, audit. MIT · `npm install @sanctum-runtime/sdk`
+```
+  agent proposes action
+        │
+        ▼
+   ┌────────────┐    blast radius · source trust · policy · grants
+   │  Sanctum   │ ─────────────────────────────────────────────────►  audit + evidence
+   └────────────┘
+        │  signed action_token (HMAC, 5 min TTL)
+        ▼
+  executor verifies → side effect runs → result reported back
+```
+
+**About this repo:** open-source runtime trust boundary for autonomous AI, robots, MCP tools, smart home, financial and healthcare agents. Signed action tokens · blast-radius scoring · source-trust classification (indirect-prompt-injection defense) · dual-approver workflows · auto-escalation · fleet kill switch · policy replay · SOC2 + NIST AI RMF evidence · 16 framework adapters. MIT · `npm install @sanctum-runtime/sdk`
+
+## What's new in this release
+
+- **Signed action tokens** — HMAC-SHA256, scoped to actor + action + org + audit id, 5 min TTL. Executors must verify before running.
+- **Blast-radius scoring** — every action gets `{ level, score 0-100, factors, reversible, dataSensitivity, externalDestination, physicalWorld, estimatedValue }`.
+- **Source-trust classification** — 7 levels including `untrusted_content` and `tool_output` for deterministic indirect-prompt-injection defense.
+- **Dual approver + auto-escalate** — `requireSecondApprover` policies need two distinct approvers; stale verifications auto-escalate after policy-defined minutes.
+- **Fleet kill switch** — operator-triggered org-wide pause that returns BLOCKED on every verify until resumed.
+- **Policy replay** — *"if today's policies had existed yesterday, what would have changed?"*
+- **NIST AI RMF + SOC2 evidence exports** — 16 mapped controls (GOVERN / MAP / MEASURE / MANAGE) with implementation evidence.
+- **16 framework adapters** — LangChain, Vercel AI, OpenAI Agents, Mastra, MCP, CrewAI, ROS2, Claude Desktop, n8n/Zapier, AutoGen, Pydantic AI, LlamaIndex, smolagents, Bedrock Agents, Browser-use, Home Assistant.
+- **Domain policy packs** — installable from the marketplace: healthcare PHI, finance transfers, ROS2 safety, MCP baseline, Claude Desktop.
 
 | | |
 |---|---|
@@ -34,6 +61,27 @@ Sanctum is for:
 - **Operators** — optional dashboard for human-in-the-loop (HITL) review  
 
 If you only need chat guardrails, look at prompt filters. If you need **execution control**, you are in the right place.
+
+---
+
+## Sanctum vs other runtime-control tools
+
+|                              | Sanctum Runtime | Tracehold | GuardPlane | AgentID | Repello Argus / Guardion |
+|------------------------------|:---------------:|:---------:|:----------:|:-------:|:------------------------:|
+| **Open source (MIT)**        | ✅              | ❌        | ❌         | ❌      | ❌                       |
+| **Pre-execution action gate**| ✅              | ✅        | ✅         | ✅      | partial                  |
+| **Signed action tokens**     | ✅              | partial   | ❌         | ❌      | ❌                       |
+| **Blast-radius scoring**     | ✅              | ❌        | ❌         | partial | ❌                       |
+| **Source-trust / indirect-injection** | ✅     | ❌        | ❌         | ❌      | partial                  |
+| **Dual approver + auto-escalate** | ✅         | ❌        | ❌         | ❌      | ❌                       |
+| **Policy replay against history** | ✅         | ❌        | ❌         | ❌      | ❌                       |
+| **Robotics / ROS2 / physical world** | ✅      | ❌        | ❌         | ❌      | ❌                       |
+| **Local LLM (Ollama) risk model** | ✅         | ❌        | ❌         | ❌      | ❌                       |
+| **SOC2 + NIST AI RMF evidence**   | ✅         | partial   | ❌         | partial | partial                  |
+| **Domain policy marketplace** | ✅            | ❌        | ❌         | ❌      | ❌                       |
+| **16 framework adapters**    | ✅              | ~4        | endpoint   | ~3      | ~2                       |
+
+The wedge: **we are not "AI agent security"**. We are the trust boundary between *any* autonomous system and *any* real-world action — agents, robots, smart home, industrial, healthcare, financial, mobility, workflows. Everyone else clusters around chat / cloud-ops / endpoint. We sit on the decision point.
 
 ---
 

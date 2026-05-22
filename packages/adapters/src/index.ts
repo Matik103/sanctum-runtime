@@ -13,7 +13,19 @@
  *   - CrewAI
  *   - ROS2 (robotics)
  *   - Claude Desktop / computer-use
+ *   - n8n / Zapier / Make (workflow automation)
+ *   - Microsoft AutoGen (multi-agent)
+ *   - Pydantic AI (HTTP bridge to TS dispatchers)
+ *   - LlamaIndex
+ *   - Hugging Face smolagents (HTTP bridge)
+ *   - AWS Bedrock Agents (action-group Lambdas)
+ *   - Browser-use / Stagehand (browser automation)
+ *   - Home Assistant (smart home service calls)
+ *
+ * Anything not listed: use the generic `gate()` function — works with any
+ * framework where you can `await` a Promise.
  */
+export { gate } from './gate.js'
 
 // Shared types
 export type { SanctumAdapterOptions, ActionContext } from './types.js'
@@ -82,3 +94,52 @@ export {
   wrapClaudeDispatcher,
   type ToolUseBlock,
 } from './claude-desktop.js'
+
+// n8n / Zapier / Make workflow adapter
+export {
+  gateN8nStep,
+  type N8nStepInput,
+} from './n8n.js'
+
+// Microsoft AutoGen adapter
+export {
+  wrapAutoGenTool,
+  createSanctumAutoGenHook,
+  type AutoGenTool,
+} from './autogen.js'
+
+// Pydantic AI bridge adapter
+export {
+  gatePydanticAITool,
+  type PydanticAIToolCall,
+} from './pydantic-ai.js'
+
+// LlamaIndex adapter
+export {
+  wrapLlamaIndexTool,
+  type LlamaIndexTool,
+} from './llamaindex.js'
+
+// Hugging Face smolagents bridge adapter
+export {
+  gateSmolagentsCall,
+  type SmolToolCall,
+} from './smolagents.js'
+
+// AWS Bedrock Agents adapter
+export {
+  gateBedrockAgentEvent,
+  type BedrockAgentEvent,
+} from './bedrock-agents.js'
+
+// Browser-use / Stagehand adapter
+export {
+  wrapBrowserActionExecutor,
+  type BrowserAction,
+} from './browser-use.js'
+
+// Home Assistant adapter
+export {
+  gateHassServiceCall,
+  type HassServiceCall,
+} from './home-assistant.js'

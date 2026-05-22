@@ -1,9 +1,18 @@
 {
   "name": "@sanctum-runtime/adapters",
-  "version": "0.1.0",
-  "description": "Framework adapters for Sanctum Runtime — LangChain, Vercel AI SDK, AutoGen, CrewAI, OpenAI Agents",
+  "version": "0.2.0",
+  "description": "Sanctum Runtime framework adapters — gate every agent / robot / MCP / workflow action through Sanctum. Supports LangChain, Vercel AI SDK, OpenAI Agents, Mastra, MCP, CrewAI, ROS2, Claude Desktop, n8n, AutoGen, Pydantic AI, LlamaIndex, smolagents, AWS Bedrock Agents, Browser-use, Home Assistant. Plus a generic gate() for anything else.",
   "type": "module",
   "license": "MIT",
+  "keywords": [
+    "ai-agents", "agent-security", "agent-middleware", "agent-gateway",
+    "langchain", "vercel-ai-sdk", "openai-agents", "mastra",
+    "mcp", "model-context-protocol", "crewai", "autogen", "pydantic-ai",
+    "llamaindex", "smolagents", "bedrock-agents", "browser-use",
+    "home-assistant", "n8n", "zapier", "ros2", "claude-desktop",
+    "computer-use", "tool-use", "function-calling", "indirect-prompt-injection",
+    "runtime", "policy-engine", "sanctum"
+  ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -11,7 +20,19 @@
     "./langchain": "./dist/langchain.js",
     "./vercel-ai": "./dist/vercel-ai.js",
     "./openai-agents": "./dist/openai-agents.js",
-    "./mastra": "./dist/mastra.js"
+    "./mastra": "./dist/mastra.js",
+    "./mcp": "./dist/mcp.js",
+    "./crewai": "./dist/crewai.js",
+    "./ros2": "./dist/ros2.js",
+    "./claude-desktop": "./dist/claude-desktop.js",
+    "./n8n": "./dist/n8n.js",
+    "./autogen": "./dist/autogen.js",
+    "./pydantic-ai": "./dist/pydantic-ai.js",
+    "./llamaindex": "./dist/llamaindex.js",
+    "./smolagents": "./dist/smolagents.js",
+    "./bedrock-agents": "./dist/bedrock-agents.js",
+    "./browser-use": "./dist/browser-use.js",
+    "./home-assistant": "./dist/home-assistant.js"
   },
   "files": [
     "dist",
