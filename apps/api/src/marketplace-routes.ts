@@ -1,56 +1,53 @@
-import type { FastifyInstance, FastifyRequest } from 'fastify'
-import type { RuntimeEngine } from '@sanctum/runtime-engine'
-import { z } from 'zod'
-import { getSupabaseAuthConfig } from './auth.js'
-import { ControlPlaneStore } from './control-plane-store.js'
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { RuntimeEngine } from "@sanctum/runtime-engine";
+import { z } from "zod";
+import { getSupabaseAuthConfig } from "./auth.js";
+import { ControlPlaneStore } from "./control-plane-store.js";
 import {
   applyMarketplacePolicyTemplates,
   policyKeysForUninstall,
   removeMarketplacePolicyTemplates,
-} from './marketplace-policies.js'
-import { MarketplaceStore } from './marketplace-store.js'
-import { recordUsage, UsageMetrics } from './usage-store.js'
-import { assertOrgAllowed, resolveOrgScope, type SanctumReq } from './org-scope.js'
+} from "./marketplace-policies.js";
+import { MarketplaceStore } from "./marketplace-store.js";
+import { recordUsage, UsageMetrics } from "./usage-store.js";
+import { assertOrgAllowed, resolveOrgScope, type SanctumReq } from "./org-scope.js";
 
 const slugSchema = z
   .string()
   .min(2)
   .max(64)
-  .regex(/^[a-z0-9-]+$/)
+  .regex(/^[a-z0-9-]+$/);
 
-export async function registerMarketplaceRoutes(
-  app: FastifyInstance,
-  runtime: RuntimeEngine,
-) {
-  const cfg = getSupabaseAuthConfig()
-  if (!cfg) return
+export async function registerMarketplaceRoutes(app: FastifyInstance, runtime: RuntimeEngine) {
+  const cfg = getSupabaseAuthConfig();
+  if (!cfg) return;
 
-  const store = new ControlPlaneStore(cfg)
-  const market = new MarketplaceStore(cfg)
+  const store = new ControlPlaneStore(cfg);
+  const market = new MarketplaceStore(cfg);
 
-  app.get('/v1/marketplace/packages', async (req, reply) => {
-    const orgId = (req.query as { org_id?: string }).org_id
+  app.get("/v1/marketplace/packages", async (req, reply) => {
+    const orgId = (req.query as { org_id?: string }).org_id;
     if (orgId) {
-      const scope = await resolveOrgScope(req as SanctumReq, store)
-      if (!assertOrgAllowed(scope, orgId, reply)) return
+      const scope = await resolveOrgScope(req as SanctumReq, store);
+      if (!assertOrgAllowed(scope, orgId, reply)) return;
     }
-    const packages = await market.listPackages(orgId)
-    return { packages }
-  })
+    const packages = await market.listPackages(orgId);
+    return { packages };
+  });
 
-  app.get('/v1/marketplace/packages/:slug', async (req, reply) => {
-    const slug = slugSchema.parse((req.params as { slug: string }).slug)
-    const orgId = (req.query as { org_id?: string }).org_id
+  app.get("/v1/marketplace/packages/:slug", async (req, reply) => {
+    const slug = slugSchema.parse((req.params as { slug: string }).slug);
+    const orgId = (req.query as { org_id?: string }).org_id;
     if (orgId) {
-      const scope = await resolveOrgScope(req as SanctumReq, store)
-      if (!assertOrgAllowed(scope, orgId, reply)) return
+      const scope = await resolveOrgScope(req as SanctumReq, store);
+      if (!assertOrgAllowed(scope, orgId, reply)) return;
     }
-    const pkg = await market.getBySlug(slug, orgId)
-    if (!pkg) return reply.status(404).send({ error: 'package_not_found' })
-    return { package: pkg }
-  })
+    const pkg = await market.getBySlug(slug, orgId);
+    if (!pkg) return reply.status(404).send({ error: "package_not_found" });
+    return { package: pkg };
+  });
 
-  app.post('/v1/marketplace/packages', async (req, reply) => {
+  app.post("/v1/marketplace/packages", async (req, reply) => {
     const body = z
       .object({
         organizationId: z.string().min(1).max(64),
@@ -62,11 +59,11 @@ export async function registerMarketplaceRoutes(
         policyTemplates: z.array(z.record(z.unknown())).optional(),
         readme: z.string().max(8000).optional(),
       })
-      .parse(req.body)
+      .parse(req.body);
 
-    const scope = await resolveOrgScope(req as SanctumReq, store)
-    if (!assertOrgAllowed(scope, body.organizationId, reply)) return
-    await store.ensureOrg(body.organizationId)
+    const scope = await resolveOrgScope(req as SanctumReq, store);
+    if (!assertOrgAllowed(scope, body.organizationId, reply)) return;
+    await store.ensureOrg(body.organizationId);
 
     try {
       const pkg = await market.createPackage({
@@ -78,137 +75,152 @@ export async function registerMarketplaceRoutes(
         connectDefaults: body.connectDefaults,
         policyTemplates: body.policyTemplates,
         readme: body.readme,
-      })
-      return { package: pkg }
+      });
+      return { package: pkg };
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'create_failed'
-      if (msg.includes('duplicate') || msg.includes('unique')) {
-        return reply.status(409).send({ error: 'slug_exists' })
+      const msg = e instanceof Error ? e.message : "create_failed";
+      if (msg.includes("duplicate") || msg.includes("unique")) {
+        return reply.status(409).send({ error: "slug_exists" });
       }
-      throw e
+      throw e;
     }
-  })
+  });
 
-  app.post('/v1/marketplace/packages/:slug/install', async (req, reply) => {
-    const slug = slugSchema.parse((req.params as { slug: string }).slug)
+  app.post("/v1/marketplace/packages/:slug/install", async (req, reply) => {
+    const slug = slugSchema.parse((req.params as { slug: string }).slug);
     const body = z
       .object({
         organizationId: z.string().min(1).max(64),
         config: z.record(z.unknown()).optional(),
       })
-      .parse(req.body)
+      .parse(req.body);
 
-    const scope = await resolveOrgScope(req as SanctumReq, store)
-    if (!assertOrgAllowed(scope, body.organizationId, reply)) return
-    await store.ensureOrg(body.organizationId)
+    const scope = await resolveOrgScope(req as SanctumReq, store);
+    if (!assertOrgAllowed(scope, body.organizationId, reply)) return;
+    await store.ensureOrg(body.organizationId);
 
     try {
-      const catalog = await market.getBySlug(slug, body.organizationId)
-      if (!catalog) return reply.status(404).send({ error: 'package_not_found' })
+      const catalog = await market.getBySlug(slug, body.organizationId);
+      if (!catalog) return reply.status(404).send({ error: "package_not_found" });
 
       const appliedPolicyKeys = await applyMarketplacePolicyTemplates(
         runtime,
         body.organizationId,
         catalog.policy_templates,
-      )
+      );
 
-      const { install, package: pkg } = await market.install(
-        body.organizationId,
-        slug,
-        {
-          ...(body.config ?? {}),
-          appliedPolicyKeys,
-          packageSlug: slug,
-          packageVersion: catalog.version,
-        },
-      )
+      const { install, package: pkg } = await market.install(body.organizationId, slug, {
+        ...(body.config ?? {}),
+        appliedPolicyKeys,
+        packageSlug: slug,
+        packageVersion: catalog.version,
+      });
       await store.insertEvent({
         orgId: body.organizationId,
-        eventType: 'marketplace.installed',
+        eventType: "marketplace.installed",
         payload: { slug, version: pkg.version },
-      })
+      });
       recordUsage(cfg, body.organizationId, UsageMetrics.MARKETPLACE_INSTALL, 1, {
         slug,
         version: pkg.version,
-      })
+      });
       const connect = market.connectHints(pkg, {
         ...((install.config as Record<string, unknown>) ?? {}),
-      })
-      connect.organizationId = body.organizationId
+      });
+      connect.organizationId = body.organizationId;
       return {
         installId: install.id,
         installedAt: install.installed_at,
         connect,
         appliedPolicyKeys,
-      }
+      };
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'install_failed'
-      if (msg === 'package_not_found') return reply.status(404).send({ error: msg })
-      throw e
+      const msg = e instanceof Error ? e.message : "install_failed";
+      if (msg === "package_not_found") return reply.status(404).send({ error: msg });
+      throw e;
     }
-  })
+  });
 
-  app.delete('/v1/marketplace/packages/:slug/install', async (req, reply) => {
-    const slug = slugSchema.parse((req.params as { slug: string }).slug)
-    const orgId = (req.query as { org_id?: string }).org_id
-    if (!orgId) return reply.status(400).send({ error: 'org_id_required' })
-    const scope = await resolveOrgScope(req as SanctumReq, store)
-    if (!assertOrgAllowed(scope, orgId, reply)) return
+  const uninstallPackage = async (
+    req: FastifyRequest,
+    reply: FastifyReply,
+    slug: string,
+    orgId: string | undefined,
+  ) => {
+    if (!orgId) return reply.status(400).send({ error: "org_id_required" });
+    const scope = await resolveOrgScope(req as SanctumReq, store);
+    if (!assertOrgAllowed(scope, orgId, reply)) return;
 
-    let installRow: Awaited<ReturnType<typeof market.getInstallRecord>>
+    let installRow: Awaited<ReturnType<typeof market.getInstallRecord>>;
     try {
-      installRow = await market.getInstallRecord(orgId, slug)
+      installRow = await market.getInstallRecord(orgId, slug);
     } catch (e) {
-      req.log.error({ err: e, slug, orgId }, 'marketplace getInstallRecord error')
-      return reply.status(500).send({ error: 'uninstall_failed' })
+      req.log.error({ err: e, slug, orgId }, "marketplace getInstallRecord error");
+      return reply.status(500).send({ error: "uninstall_failed" });
     }
-    if (!installRow) return reply.status(404).send({ error: 'not_installed' })
+    if (!installRow) return reply.status(404).send({ error: "not_installed" });
 
     const policyKeys = policyKeysForUninstall(
       orgId,
       (installRow.install.config as Record<string, unknown> | undefined) ?? undefined,
       installRow.package.policy_templates,
-    )
+    );
 
-    await store.ensureOrg(orgId)
+    await store.ensureOrg(orgId);
 
     try {
-      await removeMarketplacePolicyTemplates(runtime, policyKeys)
+      await removeMarketplacePolicyTemplates(runtime, policyKeys);
     } catch (e) {
-      req.log.warn({ err: e, slug, orgId }, 'marketplace policy cleanup failed')
+      req.log.warn({ err: e, slug, orgId }, "marketplace policy cleanup failed");
     }
 
-    let removed: boolean
+    let removed: boolean;
     try {
-      removed = await market.uninstall(orgId, slug)
+      removed = await market.uninstall(orgId, slug);
     } catch (e) {
-      req.log.error({ err: e, slug, orgId }, 'marketplace uninstall db error')
-      return reply.status(500).send({ error: 'uninstall_failed' })
+      req.log.error({ err: e, slug, orgId }, "marketplace uninstall db error");
+      return reply.status(500).send({ error: "uninstall_failed" });
     }
-    if (!removed) return reply.status(404).send({ error: 'not_installed' })
+    if (!removed) return reply.status(404).send({ error: "not_installed" });
 
     try {
       await store.insertEvent({
         orgId,
-        eventType: 'marketplace.uninstalled',
+        eventType: "marketplace.uninstalled",
         payload: { slug, policyKeysRemoved: policyKeys.length },
-      })
+      });
     } catch (e) {
-      req.log.warn({ err: e, slug, orgId }, 'marketplace uninstalled event failed')
+      req.log.warn({ err: e, slug, orgId }, "marketplace uninstalled event failed");
     }
-    return { ok: true }
-  })
+    return { ok: true };
+  };
 
-  app.get('/v1/marketplace/packages/:slug/connect', async (req, reply) => {
-    const slug = slugSchema.parse((req.params as { slug: string }).slug)
-    const orgId = (req.query as { org_id?: string }).org_id
-    if (!orgId) return reply.status(400).send({ error: 'org_id_required' })
-    const scope = await resolveOrgScope(req as SanctumReq, store)
-    if (!assertOrgAllowed(scope, orgId, reply)) return
+  app.delete("/v1/marketplace/packages/:slug/install", async (req, reply) => {
+    const slug = slugSchema.parse((req.params as { slug: string }).slug);
+    const orgId = (req.query as { org_id?: string }).org_id;
+    return uninstallPackage(req, reply, slug, orgId);
+  });
 
-    const connect = await market.getInstallConfig(orgId, slug)
-    if (!connect) return reply.status(404).send({ error: 'package_not_installed' })
-    connect.organizationId = orgId
-    return { connect }
-  })
+  app.post("/v1/marketplace/packages/:slug/uninstall", async (req, reply) => {
+    const slug = slugSchema.parse((req.params as { slug: string }).slug);
+    const body = z
+      .object({
+        organizationId: z.string().min(1).max(64),
+      })
+      .parse(req.body);
+    return uninstallPackage(req, reply, slug, body.organizationId);
+  });
+
+  app.get("/v1/marketplace/packages/:slug/connect", async (req, reply) => {
+    const slug = slugSchema.parse((req.params as { slug: string }).slug);
+    const orgId = (req.query as { org_id?: string }).org_id;
+    if (!orgId) return reply.status(400).send({ error: "org_id_required" });
+    const scope = await resolveOrgScope(req as SanctumReq, store);
+    if (!assertOrgAllowed(scope, orgId, reply)) return;
+
+    const connect = await market.getInstallConfig(orgId, slug);
+    if (!connect) return reply.status(404).send({ error: "package_not_installed" });
+    connect.organizationId = orgId;
+    return { connect };
+  });
 }
