@@ -34,6 +34,7 @@ export type { SanctumAdapterOptions, ActionContext } from './types.js'
 export {
   SanctumBlockedError,
   SanctumVerificationTimeoutError,
+  SanctumActionTokenRequiredError,
 } from './errors.js'
 
 // LangChain adapter

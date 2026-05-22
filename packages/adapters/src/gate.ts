@@ -2,8 +2,13 @@
  * Internal helper — shared action-gate logic used by every framework adapter.
  * Not part of the public API.
  */
+import type { ActionResult } from '@sanctum-runtime/sdk'
 import type { SanctumAdapterOptions, ActionContext } from './types.js'
-import { SanctumBlockedError, SanctumVerificationTimeoutError } from './errors.js'
+import {
+  SanctumActionTokenRequiredError,
+  SanctumBlockedError,
+  SanctumVerificationTimeoutError,
+} from './errors.js'
 
 function resolveCorrelationId(
   opt: SanctumAdapterOptions['correlationId'],
@@ -21,7 +26,7 @@ function resolveCorrelationId(
 export async function gate(
   ctx: ActionContext,
   options: SanctumAdapterOptions,
-): Promise<void> {
+): Promise<ActionResult> {
   const { client, agentId, onApproved, onBlocked, onVerificationRequired, verificationTimeout } = options
 
   const actor = ctx.actor ?? agentId ?? 'agent'
@@ -77,11 +82,55 @@ export async function gate(
       })
     }
     if (verificationStatus.status === 'approved' && verificationStatus.entry) {
+      await assertApprovedActionToken(ctx, verificationStatus.entry, options)
       onApproved?.(ctx.action, verificationStatus.entry)
-      return
+      return verificationStatus.entry
     }
   }
 
   // APPROVED — proceed
+  await assertApprovedActionToken(ctx, result, options)
   onApproved?.(ctx.action, result)
+  return result
+}
+
+async function assertApprovedActionToken(
+  ctx: ActionContext,
+  result: ActionResult,
+  options: SanctumAdapterOptions,
+): Promise<void> {
+  if (!options.enforceActionToken) return
+
+  const token = result.actionToken?.token
+  if (!token) {
+    throw new SanctumActionTokenRequiredError(ctx.action)
+  }
+
+  const verifyWithRuntime =
+    typeof options.enforceActionToken === 'object'
+      ? options.enforceActionToken.verifyWithRuntime !== false
+      : true
+  if (!verifyWithRuntime) return
+
+  const verification = await options.client.verifyActionToken(token)
+  if (!verification.valid) {
+    throw new SanctumActionTokenRequiredError(ctx.action, verification.error ?? 'runtime rejected signed action token')
+  }
+
+  const payload = verification.payload ?? {}
+  if (payload.action !== result.action || payload.actor !== result.actor) {
+    throw new SanctumActionTokenRequiredError(ctx.action, 'signed action token does not match approved actor/action')
+  }
+
+  const expected = result.actionIdentity
+  if (!expected) return
+  if (expected.toolId && payload.toolId !== expected.toolId) {
+    throw new SanctumActionTokenRequiredError(ctx.action, 'signed action token does not match approved tool identity')
+  }
+  if (expected.runtimeId && payload.runtimeId !== expected.runtimeId) {
+    throw new SanctumActionTokenRequiredError(ctx.action, 'signed action token does not match approved runtime identity')
+  }
+  if (expected.environmentId && payload.environmentId !== expected.environmentId) {
+    throw new SanctumActionTokenRequiredError(ctx.action, 'signed action token does not match approved environment identity')
+  }
 }

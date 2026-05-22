@@ -29,6 +29,16 @@ export type SanctumAdapterOptions = {
    */
   onApproved?: (action: string, result: ActionResult) => void
   /**
+   * When enabled, the adapter refuses to continue unless the approved action
+   * includes a signed Sanctum action token. By default the adapter also asks the
+   * runtime API to verify the token before returning.
+   */
+  enforceActionToken?:
+    | boolean
+    | {
+        verifyWithRuntime?: boolean
+      }
+  /**
    * Verification wait options forwarded to client.waitForVerification().
    */
   verificationTimeout?: {

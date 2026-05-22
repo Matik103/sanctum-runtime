@@ -34,3 +34,13 @@ export class SanctumVerificationTimeoutError extends Error {
     this.correlationId = correlationId
   }
 }
+
+export class SanctumActionTokenRequiredError extends Error {
+  readonly action: string
+
+  constructor(action: string, reason = 'missing or invalid signed action token') {
+    super(`Sanctum refused action "${action}": ${reason}`)
+    this.name = 'SanctumActionTokenRequiredError'
+    this.action = action
+  }
+}

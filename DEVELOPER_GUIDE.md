@@ -210,6 +210,20 @@ await sanctum.verifyActionToken(result.actionToken.token)
 await performSideEffect()
 ```
 
+Adapters can enforce this at the tool boundary:
+
+```ts
+await gate(
+  { action: 'send_email', actor: 'agent-1', context: { toolId: 'gmail.send' } },
+  {
+    client: sanctum,
+    enforceActionToken: true,
+  },
+)
+```
+
+With `enforceActionToken: true`, adapters refuse to continue unless the approved result includes a signed token that the runtime verifies and whose actor/action/tool/runtime/environment claims match the approved action.
+
 Use `instructionSource: "webpage" | "email" | "tool_output"` when model instructions came from retrieved or external content. Sanctum elevates untrusted-source side effects so indirect prompt injection cannot silently trigger irreversible action.
 
 ---
