@@ -9,7 +9,17 @@ from sanctum_runtime.errors import (
   SanctumApiError,
   SanctumVerificationRequiredError,
 )
-from sanctum_runtime.types import ActionPolicy, ActionRequest, ActionResult, PolicyMap, PolicyMode
+from sanctum_runtime.types import (
+  ActionPolicy,
+  ActionRequest,
+  ActionResult,
+  ActionTokenVerification,
+  AuditReplayResult,
+  EvidenceSummary,
+  PolicyMap,
+  PolicyMode,
+  SimulateResult,
+)
 
 PolicyMode = Literal["approve", "verify", "block"]
 
@@ -84,8 +94,25 @@ class SanctumRuntime:
   def get_status(self):
     return self._client.get_status()
 
-  def get_audit(self, limit: int = 50) -> list[ActionResult]:
-    return self._client.get_audit(limit)
+  def get_audit(self, limit: int = 50, org_id: str | None = None) -> list[ActionResult]:
+    return self._client.get_audit(limit, org_id=org_id)
+
+  def simulate_action(
+    self,
+    request: ActionRequest,
+    *,
+    offline_mode: bool | None = None,
+  ) -> SimulateResult:
+    return self._client.simulate_action(request, offline_mode=offline_mode)
+
+  def replay_audit(self, limit: int = 100, org_id: str | None = None) -> AuditReplayResult:
+    return self._client.replay_audit(limit, org_id=org_id)
+
+  def get_evidence_summary(self, limit: int = 200, org_id: str | None = None) -> EvidenceSummary:
+    return self._client.get_evidence_summary(limit, org_id=org_id)
+
+  def verify_action_token(self, token: str) -> ActionTokenVerification:
+    return self._client.verify_action_token(token)
 
   def policy(self, action: str, mode: PolicyMode) -> PolicyMap:
     return self._client.update_policy(action, _mode_to_policy(mode))

@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import time
 from typing import Any, Callable, Literal
+from urllib.parse import urlencode
 
 import httpx
 
@@ -11,8 +12,12 @@ from sanctum_runtime.types import (
     ActionPolicy,
     ActionRequest,
     ActionResult,
+    ActionTokenVerification,
+    AuditReplayResult,
+    EvidenceSummary,
     PolicyMap,
     RuntimeStatus,
+    SimulateResult,
     VerificationStatus,
 )
 
@@ -109,8 +114,36 @@ class SanctumClient:
       body["correlationId"] = correlation_id
     return self._request("POST", "/v1/actions/verify", json=body)
 
-  def get_audit(self, limit: int = 50) -> list[ActionResult]:
-    return self._request("GET", f"/v1/audit?limit={limit}")
+  @staticmethod
+  def _query(params: dict[str, str | int | None]) -> str:
+    clean = {key: value for key, value in params.items() if value is not None}
+    return f"?{urlencode(clean)}" if clean else ""
+
+  def get_audit(self, limit: int = 50, org_id: str | None = None) -> list[ActionResult]:
+    return self._request("GET", f"/v1/audit{self._query({'limit': limit, 'org_id': org_id})}")
+
+  def simulate_action(
+    self,
+    request: ActionRequest,
+    *,
+    offline_mode: bool | None = None,
+  ) -> SimulateResult:
+    body: dict[str, Any] = {
+      **request,
+      "context": request.get("context") or {},
+    }
+    if offline_mode is not None:
+      body["offlineMode"] = offline_mode
+    return self._request("POST", "/v1/policies/simulate", json=body)
+
+  def replay_audit(self, limit: int = 100, org_id: str | None = None) -> AuditReplayResult:
+    return self._request("GET", f"/v1/audit/replay{self._query({'limit': limit, 'org_id': org_id})}")
+
+  def get_evidence_summary(self, limit: int = 200, org_id: str | None = None) -> EvidenceSummary:
+    return self._request("GET", f"/v1/evidence/summary{self._query({'limit': limit, 'org_id': org_id})}")
+
+  def verify_action_token(self, token: str) -> ActionTokenVerification:
+    return self._request("POST", "/v1/actions/token/verify", json={"token": token})
 
   def get_policies(self) -> PolicyMap:
     return self._request("GET", "/v1/policies")
