@@ -1,0 +1,8 @@
+# Sanctum console — strengthen noindex at the HTTP layer so search engines
+# and AI crawlers receive the directive even on cached / 30x responses where
+# the HTML <meta> tag would never be parsed.
+/*
+  X-Robots-Tag: noindex, nofollow, noarchive, nosnippet
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY

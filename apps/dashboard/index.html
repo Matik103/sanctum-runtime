@@ -13,7 +13,16 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Sanctum" />
-    <meta name="robots" content="noindex, nofollow" />
+
+    <!-- Search-engine indexing: operator console is intentionally not a
+         public destination. Indexable product content lives on the
+         marketing site. Declared at multiple layers (meta, googlebot,
+         X-Robots-Tag HTTP header in render.yaml) so the signal is
+         honored even on redirects and cached responses. -->
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex" />
+    <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex" />
+    <meta name="bingbot" content="noindex, nofollow" />
+    <link rel="canonical" href="https://www.sanctumruntime.com/" />
 
     <!-- PWA -->
     <meta name="theme-color" content="#070b14" />
