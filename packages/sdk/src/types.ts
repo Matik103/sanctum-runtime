@@ -31,6 +31,42 @@ export const EvaluationModeSchema = z.enum([
 ])
 export type EvaluationMode = z.infer<typeof EvaluationModeSchema>
 
+export const SourceTrustSchema = z.enum([
+  'trusted_user',
+  'authenticated_user',
+  'system',
+  'tool_output',
+  'memory',
+  'untrusted_content',
+  'unknown',
+])
+export type SourceTrust = z.infer<typeof SourceTrustSchema>
+
+export const BlastRadiusSchema = z.object({
+  level: z.enum(['low', 'medium', 'high', 'critical']),
+  score: z.number().min(0).max(100),
+  factors: z.array(z.string()),
+  reversible: z.boolean(),
+  dataSensitivity: z.enum(['public', 'internal', 'confidential', 'secret', 'regulated']).optional(),
+  externalDestination: z.boolean().optional(),
+  physicalWorld: z.boolean().optional(),
+  estimatedValue: z.number().optional(),
+})
+export type BlastRadius = z.infer<typeof BlastRadiusSchema>
+
+export const ActionTokenSchema = z.object({
+  token: z.string(),
+  expiresAt: z.string(),
+  scope: z.object({
+    actor: z.string(),
+    action: z.string(),
+    orgId: z.string().optional(),
+    auditId: z.string(),
+    correlationId: z.string(),
+  }),
+})
+export type ActionToken = z.infer<typeof ActionTokenSchema>
+
 export const ActionResultSchema = z.object({
   id: z.string(),
   correlationId: z.string(),
@@ -55,6 +91,13 @@ export const ActionResultSchema = z.object({
   humanResolution: z.string().optional(),
   resolvedAt: z.string().optional(),
   resolvedBy: z.string().optional(),
+  sourceTrust: SourceTrustSchema.optional(),
+  blastRadius: BlastRadiusSchema.optional(),
+  /**
+   * Short-lived signed proof that this exact action was approved.
+   * Downstream executors can validate it before performing side effects.
+   */
+  actionToken: ActionTokenSchema.optional(),
 })
 
 export type ActionResult = z.infer<typeof ActionResultSchema>

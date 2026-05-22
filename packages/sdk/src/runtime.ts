@@ -161,6 +161,18 @@ export class SanctumRuntime {
     return this.client.getAudit(limit)
   }
 
+  replayAudit(limit?: number, orgId?: string) {
+    return this.client.replayAudit(limit, orgId)
+  }
+
+  getEvidenceSummary(limit?: number, orgId?: string) {
+    return this.client.getEvidenceSummary(limit, orgId)
+  }
+
+  verifyActionToken(token: string) {
+    return this.client.verifyActionToken(token)
+  }
+
   getVerificationStatus(correlationId: string): Promise<VerificationStatus> {
     return this.client.getVerificationStatus(correlationId)
   }

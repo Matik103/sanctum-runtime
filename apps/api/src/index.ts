@@ -33,7 +33,7 @@ import { registerAlertRoutes } from './alert-routes.js'
 import { registerPushRoutes, sendPushToUser } from './push-routes.js'
 import { AlertStore } from './alert-store.js'
 import { sendVerificationEmail, verifyToken } from './verify-email.js'
-import { loadPoliciesFromSupabase, detectAnomalies, heuristicRiskFloor } from '@sanctum/runtime-engine'
+import { loadPoliciesFromSupabase, detectAnomalies, heuristicRiskFloor, verifyActionToken } from '@sanctum/runtime-engine'
 import { verifyAgentToken, extractAgentToken, registerAgentTokenRoutes } from './agent-tokens.js'
 import { checkActiveGrant, createGrant } from './policy-grants.js'
 import {
@@ -440,30 +440,34 @@ app.post('/v1/policies/simulate', async (req) => {
     })
     .parse(req.body)
   const request = ActionRequestSchema.parse(body)
-  const anomalyFlags = detectAnomalies(request)
-  const policyEval = runtime.getPolicyEngine().evaluate(request, false)
-  const risk = heuristicRiskFloor(request, anomalyFlags)
-  let decision: 'APPROVED' | 'BLOCKED' | 'REQUIRE_VERIFICATION' = 'APPROVED'
-  if (policyEval.violations.includes('policy_auto_block') || policyEval.violations.includes('condition_auto_block')) {
-    decision = 'BLOCKED'
-  } else if (policyEval.policy.requiresVerification || risk === 'high' || risk === 'medium' || anomalyFlags.length > 0) {
-    decision = 'REQUIRE_VERIFICATION'
-  }
-  return {
-    simulation: true,
-    decision,
-    risk,
-    policyPath: policyEval.policyPath,
-    anomalyFlags,
-    conditionMatched: policyEval.policyPath.includes('.condition['),
-    policyFlags: {
-      autoBlock: policyEval.policy.autoBlock,
-      requiresVerification: policyEval.policy.requiresVerification,
-      blockWhenOffline: policyEval.policy.blockWhenOffline,
-      allowedActors: policyEval.policy.allowedActors ?? [],
-      conditions: policyEval.policy.conditions ?? [],
-    },
-  }
+  return runtime.simulateAction(request)
+})
+
+app.post('/v1/actions/token/verify', async (req, reply) => {
+  const body = z.object({ token: z.string().min(1) }).parse(req.body)
+  const payload = verifyActionToken(body.token)
+  if (!payload) return reply.status(400).send({ valid: false, error: 'invalid_or_expired_action_token' })
+  return { valid: true, payload }
+})
+
+app.get('/v1/audit/replay', async (req, reply) => {
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
+  const q = req.query as { limit?: string; org_id?: string }
+  const limit = Math.min(500, Math.max(1, Number(q.limit ?? 100) || 100))
+  const picked = pickScopedOrgs(scope, q.org_id)
+  if ('status' in picked) return reply.status(picked.status).send(picked.body)
+  const orgId = picked.orgIds.length === 1 ? picked.orgIds[0] : undefined
+  return runtime.replayAudit(limit, orgId)
+})
+
+app.get('/v1/evidence/summary', async (req, reply) => {
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
+  const q = req.query as { limit?: string; org_id?: string }
+  const limit = Math.min(500, Math.max(1, Number(q.limit ?? 200) || 200))
+  const picked = pickScopedOrgs(scope, q.org_id)
+  if ('status' in picked) return reply.status(picked.status).send(picked.body)
+  const orgId = picked.orgIds.length === 1 ? picked.orgIds[0] : undefined
+  return runtime.evidenceSummary(limit, orgId)
 })
 
 app.post('/v1/policies', async (req, reply) => {

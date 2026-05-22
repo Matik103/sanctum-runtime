@@ -178,6 +178,18 @@ The **same** `verifyAction()` API gates software and physical actions. Category 
 | **Dashboard** | Policies, live activity, review queue (optional) |
 | **CI** | GitHub Actions runs build + smoke on every PR |
 
+## Runtime trust boundary
+
+Sanctum is moving beyond advisory guardrails into enforceable action control:
+
+- **Signed action tokens** — approved actions can carry a short-lived `actionToken` that downstream executors verify before side effects.
+- **Source-trust classification** — actions record whether instructions came from trusted users, system flows, memory, tool output, or untrusted content.
+- **Blast-radius scoring** — every action can be scored for reversibility, data sensitivity, physical-world impact, external destination, and monetary value.
+- **Policy replay** — replay recent audit events against current policies before rollout.
+- **Evidence summaries** — export control evidence for audit, incident review, and compliance workflows.
+
+These are the primitives for treating Sanctum as the runtime trust boundary for autonomous systems.
+
 **Full list:** [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md)
 
 ---

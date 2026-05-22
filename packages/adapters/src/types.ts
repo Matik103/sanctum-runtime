@@ -1,4 +1,4 @@
-import type { SanctumClient } from '@sanctum-runtime/sdk'
+import type { ActionResult, SanctumClient } from '@sanctum-runtime/sdk'
 
 // Shared types across all adapters
 
@@ -23,6 +23,11 @@ export type SanctumAdapterOptions = {
    * The adapter will then wait for the verification to resolve.
    */
   onVerificationRequired?: (action: string, correlationId: string) => void
+  /**
+   * Called when Sanctum approves an action. Use result.actionToken at the final
+   * executor boundary when you want side effects to require signed proof.
+   */
+  onApproved?: (action: string, result: ActionResult) => void
   /**
    * Verification wait options forwarded to client.waitForVerification().
    */

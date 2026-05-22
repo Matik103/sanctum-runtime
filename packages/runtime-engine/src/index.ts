@@ -41,6 +41,8 @@ import {
 import { detectAnomalies } from './anomaly.js'
 import { resolveDecision } from './decision.js'
 import { heuristicRiskFloor, heuristicRiskReason, mergeRisk } from './risk-heuristics.js'
+import { deriveSourceTrust, estimateBlastRadius } from './action-context.js'
+import { issueActionToken } from './action-token.js'
 
 export type RuntimeEngineOptions = {
   policyEngine?: PolicyEngine
@@ -175,6 +177,9 @@ export class RuntimeEngine {
         reasoning: `${existing.reasoning} ${humanResolution}.`,
       }),
     }
+    if (updated.decision === 'APPROVED') {
+      updated.actionToken = issueActionToken(updated)
+    }
 
     const saved = (await this.auditStore.updateEntry(id, updated)) ?? null
     if (saved) {
@@ -255,11 +260,13 @@ export class RuntimeEngine {
     if (forceOffline) evaluationMode = 'offline_forced'
     else if (!riskModelConnected) evaluationMode = 'offline_no_ollama'
 
+    const sourceTrust = deriveSourceTrust(request)
+    const blastRadius = estimateBlastRadius(request)
     const anomalyFlags = detectAnomalies(request)
     const riskFloor = heuristicRiskFloor(request, anomalyFlags)
     const policyEval = this.policyEngine.evaluate(request, useHeuristicsOnly)
 
-    let risk: RiskLevel = riskFloor
+    let risk: RiskLevel = mergeRisk(riskFloor, riskFromBlastRadius(blastRadius.level))
     let modelReason: string | undefined
     let modelConfidence: number | undefined
     let decision: Decision = 'APPROVED'
@@ -288,7 +295,7 @@ export class RuntimeEngine {
         modelInvoked = true
         evaluationMode = 'online_model'
         const modelRisk = assessment.risk
-        risk = mergeRisk(modelRisk, riskFloor)
+        risk = mergeRisk(mergeRisk(modelRisk, riskFloor), riskFromBlastRadius(blastRadius.level))
         modelConfidence = assessment.confidence
         modelReason = assessment.reason
         if (risk !== modelRisk) {
@@ -315,10 +322,10 @@ export class RuntimeEngine {
 
         decision = resolveDecision({
           policy: policyEval.policy,
-          risk: mergeRisk(risk, riskFloor),
+          risk: mergeRisk(mergeRisk(risk, riskFloor), riskFromBlastRadius(blastRadius.level)),
           anomalyFlags,
         })
-        risk = mergeRisk(risk, riskFloor)
+        risk = mergeRisk(mergeRisk(risk, riskFloor), riskFromBlastRadius(blastRadius.level))
 
         if (
           anomalyFlags.includes('unsafe_command_chain') &&
@@ -337,7 +344,7 @@ export class RuntimeEngine {
       }
     } else {
       // Offline / heuristics-only path
-      risk = mergeRisk(risk, riskFloor)
+      risk = mergeRisk(mergeRisk(risk, riskFloor), riskFromBlastRadius(blastRadius.level))
       decision = resolveDecision({
         policy: policyEval.policy,
         risk,
@@ -389,8 +396,11 @@ export class RuntimeEngine {
       evaluationMode,
       modelInvoked,
       ollamaConnected: riskModelConnected,
+      sourceTrust,
+      blastRadius,
       humanRecord: buildHumanAuditRecord(partial),
     }
+    result.actionToken = issueActionToken(result)
 
     await this.auditStore.append(result)
     await maybeSyncAuditToSupabase(result)
@@ -413,6 +423,134 @@ export class RuntimeEngine {
     if (hookEvent) void dispatchWebhooks(hookEvent, result)
 
     return result
+  }
+
+  simulateAction(
+    request: ActionRequest,
+    options: { offlineMode?: boolean } = {},
+  ) {
+    const sourceTrust = deriveSourceTrust(request)
+    const blastRadius = estimateBlastRadius(request)
+    const anomalyFlags = detectAnomalies(request)
+    const useHeuristicsOnly = options.offlineMode === true || this.forceOfflineMode
+    const policyEval = this.policyEngine.evaluate(request, useHeuristicsOnly)
+    const risk = mergeRisk(
+      heuristicRiskFloor(request, anomalyFlags),
+      riskFromBlastRadius(blastRadius.level),
+    )
+    const decision = resolveDecision({
+      policy: policyEval.policy,
+      risk,
+      anomalyFlags,
+    })
+
+    return {
+      simulation: true as const,
+      decision,
+      risk,
+      policyPath: policyEval.policyPath,
+      anomalyFlags,
+      sourceTrust,
+      blastRadius,
+      conditionMatched: policyEval.policyPath.includes('.condition['),
+      policyFlags: {
+        autoBlock: policyEval.policy.autoBlock,
+        requiresVerification: policyEval.policy.requiresVerification,
+        blockWhenOffline: policyEval.policy.blockWhenOffline,
+        allowedActors: policyEval.policy.allowedActors ?? [],
+        conditions: policyEval.policy.conditions ?? [],
+      },
+    }
+  }
+
+  async replayAudit(limit = 100, orgId?: string) {
+    const entries = await this.listAudit(limit, orgId)
+    const decisions = { APPROVED: 0, BLOCKED: 0, REQUIRE_VERIFICATION: 0 }
+    const changed: Array<{
+      id: string
+      actor: string
+      action: string
+      previousDecision: Decision
+      replayDecision: Decision
+      previousRisk: RiskLevel
+      replayRisk: RiskLevel
+      policyPath: string
+      anomalyFlags: string[]
+    }> = []
+
+    for (const entry of entries) {
+      const sim = this.simulateAction({
+        actor: entry.actor,
+        action: entry.action,
+        context: entry.context,
+      })
+      decisions[sim.decision] += 1
+      if (sim.decision !== entry.decision || sim.risk !== entry.risk) {
+        changed.push({
+          id: entry.id,
+          actor: entry.actor,
+          action: entry.action,
+          previousDecision: entry.decision,
+          replayDecision: sim.decision,
+          previousRisk: entry.risk,
+          replayRisk: sim.risk,
+          policyPath: sim.policyPath,
+          anomalyFlags: sim.anomalyFlags,
+        })
+      }
+    }
+
+    return {
+      replayedAt: new Date().toISOString(),
+      count: entries.length,
+      decisions,
+      changedCount: changed.length,
+      changed,
+    }
+  }
+
+  async evidenceSummary(limit = 200, orgId?: string) {
+    const audit = await this.listAudit(limit, orgId)
+    const policyCount = Object.keys(this.policyEngine.getPolicies()).length
+    const approved = audit.filter((e) => e.decision === 'APPROVED').length
+    const blocked = audit.filter((e) => e.decision === 'BLOCKED').length
+    const verification = audit.filter((e) => e.decision === 'REQUIRE_VERIFICATION').length
+    const withToken = audit.filter((e) => e.actionToken).length
+    const highBlast = audit.filter((e) => e.blastRadius?.level === 'high' || e.blastRadius?.level === 'critical').length
+    const untrustedSource = audit.filter((e) =>
+      e.sourceTrust === 'untrusted_content' || e.sourceTrust === 'tool_output',
+    ).length
+
+    return {
+      generatedAt: new Date().toISOString(),
+      orgId,
+      controls: {
+        actionVerification: true,
+        signedActionTokens: Boolean(process.env.SANCTUM_ACTION_TOKEN_SECRET || process.env.SANCTUM_API_KEY_PEPPER || process.env.SANCTUM_API_KEY),
+        sourceTrustClassification: true,
+        blastRadiusScoring: true,
+        policyReplay: true,
+        humanVerification: true,
+        auditTrail: true,
+      },
+      policyCount,
+      auditWindow: {
+        sampledEvents: audit.length,
+        approved,
+        blocked,
+        verificationRequired: verification,
+        signedApprovalTokens: withToken,
+        highBlastRadiusEvents: highBlast,
+        untrustedSourceEvents: untrustedSource,
+      },
+      evidence: [
+        `${policyCount} active policy definitions are loaded.`,
+        `${audit.length} recent action events were sampled for this evidence package.`,
+        `${blocked} action(s) were blocked and ${verification} action(s) required human verification.`,
+        `${highBlast} action(s) carried high or critical blast-radius metadata.`,
+        `${untrustedSource} action(s) originated from untrusted content or tool output.`,
+      ],
+    }
   }
 
   async getStatus(): Promise<{
@@ -455,3 +593,10 @@ export class RuntimeEngine {
 export { registerAnomalyRule, type AnomalyRule, detectAnomalies } from './anomaly.js'
 export { loadPoliciesFromSupabase } from './supabase-policies.js'
 export { heuristicRiskFloor } from './risk-heuristics.js'
+export { verifyActionToken } from './action-token.js'
+
+function riskFromBlastRadius(level: 'low' | 'medium' | 'high' | 'critical'): RiskLevel {
+  if (level === 'critical' || level === 'high') return 'high'
+  if (level === 'medium') return 'medium'
+  return 'low'
+}

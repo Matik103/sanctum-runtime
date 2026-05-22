@@ -21,7 +21,9 @@ export function resolveDecision(options: {
   if (
     anomalyFlags.includes('unsafe_command_chain') ||
     anomalyFlags.includes('rapid_repeat_action') ||
-    anomalyFlags.includes('privilege_escalation_chain')
+    anomalyFlags.includes('privilege_escalation_chain') ||
+    anomalyFlags.includes('untrusted_source_side_effect') ||
+    anomalyFlags.includes('high_blast_radius')
   ) {
     return policy.autoBlock ? 'BLOCKED' : 'REQUIRE_VERIFICATION'
   }

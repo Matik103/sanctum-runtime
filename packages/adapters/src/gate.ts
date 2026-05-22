@@ -22,7 +22,7 @@ export async function gate(
   ctx: ActionContext,
   options: SanctumAdapterOptions,
 ): Promise<void> {
-  const { client, agentId, onBlocked, onVerificationRequired, verificationTimeout } = options
+  const { client, agentId, onApproved, onBlocked, onVerificationRequired, verificationTimeout } = options
 
   const actor = ctx.actor ?? agentId ?? 'agent'
   const correlationId = resolveCorrelationId(options.correlationId)
@@ -53,7 +53,7 @@ export async function gate(
     const cid = result.correlationId
     onVerificationRequired?.(ctx.action, cid)
 
-    let verificationStatus: { status: string }
+    let verificationStatus: { status: string; entry?: typeof result }
     try {
       verificationStatus = await client.waitForVerification(cid, {
         timeoutMs: verificationTimeout?.timeoutMs,
@@ -76,8 +76,12 @@ export async function gate(
         reasoning: 'Blocked by operator during verification',
       })
     }
-    // status === 'approved' — fall through and allow execution
+    if (verificationStatus.status === 'approved' && verificationStatus.entry) {
+      onApproved?.(ctx.action, verificationStatus.entry)
+      return
+    }
   }
 
   // APPROVED — proceed
+  onApproved?.(ctx.action, result)
 }

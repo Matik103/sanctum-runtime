@@ -112,6 +112,28 @@ export class SanctumClient {
     return res.json() as Promise<ActionResult[]>
   }
 
+  async replayAudit(limit = 100, orgId?: string): Promise<{
+    replayedAt: string
+    count: number
+    decisions: Record<'APPROVED' | 'BLOCKED' | 'REQUIRE_VERIFICATION', number>
+    changedCount: number
+    changed: Array<Record<string, unknown>>
+  }> {
+    const q = new URLSearchParams({ limit: String(limit) })
+    if (orgId) q.set('org_id', orgId)
+    return this.request('GET', `/v1/audit/replay?${q}`)
+  }
+
+  async getEvidenceSummary(limit = 200, orgId?: string): Promise<Record<string, unknown>> {
+    const q = new URLSearchParams({ limit: String(limit) })
+    if (orgId) q.set('org_id', orgId)
+    return this.request('GET', `/v1/evidence/summary?${q}`)
+  }
+
+  async verifyActionToken(token: string): Promise<{ valid: boolean; payload?: Record<string, unknown>; error?: string }> {
+    return this.request('POST', '/v1/actions/token/verify', { token })
+  }
+
   async getPolicies(): Promise<PolicyMap> {
     const res = await fetch(`${this.baseUrl}/v1/policies`, {
       headers: await this.headers(false),

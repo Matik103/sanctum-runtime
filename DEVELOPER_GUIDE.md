@@ -143,10 +143,14 @@ Auth (when configured): `X-Sanctum-Key: …` or `Authorization: Bearer <Supabase
 | `GET` | `/health` | Liveness (`ok`, `ollama`, policy/audit counts) |
 | `GET` | `/v1/status` | Runtime + risk model + policy stats |
 | `POST` | `/v1/actions/verify` | Gate an action → decision + audit entry |
+| `POST` | `/v1/actions/token/verify` | Validate a signed approval token before side effects |
 | `GET` | `/v1/audit` | List audit log (`?limit=`, `?org_id=`) |
+| `GET` | `/v1/audit/replay` | Replay recent audit events against current policies (`?limit=`, `?org_id=`) |
 | `POST` | `/v1/audit/:id/resolve` | Approve/deny a pending verification |
 | `GET` | `/v1/verifications/:correlationId` | Poll verification state (`pending` / `approved` / `blocked`) |
+| `GET` | `/v1/evidence/summary` | Evidence package for action-boundary controls |
 | `GET` | `/v1/policies` | All policies |
+| `POST` | `/v1/policies/simulate` | Simulate one action without writing an audit entry |
 | `POST` | `/v1/policies` | Create/register policy for any action name |
 | `PATCH` | `/v1/policies/:action` | Update policy |
 | `DELETE` | `/v1/policies/:action` | Remove policy |
@@ -166,6 +170,10 @@ Auth (when configured): `X-Sanctum-Key: …` or `Authorization: Bearer <Supabase
     "heard": "Open the front door",
     "time": "02:13 AM",
     "owner_sleeping": true,
+    "instructionSource": "trusted_user",
+    "dataSensitivity": "internal",
+    "reversible": false,
+    "physicalWorld": true,
     "org_id": "acme"
   },
   "offlineMode": false,
@@ -180,6 +188,28 @@ Auth (when configured): `X-Sanctum-Key: …` or `Authorization: Bearer <Supabase
 | `APPROVED` | Safe to execute |
 | `REQUIRE_VERIFICATION` | Pause — operator approves in dashboard or via resolve API |
 | `BLOCKED` | Deny execution |
+
+### Runtime trust metadata
+
+Sanctum now returns more than approve/verify/block. Each action can include:
+
+- `sourceTrust`: whether the instruction came from a trusted user, system, memory, tool output, or untrusted content.
+- `blastRadius`: score + factors for reversibility, data sensitivity, physical-world effect, external destination, and monetary value.
+- `actionToken`: a short-lived signed proof issued only for `APPROVED` actions when `SANCTUM_ACTION_TOKEN_SECRET` (or a signing fallback secret) is configured.
+
+Recommended executor pattern:
+
+```ts
+const result = await sanctum.verifyAction(request)
+if (result.decision !== 'APPROVED' || !result.actionToken) throw new Error('not approved')
+
+// Optional but recommended at the executor boundary:
+await sanctum.verifyActionToken(result.actionToken.token)
+
+await performSideEffect()
+```
+
+Use `instructionSource: "webpage" | "email" | "tool_output"` when model instructions came from retrieved or external content. Sanctum elevates untrusted-source side effects so indirect prompt injection cannot silently trigger irreversible action.
 
 ---
 
@@ -203,6 +233,9 @@ const sanctum = new SanctumRuntime({
 | `exportPoliciesYaml()` | Download YAML string |
 | `importPoliciesYaml(yaml, merge?)` | Import from YAML |
 | `getAudit(limit?)` | Audit entries |
+| `replayAudit(limit?, orgId?)` | Shadow-test current policies against recent audit entries |
+| `getEvidenceSummary(limit?, orgId?)` | Export action-boundary evidence summary |
+| `verifyActionToken(token)` | Verify a signed approval token |
 | `resolveAuditEntry(id, { decision, resolvedBy?, note? })` | Operator resolve |
 | `getVerificationStatus(correlationId)` | Single poll |
 | `waitForVerification(correlationId, { timeoutMs?, pollIntervalMs? })` | Poll until done |

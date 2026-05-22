@@ -1,4 +1,5 @@
 import type { ActionRequest } from '@sanctum-runtime/sdk'
+import { deriveSourceTrust, estimateBlastRadius } from './action-context.js'
 
 /** Custom anomaly rule — return flag strings to add, or empty array if no anomaly. */
 export type AnomalyRule = (request: ActionRequest) => string[]
@@ -49,6 +50,8 @@ const INJECTION_PATTERNS = [
 export function detectAnomalies(request: ActionRequest): string[] {
   const flags: string[] = []
   const ctx = request.context
+  const sourceTrust = deriveSourceTrust(request)
+  const blastRadius = estimateBlastRadius(request)
 
   // --- Off-hours access for sensitive actions (UTC hour) ---
   if (OFF_HOURS_SENSITIVE.has(request.action)) {
@@ -79,6 +82,17 @@ export function detectAnomalies(request: ActionRequest): string[] {
   const prompt = String(ctx.prompt ?? ctx.instruction ?? ctx.message ?? ctx.input ?? '')
   if (prompt && INJECTION_PATTERNS.some((p) => p.test(prompt))) {
     flags.push('suspicious_prompt_pattern')
+  }
+
+  if (
+    (sourceTrust === 'untrusted_content' || sourceTrust === 'tool_output') &&
+    (blastRadius.externalDestination || !blastRadius.reversible || blastRadius.physicalWorld)
+  ) {
+    flags.push('untrusted_source_side_effect')
+  }
+
+  if (blastRadius.level === 'high' || blastRadius.level === 'critical') {
+    flags.push('high_blast_radius')
   }
 
   // --- Rapid-repeat: same action requested ≥3 times in recent chain ---

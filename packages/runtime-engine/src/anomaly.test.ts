@@ -33,6 +33,25 @@ describe('detectAnomalies — prompt injection', () => {
   })
 })
 
+describe('detectAnomalies — action source and blast radius', () => {
+  it('flags untrusted content that tries to trigger side effects', () => {
+    const flags = detectAnomalies(req('send_email', {
+      instructionSource: 'webpage',
+      to: 'customer@example.com',
+    }))
+    expect(flags).toContain('untrusted_source_side_effect')
+  })
+
+  it('flags high blast radius actions', () => {
+    const flags = detectAnomalies(req('transfer_funds', {
+      amount: 15_000,
+      dataSensitivity: 'regulated',
+      externalDestination: true,
+    }))
+    expect(flags).toContain('high_blast_radius')
+  })
+})
+
 describe('detectAnomalies — physical security', () => {
   it('flags owner_absent_or_sleeping on unlock_door', () => {
     expect(detectAnomalies(req('unlock_door', { ownerPresent: false })))
