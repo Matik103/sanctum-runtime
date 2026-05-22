@@ -4,9 +4,23 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY?.trim()
 const FROM = process.env.NOTIFICATION_FROM_EMAIL?.trim() || 'Sanctum Runtime Alerts <alerts@sanctumruntime.com>'
 
 function signingSecret(): string {
-  return process.env.SANCTUM_API_KEY_PEPPER?.trim()
-    || process.env.SANCTUM_API_KEY?.trim()
-    || 'dev-secret-change-me'
+  const key =
+    process.env.SANCTUM_API_KEY_PEPPER?.trim() ||
+    process.env.SANCTUM_API_KEY?.trim()
+
+  if (key) return key
+
+  if (
+    process.env.NODE_ENV === 'production' ||
+    process.env.RENDER === 'true' ||
+    process.env.SANCTUM_ENV === 'production'
+  ) {
+    throw new Error(
+      'SANCTUM_API_KEY_PEPPER or SANCTUM_API_KEY must be set in production for email verification tokens',
+    )
+  }
+
+  return 'dev-secret-change-me'
 }
 
 export function signVerifyToken(id: string, decision: 'APPROVED' | 'BLOCKED'): string {

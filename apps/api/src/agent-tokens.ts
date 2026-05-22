@@ -10,11 +10,23 @@ type SanctumReq = import('fastify').FastifyRequest & {
 }
 
 function signingSecret(): string {
-  return (
+  const key =
     process.env.SANCTUM_API_KEY_PEPPER?.trim() ||
-    process.env.SANCTUM_API_KEY?.trim() ||
-    'dev-secret-change-me'
-  )
+    process.env.SANCTUM_API_KEY?.trim()
+
+  if (key) return key
+
+  if (
+    process.env.NODE_ENV === 'production' ||
+    process.env.RENDER === 'true' ||
+    process.env.SANCTUM_ENV === 'production'
+  ) {
+    throw new Error(
+      'SANCTUM_API_KEY_PEPPER or SANCTUM_API_KEY must be set in production for agent token signing',
+    )
+  }
+
+  return 'dev-secret-change-me'
 }
 
 /** Issue a signed agent token encoding the registration ID and org. */
