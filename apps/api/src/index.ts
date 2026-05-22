@@ -114,7 +114,7 @@ function isAllowedCorsOrigin(origin: string): boolean {
   try {
     const host = new URL(origin).hostname
     // Exact match or strict subdomain — rejects evil-sanctumruntime.com
-    return host === 'sanctumruntime.com' || /^[a-z0-9-]+\.sanctumruntime\.com$/.test(host)
+    return host === 'sanctumruntime.com' || /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.sanctumruntime\.com$/.test(host)
   } catch {
     return false
   }

@@ -113,9 +113,15 @@ export function useDashboard() {
         networkFailed
           ? `API unreachable (${apiBaseUrl}). Check: 1) sanctum-api is deployed and running on Render, 2) the custom domain api.sanctumruntime.com is configured in Render → Settings → Custom Domains, 3) both services redeployed after env var changes.`
           : authFailed
-            ? 'API reached but returned 401 — sign in or check your API key.'
+            ? 'Session expired — please sign in again.'
             : msg,
       )
+
+      if (authFailed) {
+        // Auth failure won't resolve on retry — stop polling until user re-authenticates
+        setRetryDelayMs(null)
+        return
+      }
 
       // Exponential backoff: 5s → 10s → 20s → … → 5min cap
       consecutiveErrors.current += 1

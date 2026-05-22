@@ -31,25 +31,30 @@ export function VerificationModal({
   const intent = extractIntent(entry.context)
   const [grantMinutes, setGrantMinutes] = useState<number | undefined>(undefined)
   const [showGrantMenu, setShowGrantMenu] = useState(false)
+  const [busy, setBusy] = useState(false)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (busy) return
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
       if (e.key === 'a' || e.key === 'A') {
         e.preventDefault()
-        if (e.shiftKey) onAlwaysApprove()
-        else onApproveOnce(grantMinutes)
+        setBusy(true)
+        if (e.shiftKey) void onAlwaysApprove().finally(() => setBusy(false))
+        else void onApproveOnce(grantMinutes).finally(() => setBusy(false))
       } else if (e.key === 'd' || e.key === 'D') {
         e.preventDefault()
-        onDeny()
+        setBusy(true)
+        void onDeny().finally(() => setBusy(false))
       } else if (e.key === 'Escape') {
         e.preventDefault()
-        onDeny()
+        setBusy(true)
+        void onDeny().finally(() => setBusy(false))
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onApproveOnce, onAlwaysApprove, onDeny, grantMinutes])
+  }, [onApproveOnce, onAlwaysApprove, onDeny, grantMinutes, busy])
 
   const selectedOption = GRANT_OPTIONS.find((o) => o.minutes === grantMinutes) ?? GRANT_OPTIONS[0]
 
@@ -166,9 +171,14 @@ export function VerificationModal({
               type="button"
               className="btn btn-primary"
               style={{ borderRadius: grantMinutes !== undefined ? '8px 0 0 8px' : undefined, flex: 1 }}
-              onClick={() => { setShowGrantMenu(false); onApproveOnce(grantMinutes) }}
+              disabled={busy}
+              onClick={() => {
+                setShowGrantMenu(false)
+                setBusy(true)
+                void onApproveOnce(grantMinutes).finally(() => setBusy(false))
+              }}
             >
-              {grantMinutes !== undefined
+              {busy ? 'Submitting…' : grantMinutes !== undefined
                 ? `Approve for ${selectedOption.label}`
                 : 'Approve once'}
             </button>
@@ -176,6 +186,7 @@ export function VerificationModal({
               type="button"
               className="btn btn-primary"
               title="Set approval duration"
+              disabled={busy}
               style={{ borderLeft: '1px solid rgba(255,255,255,0.2)', borderRadius: '0 8px 8px 0', padding: '0 0.6rem' }}
               onClick={() => setShowGrantMenu((v) => !v)}
             >
@@ -219,10 +230,16 @@ export function VerificationModal({
             )}
           </div>
 
-          <button type="button" className="btn btn-ghost" onClick={onAlwaysApprove}>
+          <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => {
+            setBusy(true)
+            void onAlwaysApprove().finally(() => setBusy(false))
+          }}>
             Always approve
           </button>
-          <button type="button" className="btn btn-danger" onClick={onDeny}>
+          <button type="button" className="btn btn-danger" disabled={busy} onClick={() => {
+            setBusy(true)
+            void onDeny().finally(() => setBusy(false))
+          }}>
             Deny
           </button>
         </div>
