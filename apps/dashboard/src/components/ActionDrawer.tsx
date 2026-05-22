@@ -4,14 +4,17 @@ import { actionLabel, anomalyLabel, decisionLabel, policyLabel, riskLabel } from
 import { decisionTone, timeAgo } from '../lib/format'
 import { extractHeardPhrase, extractIntent } from '../lib/narrative'
 import { AuditRecord } from './AuditRecord'
+import { CausalChain } from './CausalChain'
 import { ContextDetails } from './ContextDetails'
 
 type Props = {
   entry: ActionResult | null
   onClose: () => void
+  audit?: ActionResult[]
+  onSelect?: (e: ActionResult) => void
 }
 
-export function ActionDrawer({ entry, onClose }: Props) {
+export function ActionDrawer({ entry, onClose, audit, onSelect }: Props) {
   if (!entry) return null
 
   const tone = decisionTone(entry.decision)
@@ -162,6 +165,13 @@ export function ActionDrawer({ entry, onClose }: Props) {
             <span className={`badge ${tone}`}>{decisionLabel(entry.decision)}</span>
           </p>
         </section>
+
+        {audit && audit.length > 0 && (
+          <section className="drawer-section">
+            <h3>Causal chain</h3>
+            <CausalChain entry={entry} audit={audit} onSelect={onSelect} />
+          </section>
+        )}
 
         <section className="drawer-section">
           <h3>Timeline</h3>

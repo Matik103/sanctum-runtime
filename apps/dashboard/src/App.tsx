@@ -178,7 +178,12 @@ export function App() {
         {page === 'settings' && <ErrorBoundary page="Settings"><Settings status={status} /></ErrorBoundary>}
       </MainCanvas>
 
-      <ActionDrawer entry={selected} onClose={() => setSelected(null)} />
+      <ActionDrawer
+        entry={selected}
+        onClose={() => setSelected(null)}
+        audit={audit}
+        onSelect={(e) => setSelected(e)}
+      />
 
       {pendingVerification && (
         <>
