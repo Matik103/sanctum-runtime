@@ -24,6 +24,9 @@ Do **not** submit `https://sanctumruntime.com/` as the homepage in sitemap (alre
 | Per-page SEO | Canonical, Open Graph, Twitter via `src/lib/seo.ts` |
 | JSON-LD | Organization + SoftwareApplication on all pages; WebPage on AI landing routes |
 | Console | `noindex` — https://console.sanctumruntime.com |
+| Blog | https://www.sanctumruntime.com/blog (5 seed posts — add more via `docs/BLOG.md`) |
+| OG image | https://www.sanctumruntime.com/og.png (1200×630) |
+| FAQ schema | Homepage JSON-LD FAQPage |
 
 Do **not** submit the operator console to Search Console.
 

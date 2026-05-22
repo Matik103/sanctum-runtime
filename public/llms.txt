@@ -14,8 +14,18 @@
 - Sitemap: https://www.sanctumruntime.com/sitemap.xml
 - robots.txt: https://www.sanctumruntime.com/robots.txt
 
+## Blog (SEO + AI discovery)
+
+- Index: https://www.sanctumruntime.com/blog
+- Runtime trust layer for AI agents: https://www.sanctumruntime.com/blog/runtime-trust-layer-for-ai-agents
+- AI agent action approval: https://www.sanctumruntime.com/blog/ai-agent-action-approval-before-execution
+- Embodied AI and robotics policy gate: https://www.sanctumruntime.com/blog/embodied-ai-robotics-policy-gate
+- Sanctum vs guardrails: https://www.sanctumruntime.com/blog/sanctum-vs-guardrails
+- Mobile PWA verification: https://www.sanctumruntime.com/blog/mobile-pwa-runtime-verification
+
 ## Machine-readable pages
 
+- Enterprise: https://www.sanctumruntime.com/enterprise
 - Docs: https://www.sanctumruntime.com/docs
 - What is Sanctum Runtime: https://www.sanctumruntime.com/what-is-sanctum-runtime
 - Architecture: https://www.sanctumruntime.com/architecture

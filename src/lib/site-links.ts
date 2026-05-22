@@ -42,7 +42,10 @@ export const openCorePath = `${docsPath}#open-core`;
  * Enterprise / fleet — hosted console (billing, SSO, fleet).
  * Override with VITE_EARLY_ACCESS_URL for a separate waitlist form if needed.
  */
-export const enterpriseAccessUrl = readEnv("VITE_EARLY_ACCESS_URL", consoleUrl);
+export const enterpriseAccessUrl = readEnv("VITE_EARLY_ACCESS_URL", "/enterprise");
+
+/** Machine-readable index for AI crawlers */
+export const llmsTxtUrl = "/llms.txt";
 
 /** @deprecated Use enterpriseAccessUrl */
 export const earlyAccessUrl = enterpriseAccessUrl;

@@ -9,7 +9,7 @@
     "url": "git+https://github.com/Matik103/sanctum-runtime.git",
     "directory": "packages/sdk"
   },
-  "homepage": "https://github.com/Matik103/sanctum-runtime#readme",
+  "homepage": "https://www.sanctumruntime.com/sdk",
   "bugs": {
     "url": "https://github.com/Matik103/sanctum-runtime/issues"
   },

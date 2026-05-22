@@ -4,6 +4,7 @@
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { loadRepoEnv } from "./env.ts";
+import { BLOG_POSTS } from "../src/lib/blog-posts.ts";
 import {
   absoluteUrl,
   sitemapAiPaths,
@@ -25,9 +26,15 @@ function urlEntry(loc: string, changefreq: string, priority: number): string {
 }
 
 function writePagesSitemap() {
-  const urls = sitemapPages.map((p) =>
-    urlEntry(absoluteUrl(p.path), p.changefreq, p.priority),
+  const blogUrls = BLOG_POSTS.map((p) =>
+    urlEntry(absoluteUrl(`/blog/${p.slug}`), "monthly", 0.75),
   );
+  const urls = [
+    ...sitemapPages.map((p) =>
+      urlEntry(absoluteUrl(p.path), p.changefreq, p.priority),
+    ),
+    ...blogUrls,
+  ];
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls.join("\n")}

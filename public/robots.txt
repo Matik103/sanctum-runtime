@@ -29,4 +29,5 @@ Allow: /
 User-agent: CCBot
 Allow: /
 
+Sitemap: https://www.sanctumruntime.com/sitemap-index.xml
 Sitemap: https://www.sanctumruntime.com/sitemap.xml

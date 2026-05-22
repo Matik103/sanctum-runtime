@@ -11,8 +11,8 @@ Open-source trust layer for autonomous AI — gate agent, robot, smart home, and
 ```
 
 **Website (homepage link next to About):**  
-`https://www.npmjs.com/package/@sanctum-runtime/sdk`  
-(developers land on install page; README stays canonical docs)
+`https://www.sanctumruntime.com`  
+(npm install link stays in README; SDK page: https://www.sanctumruntime.com/sdk)
 
 Alternate: `https://github.com/Matik103/sanctum-runtime#readme`
 

@@ -8,6 +8,7 @@ import { Architecture } from "@/components/Architecture";
 import { SdkSection } from "@/components/SdkSection";
 import { UseCases } from "@/components/UseCases";
 import { Trust } from "@/components/Trust";
+import { FaqSection } from "@/components/FaqSection";
 import { CtaFooter } from "@/components/CtaFooter";
 
 export const Route = createFileRoute("/")({
@@ -32,6 +33,7 @@ function Index() {
         <SdkSection />
         <UseCases />
         <Trust />
+        <FaqSection />
         <CtaFooter />
       </main>
     </div>

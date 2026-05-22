@@ -1,7 +1,10 @@
+import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { SiteFooter } from "@/components/SiteFooter";
 import { consoleUrl, enterpriseAccessUrl } from "@/lib/site-links";
 import { ArrowRight } from "lucide-react";
+
+const enterpriseIsInternal = !enterpriseAccessUrl.startsWith("http");
 
 export function CtaFooter() {
   return (
@@ -33,9 +36,15 @@ export function CtaFooter() {
                 <ArrowRight className="ml-1 h-4 w-4" />
               </a>
             </Button>
-            <Button asChild size="lg" variant="outline" className="glass h-12 px-8">
-              <a href={enterpriseAccessUrl}>Enterprise</a>
-            </Button>
+            {enterpriseIsInternal ? (
+              <Button asChild size="lg" variant="outline" className="glass h-12 px-8">
+                <Link to={enterpriseAccessUrl}>Enterprise</Link>
+              </Button>
+            ) : (
+              <Button asChild size="lg" variant="outline" className="glass h-12 px-8">
+                <a href={enterpriseAccessUrl}>Enterprise</a>
+              </Button>
+            )}
           </div>
         </div>
       </section>

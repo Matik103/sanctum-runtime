@@ -9,16 +9,21 @@ const origin = marketingUrl.replace(/\/$/, "");
 
 export const publicRoutes = [
   "/",
+  "/blog",
   "/docs",
   "/what-is-sanctum-runtime",
   "/architecture",
   "/sdk",
   "/security",
   "/glossary",
+  "/enterprise",
   "/privacy",
   "/terms",
   "/billing",
   "/cookies",
+  "/pricing",
+  "/contact",
+  "/refund",
 ] as const;
 
 /** HTML routes for sitemap.xml — keep in sync with TanStack routes. */
@@ -28,7 +33,9 @@ export const sitemapPages: ReadonlyArray<{
   priority: number;
 }> = [
   { path: "/", changefreq: "weekly", priority: 1.0 },
+  { path: "/blog", changefreq: "weekly", priority: 0.88 },
   { path: "/docs", changefreq: "weekly", priority: 0.9 },
+  { path: "/enterprise", changefreq: "monthly", priority: 0.82 },
   { path: "/what-is-sanctum-runtime", changefreq: "monthly", priority: 0.85 },
   { path: "/architecture", changefreq: "monthly", priority: 0.85 },
   { path: "/sdk", changefreq: "monthly", priority: 0.85 },
@@ -76,7 +83,9 @@ export function absoluteUrl(path: string): string {
 }
 
 export function defaultOgImage(): string {
-  return absoluteUrl("/favicon-512.png");
+  const custom = readViteEnv("VITE_OG_IMAGE_URL");
+  if (custom) return custom.startsWith("http") ? custom : absoluteUrl(custom);
+  return absoluteUrl("/og.png");
 }
 
 export type PageSeoOptions = {
@@ -148,3 +157,69 @@ export function webPageJsonLd(path: string, name: string, description: string) {
     isPartOf: { "@type": "WebSite", name: siteName, url: origin },
   };
 }
+
+/** Blog post Article schema */
+export function articleJsonLd(post: {
+  slug: string;
+  title: string;
+  description: string;
+  publishedAt: string;
+  updatedAt?: string;
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: post.title,
+    description: post.description,
+    datePublished: post.publishedAt,
+    dateModified: post.updatedAt ?? post.publishedAt,
+    author: { "@type": "Organization", name: siteName, url: origin },
+    publisher: {
+      "@type": "Organization",
+      name: siteName,
+      logo: { "@type": "ImageObject", url: defaultOgImage() },
+    },
+    mainEntityOfPage: absoluteUrl(`/blog/${post.slug}`),
+    image: defaultOgImage(),
+  };
+}
+
+/** Homepage FAQ — helps Google AI overviews and rich results */
+export const homepageFaqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: [
+    {
+      "@type": "Question",
+      name: "What is Sanctum Runtime?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Sanctum Runtime is an open-core trust layer between AI reasoning and real-world execution. It verifies, approves, or blocks agent and robot actions before side effects run — with policies, audit logs, and human-in-the-loop verification.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "How is Sanctum different from LLM guardrails?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Guardrails filter chat input and output. Sanctum gates execution — tool calls, APIs, files, doors, and robot commands — at the action layer with approve, verify, or block decisions.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "What systems does Sanctum support?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "One runtime API covers AI agents, humanoids, embodied AI, smart home, ROS2 robotics, workflow automation, industrial systems, healthcare robotics, mobility, and more. Integrate via npm SDK, Python, or 16 framework adapters.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Can Sanctum run offline?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Yes. The MIT runtime supports offline heuristics and local Ollama risk scoring. Policies and audit can run without cloud dependency for edge and sovereign deployments.",
+      },
+    },
+  ],
+};

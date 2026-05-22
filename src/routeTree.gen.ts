@@ -17,12 +17,19 @@ import { Route as RefundRouteImport } from './routes/refund'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as GlossaryRouteImport } from './routes/glossary'
+import { Route as EnterpriseRouteImport } from './routes/enterprise'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as CookiesRouteImport } from './routes/cookies'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as BillingRouteImport } from './routes/billing'
 import { Route as ArchitectureRouteImport } from './routes/architecture'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as BlogIndexRouteImport } from './routes/blog/index'
+import { Route as BlogSanctumVsGuardrailsRouteImport } from './routes/blog/sanctum-vs-guardrails'
+import { Route as BlogRuntimeTrustLayerForAiAgentsRouteImport } from './routes/blog/runtime-trust-layer-for-ai-agents'
+import { Route as BlogMobilePwaRuntimeVerificationRouteImport } from './routes/blog/mobile-pwa-runtime-verification'
+import { Route as BlogEmbodiedAiRoboticsPolicyGateRouteImport } from './routes/blog/embodied-ai-robotics-policy-gate'
+import { Route as BlogAiAgentActionApprovalBeforeExecutionRouteImport } from './routes/blog/ai-agent-action-approval-before-execution'
 
 const WhatIsSanctumRuntimeRoute = WhatIsSanctumRuntimeRouteImport.update({
   id: '/what-is-sanctum-runtime',
@@ -64,6 +71,11 @@ const GlossaryRoute = GlossaryRouteImport.update({
   path: '/glossary',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EnterpriseRoute = EnterpriseRouteImport.update({
+  id: '/enterprise',
+  path: '/enterprise',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DocsRoute = DocsRouteImport.update({
   id: '/docs',
   path: '/docs',
@@ -94,6 +106,40 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BlogIndexRoute = BlogIndexRouteImport.update({
+  id: '/blog/',
+  path: '/blog/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogSanctumVsGuardrailsRoute = BlogSanctumVsGuardrailsRouteImport.update({
+  id: '/blog/sanctum-vs-guardrails',
+  path: '/blog/sanctum-vs-guardrails',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogRuntimeTrustLayerForAiAgentsRoute =
+  BlogRuntimeTrustLayerForAiAgentsRouteImport.update({
+    id: '/blog/runtime-trust-layer-for-ai-agents',
+    path: '/blog/runtime-trust-layer-for-ai-agents',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const BlogMobilePwaRuntimeVerificationRoute =
+  BlogMobilePwaRuntimeVerificationRouteImport.update({
+    id: '/blog/mobile-pwa-runtime-verification',
+    path: '/blog/mobile-pwa-runtime-verification',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const BlogEmbodiedAiRoboticsPolicyGateRoute =
+  BlogEmbodiedAiRoboticsPolicyGateRouteImport.update({
+    id: '/blog/embodied-ai-robotics-policy-gate',
+    path: '/blog/embodied-ai-robotics-policy-gate',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const BlogAiAgentActionApprovalBeforeExecutionRoute =
+  BlogAiAgentActionApprovalBeforeExecutionRouteImport.update({
+    id: '/blog/ai-agent-action-approval-before-execution',
+    path: '/blog/ai-agent-action-approval-before-execution',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -102,6 +148,7 @@ export interface FileRoutesByFullPath {
   '/contact': typeof ContactRoute
   '/cookies': typeof CookiesRoute
   '/docs': typeof DocsRoute
+  '/enterprise': typeof EnterpriseRoute
   '/glossary': typeof GlossaryRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -110,6 +157,12 @@ export interface FileRoutesByFullPath {
   '/security': typeof SecurityRoute
   '/terms': typeof TermsRoute
   '/what-is-sanctum-runtime': typeof WhatIsSanctumRuntimeRoute
+  '/blog/ai-agent-action-approval-before-execution': typeof BlogAiAgentActionApprovalBeforeExecutionRoute
+  '/blog/embodied-ai-robotics-policy-gate': typeof BlogEmbodiedAiRoboticsPolicyGateRoute
+  '/blog/mobile-pwa-runtime-verification': typeof BlogMobilePwaRuntimeVerificationRoute
+  '/blog/runtime-trust-layer-for-ai-agents': typeof BlogRuntimeTrustLayerForAiAgentsRoute
+  '/blog/sanctum-vs-guardrails': typeof BlogSanctumVsGuardrailsRoute
+  '/blog/': typeof BlogIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -118,6 +171,7 @@ export interface FileRoutesByTo {
   '/contact': typeof ContactRoute
   '/cookies': typeof CookiesRoute
   '/docs': typeof DocsRoute
+  '/enterprise': typeof EnterpriseRoute
   '/glossary': typeof GlossaryRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -126,6 +180,12 @@ export interface FileRoutesByTo {
   '/security': typeof SecurityRoute
   '/terms': typeof TermsRoute
   '/what-is-sanctum-runtime': typeof WhatIsSanctumRuntimeRoute
+  '/blog/ai-agent-action-approval-before-execution': typeof BlogAiAgentActionApprovalBeforeExecutionRoute
+  '/blog/embodied-ai-robotics-policy-gate': typeof BlogEmbodiedAiRoboticsPolicyGateRoute
+  '/blog/mobile-pwa-runtime-verification': typeof BlogMobilePwaRuntimeVerificationRoute
+  '/blog/runtime-trust-layer-for-ai-agents': typeof BlogRuntimeTrustLayerForAiAgentsRoute
+  '/blog/sanctum-vs-guardrails': typeof BlogSanctumVsGuardrailsRoute
+  '/blog': typeof BlogIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -135,6 +195,7 @@ export interface FileRoutesById {
   '/contact': typeof ContactRoute
   '/cookies': typeof CookiesRoute
   '/docs': typeof DocsRoute
+  '/enterprise': typeof EnterpriseRoute
   '/glossary': typeof GlossaryRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -143,6 +204,12 @@ export interface FileRoutesById {
   '/security': typeof SecurityRoute
   '/terms': typeof TermsRoute
   '/what-is-sanctum-runtime': typeof WhatIsSanctumRuntimeRoute
+  '/blog/ai-agent-action-approval-before-execution': typeof BlogAiAgentActionApprovalBeforeExecutionRoute
+  '/blog/embodied-ai-robotics-policy-gate': typeof BlogEmbodiedAiRoboticsPolicyGateRoute
+  '/blog/mobile-pwa-runtime-verification': typeof BlogMobilePwaRuntimeVerificationRoute
+  '/blog/runtime-trust-layer-for-ai-agents': typeof BlogRuntimeTrustLayerForAiAgentsRoute
+  '/blog/sanctum-vs-guardrails': typeof BlogSanctumVsGuardrailsRoute
+  '/blog/': typeof BlogIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -153,6 +220,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/cookies'
     | '/docs'
+    | '/enterprise'
     | '/glossary'
     | '/pricing'
     | '/privacy'
@@ -161,6 +229,12 @@ export interface FileRouteTypes {
     | '/security'
     | '/terms'
     | '/what-is-sanctum-runtime'
+    | '/blog/ai-agent-action-approval-before-execution'
+    | '/blog/embodied-ai-robotics-policy-gate'
+    | '/blog/mobile-pwa-runtime-verification'
+    | '/blog/runtime-trust-layer-for-ai-agents'
+    | '/blog/sanctum-vs-guardrails'
+    | '/blog/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -169,6 +243,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/cookies'
     | '/docs'
+    | '/enterprise'
     | '/glossary'
     | '/pricing'
     | '/privacy'
@@ -177,6 +252,12 @@ export interface FileRouteTypes {
     | '/security'
     | '/terms'
     | '/what-is-sanctum-runtime'
+    | '/blog/ai-agent-action-approval-before-execution'
+    | '/blog/embodied-ai-robotics-policy-gate'
+    | '/blog/mobile-pwa-runtime-verification'
+    | '/blog/runtime-trust-layer-for-ai-agents'
+    | '/blog/sanctum-vs-guardrails'
+    | '/blog'
   id:
     | '__root__'
     | '/'
@@ -185,6 +266,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/cookies'
     | '/docs'
+    | '/enterprise'
     | '/glossary'
     | '/pricing'
     | '/privacy'
@@ -193,6 +275,12 @@ export interface FileRouteTypes {
     | '/security'
     | '/terms'
     | '/what-is-sanctum-runtime'
+    | '/blog/ai-agent-action-approval-before-execution'
+    | '/blog/embodied-ai-robotics-policy-gate'
+    | '/blog/mobile-pwa-runtime-verification'
+    | '/blog/runtime-trust-layer-for-ai-agents'
+    | '/blog/sanctum-vs-guardrails'
+    | '/blog/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -202,6 +290,7 @@ export interface RootRouteChildren {
   ContactRoute: typeof ContactRoute
   CookiesRoute: typeof CookiesRoute
   DocsRoute: typeof DocsRoute
+  EnterpriseRoute: typeof EnterpriseRoute
   GlossaryRoute: typeof GlossaryRoute
   PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -210,6 +299,12 @@ export interface RootRouteChildren {
   SecurityRoute: typeof SecurityRoute
   TermsRoute: typeof TermsRoute
   WhatIsSanctumRuntimeRoute: typeof WhatIsSanctumRuntimeRoute
+  BlogAiAgentActionApprovalBeforeExecutionRoute: typeof BlogAiAgentActionApprovalBeforeExecutionRoute
+  BlogEmbodiedAiRoboticsPolicyGateRoute: typeof BlogEmbodiedAiRoboticsPolicyGateRoute
+  BlogMobilePwaRuntimeVerificationRoute: typeof BlogMobilePwaRuntimeVerificationRoute
+  BlogRuntimeTrustLayerForAiAgentsRoute: typeof BlogRuntimeTrustLayerForAiAgentsRoute
+  BlogSanctumVsGuardrailsRoute: typeof BlogSanctumVsGuardrailsRoute
+  BlogIndexRoute: typeof BlogIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -270,6 +365,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GlossaryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/enterprise': {
+      id: '/enterprise'
+      path: '/enterprise'
+      fullPath: '/enterprise'
+      preLoaderRoute: typeof EnterpriseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/docs': {
       id: '/docs'
       path: '/docs'
@@ -312,6 +414,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/blog/': {
+      id: '/blog/'
+      path: '/blog'
+      fullPath: '/blog/'
+      preLoaderRoute: typeof BlogIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/sanctum-vs-guardrails': {
+      id: '/blog/sanctum-vs-guardrails'
+      path: '/blog/sanctum-vs-guardrails'
+      fullPath: '/blog/sanctum-vs-guardrails'
+      preLoaderRoute: typeof BlogSanctumVsGuardrailsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/runtime-trust-layer-for-ai-agents': {
+      id: '/blog/runtime-trust-layer-for-ai-agents'
+      path: '/blog/runtime-trust-layer-for-ai-agents'
+      fullPath: '/blog/runtime-trust-layer-for-ai-agents'
+      preLoaderRoute: typeof BlogRuntimeTrustLayerForAiAgentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/mobile-pwa-runtime-verification': {
+      id: '/blog/mobile-pwa-runtime-verification'
+      path: '/blog/mobile-pwa-runtime-verification'
+      fullPath: '/blog/mobile-pwa-runtime-verification'
+      preLoaderRoute: typeof BlogMobilePwaRuntimeVerificationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/embodied-ai-robotics-policy-gate': {
+      id: '/blog/embodied-ai-robotics-policy-gate'
+      path: '/blog/embodied-ai-robotics-policy-gate'
+      fullPath: '/blog/embodied-ai-robotics-policy-gate'
+      preLoaderRoute: typeof BlogEmbodiedAiRoboticsPolicyGateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/ai-agent-action-approval-before-execution': {
+      id: '/blog/ai-agent-action-approval-before-execution'
+      path: '/blog/ai-agent-action-approval-before-execution'
+      fullPath: '/blog/ai-agent-action-approval-before-execution'
+      preLoaderRoute: typeof BlogAiAgentActionApprovalBeforeExecutionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -322,6 +466,7 @@ const rootRouteChildren: RootRouteChildren = {
   ContactRoute: ContactRoute,
   CookiesRoute: CookiesRoute,
   DocsRoute: DocsRoute,
+  EnterpriseRoute: EnterpriseRoute,
   GlossaryRoute: GlossaryRoute,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,
@@ -330,6 +475,13 @@ const rootRouteChildren: RootRouteChildren = {
   SecurityRoute: SecurityRoute,
   TermsRoute: TermsRoute,
   WhatIsSanctumRuntimeRoute: WhatIsSanctumRuntimeRoute,
+  BlogAiAgentActionApprovalBeforeExecutionRoute:
+    BlogAiAgentActionApprovalBeforeExecutionRoute,
+  BlogEmbodiedAiRoboticsPolicyGateRoute: BlogEmbodiedAiRoboticsPolicyGateRoute,
+  BlogMobilePwaRuntimeVerificationRoute: BlogMobilePwaRuntimeVerificationRoute,
+  BlogRuntimeTrustLayerForAiAgentsRoute: BlogRuntimeTrustLayerForAiAgentsRoute,
+  BlogSanctumVsGuardrailsRoute: BlogSanctumVsGuardrailsRoute,
+  BlogIndexRoute: BlogIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
