@@ -35,6 +35,7 @@ export type PageId =
   | 'policies'
   | 'policy-history'
   | 'workflow-builder'
+  | 'assurance'
   | 'governance'
   | 'compliance'
   | 'agents'
@@ -63,6 +64,7 @@ const NAV: { id: PageId; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'policies',       label: 'Policies',          icon: Shield },
   { id: 'policy-history', label: 'Policy History',    icon: History },
   { id: 'workflow-builder', label: 'Workflow Builder', icon: GitBranch },
+  { id: 'assurance',      label: 'Assurance',         icon: ShieldCheck },
   { id: 'governance',     label: 'Governance',        icon: CheckSquare },
   { id: 'compliance',     label: 'Compliance',        icon: FileText },
   { id: 'agents',         label: 'Agents',            icon: Bot },

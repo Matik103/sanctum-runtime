@@ -11,6 +11,7 @@ import { useDashboard } from './hooks/useDashboard'
 import { MainCanvas } from './layout/MainCanvas'
 import { Sidebar, type PageId } from './layout/Sidebar'
 import { getFleetStatus, type FleetPauseStatus } from './lib/api'
+import { Assurance } from './pages/Assurance'
 import { AuditLogs } from './pages/AuditLogs'
 import { Billing } from './pages/Billing'
 import { Compliance } from './pages/Compliance'
@@ -170,6 +171,7 @@ export function App() {
         )}
         {page === 'policy-history' && <ErrorBoundary page="Policy History"><PolicyHistory /></ErrorBoundary>}
         {page === 'workflow-builder' && <ErrorBoundary page="Workflow Builder"><WorkflowBuilder /></ErrorBoundary>}
+        {page === 'assurance' && <ErrorBoundary page="Assurance"><Assurance /></ErrorBoundary>}
         {page === 'governance' && <ErrorBoundary page="Governance"><Governance /></ErrorBoundary>}
         {page === 'compliance' && <ErrorBoundary page="Compliance"><Compliance /></ErrorBoundary>}
         {page === 'devices' && <ErrorBoundary page="Devices"><Devices status={status} /></ErrorBoundary>}

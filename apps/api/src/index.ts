@@ -475,7 +475,9 @@ const policyActionSchema = z
   .max(256)
   .regex(/^[a-zA-Z0-9_.:@/-]+$/)
 
-// Simulate what would happen for a given action — no audit log entry created
+// Simulate what would happen for a given action — no audit log entry created.
+// Returns blast radius + source trust so the dashboard simulator can show
+// the operator exactly what the policy engine would have decided.
 app.post('/v1/policies/simulate', async (req) => {
   const body = z
     .object({
@@ -485,30 +487,37 @@ app.post('/v1/policies/simulate', async (req) => {
     })
     .parse(req.body)
   const request = ActionRequestSchema.parse(body)
-  const anomalyFlags = detectAnomalies(request)
-  const policyEval = runtime.getPolicyEngine().evaluate(request, false)
-  const risk = heuristicRiskFloor(request, anomalyFlags)
-  let decision: 'APPROVED' | 'BLOCKED' | 'REQUIRE_VERIFICATION' = 'APPROVED'
-  if (policyEval.violations.includes('policy_auto_block') || policyEval.violations.includes('condition_auto_block')) {
-    decision = 'BLOCKED'
-  } else if (policyEval.policy.requiresVerification || risk === 'high' || risk === 'medium' || anomalyFlags.length > 0) {
-    decision = 'REQUIRE_VERIFICATION'
-  }
-  return {
-    simulation: true,
-    decision,
-    risk,
-    policyPath: policyEval.policyPath,
-    anomalyFlags,
-    conditionMatched: policyEval.policyPath.includes('.condition['),
-    policyFlags: {
-      autoBlock: policyEval.policy.autoBlock,
-      requiresVerification: policyEval.policy.requiresVerification,
-      blockWhenOffline: policyEval.policy.blockWhenOffline,
-      allowedActors: policyEval.policy.allowedActors ?? [],
-      conditions: policyEval.policy.conditions ?? [],
-    },
-  }
+  return runtime.simulateAction(request)
+})
+
+// Replay historical audit entries against the current policy set.
+app.get('/v1/audit/replay', async (req, reply) => {
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
+  const q = req.query as { limit?: string; org_id?: string }
+  const limit = Math.min(500, Math.max(1, Number(q.limit ?? 100) || 100))
+  const picked = pickScopedOrgs(scope, q.org_id)
+  if ('status' in picked) return reply.status(picked.status).send(picked.body)
+  const orgId = picked.orgIds.length === 1 ? picked.orgIds[0] : undefined
+  return runtime.replayAudit(limit, orgId)
+})
+
+// Compliance evidence summary — SOC2 / NIST AI RMF inputs.
+app.get('/v1/evidence/summary', async (req, reply) => {
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
+  const q = req.query as { limit?: string; org_id?: string }
+  const limit = Math.min(500, Math.max(1, Number(q.limit ?? 200) || 200))
+  const picked = pickScopedOrgs(scope, q.org_id)
+  if ('status' in picked) return reply.status(picked.status).send(picked.body)
+  const orgId = picked.orgIds.length === 1 ? picked.orgIds[0] : undefined
+  return runtime.evidenceSummary(limit, orgId)
+})
+
+// Verify a signed Sanctum action token (executors call this before running).
+app.post('/v1/actions/token/verify', async (req, reply) => {
+  const body = z.object({ token: z.string().min(1) }).parse(req.body)
+  const payload = verifyActionToken(body.token)
+  if (!payload) return reply.status(400).send({ valid: false, error: 'invalid_or_expired_action_token' })
+  return { valid: true, payload }
 })
 
 app.post('/v1/policies', async (req, reply) => {
