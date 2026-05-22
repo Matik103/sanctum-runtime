@@ -8,7 +8,7 @@ Public index: **https://www.sanctumruntime.com/blog**
 2. Create `src/routes/blog/<slug>.tsx` using an existing post as template (`BlogLayout` + `articleJsonLd` + `pageSeo`).
 3. Run `npm run generate:sitemap` and commit updated `public/sitemap.xml`.
 4. Add the URL to `public/llms.txt` under **Blog**.
-5. Deploy marketing site (Vercel).
+5. Deploy marketing site (Vercel) from **`main`** at `970aed9` or later — not `claude/sanctum-production-audit-v2Qfu`. Production must not stay on `83b8be7` (pre-blog). In Vercel → Deployments → promote latest **`main`** build to Production.
 6. Google Search Console → URL inspection → Request indexing.
 
 ## SEO checklist per post
