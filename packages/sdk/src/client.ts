@@ -240,4 +240,37 @@ export class SanctumClient {
     }
     return res.json() as Promise<ActionResult>
   }
+
+  async replayAudit(limit = 100, orgId?: string): Promise<unknown> {
+    const qs = new URLSearchParams({ limit: String(limit) })
+    if (orgId) qs.set('org_id', orgId)
+    const res = await fetch(`${this.baseUrl}/v1/audit/replay?${qs.toString()}`, {
+      headers: await this.headers(),
+    })
+    if (!res.ok) throw new Error(`Sanctum replay failed: ${res.status}`)
+    return res.json()
+  }
+
+  async getEvidenceSummary(limit = 200, orgId?: string): Promise<unknown> {
+    const qs = new URLSearchParams({ limit: String(limit) })
+    if (orgId) qs.set('org_id', orgId)
+    const res = await fetch(`${this.baseUrl}/v1/evidence/summary?${qs.toString()}`, {
+      headers: await this.headers(),
+    })
+    if (!res.ok) throw new Error(`Sanctum evidence failed: ${res.status}`)
+    return res.json()
+  }
+
+  async verifyActionToken(token: string): Promise<{ valid: boolean; payload?: Record<string, unknown>; error?: string }> {
+    const res = await fetch(`${this.baseUrl}/v1/actions/token/verify`, {
+      method: 'POST',
+      headers: await this.headers(),
+      body: JSON.stringify({ token }),
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({})) as { error?: string }
+      return { valid: false, error: body.error ?? `http_${res.status}` }
+    }
+    return res.json() as Promise<{ valid: boolean; payload?: Record<string, unknown>; error?: string }>
+  }
 }

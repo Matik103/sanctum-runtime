@@ -321,6 +321,49 @@ if (supabaseAuth) {
 }
 
 const stopWebhookWorker = supabaseAuth ? startWebhookWorker(supabaseAuth) : null
+
+// Auto-escalation: re-push notifications for stale REQUIRE_VERIFICATION entries.
+const escalationTimer = setInterval(async () => {
+  try {
+    const escalated = await runtime.sweepEscalations()
+    if (!escalated.length || !supabaseAuth) return
+    const alertStore = new AlertStore(supabaseAuth)
+    for (const entry of escalated) {
+      const orgId = typeof entry.context?.org_id === 'string' ? entry.context.org_id : null
+      if (!orgId) continue
+      void alertStore.createAlert({
+        org_id: orgId,
+        severity: 'critical',
+        type: 'agent.verification_escalated',
+        title: `Escalated: ${entry.action}`,
+        message: `Verification request "${entry.action}" by ${entry.actor} has been pending past its escalation window.`,
+        channels: ['push', 'email', 'slack'],
+        metadata: { entryId: entry.id, blastRadius: entry.blastRadius?.level },
+      }).catch(() => {})
+      // Re-fire the push notification so operators get a fresh nudge
+      try {
+        const admin = createSupabaseAdmin(supabaseAuth)
+        const { data: members } = await admin
+          .from('organization_members')
+          .select('user_id')
+          .eq('org_id', orgId)
+        await Promise.allSettled(
+          (members ?? []).map((m) => sendPushToUser(m.user_id as string, {
+            title: `Escalated approval: ${entry.action}`,
+            body: `${entry.actor} has been waiting for review. Risk ${(entry.risk === 'high' ? 100 : entry.risk === 'medium' ? 60 : 30).toFixed(0)}%.`,
+            tag: `verify:${entry.id}`,
+            requireInteraction: true,
+            url: `/?page=activity&verify=${encodeURIComponent(entry.id)}`,
+            data: { entryId: entry.id, type: 'agent.verification_escalated', orgId, escalated: true },
+          })),
+        )
+      } catch { /* best-effort */ }
+    }
+  } catch (e) {
+    app.log.warn({ err: e }, 'escalation sweep failed')
+  }
+}, 60_000)
+escalationTimer.unref?.()
 const stopEmailQueueWorker = supabaseAuth ? startEmailQueueWorker(supabaseAuth) : null
 
 // Fast readiness probe
@@ -422,6 +465,8 @@ const policyPatchSchema = z.object({
   blockWhenOffline: z.boolean().optional(),
   allowedActors: z.array(z.string()).optional(),
   riskPrompt: z.string().max(8000).optional(),
+  requireSecondApprover: z.boolean().optional(),
+  autoEscalateAfterMinutes: z.number().int().min(1).max(1440).optional(),
 })
 
 const policyActionSchema = z

@@ -62,6 +62,21 @@ export function VerificationModal({
             Reviewing {queuePosition.current} of {queuePosition.total} in your queue
           </p>
         )}
+        {entry.requiresSecondApproval && (
+          <div style={{ marginTop: '0.5rem', padding: '0.5rem 0.75rem', background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.4)', borderRadius: 6, fontSize: '0.82rem' }}>
+            <strong>Dual approval required.</strong>{' '}
+            {entry.firstApprovedBy ? (
+              <>First approved by <code>{entry.firstApprovedBy}</code>. A different operator must give the second approval.</>
+            ) : (
+              <>This action needs two distinct approvers before it can execute.</>
+            )}
+          </div>
+        )}
+        {entry.escalatedAt && (
+          <div style={{ marginTop: '0.5rem', padding: '0.5rem 0.75rem', background: 'rgba(239, 68, 68, 0.14)', border: '1px solid rgba(239, 68, 68, 0.5)', borderRadius: 6, fontSize: '0.82rem' }}>
+            <strong>Escalated</strong> · pending since {new Date(entry.timestamp).toLocaleTimeString()}
+          </div>
+        )}
         <p style={{ color: 'var(--muted)', fontSize: '0.9rem', margin: '0.5rem 0 0' }}>
           Sanctum paused this action until you decide. You remain in control.
         </p>

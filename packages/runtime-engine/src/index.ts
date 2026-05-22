@@ -41,6 +41,11 @@ import {
 import { detectAnomalies } from './anomaly.js'
 import { resolveDecision } from './decision.js'
 import { heuristicRiskFloor, heuristicRiskReason, mergeRisk } from './risk-heuristics.js'
+import { deriveSourceTrust, estimateBlastRadius } from './action-context.js'
+import { issueActionToken, verifyActionToken } from './action-token.js'
+
+export { deriveSourceTrust, estimateBlastRadius } from './action-context.js'
+export { issueActionToken, verifyActionToken } from './action-token.js'
 
 export type RuntimeEngineOptions = {
   policyEngine?: PolicyEngine
@@ -159,8 +164,39 @@ export class RuntimeEngine {
     }
 
     const who = resolution.resolvedBy ?? 'operator'
+
+    // Dual approver: first APPROVED resolution records firstApproved* but
+    // keeps decision=REQUIRE_VERIFICATION until a DIFFERENT approver acts.
+    if (
+      resolution.decision === 'APPROVED' &&
+      existing.requiresSecondApproval &&
+      !existing.firstApprovedBy
+    ) {
+      const partial: ActionResult = {
+        ...existing,
+        firstApprovedBy: who,
+        firstApprovedAt: new Date().toISOString(),
+        reasoning: `${existing.reasoning} First approval by ${who} — awaiting second approver.`,
+      }
+      const saved = (await this.auditStore.updateEntry(id, partial)) ?? partial
+      await maybeSyncAuditToSupabase(saved)
+      return saved
+    }
+    // Second-approver guard: the second approver must be distinct from the first
+    if (
+      resolution.decision === 'APPROVED' &&
+      existing.requiresSecondApproval &&
+      existing.firstApprovedBy === who
+    ) {
+      throw new Error('dual_approver_required: a different operator must give the second approval')
+    }
+
     const verb = resolution.decision === 'APPROVED' ? 'Approved' : 'Denied'
-    const humanResolution = `${verb} by ${who}${resolution.note ? ` — ${resolution.note}` : ''}`
+    const dualNote =
+      existing.requiresSecondApproval && resolution.decision === 'APPROVED' && existing.firstApprovedBy
+        ? ` (dual-approval: first ${existing.firstApprovedBy}, second ${who})`
+        : ''
+    const humanResolution = `${verb} by ${who}${dualNote}${resolution.note ? ` — ${resolution.note}` : ''}`
 
     const updated: ActionResult = {
       ...existing,
@@ -174,6 +210,11 @@ export class RuntimeEngine {
         decision: resolution.decision,
         reasoning: `${existing.reasoning} ${humanResolution}.`,
       }),
+    }
+    // Mint an action token when resolution is APPROVED (executor needs it)
+    if (resolution.decision === 'APPROVED') {
+      const token = issueActionToken(updated)
+      if (token) updated.actionToken = token
     }
 
     const saved = (await this.auditStore.updateEntry(id, updated)) ?? null
@@ -236,6 +277,214 @@ export class RuntimeEngine {
       }
     }
     return scoped
+  }
+
+  /**
+   * Simulate a verify call without writing an audit entry — used by the
+   * policy simulator and "what if?" UI in the dashboard.
+   */
+  async simulateAction(request: ActionRequest): Promise<{
+    simulation: true
+    decision: Decision
+    risk: RiskLevel
+    policyPath: string
+    anomalyFlags: string[]
+    sourceTrust: ReturnType<typeof deriveSourceTrust>
+    blastRadius: ReturnType<typeof estimateBlastRadius>
+    conditionMatched: boolean
+    policyFlags: {
+      autoBlock: boolean
+      requiresVerification: boolean
+      blockWhenOffline: boolean
+      allowedActors: string[]
+      conditions: NonNullable<ActionPolicy['conditions']>
+    }
+  }> {
+    const anomalyFlags = detectAnomalies(request)
+    const policyEval = this.policyEngine.evaluate(request, false)
+    const riskFloor = heuristicRiskFloor(request, anomalyFlags)
+    const sourceTrust = deriveSourceTrust(request)
+    const blastRadius = estimateBlastRadius(request)
+    let decision: Decision = 'APPROVED'
+    if (policyEval.violations.includes('policy_auto_block')) decision = 'BLOCKED'
+    else if (policyEval.policy.requiresVerification) decision = 'REQUIRE_VERIFICATION'
+    else if (riskFloor === 'high') decision = 'REQUIRE_VERIFICATION'
+
+    return {
+      simulation: true,
+      decision,
+      risk: riskFloor,
+      policyPath: policyEval.policyPath,
+      anomalyFlags,
+      sourceTrust,
+      blastRadius,
+      conditionMatched: (policyEval.policy.conditions ?? []).length > 0,
+      policyFlags: {
+        autoBlock: policyEval.policy.autoBlock,
+        requiresVerification: policyEval.policy.requiresVerification,
+        blockWhenOffline: policyEval.policy.blockWhenOffline,
+        allowedActors: policyEval.policy.allowedActors ?? [],
+        conditions: policyEval.policy.conditions ?? [],
+      },
+    }
+  }
+
+  /**
+   * Replay historical audit entries against the *current* policy set.
+   * Returns the diff so operators can see "if this policy had existed
+   * yesterday, what would have been blocked?"
+   */
+  async replayAudit(limit = 100, orgId?: string): Promise<{
+    replayedAt: string
+    count: number
+    decisions: Record<Decision, number>
+    changedCount: number
+    changed: Array<{
+      id: string
+      actor: string
+      action: string
+      previousDecision: Decision
+      replayDecision: Decision
+      previousRisk: RiskLevel
+      replayRisk: RiskLevel
+      policyPath: string
+      anomalyFlags: string[]
+    }>
+  }> {
+    const entries = await this.listAudit(limit, orgId)
+    const decisions: Record<Decision, number> = { APPROVED: 0, BLOCKED: 0, REQUIRE_VERIFICATION: 0 }
+    const changed: Array<{
+      id: string
+      actor: string
+      action: string
+      previousDecision: Decision
+      replayDecision: Decision
+      previousRisk: RiskLevel
+      replayRisk: RiskLevel
+      policyPath: string
+      anomalyFlags: string[]
+    }> = []
+    for (const entry of entries) {
+      const sim = await this.simulateAction({
+        actor: entry.actor,
+        action: entry.action,
+        context: entry.context,
+      })
+      decisions[sim.decision] = (decisions[sim.decision] ?? 0) + 1
+      if (sim.decision !== entry.decision) {
+        changed.push({
+          id: entry.id,
+          actor: entry.actor,
+          action: entry.action,
+          previousDecision: entry.decision,
+          replayDecision: sim.decision,
+          previousRisk: entry.risk,
+          replayRisk: sim.risk,
+          policyPath: sim.policyPath,
+          anomalyFlags: sim.anomalyFlags,
+        })
+      }
+    }
+    return {
+      replayedAt: new Date().toISOString(),
+      count: entries.length,
+      decisions,
+      changedCount: changed.length,
+      changed,
+    }
+  }
+
+  /**
+   * Compliance evidence summary — counts of approvals, blocks, signed
+   * tokens issued, high-blast-radius events, untrusted-source events.
+   */
+  async evidenceSummary(limit = 200, orgId?: string): Promise<{
+    generatedAt: string
+    orgId?: string
+    controls: Record<string, boolean>
+    policyCount: number
+    auditWindow: {
+      sampledEvents: number
+      approved: number
+      blocked: number
+      verificationRequired: number
+      signedApprovalTokens: number
+      highBlastRadiusEvents: number
+      untrustedSourceEvents: number
+    }
+    evidence: string[]
+  }> {
+    const entries = await this.listAudit(limit, orgId)
+    let approved = 0, blocked = 0, verify = 0, tokens = 0, highBlast = 0, untrusted = 0
+    for (const e of entries) {
+      if (e.decision === 'APPROVED') approved++
+      else if (e.decision === 'BLOCKED') blocked++
+      else verify++
+      if (e.actionToken) tokens++
+      if (e.blastRadius && (e.blastRadius.level === 'high' || e.blastRadius.level === 'critical')) highBlast++
+      if (e.sourceTrust === 'untrusted_content' || e.sourceTrust === 'tool_output') untrusted++
+    }
+    return {
+      generatedAt: new Date().toISOString(),
+      orgId,
+      controls: {
+        actionVerification: true,
+        signedActionTokens: tokens > 0,
+        sourceTrustClassification: untrusted >= 0,
+        blastRadiusScoring: entries.some((e) => !!e.blastRadius),
+        policyReplay: true,
+        humanVerification: verify > 0,
+        auditTrail: entries.length > 0,
+      },
+      policyCount: Object.keys(this.policyEngine.getPolicies()).length,
+      auditWindow: {
+        sampledEvents: entries.length,
+        approved,
+        blocked,
+        verificationRequired: verify,
+        signedApprovalTokens: tokens,
+        highBlastRadiusEvents: highBlast,
+        untrustedSourceEvents: untrusted,
+      },
+      evidence: [
+        `Sampled ${entries.length} audit events (most recent first)`,
+        `${blocked} blocked, ${verify} held for verification, ${approved} approved`,
+        `${tokens} signed action tokens issued for downstream executors`,
+        `${highBlast} high/critical blast-radius events captured`,
+        `${untrusted} actions originating from untrusted content / tool output flagged`,
+      ],
+    }
+  }
+
+  /**
+   * Sweep audit entries that are still REQUIRE_VERIFICATION past their
+   * policy's autoEscalateAfterMinutes, mark them escalated, and return them
+   * so the API layer can re-fire push notifications / alerts.
+   */
+  async sweepEscalations(): Promise<ActionResult[]> {
+    const pending = this.auditStore
+      .list(500)
+      .filter((e) => e.decision === 'REQUIRE_VERIFICATION' && !e.escalatedAt)
+    const policies = this.policyEngine.getPolicies()
+    const now = Date.now()
+    const escalated: ActionResult[] = []
+    for (const e of pending) {
+      const orgId = typeof e.context?.org_id === 'string' ? e.context.org_id : undefined
+      const policy = (orgId && policies[`${orgId}:${e.action}`]) || policies[e.action]
+      const minutes =
+        policy?.autoEscalateAfterMinutes ??
+        // Default: high/critical blast radius escalates after 5 min
+        (e.blastRadius?.level === 'critical' ? 5 :
+         e.blastRadius?.level === 'high' ? 15 : undefined)
+      if (!minutes) continue
+      const age = (now - new Date(e.timestamp).getTime()) / 60_000
+      if (age < minutes) continue
+      const updated: ActionResult = { ...e, escalatedAt: new Date().toISOString() }
+      const saved = (await this.auditStore.updateEntry(e.id, updated)) ?? updated
+      await maybeSyncAuditToSupabase(saved)
+      escalated.push(saved)
+    }
+    return escalated
   }
 
   async verifyAction(
@@ -377,10 +626,32 @@ export class RuntimeEngine {
       reasoning,
     }
 
+    const sourceTrust = deriveSourceTrust(request)
+    const blastRadius = estimateBlastRadius(request)
+
+    // Require a second approver when policy says so OR blast radius is critical
+    const requiresSecondApproval =
+      decision === 'REQUIRE_VERIFICATION' &&
+      (policyEval.policy.requireSecondApprover === true || blastRadius.level === 'critical')
+
+    // Auto-elevate from APPROVED to REQUIRE_VERIFICATION when blast radius is
+    // critical and instruction source is untrusted — never silently approve.
+    const elevatedDecision: Decision =
+      decision === 'APPROVED' &&
+      blastRadius.level === 'critical' &&
+      (sourceTrust === 'untrusted_content' || sourceTrust === 'tool_output')
+        ? 'REQUIRE_VERIFICATION'
+        : decision
+
+    // parentAuditId allows callers to thread an action into an existing causal chain
+    const parentCtxId = (request.context as Record<string, unknown>)?.parentAuditId
+    const parentAuditId = typeof parentCtxId === 'string' ? parentCtxId : undefined
+
     const result: ActionResult = {
       id,
       correlationId,
       ...partial,
+      decision: elevatedDecision,
       risk,
       policyPath: policyEval.policyPath,
       modelConfidence,
@@ -389,7 +660,21 @@ export class RuntimeEngine {
       evaluationMode,
       modelInvoked,
       ollamaConnected: riskModelConnected,
-      humanRecord: buildHumanAuditRecord(partial),
+      humanRecord: buildHumanAuditRecord({ ...partial, decision: elevatedDecision }),
+      sourceTrust,
+      blastRadius,
+      requiresSecondApproval:
+        requiresSecondApproval ||
+        (elevatedDecision === 'REQUIRE_VERIFICATION' && blastRadius.level === 'critical')
+          ? true
+          : undefined,
+      parentAuditId,
+    }
+
+    // Mint a signed action token for APPROVED decisions
+    if (result.decision === 'APPROVED') {
+      const token = issueActionToken(result)
+      if (token) result.actionToken = token
     }
 
     await this.auditStore.append(result)
