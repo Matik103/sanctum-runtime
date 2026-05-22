@@ -204,6 +204,28 @@ export function ActionDrawer({ entry, onClose, audit, onSelect }: Props) {
           </section>
         )}
 
+        {entry.execution && (
+          <section className="drawer-section">
+            <h3>Execution result</h3>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.5rem' }}>
+              <span className={`badge ${
+                entry.execution.status === 'succeeded' ? 'success' :
+                entry.execution.status === 'failed' ? 'danger' : 'neutral'
+              }`}>{entry.execution.status}</span>
+              {entry.execution.durationMs != null && (
+                <span className="badge neutral">{Math.round(entry.execution.durationMs)}ms</span>
+              )}
+            </div>
+            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--muted)', lineHeight: 1.5 }}>
+              {entry.execution.resultSummary ?? entry.execution.error ?? 'Executor reported completion without additional details.'}
+            </p>
+            <p style={{ margin: '0.4rem 0 0', fontSize: '0.78rem', color: 'var(--muted)' }}>
+              {entry.execution.reportedBy ?? 'executor'} · {timeAgo(entry.execution.reportedAt)}
+              {entry.execution.outputRef ? ` · ${entry.execution.outputRef}` : ''}
+            </p>
+          </section>
+        )}
+
         <section className="drawer-section">
           <h3>Policy</h3>
           <p style={{ margin: 0, fontWeight: 500 }}>{policyLabel(entry.policyPath)}</p>

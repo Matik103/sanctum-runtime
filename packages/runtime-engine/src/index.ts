@@ -7,6 +7,7 @@ import {
 import { OllamaBridge } from '@sanctum/ollama-bridge'
 import { PolicyEngine } from '@sanctum/policy-engine'
 import type {
+  ActionExecution,
   ActionPolicy,
   ActionRequest,
   ActionResult,
@@ -244,6 +245,64 @@ export class RuntimeEngine {
       status: verificationStateFromDecision(entry.decision),
       entry,
     }
+  }
+
+  async reportActionExecution(
+    id: string,
+    body: {
+      actionToken: string
+      status: ActionExecution['status']
+      reportedBy?: string
+      resultSummary?: string
+      outputRef?: string
+      error?: string
+      durationMs?: number
+    },
+  ): Promise<ActionResult | null> {
+    const payload = verifyActionToken(body.actionToken)
+    if (!payload || payload.auditId !== id) {
+      throw new Error('invalid_action_token')
+    }
+
+    let existing = this.auditStore.getById(id)
+    if (!existing && isSupabaseConfigured()) {
+      const fromDb = await fetchAuditById(id)
+      if (fromDb) {
+        this.auditStore.hydrate([fromDb], 500)
+        existing = fromDb
+      }
+    }
+    if (!existing) return null
+    if (existing.decision !== 'APPROVED') {
+      throw new Error('execution_report_requires_approved_action')
+    }
+    if (payload.actor !== existing.actor || payload.action !== existing.action) {
+      throw new Error('action_token_scope_mismatch')
+    }
+
+    const execution: ActionExecution = {
+      status: body.status,
+      reportedAt: new Date().toISOString(),
+      reportedBy: body.reportedBy,
+      resultSummary: body.resultSummary,
+      outputRef: body.outputRef,
+      error: body.error,
+      durationMs: body.durationMs,
+    }
+
+    const updated: ActionResult = {
+      ...existing,
+      execution,
+      reasoning: `${existing.reasoning} Execution ${execution.status}${execution.resultSummary ? ` — ${execution.resultSummary}` : ''}.`,
+      humanRecord: buildHumanAuditRecord({
+        ...existing,
+        reasoning: `${existing.reasoning} Execution ${execution.status}${execution.resultSummary ? ` — ${execution.resultSummary}` : ''}.`,
+      }),
+    }
+
+    const saved = (await this.auditStore.updateEntry(id, updated)) ?? updated
+    await maybeSyncAuditToSupabase(saved)
+    return saved
   }
 
   /** Remove org-scoped keys without re-upserting the full policy map (marketplace uninstall). */
@@ -615,6 +674,8 @@ export class RuntimeEngine {
     const blocked = audit.filter((e) => e.decision === 'BLOCKED').length
     const verification = audit.filter((e) => e.decision === 'REQUIRE_VERIFICATION').length
     const withToken = audit.filter((e) => e.actionToken).length
+    const executed = audit.filter((e) => e.execution).length
+    const executionFailed = audit.filter((e) => e.execution?.status === 'failed').length
     const highBlast = audit.filter((e) => e.blastRadius?.level === 'high' || e.blastRadius?.level === 'critical').length
     const untrustedSource = audit.filter((e) =>
       e.sourceTrust === 'untrusted_content' || e.sourceTrust === 'tool_output',
@@ -639,6 +700,8 @@ export class RuntimeEngine {
         blocked,
         verificationRequired: verification,
         signedApprovalTokens: withToken,
+        executionReports: executed,
+        failedExecutions: executionFailed,
         highBlastRadiusEvents: highBlast,
         untrustedSourceEvents: untrustedSource,
       },
@@ -646,6 +709,7 @@ export class RuntimeEngine {
         `${policyCount} active policy definitions are loaded.`,
         `${audit.length} recent action events were sampled for this evidence package.`,
         `${blocked} action(s) were blocked and ${verification} action(s) required human verification.`,
+        `${executed} approved action(s) reported post-execution status; ${executionFailed} reported failure.`,
         `${highBlast} action(s) carried high or critical blast-radius metadata.`,
         `${untrustedSource} action(s) originated from untrusted content or tool output.`,
       ],

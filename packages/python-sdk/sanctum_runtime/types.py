@@ -14,6 +14,7 @@ EvaluationMode = Literal[
     "offline_model_failed",
 ]
 PolicyMode = Literal["approve", "verify", "block"]
+ExecutionStatus = Literal["succeeded", "failed", "skipped"]
 SourceTrust = Literal[
     "trusted_user",
     "authenticated_user",
@@ -104,6 +105,16 @@ class ActionIdentity(TypedDict, total=False):
     correlationChain: list[str]
 
 
+class ActionExecution(TypedDict, total=False):
+    status: ExecutionStatus
+    reportedAt: str
+    reportedBy: str
+    resultSummary: str
+    outputRef: str
+    error: str
+    durationMs: int | float
+
+
 class ActionResult(TypedDict, total=False):
     id: str
     correlationId: str
@@ -129,6 +140,7 @@ class ActionResult(TypedDict, total=False):
     blastRadius: BlastRadius
     actionIdentity: ActionIdentity
     actionToken: ActionToken
+    execution: ActionExecution
 
 
 class SimulatePolicyFlags(TypedDict, total=False):

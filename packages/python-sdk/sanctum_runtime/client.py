@@ -15,6 +15,7 @@ from sanctum_runtime.types import (
     ActionTokenVerification,
     AuditReplayResult,
     EvidenceSummary,
+    ExecutionStatus,
     PolicyMap,
     RuntimeStatus,
     SimulateResult,
@@ -144,6 +145,34 @@ class SanctumClient:
 
   def verify_action_token(self, token: str) -> ActionTokenVerification:
     return self._request("POST", "/v1/actions/token/verify", json={"token": token})
+
+  def report_action_execution(
+    self,
+    entry_id: str,
+    *,
+    action_token: str,
+    status: ExecutionStatus,
+    reported_by: str | None = None,
+    result_summary: str | None = None,
+    output_ref: str | None = None,
+    error: str | None = None,
+    duration_ms: int | float | None = None,
+  ) -> ActionResult:
+    body: dict[str, Any] = {
+      "actionToken": action_token,
+      "status": status,
+    }
+    if reported_by:
+      body["reportedBy"] = reported_by
+    if result_summary:
+      body["resultSummary"] = result_summary
+    if output_ref:
+      body["outputRef"] = output_ref
+    if error:
+      body["error"] = error
+    if duration_ms is not None:
+      body["durationMs"] = duration_ms
+    return self._request("POST", f"/v1/audit/{entry_id}/execution", json=body)
 
   def get_policies(self) -> PolicyMap:
     return self._request("GET", "/v1/policies")

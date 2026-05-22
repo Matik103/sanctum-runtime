@@ -147,8 +147,8 @@ export function Assurance() {
               <div className="grid-4" style={{ marginBottom: '1rem' }}>
                 <div className="card"><div className="card-label">Sampled events</div><div className="card-value">{evidence.auditWindow.sampledEvents}</div></div>
                 <div className="card glow-success"><div className="card-label">Signed tokens</div><div className="card-value">{evidence.auditWindow.signedApprovalTokens}</div></div>
-                <div className="card glow-danger"><div className="card-label">High blast</div><div className="card-value">{evidence.auditWindow.highBlastRadiusEvents}</div></div>
-                <div className="card glow-warn"><div className="card-label">Untrusted src</div><div className="card-value">{evidence.auditWindow.untrustedSourceEvents}</div></div>
+                <div className="card glow-danger"><div className="card-label">Failed executions</div><div className="card-value">{evidence.auditWindow.failedExecutions ?? 0}</div></div>
+                <div className="card"><div className="card-label">Execution reports</div><div className="card-value">{evidence.auditWindow.executionReports ?? 0}</div></div>
               </div>
               <div style={{ marginBottom: '0.85rem' }}>
                 {Object.entries(evidence.controls).map(([ctl, on]) => (

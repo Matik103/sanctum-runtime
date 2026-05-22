@@ -1,4 +1,4 @@
-import type { ActionRequest, ActionResult, PolicyMap, RuntimeStatus } from './types.js'
+import type { ActionExecution, ActionRequest, ActionResult, PolicyMap, RuntimeStatus } from './types.js'
 import type { VerificationStatus } from './verification.js'
 
 export type SanctumClientOptions = {
@@ -132,6 +132,21 @@ export class SanctumClient {
 
   async verifyActionToken(token: string): Promise<{ valid: boolean; payload?: Record<string, unknown>; error?: string }> {
     return this.request('POST', '/v1/actions/token/verify', { token })
+  }
+
+  async reportActionExecution(
+    id: string,
+    body: {
+      actionToken: string
+      status: ActionExecution['status']
+      reportedBy?: string
+      resultSummary?: string
+      outputRef?: string
+      error?: string
+      durationMs?: number
+    },
+  ): Promise<ActionResult> {
+    return this.request('POST', `/v1/audit/${encodeURIComponent(id)}/execution`, body)
   }
 
   async getPolicies(): Promise<PolicyMap> {

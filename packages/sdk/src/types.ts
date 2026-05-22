@@ -84,6 +84,17 @@ export const ActionTokenSchema = z.object({
 })
 export type ActionToken = z.infer<typeof ActionTokenSchema>
 
+export const ActionExecutionSchema = z.object({
+  status: z.enum(['succeeded', 'failed', 'skipped']),
+  reportedAt: z.string(),
+  reportedBy: z.string().optional(),
+  resultSummary: z.string().optional(),
+  outputRef: z.string().optional(),
+  error: z.string().optional(),
+  durationMs: z.number().nonnegative().optional(),
+})
+export type ActionExecution = z.infer<typeof ActionExecutionSchema>
+
 export const ActionResultSchema = z.object({
   id: z.string(),
   correlationId: z.string(),
@@ -116,6 +127,8 @@ export const ActionResultSchema = z.object({
   actionIdentity: ActionIdentitySchema.optional(),
   /** Signed action token returned on APPROVED — downstream executor must validate. */
   actionToken: ActionTokenSchema.optional(),
+  /** Post-execution result reported by the downstream executor. */
+  execution: ActionExecutionSchema.optional(),
   /** True when this entry needs a second, distinct approver before it can be finalized. */
   requiresSecondApproval: z.boolean().optional(),
   /** Identity of the first approver (when dual-approval is enforced). */

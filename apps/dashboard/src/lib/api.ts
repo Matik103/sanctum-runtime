@@ -157,6 +157,8 @@ export type EvidenceSummary = {
     blocked: number
     verificationRequired: number
     signedApprovalTokens: number
+    executionReports: number
+    failedExecutions: number
     highBlastRadiusEvents: number
     untrustedSourceEvents: number
   }

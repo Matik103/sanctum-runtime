@@ -232,6 +232,7 @@ Sanctum is moving beyond advisory guardrails into enforceable action control:
 
 - **Signed action tokens** — approved actions can carry a short-lived `actionToken` that downstream executors verify before side effects.
 - **Action identity envelope** — every action can carry actor, tool, runtime, environment, permission, scope, expiry, and correlation chain metadata.
+- **Execution receipts** — executors can report succeeded / failed / skipped outcomes back onto the audit record after token-verified side effects.
 - **Source-trust classification** — actions record whether instructions came from trusted users, system flows, memory, tool output, or untrusted content.
 - **Blast-radius scoring** — every action can be scored for reversibility, data sensitivity, physical-world impact, external destination, and monetary value.
 - **Policy replay** — replay recent audit events against current policies before rollout.

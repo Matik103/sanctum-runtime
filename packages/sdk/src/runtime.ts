@@ -12,7 +12,7 @@ import {
   type RegisterAgentOptions,
 } from './control-plane.js'
 import { attachSanctumRuntime, createSanctumMiddleware } from './middleware.js'
-import type { ActionPolicy, ActionRequest, ActionResult, PolicyMap } from './types.js'
+import type { ActionExecution, ActionPolicy, ActionRequest, ActionResult, PolicyMap } from './types.js'
 import type { VerificationStatus } from './verification.js'
 
 export type PolicyMode = 'approve' | 'verify' | 'block'
@@ -171,6 +171,21 @@ export class SanctumRuntime {
 
   verifyActionToken(token: string) {
     return this.client.verifyActionToken(token)
+  }
+
+  reportActionExecution(
+    id: string,
+    body: {
+      actionToken: string
+      status: ActionExecution['status']
+      reportedBy?: string
+      resultSummary?: string
+      outputRef?: string
+      error?: string
+      durationMs?: number
+    },
+  ) {
+    return this.client.reportActionExecution(id, body)
   }
 
   getVerificationStatus(correlationId: string): Promise<VerificationStatus> {

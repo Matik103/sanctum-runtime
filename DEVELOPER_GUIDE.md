@@ -210,6 +210,19 @@ await sanctum.verifyActionToken(result.actionToken.token)
 await performSideEffect()
 ```
 
+After the side effect finishes, report the execution outcome so audit evidence
+shows the full action lifecycle:
+
+```ts
+await sanctum.reportActionExecution(result.id, {
+  actionToken: result.actionToken.token,
+  status: 'succeeded',
+  reportedBy: 'gmail.executor',
+  resultSummary: 'Email sent to customer@example.com',
+  durationMs: 184,
+})
+```
+
 Adapters can enforce this at the tool boundary:
 
 ```ts

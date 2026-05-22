@@ -16,6 +16,7 @@ from sanctum_runtime.types import (
   ActionTokenVerification,
   AuditReplayResult,
   EvidenceSummary,
+  ExecutionStatus,
   PolicyMap,
   PolicyMode,
   SimulateResult,
@@ -113,6 +114,29 @@ class SanctumRuntime:
 
   def verify_action_token(self, token: str) -> ActionTokenVerification:
     return self._client.verify_action_token(token)
+
+  def report_action_execution(
+    self,
+    entry_id: str,
+    *,
+    action_token: str,
+    status: ExecutionStatus,
+    reported_by: str | None = None,
+    result_summary: str | None = None,
+    output_ref: str | None = None,
+    error: str | None = None,
+    duration_ms: int | float | None = None,
+  ) -> ActionResult:
+    return self._client.report_action_execution(
+      entry_id,
+      action_token=action_token,
+      status=status,
+      reported_by=reported_by,
+      result_summary=result_summary,
+      output_ref=output_ref,
+      error=error,
+      duration_ms=duration_ms,
+    )
 
   def policy(self, action: str, mode: PolicyMode) -> PolicyMap:
     return self._client.update_policy(action, _mode_to_policy(mode))

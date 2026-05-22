@@ -36,6 +36,13 @@ print(result.get("sourceTrust"), result.get("blastRadius"), result.get("actionId
 if token := result.get("actionToken"):
     # Downstream executors can require this proof before side effects run.
     print(runtime.verify_action_token(token["token"]))
+    runtime.report_action_execution(
+        result["id"],
+        action_token=token["token"],
+        status="succeeded",
+        reported_by="door-controller",
+        result_summary="Door unlocked for bay-3 delivery window",
+    )
 ```
 
 ## Environment

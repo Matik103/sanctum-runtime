@@ -654,6 +654,45 @@ app.post('/v1/audit/:id/resolve', {
   return result
 })
 
+app.post('/v1/audit/:id/execution', async (req, reply) => {
+  const { id } = req.params as { id: string }
+  const body = z
+    .object({
+      actionToken: z.string().min(16),
+      status: z.enum(['succeeded', 'failed', 'skipped']),
+      reportedBy: z.string().max(256).optional(),
+      resultSummary: z.string().max(2000).optional(),
+      outputRef: z.string().max(1000).optional(),
+      error: z.string().max(2000).optional(),
+      durationMs: z.number().nonnegative().optional(),
+    })
+    .parse(req.body)
+
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
+  const entry = runtime.getAuditStore().getById(id)
+  const entryOrgId =
+    entry && typeof entry.context?.org_id === 'string' ? entry.context.org_id : undefined
+  if (!assertAuditEntryScope(scope, entryOrgId, reply)) return
+
+  try {
+    const result = await runtime.reportActionExecution(id, body)
+    if (!result) return reply.status(404).send({ error: 'audit_entry_not_found' })
+    return result
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'execution_report_failed'
+    if (
+      message === 'invalid_action_token' ||
+      message === 'action_token_scope_mismatch'
+    ) {
+      return reply.status(401).send({ error: message })
+    }
+    if (message === 'execution_report_requires_approved_action') {
+      return reply.status(409).send({ error: message })
+    }
+    throw err
+  }
+})
+
 // Tighter per-endpoint rate limits applied as route-level config
 app.post('/v1/actions/verify', {
   config: {
