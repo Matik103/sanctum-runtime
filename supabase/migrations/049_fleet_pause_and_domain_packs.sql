@@ -15,7 +15,7 @@ comment on column public.organizations.fleet_paused_by is 'User id or identifier
 -- Each pack ships policy templates that get applied org-scoped on install.
 -- ──────────────────────────────────────────────────────────────────────────────
 
-insert into public.marketplace_packages
+insert into public.runtime_packages
   (slug, name, description, version, publisher, category, visibility, policy_templates, readme)
 values
   (
