@@ -7,15 +7,18 @@ on:
       - "src/**"
       - "public/**"
       - "vite.config.ts"
-      - "wrangler.jsonc"
+      - "vite.config.vercel.ts"
+      - "vercel.json"
       - "package.json"
       - "package-lock.json"
+      - ".github/workflows/deploy-site.yml"
   workflow_dispatch:
 
 jobs:
-  deploy:
-    name: Cloudflare Workers (TanStack Start)
+  vercel:
+    name: Vercel (www.sanctumruntime.com)
     runs-on: ubuntu-latest
+    if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -27,14 +30,44 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Verify Cloudflare secrets
+      - name: Build site (Vercel / Nitro)
+        run: npm run build:vercel
+        env:
+          VITE_CONSOLE_URL: https://console.sanctumruntime.com/
+          VITE_MARKETING_URL: https://www.sanctumruntime.com/
+          VITE_GITHUB_URL: https://github.com/Matik103/sanctum-runtime
+
+      - name: Deploy to Vercel production
+        run: npx vercel deploy --prebuilt --prod --token="${{ secrets.VERCEL_TOKEN }}"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+  cloudflare:
+    name: Cloudflare Workers (optional mirror)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Skip when Cloudflare secrets missing
+        id: cf
         run: |
-          if [ -z "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ]; then
-            echo "::error::Missing GitHub secret CLOUDFLARE_ACCOUNT_ID — copy Account ID from Cloudflare dashboard → Profile → copy from right sidebar"
-            exit 1
+          if [ -z "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ] || [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Cloudflare secrets not set — skipping mirror deploy"
           fi
 
-      - name: Build site
+      - name: Build site (Cloudflare)
+        if: steps.cf.outputs.skip != 'true'
         run: npm run build
         env:
           VITE_CONSOLE_URL: https://console.sanctumruntime.com/
@@ -42,7 +75,18 @@ jobs:
           VITE_GITHUB_URL: https://github.com/Matik103/sanctum-runtime
 
       - name: Deploy to Cloudflare
+        if: steps.cf.outputs.skip != 'true'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+  deploy-hint:
+    name: Production host reminder
+    runs-on: ubuntu-latest
+    needs: [vercel]
+    if: ${{ always() && needs.vercel.result == 'skipped' }}
+    steps:
+      - run: |
+          echo "::warning::www.sanctumruntime.com is served by Vercel (DNS), not Cloudflare."
+          echo "Add GitHub secrets VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID — or trigger a production redeploy in the Vercel dashboard."

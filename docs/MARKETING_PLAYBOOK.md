@@ -48,6 +48,10 @@ npm run publish:sdk   # after version bump — homepage → www/sdk
 
 ## After each marketing deploy
 
+**Production host:** `www.sanctumruntime.com` DNS → **Vercel** (`vercel.json` + `npm run build:vercel`). GitHub `deploy-site.yml` must deploy Vercel (not only Cloudflare).
+
+GitHub secrets for CI deploy: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` (from `npx vercel link` → `.vercel/project.json`). Or redeploy manually in the Vercel dashboard.
+
 ```bash
 npm run generate:sitemap
 npm run build:vercel

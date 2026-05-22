@@ -10,6 +10,8 @@ export const getRouter = () => {
     context: { queryClient },
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
+    // Blog index is registered at /blog/; normalize bare /blog for nav links.
+    trailingSlash: "always",
   });
 
   return router;
