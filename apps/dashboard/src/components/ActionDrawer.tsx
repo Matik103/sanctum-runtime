@@ -104,6 +104,57 @@ export function ActionDrawer({ entry, onClose }: Props) {
           </p>
         </section>
 
+        {entry.sourceTrust && (
+          <section className="drawer-section">
+            <h3>Instruction source</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <span className={`badge ${
+                entry.sourceTrust === 'trusted_user' || entry.sourceTrust === 'authenticated_user' ? 'success' :
+                entry.sourceTrust === 'untrusted_content' ? 'danger' :
+                entry.sourceTrust === 'tool_output' || entry.sourceTrust === 'memory' ? 'warn' : 'neutral'
+              }`}>{entry.sourceTrust.replace(/_/g, ' ')}</span>
+              {(entry.sourceTrust === 'untrusted_content' || entry.sourceTrust === 'tool_output') && (
+                <span className="badge warn">indirect prompt injection risk</span>
+              )}
+            </div>
+            <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: 'var(--muted)', lineHeight: 1.4 }}>
+              {entry.sourceTrust === 'trusted_user' && 'Instruction came directly from a trusted human operator.'}
+              {entry.sourceTrust === 'authenticated_user' && 'Instruction came from an authenticated user session.'}
+              {entry.sourceTrust === 'system' && 'Instruction came from an automated system or scheduler.'}
+              {entry.sourceTrust === 'tool_output' && 'Instruction originated from a tool call result — elevated injection risk.'}
+              {entry.sourceTrust === 'memory' && 'Instruction was retrieved from agent memory — verify recency and integrity.'}
+              {entry.sourceTrust === 'untrusted_content' && 'Instruction came from untrusted external content (web page, email, document). High injection risk.'}
+              {entry.sourceTrust === 'unknown' && 'Instruction source could not be determined.'}
+            </p>
+          </section>
+        )}
+
+        {entry.blastRadius && (
+          <section className="drawer-section">
+            <h3>Blast radius</h3>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.5rem' }}>
+              <span className={`badge ${
+                entry.blastRadius.level === 'critical' || entry.blastRadius.level === 'high' ? 'danger' :
+                entry.blastRadius.level === 'medium' ? 'warn' : 'neutral'
+              }`}>{entry.blastRadius.level} · {entry.blastRadius.score}/100</span>
+              {!entry.blastRadius.reversible && <span className="badge danger">irreversible</span>}
+              {entry.blastRadius.externalDestination && <span className="badge warn">external destination</span>}
+              {entry.blastRadius.physicalWorld && <span className="badge danger">physical world</span>}
+              {entry.blastRadius.dataSensitivity && entry.blastRadius.dataSensitivity !== 'public' && (
+                <span className="badge warn">{entry.blastRadius.dataSensitivity} data</span>
+              )}
+              {entry.blastRadius.estimatedValue != null && entry.blastRadius.estimatedValue > 0 && (
+                <span className="badge neutral">${entry.blastRadius.estimatedValue.toLocaleString()} at risk</span>
+              )}
+            </div>
+            {entry.blastRadius.factors.length > 0 && (
+              <ul style={{ margin: 0, padding: '0 0 0 1.1rem', fontSize: '0.82rem', color: 'var(--muted)', lineHeight: 1.6 }}>
+                {entry.blastRadius.factors.map((f) => <li key={f}>{f}</li>)}
+              </ul>
+            )}
+          </section>
+        )}
+
         <section className="drawer-section">
           <h3>Policy</h3>
           <p style={{ margin: 0, fontWeight: 500 }}>{policyLabel(entry.policyPath)}</p>

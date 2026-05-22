@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Download, ShieldCheck, BarChart3, FileText } from 'lucide-react'
+import { Download, ShieldCheck, BarChart3, FileText, BookOpen } from 'lucide-react'
 import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
 import { Alert } from '../components/ui/Alert'
@@ -52,7 +52,7 @@ export function Compliance() {
   const [soc2, setSoc2] = useState<Record<string, string> | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [tab, setTab] = useState<'report' | 'soc2' | 'anomalies'>('report')
+  const [tab, setTab] = useState<'report' | 'soc2' | 'anomalies' | 'nist'>('report')
 
   const today = new Date()
   const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)
@@ -172,6 +172,7 @@ export function Compliance() {
               { id: 'report' as const, label: 'Overview' },
               { id: 'soc2' as const, label: 'SOC2 Controls' },
               { id: 'anomalies' as const, label: 'Risk Distribution' },
+              { id: 'nist' as const, label: 'NIST AI RMF' },
             ]}
             active={tab}
             onChange={setTab}
@@ -263,6 +264,86 @@ export function Compliance() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {tab === 'nist' && (
+            <div className="card">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
+                <BookOpen size={18} style={{ color: 'var(--primary)' }} />
+                <strong>NIST AI Risk Management Framework (AI RMF 1.0)</strong>
+              </div>
+
+              {[
+                {
+                  fn: 'GOVERN',
+                  color: 'var(--primary)',
+                  desc: 'Establish policies, processes, and accountability for AI risk management.',
+                  controls: [
+                    { id: 'GV-1.1', label: 'AI risk policy defined', impl: 'Org-scoped policies with versioning and audit trail' },
+                    { id: 'GV-1.2', label: 'Roles and responsibilities', impl: 'Operator approval roles, resolver attribution on every decision' },
+                    { id: 'GV-2.1', label: 'Risk tolerance established', impl: 'Per-action block/verify/approve thresholds with policy conditions' },
+                    { id: 'GV-4.1', label: 'Organizational risk register', impl: 'Blast radius scoring and anomaly flags on all verify calls' },
+                  ],
+                },
+                {
+                  fn: 'MAP',
+                  color: 'var(--success)',
+                  desc: 'Identify and categorize AI risks in context.',
+                  controls: [
+                    { id: 'MP-2.1', label: 'Risk context captured', impl: 'Source trust classification (user / tool_output / untrusted_content / …)' },
+                    { id: 'MP-2.3', label: 'Harm categories mapped', impl: 'Blast radius factors: data sensitivity, external destination, physical world, reversibility' },
+                    { id: 'MP-3.1', label: 'AI system inventory', impl: 'Runtime fleet registry with agent registrations and hardware attestation' },
+                    { id: 'MP-4.1', label: 'Indirect prompt injection', impl: 'instructionSource field propagated through verify; policies can gate on untrusted sources' },
+                  ],
+                },
+                {
+                  fn: 'MEASURE',
+                  color: 'var(--warn, #f59e0b)',
+                  desc: 'Analyze and assess AI risks through metrics and testing.',
+                  controls: [
+                    { id: 'MS-1.1', label: 'Performance monitoring', impl: 'Continuous audit log with decision, risk level, model confidence, and anomaly flags' },
+                    { id: 'MS-2.2', label: 'Anomaly detection', impl: 'Heuristic anomaly engine running on every verify call; spike alerts to operators' },
+                    { id: 'MS-2.5', label: 'Counterfactual testing', impl: 'Policy replay simulator: "what would this policy have blocked yesterday?"' },
+                    { id: 'MS-3.3', label: 'Bias and harm metrics', impl: 'Block-rate, verification-rate, and blast-radius distribution in compliance reports' },
+                  ],
+                },
+                {
+                  fn: 'MANAGE',
+                  color: 'var(--danger)',
+                  desc: 'Prioritize and treat identified AI risks.',
+                  controls: [
+                    { id: 'MG-1.1', label: 'Risk response procedures', impl: 'Human-on-the-loop approvals: once / timed grant / always-approve / deny' },
+                    { id: 'MG-2.2', label: 'Incident response', impl: 'Fleet kill switch pauses all agent actions org-wide instantly' },
+                    { id: 'MG-2.4', label: 'Action token provenance', impl: 'Signed action tokens (HMAC-SHA256) required before side effects execute' },
+                    { id: 'MG-4.1', label: 'Risk treatment records', impl: 'SOC2 evidence export: approval provenance, policy history, runtime attestation' },
+                  ],
+                },
+              ].map(({ fn, color, desc, controls }) => (
+                <div key={fn} style={{ marginBottom: '1.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <span style={{
+                      fontFamily: 'ui-monospace, monospace', fontWeight: 700, fontSize: '0.85rem',
+                      color, background: `${color}18`, padding: '0.2rem 0.6rem', borderRadius: 4,
+                    }}>{fn}</span>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>{desc}</span>
+                  </div>
+                  {controls.map((c) => (
+                    <div key={c.id} style={{ display: 'flex', gap: '0.75rem', padding: '0.5rem 0', borderBottom: '1px solid var(--border)', alignItems: 'flex-start' }}>
+                      <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.78rem', color, minWidth: '4.5rem', paddingTop: '0.1rem' }}>{c.id}</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 500 }}>{c.label}</div>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: '0.15rem' }}>{c.impl}</div>
+                      </div>
+                      <span className="badge success" style={{ fontSize: '0.7rem', flexShrink: 0 }}>implemented</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+
+              <p style={{ marginTop: '1rem', fontSize: '0.8rem', color: 'var(--muted)' }}>
+                Mapped to NIST AI RMF 1.0 (January 2023). Download the full compliance report for auditor submission.
+              </p>
             </div>
           )}
         </>

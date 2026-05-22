@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, PauseCircle, PlayCircle } from 'lucide-react'
+import { getFleetStatus, fleetPause, fleetResume, type FleetPauseStatus } from '../lib/api'
 import { timeAgo } from '../lib/format'
 import { Alert } from '../components/ui/Alert'
 import { EmptyState } from '../components/ui/EmptyState'
@@ -53,6 +54,8 @@ export function Fleet() {
   const [newGroupName, setNewGroupName] = useState('')
   const [newGroupRegion, setNewGroupRegion] = useState('')
   const [groupMsg, setGroupMsg] = useState<string | null>(null)
+  const [pauseStatus, setPauseStatus] = useState<FleetPauseStatus | null>(null)
+  const [pauseLoading, setPauseLoading] = useState(false)
 
   useEffect(() => {
     void (async () => {
@@ -67,6 +70,22 @@ export function Fleet() {
       if (list.length >= 1) setOrgId(list[0].org_id)
     })()
   }, [])
+
+  useEffect(() => {
+    if (!orgId) return
+    getFleetStatus(orgId).then(setPauseStatus).catch(() => {})
+  }, [orgId])
+
+  const togglePause = async () => {
+    if (!orgId || pauseLoading) return
+    setPauseLoading(true)
+    try {
+      const result = pauseStatus?.paused ? await fleetResume(orgId) : await fleetPause(orgId)
+      setPauseStatus(result)
+    } catch { /* best-effort */ } finally {
+      setPauseLoading(false)
+    }
+  }
 
   const refresh = useCallback(async () => {
     const filter = orgId || undefined
@@ -215,12 +234,40 @@ export function Fleet() {
               ))}
             </select>
           )}
+          {orgId && (
+            <button
+              type="button"
+              className={`btn btn-sm ${pauseStatus?.paused ? 'btn-primary' : 'btn-danger'}`}
+              onClick={() => void togglePause()}
+              disabled={pauseLoading}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+            >
+              {pauseStatus?.paused
+                ? <><PlayCircle size={14} /> Resume Fleet</>
+                : <><PauseCircle size={14} /> Pause Fleet</>
+              }
+            </button>
+          )}
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => void refresh()}>
             <RefreshCw size={15} style={{ marginRight: '0.35rem', verticalAlign: 'middle' }} />
             Refresh
           </button>
         </PageActions>
       </header>
+
+      {pauseStatus?.paused && (
+        <div className="alert alert--warn" role="alert" style={{ marginBottom: '1rem' }}>
+          <div className="alert__body">
+            <strong>Fleet paused</strong> — all agent action approvals are blocked org-wide. Agents will receive BLOCKED responses until resumed.
+            {pauseStatus.pausedBy && (
+              <span style={{ marginLeft: '0.5rem', fontSize: '0.82rem', opacity: 0.8 }}>
+                Paused by {pauseStatus.pausedBy}
+                {pauseStatus.pausedAt && ` · ${new Date(pauseStatus.pausedAt).toLocaleString()}`}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {error && (
         <Alert variant="error" onDismiss={() => setError(null)}>

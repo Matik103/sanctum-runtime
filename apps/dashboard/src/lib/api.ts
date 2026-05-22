@@ -123,4 +123,98 @@ export async function importPoliciesYaml(yaml: string, merge = true): Promise<Po
   return api.importPoliciesYaml(yaml, merge)
 }
 
-export { type ActionRequest, type ActionResult, type PolicyMap, type RuntimeStatus }
+export type AuditReplayChange = {
+  id: string
+  actor: string
+  action: string
+  previousDecision: Decision
+  replayDecision: Decision
+  previousRisk: RiskLevel
+  replayRisk: RiskLevel
+  policyPath: string
+  anomalyFlags: string[]
+}
+
+export type AuditReplayResult = {
+  replayedAt: string
+  count: number
+  decisions: Record<Decision, number>
+  changedCount: number
+  changed: AuditReplayChange[]
+}
+
+export type EvidenceSummary = {
+  generatedAt: string
+  orgId?: string
+  controls: Record<string, boolean>
+  policyCount: number
+  auditWindow: {
+    sampledEvents: number
+    approved: number
+    blocked: number
+    verificationRequired: number
+    signedApprovalTokens: number
+    highBlastRadiusEvents: number
+    untrustedSourceEvents: number
+  }
+  evidence: string[]
+}
+
+export async function replayAudit(limit = 100, orgId?: string): Promise<AuditReplayResult> {
+  return api.replayAudit(limit, orgId) as Promise<AuditReplayResult>
+}
+
+export async function getEvidenceSummary(limit = 200, orgId?: string): Promise<EvidenceSummary> {
+  return api.getEvidenceSummary(limit, orgId) as Promise<EvidenceSummary>
+}
+
+export async function verifyActionToken(token: string): Promise<{ valid: boolean; payload?: Record<string, unknown>; error?: string }> {
+  return api.verifyActionToken(token)
+}
+
+export type FleetPauseStatus = {
+  paused: boolean
+  pausedAt?: string | null
+  pausedBy?: string | null
+}
+
+async function authHeaders(): Promise<Record<string, string>> {
+  const token = await getAccessToken()
+  const h: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (token) h['Authorization'] = `Bearer ${token}`
+  return h
+}
+
+export async function getFleetStatus(orgId?: string): Promise<FleetPauseStatus> {
+  const h = await authHeaders()
+  const url = orgId
+    ? `${apiBaseUrl}/v1/fleet/pause-status?org_id=${encodeURIComponent(orgId)}`
+    : `${apiBaseUrl}/v1/fleet/pause-status`
+  const res = await fetch(url, { headers: h })
+  if (!res.ok) throw new Error(`Fleet status failed: ${res.status}`)
+  return res.json() as Promise<FleetPauseStatus>
+}
+
+export async function fleetPause(orgId?: string): Promise<FleetPauseStatus> {
+  const h = await authHeaders()
+  const res = await fetch(`${apiBaseUrl}/v1/fleet/pause`, {
+    method: 'POST',
+    headers: h,
+    body: JSON.stringify(orgId ? { org_id: orgId } : {}),
+  })
+  if (!res.ok) throw new Error(`Fleet pause failed: ${res.status}`)
+  return res.json() as Promise<FleetPauseStatus>
+}
+
+export async function fleetResume(orgId?: string): Promise<FleetPauseStatus> {
+  const h = await authHeaders()
+  const res = await fetch(`${apiBaseUrl}/v1/fleet/resume`, {
+    method: 'POST',
+    headers: h,
+    body: JSON.stringify(orgId ? { org_id: orgId } : {}),
+  })
+  if (!res.ok) throw new Error(`Fleet resume failed: ${res.status}`)
+  return res.json() as Promise<FleetPauseStatus>
+}
+
+export { type ActionRequest, type ActionResult, type Decision, type PolicyMap, type RiskLevel, type RuntimeStatus }

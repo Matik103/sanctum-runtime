@@ -669,6 +669,34 @@ app.post('/v1/actions/verify', {
   const orgId = agentClaims?.orgId ??
     (typeof body.context?.org_id === 'string' ? body.context.org_id : undefined)
 
+  // Fleet kill-switch: if the org has paused all agent actions, block immediately
+  if (orgId && supabaseAuth) {
+    try {
+      const adminClient = createSupabaseAdmin(supabaseAuth)
+      const { data: org } = await Promise.race([
+        adminClient.from('organizations').select('fleet_paused').eq('id', orgId).single(),
+        new Promise<{ data: null }>((res) => setTimeout(() => res({ data: null }), 2000)),
+      ])
+      if (org?.fleet_paused) {
+        return reply.status(200).send({
+          id: crypto.randomUUID(),
+          correlationId: body.correlationId ?? crypto.randomUUID(),
+          actor: body.actor,
+          action: body.action,
+          context: request.context,
+          decision: 'BLOCKED',
+          risk: 'high',
+          reasoning: 'Fleet is paused by operator. All agent actions are suspended until the fleet is resumed.',
+          policyPath: 'fleet:paused',
+          anomalyFlags: ['fleet_paused'],
+          modelInvoked: false,
+          modelConfidence: null,
+          timestamp: new Date().toISOString(),
+        })
+      }
+    } catch { /* non-fatal — fall through to normal verification */ }
+  }
+
   let result = await traced(
     'action.verify',
     { actor: body.actor, action: body.action, org_id: orgId ?? '' },
@@ -810,6 +838,64 @@ app.post('/v1/actions/verify', {
 
   return result
 })
+
+// ── Fleet kill-switch endpoints ───────────────────────────────────────────────
+
+app.get('/v1/fleet/pause-status', async (req, reply) => {
+  if (!supabaseAuth) return reply.status(501).send({ error: 'supabase_required' })
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
+  const q = req.query as { org_id?: string }
+  const picked = pickScopedOrgs(scope, q.org_id, { requireSingle: true })
+  if ('status' in picked) return reply.status(picked.status).send(picked.body)
+  const orgId = picked.orgIds[0]
+  const admin = createSupabaseAdmin(supabaseAuth)
+  const { data: org } = await admin
+    .from('organizations')
+    .select('fleet_paused,fleet_paused_at,fleet_paused_by')
+    .eq('id', orgId)
+    .single()
+  if (!org) return reply.status(404).send({ error: 'org_not_found' })
+  return { paused: !!org.fleet_paused, pausedAt: org.fleet_paused_at, pausedBy: org.fleet_paused_by }
+})
+
+app.post('/v1/fleet/pause', async (req, reply) => {
+  if (!supabaseAuth) return reply.status(501).send({ error: 'supabase_required' })
+  const user = (req as SanctumReq).sanctumUser
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
+  const body = z.object({ org_id: z.string().min(1).optional() }).parse(req.body ?? {})
+  const picked = pickScopedOrgs(scope, body.org_id, { requireSingle: true })
+  if ('status' in picked) return reply.status(picked.status).send(picked.body)
+  const orgId = picked.orgIds[0]
+  const admin = createSupabaseAdmin(supabaseAuth)
+  const { error } = await admin
+    .from('organizations')
+    .update({
+      fleet_paused: true,
+      fleet_paused_at: new Date().toISOString(),
+      fleet_paused_by: user?.id ?? user?.email ?? 'operator',
+    })
+    .eq('id', orgId)
+  if (error) return reply.status(500).send({ error: 'update_failed' })
+  return { paused: true, pausedAt: new Date().toISOString(), pausedBy: user?.id ?? 'operator' }
+})
+
+app.post('/v1/fleet/resume', async (req, reply) => {
+  if (!supabaseAuth) return reply.status(501).send({ error: 'supabase_required' })
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
+  const body = z.object({ org_id: z.string().min(1).optional() }).parse(req.body ?? {})
+  const picked = pickScopedOrgs(scope, body.org_id, { requireSingle: true })
+  if ('status' in picked) return reply.status(picked.status).send(picked.body)
+  const orgId = picked.orgIds[0]
+  const admin = createSupabaseAdmin(supabaseAuth)
+  const { error } = await admin
+    .from('organizations')
+    .update({ fleet_paused: false, fleet_paused_at: null, fleet_paused_by: null })
+    .eq('id', orgId)
+  if (error) return reply.status(500).send({ error: 'update_failed' })
+  return { paused: false }
+})
+
+// ── End fleet kill-switch ─────────────────────────────────────────────────────
 
 // One-time email approve/deny link (no auth — HMAC token is the proof)
 app.get('/v1/verify-action', async (req, reply) => {
