@@ -10,12 +10,24 @@ import type { ActionResult, ActionToken } from '@sanctum-runtime/sdk'
 const DEFAULT_TTL_SECONDS = 300
 
 function signingKey(): string {
-  return (
+  const key =
     process.env.SANCTUM_ACTION_TOKEN_SECRET?.trim() ||
     process.env.SANCTUM_API_KEY_PEPPER?.trim() ||
-    process.env.SANCTUM_API_KEY?.trim() ||
-    'sanctum-dev-action-token-secret'
-  )
+    process.env.SANCTUM_API_KEY?.trim()
+
+  if (key) return key
+
+  if (
+    process.env.NODE_ENV === 'production' ||
+    process.env.RENDER === 'true' ||
+    process.env.SANCTUM_ENV === 'production'
+  ) {
+    throw new Error(
+      'SANCTUM_ACTION_TOKEN_SECRET (or SANCTUM_API_KEY_PEPPER / SANCTUM_API_KEY) must be set in production',
+    )
+  }
+
+  return 'sanctum-dev-action-token-secret'
 }
 
 function b64url(input: Buffer | string): string {

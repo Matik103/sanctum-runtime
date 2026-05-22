@@ -18,6 +18,9 @@ function normalizePolicy(raw: unknown): ActionPolicy {
 }
 
 export function policiesFromYaml(text: string): PolicyMap {
+  if (text.length > 512_000) {
+    throw new Error('Invalid policies YAML: document exceeds 512 KB size limit')
+  }
   const doc = parse(text) as PoliciesDocument | PolicyMap | null
   if (!doc || typeof doc !== 'object') {
     throw new Error('Invalid policies YAML: empty document')

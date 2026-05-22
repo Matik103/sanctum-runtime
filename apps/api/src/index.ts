@@ -24,7 +24,7 @@ import { startWebhookWorker } from './webhook-queue.js'
 import { startEmailQueueWorker } from './email-queue-worker.js'
 import { riskModelBreaker } from './circuit-breaker.js'
 import { traced } from './telemetry.js'
-import { sendNotificationDeduped, sendVerificationEmail, initDedupCache } from './notifications.js'
+import { sendNotificationDeduped, initDedupCache } from './notifications.js'
 import { getEntitlementEngine } from './entitlements.js'
 import { recordUsage, UsageMetrics } from './usage-store.js'
 import { registerRuntimeWsRoutes } from './runtime-ws-routes.js'
@@ -68,6 +68,8 @@ loadRepoEnv()
 // Fail fast in production if required secrets are missing
 if (isProduction()) {
   const missing: string[] = []
+  if (!process.env.SANCTUM_ACTION_TOKEN_SECRET?.trim() && !process.env.SANCTUM_API_KEY_PEPPER?.trim() && !process.env.SANCTUM_API_KEY?.trim())
+    missing.push('SANCTUM_ACTION_TOKEN_SECRET (required for signed action tokens)')
   if (!process.env.SANCTUM_API_KEY_PEPPER?.trim() && !process.env.SANCTUM_API_KEY?.trim())
     missing.push('SANCTUM_API_KEY_PEPPER (required for agent token signing)')
   if (!process.env.SUPABASE_URL?.trim())
@@ -221,7 +223,7 @@ app.addHook('onRequest', async (req, reply) => {
 
 await runtime.init()
 if (supabaseAuth) initDedupCache()
-if (process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY?.trim()) {
+if (process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
   const count = Object.keys(runtime.getPolicyEngine().getPolicies()).length
   console.log(`Supabase policy store active (${count} policies loaded/seeded)`)
 }
@@ -1130,14 +1132,14 @@ try {
       console.log('Dashboard API keys: bcrypt + SANCTUM_API_KEY_PEPPER')
     } else if (process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
       console.log('Dashboard API keys: bcrypt + pepper derived from SUPABASE_SERVICE_ROLE_KEY')
-    } else if (process.env.NODE_ENV === 'production') {
+    } else if (isProduction()) {
       console.warn('WARN: Set SANCTUM_API_KEY_PEPPER or SUPABASE_SERVICE_ROLE_KEY for sk_sanctum_* keys')
     } else {
       console.log('Dashboard API keys: dev pepper')
     }
 
     // Warn if SANCTUM_API_KEY_PEPPER is not set in production
-    if (!process.env.SANCTUM_API_KEY_PEPPER?.trim() && process.env.NODE_ENV === 'production') {
+    if (!process.env.SANCTUM_API_KEY_PEPPER?.trim() && isProduction()) {
       console.warn('WARN: SANCTUM_API_KEY_PEPPER is not set. API key security relies on SUPABASE_SERVICE_ROLE_KEY pepper only.')
     }
 
