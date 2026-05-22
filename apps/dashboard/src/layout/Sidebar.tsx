@@ -6,6 +6,7 @@ import {
   CheckSquare,
   CreditCard,
   FileText,
+  GitBranch,
   History,
   LayoutDashboard,
   LogOut,
@@ -33,6 +34,7 @@ export type PageId =
   | 'alerts'
   | 'policies'
   | 'policy-history'
+  | 'workflow-builder'
   | 'governance'
   | 'compliance'
   | 'agents'
@@ -60,6 +62,7 @@ const NAV: { id: PageId; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'alerts',         label: 'Alerts',            icon: Bell },
   { id: 'policies',       label: 'Policies',          icon: Shield },
   { id: 'policy-history', label: 'Policy History',    icon: History },
+  { id: 'workflow-builder', label: 'Workflow Builder', icon: GitBranch },
   { id: 'governance',     label: 'Governance',        icon: CheckSquare },
   { id: 'compliance',     label: 'Compliance',        icon: FileText },
   { id: 'agents',         label: 'Agents',            icon: Bot },

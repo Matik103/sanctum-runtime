@@ -24,6 +24,7 @@ import { PolicyHistory } from './pages/PolicyHistory'
 import { RuntimeActivity } from './pages/RuntimeActivity'
 import { Settings } from './pages/Settings'
 import { ThreatMonitor } from './pages/ThreatMonitor'
+import { WorkflowBuilder } from './pages/WorkflowBuilder'
 import { Agents } from './pages/Agents'
 import { Alerts } from './pages/Alerts'
 import { fetchMyOrgs } from './lib/fleet'
@@ -168,6 +169,7 @@ export function App() {
           </ErrorBoundary>
         )}
         {page === 'policy-history' && <ErrorBoundary page="Policy History"><PolicyHistory /></ErrorBoundary>}
+        {page === 'workflow-builder' && <ErrorBoundary page="Workflow Builder"><WorkflowBuilder /></ErrorBoundary>}
         {page === 'governance' && <ErrorBoundary page="Governance"><Governance /></ErrorBoundary>}
         {page === 'compliance' && <ErrorBoundary page="Compliance"><Compliance /></ErrorBoundary>}
         {page === 'devices' && <ErrorBoundary page="Devices"><Devices status={status} /></ErrorBoundary>}
