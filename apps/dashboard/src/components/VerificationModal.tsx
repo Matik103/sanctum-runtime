@@ -62,6 +62,21 @@ export function VerificationModal({
             Reviewing {queuePosition.current} of {queuePosition.total} in your queue
           </p>
         )}
+        {entry.requiresSecondApproval && (
+          <div style={{ marginTop: '0.5rem', padding: '0.5rem 0.75rem', background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.4)', borderRadius: 6, fontSize: '0.82rem' }}>
+            <strong>Dual approval required.</strong>{' '}
+            {entry.firstApprovedBy ? (
+              <>First approved by <code>{entry.firstApprovedBy}</code>. A different operator must give the second approval.</>
+            ) : (
+              <>This action needs two distinct approvers before it can execute.</>
+            )}
+          </div>
+        )}
+        {entry.escalatedAt && (
+          <div style={{ marginTop: '0.5rem', padding: '0.5rem 0.75rem', background: 'rgba(239, 68, 68, 0.14)', border: '1px solid rgba(239, 68, 68, 0.5)', borderRadius: 6, fontSize: '0.82rem' }}>
+            <strong>Escalated</strong> · pending since {new Date(entry.timestamp).toLocaleTimeString()}
+          </div>
+        )}
         <p style={{ color: 'var(--muted)', fontSize: '0.9rem', margin: '0.5rem 0 0' }}>
           Sanctum paused this action until you decide. You remain in control.
         </p>
@@ -93,6 +108,51 @@ export function VerificationModal({
             <span className="card-label">Reason</span>
             <p style={{ margin: '0.25rem 0 0', fontSize: '0.9rem', lineHeight: 1.5 }}>{entry.reasoning}</p>
           </div>
+
+          {entry.sourceTrust && (
+            <div style={{ marginTop: '0.75rem' }}>
+              <span className="card-label">Instruction source</span>
+              <p style={{ margin: '0.25rem 0 0' }}>
+                <span className={`badge ${
+                  entry.sourceTrust === 'trusted_user' || entry.sourceTrust === 'authenticated_user' ? 'success' :
+                  entry.sourceTrust === 'untrusted_content' ? 'danger' :
+                  entry.sourceTrust === 'tool_output' || entry.sourceTrust === 'memory' ? 'warn' : 'neutral'
+                }`}>{entry.sourceTrust.replace(/_/g, ' ')}</span>
+                {(entry.sourceTrust === 'untrusted_content' || entry.sourceTrust === 'tool_output') && (
+                  <span style={{ marginLeft: '0.5rem', fontSize: '0.8rem', color: 'var(--warning)' }}>
+                    ⚠ Possible indirect prompt injection
+                  </span>
+                )}
+              </p>
+            </div>
+          )}
+
+          {entry.blastRadius && (
+            <div style={{ marginTop: '0.75rem' }}>
+              <span className="card-label">Blast radius</span>
+              <div style={{ marginTop: '0.35rem', display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
+                <span className={`badge ${
+                  entry.blastRadius.level === 'critical' ? 'danger' :
+                  entry.blastRadius.level === 'high' ? 'danger' :
+                  entry.blastRadius.level === 'medium' ? 'warn' : 'neutral'
+                }`}>{entry.blastRadius.level} · {entry.blastRadius.score}/100</span>
+                {!entry.blastRadius.reversible && <span className="badge danger">irreversible</span>}
+                {entry.blastRadius.externalDestination && <span className="badge warn">external</span>}
+                {entry.blastRadius.physicalWorld && <span className="badge danger">physical world</span>}
+                {entry.blastRadius.dataSensitivity && entry.blastRadius.dataSensitivity !== 'public' && (
+                  <span className="badge warn">{entry.blastRadius.dataSensitivity} data</span>
+                )}
+                {entry.blastRadius.estimatedValue != null && entry.blastRadius.estimatedValue > 0 && (
+                  <span className="badge neutral">${entry.blastRadius.estimatedValue.toLocaleString()} at risk</span>
+                )}
+              </div>
+              {entry.blastRadius.factors.length > 0 && (
+                <p style={{ margin: '0.35rem 0 0', fontSize: '0.78rem', color: 'var(--muted)' }}>
+                  {entry.blastRadius.factors.join(' · ')}
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         <p style={{ margin: '0.75rem 0 0', fontSize: '0.75rem', color: 'var(--muted)' }}>

@@ -42,7 +42,7 @@ import { detectAnomalies } from './anomaly.js'
 import { resolveDecision } from './decision.js'
 import { heuristicRiskFloor, heuristicRiskReason, mergeRisk } from './risk-heuristics.js'
 import { deriveSourceTrust, estimateBlastRadius } from './action-context.js'
-import { issueActionToken } from './action-token.js'
+import { issueActionToken, verifyActionToken } from './action-token.js'
 
 export type RuntimeEngineOptions = {
   policyEngine?: PolicyEngine
@@ -161,8 +161,39 @@ export class RuntimeEngine {
     }
 
     const who = resolution.resolvedBy ?? 'operator'
+
+    // Dual approver: first APPROVED resolution records firstApproved* but
+    // keeps decision=REQUIRE_VERIFICATION until a DIFFERENT approver acts.
+    if (
+      resolution.decision === 'APPROVED' &&
+      existing.requiresSecondApproval &&
+      !existing.firstApprovedBy
+    ) {
+      const partial: ActionResult = {
+        ...existing,
+        firstApprovedBy: who,
+        firstApprovedAt: new Date().toISOString(),
+        reasoning: `${existing.reasoning} First approval by ${who} — awaiting second approver.`,
+      }
+      const saved = (await this.auditStore.updateEntry(id, partial)) ?? partial
+      await maybeSyncAuditToSupabase(saved)
+      return saved
+    }
+    // Second-approver guard: the second approver must be distinct from the first
+    if (
+      resolution.decision === 'APPROVED' &&
+      existing.requiresSecondApproval &&
+      existing.firstApprovedBy === who
+    ) {
+      throw new Error('dual_approver_required: a different operator must give the second approval')
+    }
+
     const verb = resolution.decision === 'APPROVED' ? 'Approved' : 'Denied'
-    const humanResolution = `${verb} by ${who}${resolution.note ? ` — ${resolution.note}` : ''}`
+    const dualNote =
+      existing.requiresSecondApproval && resolution.decision === 'APPROVED' && existing.firstApprovedBy
+        ? ` (dual-approval: first ${existing.firstApprovedBy}, second ${who})`
+        : ''
+    const humanResolution = `${verb} by ${who}${dualNote}${resolution.note ? ` — ${resolution.note}` : ''}`
 
     const updated: ActionResult = {
       ...existing,
@@ -177,8 +208,10 @@ export class RuntimeEngine {
         reasoning: `${existing.reasoning} ${humanResolution}.`,
       }),
     }
-    if (updated.decision === 'APPROVED') {
-      updated.actionToken = issueActionToken(updated)
+    // Mint an action token when resolution is APPROVED (executor needs it)
+    if (resolution.decision === 'APPROVED') {
+      const token = issueActionToken(updated)
+      if (token) updated.actionToken = token
     }
 
     const saved = (await this.auditStore.updateEntry(id, updated)) ?? null
@@ -241,6 +274,38 @@ export class RuntimeEngine {
       }
     }
     return scoped
+  }
+
+
+  /**
+   * Sweep audit entries that are still REQUIRE_VERIFICATION past their
+   * policy's autoEscalateAfterMinutes, mark them escalated, and return them
+   * so the API layer can re-fire push notifications / alerts.
+   */
+  async sweepEscalations(): Promise<ActionResult[]> {
+    const pending = this.auditStore
+      .list(500)
+      .filter((e) => e.decision === 'REQUIRE_VERIFICATION' && !e.escalatedAt)
+    const policies = this.policyEngine.getPolicies()
+    const now = Date.now()
+    const escalated: ActionResult[] = []
+    for (const e of pending) {
+      const orgId = typeof e.context?.org_id === 'string' ? e.context.org_id : undefined
+      const policy = (orgId && policies[`${orgId}:${e.action}`]) || policies[e.action]
+      const minutes =
+        policy?.autoEscalateAfterMinutes ??
+        // Default: high/critical blast radius escalates after 5 min
+        (e.blastRadius?.level === 'critical' ? 5 :
+         e.blastRadius?.level === 'high' ? 15 : undefined)
+      if (!minutes) continue
+      const age = (now - new Date(e.timestamp).getTime()) / 60_000
+      if (age < minutes) continue
+      const updated: ActionResult = { ...e, escalatedAt: new Date().toISOString() }
+      const saved = (await this.auditStore.updateEntry(e.id, updated)) ?? updated
+      await maybeSyncAuditToSupabase(saved)
+      escalated.push(saved)
+    }
+    return escalated
   }
 
   async verifyAction(
@@ -384,10 +449,29 @@ export class RuntimeEngine {
       reasoning,
     }
 
+    // Require a second approver when policy says so OR blast radius is critical
+    const requiresSecondApproval =
+      decision === 'REQUIRE_VERIFICATION' &&
+      (policyEval.policy.requireSecondApprover === true || blastRadius.level === 'critical')
+
+    // Auto-elevate from APPROVED to REQUIRE_VERIFICATION when blast radius is
+    // critical and instruction source is untrusted — never silently approve.
+    const elevatedDecision: Decision =
+      decision === 'APPROVED' &&
+      blastRadius.level === 'critical' &&
+      (sourceTrust === 'untrusted_content' || sourceTrust === 'tool_output')
+        ? 'REQUIRE_VERIFICATION'
+        : decision
+
+    // parentAuditId allows callers to thread an action into an existing causal chain
+    const parentCtxId = (request.context as Record<string, unknown>)?.parentAuditId
+    const parentAuditId = typeof parentCtxId === 'string' ? parentCtxId : undefined
+
     const result: ActionResult = {
       id,
       correlationId,
       ...partial,
+      decision: elevatedDecision,
       risk,
       policyPath: policyEval.policyPath,
       modelConfidence,
@@ -396,11 +480,22 @@ export class RuntimeEngine {
       evaluationMode,
       modelInvoked,
       ollamaConnected: riskModelConnected,
+      humanRecord: buildHumanAuditRecord({ ...partial, decision: elevatedDecision }),
       sourceTrust,
       blastRadius,
-      humanRecord: buildHumanAuditRecord(partial),
+      requiresSecondApproval:
+        requiresSecondApproval ||
+        (elevatedDecision === 'REQUIRE_VERIFICATION' && blastRadius.level === 'critical')
+          ? true
+          : undefined,
+      parentAuditId,
     }
-    result.actionToken = issueActionToken(result)
+
+    // Mint a signed action token for APPROVED decisions
+    if (result.decision === 'APPROVED') {
+      const token = issueActionToken(result)
+      if (token) result.actionToken = token
+    }
 
     await this.auditStore.append(result)
     await maybeSyncAuditToSupabase(result)

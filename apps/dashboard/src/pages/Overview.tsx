@@ -15,6 +15,7 @@ type Props = {
   companionMode?: boolean
   pendingReviewCount?: number
   onOpenReview?: () => void
+  orgId?: string | null
 }
 
 export function Overview({
@@ -26,6 +27,7 @@ export function Overview({
   companionMode,
   pendingReviewCount = 0,
   onOpenReview,
+  orgId,
 }: Props) {
   const approved = audit.filter((e) => e.decision === 'APPROVED').length
   const blocked = audit.filter((e) => e.decision === 'BLOCKED').length
@@ -55,6 +57,7 @@ export function Overview({
           pendingReviewCount={pendingReviewCount}
           onSelect={onSelect}
           onOpenReview={onOpenReview}
+          orgId={orgId}
         />
       </>
     )

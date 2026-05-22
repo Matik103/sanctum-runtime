@@ -133,12 +133,11 @@ export function Settings({ status }: Props) {
         headers: await authHeaders(true),
         body: JSON.stringify({ [field]: null }),
       })
-      if (!res.ok) throw new Error(`Failed: ${res.status}`)
+      if (!res.ok) throw new Error(`Clear failed: ${res.status}`)
       const updated = await res.json() as NotificationPrefs
       setNotifPrefs(updated)
-      setNotifMsg('Webhook removed.')
     } catch (e) {
-      setNotifMsg(e instanceof Error ? e.message : 'Failed to remove webhook')
+      setNotifMsg(e instanceof Error ? e.message : 'Clear failed')
     }
   }
 
@@ -171,6 +170,22 @@ export function Settings({ status }: Props) {
       setNotifMsg(e instanceof Error ? e.message : 'Save failed')
     } finally {
       setNotifBusy(false)
+    }
+  }
+
+  const { permission: pushPermission, subscribe: enablePush, unsubscribe: disablePush } = usePushNotifications(Boolean(orgId))
+  const [pushBusy, setPushBusy] = useState(false)
+
+  const handlePushToggle = async () => {
+    setPushBusy(true)
+    try {
+      if (pushPermission === 'granted') {
+        await disablePush()
+      } else {
+        await enablePush()
+      }
+    } finally {
+      setPushBusy(false)
     }
   }
 

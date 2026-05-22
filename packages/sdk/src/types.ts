@@ -91,13 +91,22 @@ export const ActionResultSchema = z.object({
   humanResolution: z.string().optional(),
   resolvedAt: z.string().optional(),
   resolvedBy: z.string().optional(),
+  /** Source-trust classification of the instruction (defends against indirect prompt injection). */
   sourceTrust: SourceTrustSchema.optional(),
+  /** Blast-radius scoring: what's affected if this action runs. */
   blastRadius: BlastRadiusSchema.optional(),
-  /**
-   * Short-lived signed proof that this exact action was approved.
-   * Downstream executors can validate it before performing side effects.
-   */
+  /** Signed action token returned on APPROVED — downstream executor must validate. */
   actionToken: ActionTokenSchema.optional(),
+  /** True when this entry needs a second, distinct approver before it can be finalized. */
+  requiresSecondApproval: z.boolean().optional(),
+  /** Identity of the first approver (when dual-approval is enforced). */
+  firstApprovedBy: z.string().optional(),
+  /** Timestamp of first approval. */
+  firstApprovedAt: z.string().optional(),
+  /** Timestamp the entry was auto-escalated (re-pushed, alerts re-fired). */
+  escalatedAt: z.string().optional(),
+  /** Parent audit entry id — links related actions in a causal chain. */
+  parentAuditId: z.string().optional(),
 })
 
 export type ActionResult = z.infer<typeof ActionResultSchema>
@@ -121,6 +130,10 @@ export const ActionPolicySchema = z.object({
   /** Custom instructions for the risk model when scoring this action (OSS). */
   riskPrompt: z.string().max(8000).optional(),
   conditions: z.array(PolicyConditionSchema).optional(),
+  /** Require a second, distinct approver before this action is finalized. */
+  requireSecondApprover: z.boolean().optional(),
+  /** If verification is still pending after this many minutes, escalate (re-push, alert). */
+  autoEscalateAfterMinutes: z.number().int().min(1).max(1440).optional(),
 })
 
 export type ActionPolicy = z.infer<typeof ActionPolicySchema>

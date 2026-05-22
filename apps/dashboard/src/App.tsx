@@ -10,6 +10,8 @@ import { VerificationModal } from './components/VerificationModal'
 import { useDashboard } from './hooks/useDashboard'
 import { MainCanvas } from './layout/MainCanvas'
 import { Sidebar, type PageId } from './layout/Sidebar'
+import { getFleetStatus, type FleetPauseStatus } from './lib/api'
+import { Assurance } from './pages/Assurance'
 import { AuditLogs } from './pages/AuditLogs'
 import { Assurance } from './pages/Assurance'
 import { Billing } from './pages/Billing'
@@ -24,6 +26,7 @@ import { PolicyHistory } from './pages/PolicyHistory'
 import { RuntimeActivity } from './pages/RuntimeActivity'
 import { Settings } from './pages/Settings'
 import { ThreatMonitor } from './pages/ThreatMonitor'
+import { WorkflowBuilder } from './pages/WorkflowBuilder'
 import { Agents } from './pages/Agents'
 import { Alerts } from './pages/Alerts'
 import { fetchMyOrgs } from './lib/fleet'
@@ -36,10 +39,19 @@ export function App() {
   const [selected, setSelected] = useState<ActionResult | null>(null)
   const [orgId, setOrgId] = useState<string | null>(null)
   const [modalError, setModalError] = useState<string | null>(null)
+  const [fleetStatus, setFleetStatus] = useState<FleetPauseStatus | null>(null)
 
   useEffect(() => {
     fetchMyOrgs().then((orgs) => { if (orgs[0]) setOrgId(orgs[0].org_id) }).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (!orgId) return
+    const poll = () => getFleetStatus(orgId).then(setFleetStatus).catch(() => {})
+    void poll()
+    const id = setInterval(poll, 30_000)
+    return () => clearInterval(id)
+  }, [orgId])
   const {
     audit,
     policies,
@@ -120,6 +132,21 @@ export function App() {
           </div>
         )}
 
+        {fleetStatus?.paused && (
+          <div className="alert alert--warn" role="alert" style={{ marginBottom: '1rem' }}>
+            <div className="alert__body">
+              <strong>Fleet paused</strong> — all agent action approvals are suspended org-wide.
+              {fleetStatus.pausedBy && (
+                <span style={{ marginLeft: '0.5rem', fontSize: '0.82rem' }}>
+                  Paused by {fleetStatus.pausedBy}
+                  {fleetStatus.pausedAt && ` · ${new Date(fleetStatus.pausedAt).toLocaleTimeString()}`}
+                </span>
+              )}
+              {' '}Go to <button type="button" className="btn btn-ghost" style={{ padding: '0 0.25rem', fontSize: 'inherit', display: 'inline' }} onClick={() => setPage('fleet')}>Runtime Fleet</button> to resume.
+            </div>
+          </div>
+        )}
+
         {!pendingVerification && pendingReviewCount > 0 && (
           <ReviewQueueBanner
             count={pendingReviewCount}
@@ -141,6 +168,7 @@ export function App() {
               companionMode={companionMode}
               pendingReviewCount={pendingReviewCount}
               onOpenReview={openNextPendingReview}
+              orgId={orgId}
             />
           </ErrorBoundary>
         )}
@@ -160,6 +188,7 @@ export function App() {
           </ErrorBoundary>
         )}
         {page === 'policy-history' && <ErrorBoundary page="Policy History"><PolicyHistory /></ErrorBoundary>}
+        {page === 'workflow-builder' && <ErrorBoundary page="Workflow Builder"><WorkflowBuilder /></ErrorBoundary>}
         {page === 'assurance' && <ErrorBoundary page="Assurance"><Assurance /></ErrorBoundary>}
         {page === 'governance' && <ErrorBoundary page="Governance"><Governance /></ErrorBoundary>}
         {page === 'compliance' && <ErrorBoundary page="Compliance"><Compliance /></ErrorBoundary>}
@@ -171,7 +200,12 @@ export function App() {
         {page === 'settings' && <ErrorBoundary page="Settings"><Settings status={status} /></ErrorBoundary>}
       </MainCanvas>
 
-      <ActionDrawer entry={selected} onClose={() => setSelected(null)} />
+      <ActionDrawer
+        entry={selected}
+        onClose={() => setSelected(null)}
+        audit={audit}
+        onSelect={(e) => setSelected(e)}
+      />
 
       {pendingVerification && (
         <>

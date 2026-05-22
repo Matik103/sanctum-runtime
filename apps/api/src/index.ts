@@ -320,6 +320,49 @@ if (supabaseAuth) {
 }
 
 const stopWebhookWorker = supabaseAuth ? startWebhookWorker(supabaseAuth) : null
+
+// Auto-escalation: re-push notifications for stale REQUIRE_VERIFICATION entries.
+const escalationTimer = setInterval(async () => {
+  try {
+    const escalated = await runtime.sweepEscalations()
+    if (!escalated.length || !supabaseAuth) return
+    const alertStore = new AlertStore(supabaseAuth)
+    for (const entry of escalated) {
+      const orgId = typeof entry.context?.org_id === 'string' ? entry.context.org_id : null
+      if (!orgId) continue
+      void alertStore.createAlert({
+        org_id: orgId,
+        severity: 'critical',
+        type: 'agent.verification_escalated',
+        title: `Escalated: ${entry.action}`,
+        message: `Verification request "${entry.action}" by ${entry.actor} has been pending past its escalation window.`,
+        channels: ['push', 'email', 'slack'],
+        metadata: { entryId: entry.id, blastRadius: entry.blastRadius?.level },
+      }).catch(() => {})
+      // Re-fire the push notification so operators get a fresh nudge
+      try {
+        const admin = createSupabaseAdmin(supabaseAuth)
+        const { data: members } = await admin
+          .from('organization_members')
+          .select('user_id')
+          .eq('org_id', orgId)
+        await Promise.allSettled(
+          (members ?? []).map((m) => sendPushToUser(m.user_id as string, {
+            title: `Escalated approval: ${entry.action}`,
+            body: `${entry.actor} has been waiting for review. Risk ${(entry.risk === 'high' ? 100 : entry.risk === 'medium' ? 60 : 30).toFixed(0)}%.`,
+            tag: `verify:${entry.id}`,
+            requireInteraction: true,
+            url: `/?page=activity&verify=${encodeURIComponent(entry.id)}`,
+            data: { entryId: entry.id, type: 'agent.verification_escalated', orgId, escalated: true },
+          })),
+        )
+      } catch { /* best-effort */ }
+    }
+  } catch (e) {
+    app.log.warn({ err: e }, 'escalation sweep failed')
+  }
+}, 60_000)
+escalationTimer.unref?.()
 const stopEmailQueueWorker = supabaseAuth ? startEmailQueueWorker(supabaseAuth) : null
 
 // Fast readiness probe
@@ -422,6 +465,8 @@ const policyPatchSchema = z.object({
   blockWhenOffline: z.boolean().optional(),
   allowedActors: z.array(z.string()).optional(),
   riskPrompt: z.string().max(8000).optional(),
+  requireSecondApprover: z.boolean().optional(),
+  autoEscalateAfterMinutes: z.number().int().min(1).max(1440).optional(),
 })
 
 const policyActionSchema = z
@@ -430,7 +475,9 @@ const policyActionSchema = z
   .max(256)
   .regex(/^[a-zA-Z0-9_.:@/-]+$/)
 
-// Simulate what would happen for a given action — no audit log entry created
+// Simulate what would happen for a given action — no audit log entry created.
+// Returns blast radius + source trust so the dashboard simulator can show
+// the operator exactly what the policy engine would have decided.
 app.post('/v1/policies/simulate', async (req) => {
   const body = z
     .object({
@@ -443,13 +490,7 @@ app.post('/v1/policies/simulate', async (req) => {
   return runtime.simulateAction(request)
 })
 
-app.post('/v1/actions/token/verify', async (req, reply) => {
-  const body = z.object({ token: z.string().min(1) }).parse(req.body)
-  const payload = verifyActionToken(body.token)
-  if (!payload) return reply.status(400).send({ valid: false, error: 'invalid_or_expired_action_token' })
-  return { valid: true, payload }
-})
-
+// Replay historical audit entries against the current policy set.
 app.get('/v1/audit/replay', async (req, reply) => {
   const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
   const q = req.query as { limit?: string; org_id?: string }
@@ -460,6 +501,7 @@ app.get('/v1/audit/replay', async (req, reply) => {
   return runtime.replayAudit(limit, orgId)
 })
 
+// Compliance evidence summary — SOC2 / NIST AI RMF inputs.
 app.get('/v1/evidence/summary', async (req, reply) => {
   const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
   const q = req.query as { limit?: string; org_id?: string }
@@ -468,6 +510,14 @@ app.get('/v1/evidence/summary', async (req, reply) => {
   if ('status' in picked) return reply.status(picked.status).send(picked.body)
   const orgId = picked.orgIds.length === 1 ? picked.orgIds[0] : undefined
   return runtime.evidenceSummary(limit, orgId)
+})
+
+// Verify a signed Sanctum action token (executors call this before running).
+app.post('/v1/actions/token/verify', async (req, reply) => {
+  const body = z.object({ token: z.string().min(1) }).parse(req.body)
+  const payload = verifyActionToken(body.token)
+  if (!payload) return reply.status(400).send({ valid: false, error: 'invalid_or_expired_action_token' })
+  return { valid: true, payload }
 })
 
 app.post('/v1/policies', async (req, reply) => {
@@ -673,6 +723,34 @@ app.post('/v1/actions/verify', {
   const orgId = agentClaims?.orgId ??
     (typeof body.context?.org_id === 'string' ? body.context.org_id : undefined)
 
+  // Fleet kill-switch: if the org has paused all agent actions, block immediately
+  if (orgId && supabaseAuth) {
+    try {
+      const adminClient = createSupabaseAdmin(supabaseAuth)
+      const { data: org } = await Promise.race([
+        adminClient.from('organizations').select('fleet_paused').eq('id', orgId).single(),
+        new Promise<{ data: null }>((res) => setTimeout(() => res({ data: null }), 2000)),
+      ])
+      if (org?.fleet_paused) {
+        return reply.status(200).send({
+          id: crypto.randomUUID(),
+          correlationId: body.correlationId ?? crypto.randomUUID(),
+          actor: body.actor,
+          action: body.action,
+          context: request.context,
+          decision: 'BLOCKED',
+          risk: 'high',
+          reasoning: 'Fleet is paused by operator. All agent actions are suspended until the fleet is resumed.',
+          policyPath: 'fleet:paused',
+          anomalyFlags: ['fleet_paused'],
+          modelInvoked: false,
+          modelConfidence: null,
+          timestamp: new Date().toISOString(),
+        })
+      }
+    } catch { /* non-fatal — fall through to normal verification */ }
+  }
+
   let result = await traced(
     'action.verify',
     { actor: body.actor, action: body.action, org_id: orgId ?? '' },
@@ -836,6 +914,64 @@ app.post('/v1/actions/verify', {
 
   return result
 })
+
+// ── Fleet kill-switch endpoints ───────────────────────────────────────────────
+
+app.get('/v1/fleet/pause-status', async (req, reply) => {
+  if (!supabaseAuth) return reply.status(501).send({ error: 'supabase_required' })
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
+  const q = req.query as { org_id?: string }
+  const picked = pickScopedOrgs(scope, q.org_id, { requireSingle: true })
+  if ('status' in picked) return reply.status(picked.status).send(picked.body)
+  const orgId = picked.orgIds[0]
+  const admin = createSupabaseAdmin(supabaseAuth)
+  const { data: org } = await admin
+    .from('organizations')
+    .select('fleet_paused,fleet_paused_at,fleet_paused_by')
+    .eq('id', orgId)
+    .single()
+  if (!org) return reply.status(404).send({ error: 'org_not_found' })
+  return { paused: !!org.fleet_paused, pausedAt: org.fleet_paused_at, pausedBy: org.fleet_paused_by }
+})
+
+app.post('/v1/fleet/pause', async (req, reply) => {
+  if (!supabaseAuth) return reply.status(501).send({ error: 'supabase_required' })
+  const user = (req as SanctumReq).sanctumUser
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
+  const body = z.object({ org_id: z.string().min(1).optional() }).parse(req.body ?? {})
+  const picked = pickScopedOrgs(scope, body.org_id, { requireSingle: true })
+  if ('status' in picked) return reply.status(picked.status).send(picked.body)
+  const orgId = picked.orgIds[0]
+  const admin = createSupabaseAdmin(supabaseAuth)
+  const { error } = await admin
+    .from('organizations')
+    .update({
+      fleet_paused: true,
+      fleet_paused_at: new Date().toISOString(),
+      fleet_paused_by: user?.id ?? user?.email ?? 'operator',
+    })
+    .eq('id', orgId)
+  if (error) return reply.status(500).send({ error: 'update_failed' })
+  return { paused: true, pausedAt: new Date().toISOString(), pausedBy: user?.id ?? 'operator' }
+})
+
+app.post('/v1/fleet/resume', async (req, reply) => {
+  if (!supabaseAuth) return reply.status(501).send({ error: 'supabase_required' })
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
+  const body = z.object({ org_id: z.string().min(1).optional() }).parse(req.body ?? {})
+  const picked = pickScopedOrgs(scope, body.org_id, { requireSingle: true })
+  if ('status' in picked) return reply.status(picked.status).send(picked.body)
+  const orgId = picked.orgIds[0]
+  const admin = createSupabaseAdmin(supabaseAuth)
+  const { error } = await admin
+    .from('organizations')
+    .update({ fleet_paused: false, fleet_paused_at: null, fleet_paused_by: null })
+    .eq('id', orgId)
+  if (error) return reply.status(500).send({ error: 'update_failed' })
+  return { paused: false }
+})
+
+// ── End fleet kill-switch ─────────────────────────────────────────────────────
 
 // One-time email approve/deny link (no auth — HMAC token is the proof)
 // Rate-limited to 10/min per IP to prevent token brute-force
