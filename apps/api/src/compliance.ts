@@ -63,6 +63,7 @@ export type ComplianceReport = {
     total_actions: number
     blocked_actions: number
     verified_actions: number
+    approval_rate_pct: number
     anomaly_flags: number
     human_reviews: number
   }
@@ -95,7 +96,7 @@ export async function generateComplianceReport(
     () =>
       admin
         .from('audit_events')
-        .select('id,action,decision,anomaly_flags,resolved_by,actor,created_at')
+        .select('id,action,decision,anomaly_flags,resolved_by,actor,context,created_at')
         .eq('org_id', orgId)
         .gte('created_at', start)
         .lte('created_at', end)
@@ -135,6 +136,7 @@ export async function generateComplianceReport(
   let humanReviews = 0
   const riskDist: RiskDistribution = { low: 0, medium: 0, high: 0 }
   const accessEvents: AccessEvent[] = []
+  let approvedActions = 0
 
   for (const evt of auditEvents) {
     const decision = evt.decision as string | undefined
@@ -142,6 +144,7 @@ export async function generateComplianceReport(
     const ctx = (evt.context ?? {}) as Record<string, unknown>
     const risk = (ctx.risk as string | undefined) ?? 'low'
 
+    if (decision === 'APPROVED') approvedActions++
     if (decision === 'BLOCKED') blockedActions++
     if (decision === 'REQUIRE_VERIFICATION') verifiedActions++
     if (flags.length > 0) anomalyFlagsTotal += flags.length
@@ -224,6 +227,9 @@ export async function generateComplianceReport(
       total_actions: auditEvents.length,
       blocked_actions: blockedActions,
       verified_actions: verifiedActions,
+      approval_rate_pct: auditEvents.length
+        ? Math.round((approvedActions / auditEvents.length) * 100)
+        : 100,
       anomaly_flags: anomalyFlagsTotal,
       human_reviews: humanReviews,
     },

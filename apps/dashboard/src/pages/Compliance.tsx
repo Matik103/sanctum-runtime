@@ -14,11 +14,11 @@ type ComplianceReport = {
     verified_actions: number
     anomaly_flags: number
     human_reviews: number
-    approval_rate_pct: number
+    approval_rate_pct?: number
   }
   policy_changes: Array<{ action: string; change_type: string; timestamp: string }>
   runtime_uptime: Array<{ runtime_id: string; uptime_pct: number; total_hours: number }>
-  risk_distribution: { LOW: number; MEDIUM: number; HIGH: number }
+  risk_distribution: Partial<Record<'LOW' | 'MEDIUM' | 'HIGH' | 'low' | 'medium' | 'high', number>>
   soc2_controls?: {
     CC6_1: string  // Access controls
     CC7_1: string  // Change management
@@ -105,7 +105,17 @@ export function Compliance() {
 
   const totalActions = report?.summary.total_actions ?? 0
   const blockRate = totalActions ? Math.round((report!.summary.blocked_actions / totalActions) * 100) : 0
-  const riskTotal = report ? Object.values(report.risk_distribution).reduce((a, b) => a + b, 0) : 0
+  const fallbackApprovedActions = report
+    ? Math.max(0, totalActions - report.summary.blocked_actions - report.summary.verified_actions)
+    : 0
+  const approvalRate = report?.summary.approval_rate_pct
+    ?? (totalActions ? Math.round((fallbackApprovedActions / totalActions) * 100) : 100)
+  const riskDistribution = {
+    LOW: (report?.risk_distribution.LOW ?? report?.risk_distribution.low ?? 0),
+    MEDIUM: (report?.risk_distribution.MEDIUM ?? report?.risk_distribution.medium ?? 0),
+    HIGH: (report?.risk_distribution.HIGH ?? report?.risk_distribution.high ?? 0),
+  }
+  const riskTotal = Object.values(riskDistribution).reduce((a, b) => a + b, 0)
 
   return (
     <>
@@ -162,7 +172,7 @@ export function Compliance() {
             </div>
             <div className="card glow-success">
               <div className="card-label">Approval rate</div>
-              <div className="card-value">{report.summary.approval_rate_pct}%</div>
+              <div className="card-value">{approvalRate}%</div>
               <div className="card-meta">{report.summary.anomaly_flags} anomaly flags</div>
             </div>
           </div>
@@ -251,7 +261,7 @@ export function Compliance() {
             <div className="card">
               <strong style={{ fontSize: '0.9rem' }}>Risk distribution</strong>
               <div className="responsive-action-row" style={{ gap: '2rem', marginTop: '1rem' }}>
-                {Object.entries(report.risk_distribution).map(([level, count]) => (
+                {Object.entries(riskDistribution).map(([level, count]) => (
                   <div key={level} style={{ textAlign: 'center' }}>
                     <div style={{
                       fontSize: '2rem', fontWeight: 700,
