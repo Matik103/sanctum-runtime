@@ -9,6 +9,10 @@
  *   - Vercel AI SDK
  *   - OpenAI Agents SDK
  *   - Mastra
+ *   - Model Context Protocol (MCP) servers
+ *   - CrewAI
+ *   - ROS2 (robotics)
+ *   - Claude Desktop / computer-use
  */
 
 // Shared types
@@ -50,3 +54,31 @@ export {
   type MastraTool,
   type MastraMiddleware,
 } from './mastra.js'
+
+// MCP (Model Context Protocol) adapter
+export {
+  wrapMcpTool,
+  createSanctumMcpHook,
+  type McpTool,
+} from './mcp.js'
+
+// CrewAI adapter
+export {
+  wrapCrewAITool,
+  createSanctumCrewHook,
+  type CrewAITool,
+} from './crewai.js'
+
+// ROS2 robotics adapter
+export {
+  wrapRos2Dispatcher,
+  createSanctumRos2Hook,
+  type Ros2Dispatcher,
+} from './ros2.js'
+
+// Claude Desktop / computer-use adapter
+export {
+  gateClaudeToolUse,
+  wrapClaudeDispatcher,
+  type ToolUseBlock,
+} from './claude-desktop.js'
