@@ -11,6 +11,7 @@ import { useDashboard } from './hooks/useDashboard'
 import { MainCanvas } from './layout/MainCanvas'
 import { Sidebar, type PageId } from './layout/Sidebar'
 import { AuditLogs } from './pages/AuditLogs'
+import { Assurance } from './pages/Assurance'
 import { Billing } from './pages/Billing'
 import { Compliance } from './pages/Compliance'
 import { Devices } from './pages/Devices'
@@ -159,6 +160,7 @@ export function App() {
           </ErrorBoundary>
         )}
         {page === 'policy-history' && <ErrorBoundary page="Policy History"><PolicyHistory /></ErrorBoundary>}
+        {page === 'assurance' && <ErrorBoundary page="Assurance"><Assurance /></ErrorBoundary>}
         {page === 'governance' && <ErrorBoundary page="Governance"><Governance /></ErrorBoundary>}
         {page === 'compliance' && <ErrorBoundary page="Compliance"><Compliance /></ErrorBoundary>}
         {page === 'devices' && <ErrorBoundary page="Devices"><Devices status={status} /></ErrorBoundary>}

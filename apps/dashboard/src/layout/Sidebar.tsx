@@ -17,6 +17,7 @@ import {
   Settings,
   Shield,
   ShieldAlert,
+  ShieldCheck,
   X,
 } from 'lucide-react'
 import type { RuntimeStatus } from '@sanctum-runtime/sdk/browser'
@@ -33,6 +34,7 @@ export type PageId =
   | 'alerts'
   | 'policies'
   | 'policy-history'
+  | 'assurance'
   | 'governance'
   | 'compliance'
   | 'agents'
@@ -59,6 +61,7 @@ const NAV: { id: PageId; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'alerts',         label: 'Alerts',            icon: Bell },
   { id: 'policies',       label: 'Policies',          icon: Shield },
   { id: 'policy-history', label: 'Policy History',    icon: History },
+  { id: 'assurance',      label: 'Assurance',         icon: ShieldCheck },
   { id: 'governance',     label: 'Governance',        icon: CheckSquare },
   { id: 'compliance',     label: 'Compliance',        icon: FileText },
   { id: 'agents',         label: 'Agents',            icon: Bot },

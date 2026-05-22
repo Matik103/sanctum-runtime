@@ -944,6 +944,64 @@ table.data td.audit-record-cell {
   font-family: var(--font-display);
 }
 
+.assurance-meter {
+  display: grid;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.assurance-meter > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.assurance-meter > div strong {
+  color: var(--text);
+}
+
+.assurance-meter > span {
+  display: block;
+  height: 7px;
+  min-width: 4px;
+  max-width: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--success), var(--accent));
+}
+
+.assurance-list {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.assurance-list__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.86rem;
+}
+
+.assurance-list__row:last-child {
+  border-bottom: none;
+}
+
+.assurance-evidence {
+  margin: 1rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.assurance-evidence li {
+  margin-bottom: 0.45rem;
+}
+
 .inline-form {
   display: flex;
   flex-wrap: wrap;

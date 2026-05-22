@@ -1,5 +1,5 @@
 import { SanctumClient } from '@sanctum-runtime/sdk/browser'
-import type { ActionPolicy, ActionRequest, ActionResult, PolicyMap, RuntimeStatus } from '@sanctum-runtime/sdk/browser'
+import type { ActionPolicy, ActionRequest, ActionResult, Decision, PolicyMap, RiskLevel, RuntimeStatus } from '@sanctum-runtime/sdk/browser'
 import { apiBaseUrl } from './api-url'
 import { getAccessToken } from './supabase'
 
@@ -88,10 +88,12 @@ export async function updatePolicyConditions(
 
 export type SimulateResult = {
   simulation: true
-  decision: 'APPROVED' | 'BLOCKED' | 'REQUIRE_VERIFICATION'
-  risk: 'low' | 'medium' | 'high'
+  decision: Decision
+  risk: RiskLevel
   policyPath: string
   anomalyFlags: string[]
+  sourceTrust?: ActionResult['sourceTrust']
+  blastRadius?: ActionResult['blastRadius']
   conditionMatched: boolean
   policyFlags: {
     autoBlock: boolean
@@ -123,4 +125,53 @@ export async function importPoliciesYaml(yaml: string, merge = true): Promise<Po
   return api.importPoliciesYaml(yaml, merge)
 }
 
-export { type ActionRequest, type ActionResult, type PolicyMap, type RuntimeStatus }
+export type AuditReplayChange = {
+  id: string
+  actor: string
+  action: string
+  previousDecision: Decision
+  replayDecision: Decision
+  previousRisk: RiskLevel
+  replayRisk: RiskLevel
+  policyPath: string
+  anomalyFlags: string[]
+}
+
+export type AuditReplayResult = {
+  replayedAt: string
+  count: number
+  decisions: Record<Decision, number>
+  changedCount: number
+  changed: AuditReplayChange[]
+}
+
+export type EvidenceSummary = {
+  generatedAt: string
+  orgId?: string
+  controls: Record<string, boolean>
+  policyCount: number
+  auditWindow: {
+    sampledEvents: number
+    approved: number
+    blocked: number
+    verificationRequired: number
+    signedApprovalTokens: number
+    highBlastRadiusEvents: number
+    untrustedSourceEvents: number
+  }
+  evidence: string[]
+}
+
+export async function replayAudit(limit = 100, orgId?: string): Promise<AuditReplayResult> {
+  return api.replayAudit(limit, orgId) as Promise<AuditReplayResult>
+}
+
+export async function getEvidenceSummary(limit = 200, orgId?: string): Promise<EvidenceSummary> {
+  return api.getEvidenceSummary(limit, orgId) as Promise<EvidenceSummary>
+}
+
+export async function verifyActionToken(token: string): Promise<{ valid: boolean; payload?: Record<string, unknown>; error?: string }> {
+  return api.verifyActionToken(token)
+}
+
+export { type ActionRequest, type ActionResult, type Decision, type PolicyMap, type RiskLevel, type RuntimeStatus }
