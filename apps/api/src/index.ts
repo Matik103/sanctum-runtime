@@ -429,14 +429,17 @@ app.get('/v1/orgs', async (req, reply) => {
   const personalOrgId = 'personal-' + user.id.replace(/-/g, '').slice(0, 12)
 
   // Ensure personal org exists (idempotent)
-  await admin.from('organizations').upsert(
+  const orgUpsert = await admin.from('organizations').upsert(
     { id: personalOrgId, name: user.email ?? personalOrgId },
     { onConflict: 'id', ignoreDuplicates: true },
-  ).catch(() => {})
-  await admin.from('organization_members').upsert(
+  )
+  if (orgUpsert.error) req.log.warn({ err: orgUpsert.error, personalOrgId }, 'personal org upsert failed')
+
+  const memberUpsert = await admin.from('organization_members').upsert(
     { org_id: personalOrgId, user_id: user.id, role: 'owner' },
     { onConflict: 'org_id,user_id', ignoreDuplicates: true },
-  ).catch(() => {})
+  )
+  if (memberUpsert.error) req.log.warn({ err: memberUpsert.error, personalOrgId }, 'personal org member upsert failed')
 
   const orgIds = await store.getUserOrgIds(user.id)
   const { data: orgs } = await admin
