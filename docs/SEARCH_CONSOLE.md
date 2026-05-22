@@ -27,6 +27,23 @@ Do **not** submit `https://sanctumruntime.com/` as the homepage in sitemap (alre
 
 Do **not** submit the operator console to Search Console.
 
+## Console: “Excluded by noindex tag” (expected — not a bug)
+
+If Page indexing lists **`https://console.sanctumruntime.com/`** as excluded by **noindex**:
+
+- **This is correct.** The operator console is private (login, fleet, policies). It must **not** appear in Google search results.
+- We set `noindex` on purpose: `apps/dashboard/index.html`, `robots.txt` (`Disallow: /`), `X-Robots-Tag` in `render.yaml` / `_headers`.
+- **Do not** click **Validate fix** on that row — that tells Google you removed `noindex`, which you should not do.
+- **Do not** remove `noindex` from the dashboard to “fix” Search Console.
+
+**What to do instead**
+
+1. Use a GSC property scoped to **`https://www.sanctumruntime.com`** (URL prefix), not a **Domain** property that sweeps `console.*` into the same reports.
+2. Ignore the console URL under **Excluded** — it is working as designed.
+3. Optional: **Removals** → temporary removal of `https://console.sanctumruntime.com/` only if a preview URL was accidentally indexed (rare).
+
+Indexable marketing content: **https://www.sanctumruntime.com** (sitemap, docs, legal pages).
+
 ---
 
 ## 1. Google Search Console (if not done yet)
