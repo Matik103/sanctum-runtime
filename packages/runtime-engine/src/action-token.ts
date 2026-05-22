@@ -33,6 +33,12 @@ type TokenPayload = {
   orgId?: string
   auditId: string
   correlationId: string
+  toolId?: string
+  runtimeId?: string
+  environmentId?: string
+  requestedPermission?: string
+  scope?: string[]
+  correlationChain?: string[]
   iat: number
   exp: number
   /** Optional: blast radius level baked in so executors can downgrade if needed */
@@ -58,6 +64,12 @@ export function issueActionToken(
     orgId,
     auditId: result.id,
     correlationId: result.correlationId,
+    toolId: result.actionIdentity?.toolId,
+    runtimeId: result.actionIdentity?.runtimeId,
+    environmentId: result.actionIdentity?.environmentId,
+    requestedPermission: result.actionIdentity?.requestedPermission,
+    scope: result.actionIdentity?.scope,
+    correlationChain: result.actionIdentity?.correlationChain,
     iat,
     exp,
     bl: result.blastRadius?.level,
@@ -74,6 +86,11 @@ export function issueActionToken(
       orgId,
       auditId: result.id,
       correlationId: result.correlationId,
+      toolId: result.actionIdentity?.toolId,
+      runtimeId: result.actionIdentity?.runtimeId,
+      environmentId: result.actionIdentity?.environmentId,
+      requestedPermission: result.actionIdentity?.requestedPermission,
+      scope: result.actionIdentity?.scope,
     },
   }
 }

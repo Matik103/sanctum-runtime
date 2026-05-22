@@ -98,8 +98,9 @@ is MIT.
   Pydantic AI, LlamaIndex, smolagents, AWS Bedrock Agents, Browser-use,
   Home Assistant. Plus a generic `gate()` for everything else.
 
-- **HMAC-signed action tokens** with explicit actor, action, org, audit id,
-  correlation, expiry. The executor verifies before the side effect runs.
+- **HMAC-signed action tokens** with explicit actor, action, tool, runtime,
+  environment, org, audit id, requested permission, scope, correlation, and
+  expiry. The executor verifies before the side effect runs.
 
 - **Blast-radius scoring** that includes monetary impact, data sensitivity
   classification, reversibility, physical-world effect, external

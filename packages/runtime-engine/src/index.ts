@@ -41,7 +41,7 @@ import {
 import { detectAnomalies } from './anomaly.js'
 import { resolveDecision } from './decision.js'
 import { heuristicRiskFloor, heuristicRiskReason, mergeRisk } from './risk-heuristics.js'
-import { deriveSourceTrust, estimateBlastRadius } from './action-context.js'
+import { deriveActionIdentity, deriveSourceTrust, estimateBlastRadius } from './action-context.js'
 import { issueActionToken, verifyActionToken } from './action-token.js'
 
 export type RuntimeEngineOptions = {
@@ -327,6 +327,7 @@ export class RuntimeEngine {
 
     const sourceTrust = deriveSourceTrust(request)
     const blastRadius = estimateBlastRadius(request)
+    const actionIdentity = deriveActionIdentity(request)
     const anomalyFlags = detectAnomalies(request)
     const riskFloor = heuristicRiskFloor(request, anomalyFlags)
     const policyEval = this.policyEngine.evaluate(request, useHeuristicsOnly)
@@ -483,6 +484,7 @@ export class RuntimeEngine {
       humanRecord: buildHumanAuditRecord({ ...partial, decision: elevatedDecision }),
       sourceTrust,
       blastRadius,
+      actionIdentity,
       requiresSecondApproval:
         requiresSecondApproval ||
         (elevatedDecision === 'REQUIRE_VERIFICATION' && blastRadius.level === 'critical')
@@ -526,6 +528,7 @@ export class RuntimeEngine {
   ) {
     const sourceTrust = deriveSourceTrust(request)
     const blastRadius = estimateBlastRadius(request)
+    const actionIdentity = deriveActionIdentity(request)
     const anomalyFlags = detectAnomalies(request)
     const useHeuristicsOnly = options.offlineMode === true || this.forceOfflineMode
     const policyEval = this.policyEngine.evaluate(request, useHeuristicsOnly)
@@ -547,6 +550,7 @@ export class RuntimeEngine {
       anomalyFlags,
       sourceTrust,
       blastRadius,
+      actionIdentity,
       conditionMatched: policyEval.policyPath.includes('.condition['),
       policyFlags: {
         autoBlock: policyEval.policy.autoBlock,

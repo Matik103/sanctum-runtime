@@ -195,6 +195,7 @@ Sanctum now returns more than approve/verify/block. Each action can include:
 
 - `sourceTrust`: whether the instruction came from a trusted user, system, memory, tool output, or untrusted content.
 - `blastRadius`: score + factors for reversibility, data sensitivity, physical-world effect, external destination, and monetary value.
+- `actionIdentity`: explicit actor/tool/runtime/environment identity, requested permission, scope, expiry, and correlation chain.
 - `actionToken`: a short-lived signed proof issued only for `APPROVED` actions when `SANCTUM_ACTION_TOKEN_SECRET` (or a signing fallback secret) is configured.
 
 Recommended executor pattern:

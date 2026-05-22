@@ -54,6 +54,18 @@ export const BlastRadiusSchema = z.object({
 })
 export type BlastRadius = z.infer<typeof BlastRadiusSchema>
 
+export const ActionIdentitySchema = z.object({
+  actorId: z.string(),
+  toolId: z.string().optional(),
+  runtimeId: z.string().optional(),
+  environmentId: z.string().optional(),
+  requestedPermission: z.string(),
+  scope: z.array(z.string()),
+  expiresAt: z.string().optional(),
+  correlationChain: z.array(z.string()),
+})
+export type ActionIdentity = z.infer<typeof ActionIdentitySchema>
+
 export const ActionTokenSchema = z.object({
   token: z.string(),
   expiresAt: z.string(),
@@ -63,6 +75,11 @@ export const ActionTokenSchema = z.object({
     orgId: z.string().optional(),
     auditId: z.string(),
     correlationId: z.string(),
+    toolId: z.string().optional(),
+    runtimeId: z.string().optional(),
+    environmentId: z.string().optional(),
+    requestedPermission: z.string().optional(),
+    scope: z.array(z.string()).optional(),
   }),
 })
 export type ActionToken = z.infer<typeof ActionTokenSchema>
@@ -95,6 +112,8 @@ export const ActionResultSchema = z.object({
   sourceTrust: SourceTrustSchema.optional(),
   /** Blast-radius scoring: what's affected if this action runs. */
   blastRadius: BlastRadiusSchema.optional(),
+  /** Identity envelope for OAuth-style agent action authorization. */
+  actionIdentity: ActionIdentitySchema.optional(),
   /** Signed action token returned on APPROVED — downstream executor must validate. */
   actionToken: ActionTokenSchema.optional(),
   /** True when this entry needs a second, distinct approver before it can be finalized. */

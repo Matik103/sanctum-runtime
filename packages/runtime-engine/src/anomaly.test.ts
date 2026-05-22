@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { detectAnomalies, registerAnomalyRule } from './anomaly'
+import { deriveActionIdentity } from './action-context'
 import type { ActionRequest } from '@sanctum-runtime/sdk'
 
 function req(action: string, ctx: Record<string, unknown> = {}): ActionRequest {
@@ -34,6 +35,27 @@ describe('detectAnomalies — prompt injection', () => {
 })
 
 describe('detectAnomalies — action source and blast radius', () => {
+  it('derives an identity envelope from action context', () => {
+    const identity = deriveActionIdentity(req('send_email', {
+      actorId: 'user:ops',
+      toolId: 'gmail.send',
+      runtimeId: 'runtime-1',
+      environmentId: 'prod',
+      requestedPermission: 'email:send',
+      scope: ['customer@example.com'],
+      parentAuditId: 'audit-parent',
+    }))
+    expect(identity).toMatchObject({
+      actorId: 'user:ops',
+      toolId: 'gmail.send',
+      runtimeId: 'runtime-1',
+      environmentId: 'prod',
+      requestedPermission: 'email:send',
+      scope: ['customer@example.com'],
+      correlationChain: ['audit-parent'],
+    })
+  })
+
   it('flags untrusted content that tries to trigger side effects', () => {
     const flags = detectAnomalies(req('send_email', {
       instructionSource: 'webpage',

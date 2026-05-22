@@ -80,12 +80,28 @@ class ActionTokenScope(TypedDict, total=False):
     orgId: str
     auditId: str
     correlationId: str
+    toolId: str
+    runtimeId: str
+    environmentId: str
+    requestedPermission: str
+    scope: list[str]
 
 
 class ActionToken(TypedDict, total=False):
     token: str
     expiresAt: str
     scope: ActionTokenScope
+
+
+class ActionIdentity(TypedDict, total=False):
+    actorId: str
+    toolId: str
+    runtimeId: str
+    environmentId: str
+    requestedPermission: str
+    scope: list[str]
+    expiresAt: str
+    correlationChain: list[str]
 
 
 class ActionResult(TypedDict, total=False):
@@ -111,6 +127,7 @@ class ActionResult(TypedDict, total=False):
     resolvedBy: str
     sourceTrust: SourceTrust
     blastRadius: BlastRadius
+    actionIdentity: ActionIdentity
     actionToken: ActionToken
 
 
@@ -130,6 +147,7 @@ class SimulateResult(TypedDict, total=False):
     anomalyFlags: list[str]
     sourceTrust: SourceTrust
     blastRadius: BlastRadius
+    actionIdentity: ActionIdentity
     conditionMatched: bool
     policyFlags: SimulatePolicyFlags
 

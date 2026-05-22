@@ -20,13 +20,18 @@ result = runtime.verify_action({
         "location": "bay-3",
         "intent": "After-hours delivery",
         "sourceTrust": "authenticated_user",
+        "toolId": "door-controller.unlock",
+        "runtimeId": "warehouse-runtime-1",
+        "environmentId": "bay-3-prod",
+        "requestedPermission": "door:unlock",
+        "scope": ["bay-3"],
         "physicalWorld": True,
         "reversible": False,
     },
 })
 
 print(result["decision"], result["reasoning"])
-print(result.get("sourceTrust"), result.get("blastRadius"))
+print(result.get("sourceTrust"), result.get("blastRadius"), result.get("actionIdentity"))
 
 if token := result.get("actionToken"):
     # Downstream executors can require this proof before side effects run.
@@ -59,6 +64,6 @@ replay = runtime.replay_audit(limit=100)
 evidence = runtime.get_evidence_summary(limit=200)
 ```
 
-Action results may include `sourceTrust`, `blastRadius`, and a short-lived signed `actionToken` when approved. These fields match the TypeScript SDK shape so Python agents can share the same approval proof and audit evidence pipeline.
+Action results may include `sourceTrust`, `blastRadius`, `actionIdentity`, and a short-lived signed `actionToken` when approved. These fields match the TypeScript SDK shape so Python agents can share the same approval proof and audit evidence pipeline.
 
 See [DEVELOPER_GUIDE.md](../../DEVELOPER_GUIDE.md) and [docs/integrations](../../docs/integrations/).

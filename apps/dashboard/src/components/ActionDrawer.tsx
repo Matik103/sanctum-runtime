@@ -81,6 +81,52 @@ export function ActionDrawer({ entry, onClose, audit, onSelect }: Props) {
           <ContextDetails context={entry.context} actor={entry.actor} />
         </section>
 
+        {entry.actionIdentity && (
+          <section className="drawer-section">
+            <h3>Action identity</h3>
+            <dl className="detail-list">
+              <div>
+                <dt>Actor</dt>
+                <dd>{entry.actionIdentity.actorId}</dd>
+              </div>
+              {entry.actionIdentity.toolId && (
+                <div>
+                  <dt>Tool</dt>
+                  <dd>{entry.actionIdentity.toolId}</dd>
+                </div>
+              )}
+              {entry.actionIdentity.runtimeId && (
+                <div>
+                  <dt>Runtime</dt>
+                  <dd>{entry.actionIdentity.runtimeId}</dd>
+                </div>
+              )}
+              {entry.actionIdentity.environmentId && (
+                <div>
+                  <dt>Environment</dt>
+                  <dd>{entry.actionIdentity.environmentId}</dd>
+                </div>
+              )}
+              <div>
+                <dt>Permission</dt>
+                <dd>{entry.actionIdentity.requestedPermission}</dd>
+              </div>
+              {entry.actionIdentity.scope.length > 0 && (
+                <div>
+                  <dt>Scope</dt>
+                  <dd>{entry.actionIdentity.scope.join(' · ')}</dd>
+                </div>
+              )}
+              {entry.actionIdentity.expiresAt && (
+                <div>
+                  <dt>Expiry</dt>
+                  <dd>{new Date(entry.actionIdentity.expiresAt).toLocaleString()}</dd>
+                </div>
+              )}
+            </dl>
+          </section>
+        )}
+
         {entry.anomalyFlags.length > 0 && (
           <section className="drawer-section">
             <h3>Signals</h3>

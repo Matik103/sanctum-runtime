@@ -94,6 +94,7 @@ export type SimulateResult = {
   anomalyFlags: string[]
   sourceTrust?: ActionResult['sourceTrust']
   blastRadius?: ActionResult['blastRadius']
+  actionIdentity?: ActionResult['actionIdentity']
   conditionMatched: boolean
   policyFlags: {
     autoBlock: boolean

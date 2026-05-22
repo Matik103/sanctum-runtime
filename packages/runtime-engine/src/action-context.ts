@@ -1,4 +1,4 @@
-import type { ActionRequest, BlastRadius, SourceTrust } from '@sanctum-runtime/sdk'
+import type { ActionIdentity, ActionRequest, BlastRadius, SourceTrust } from '@sanctum-runtime/sdk'
 
 const KNOWN_TRUSTS = new Set<SourceTrust>([
   'trusted_user',
@@ -40,6 +40,60 @@ const CRED_ACTIONS = /(credential|secret|password|key|token|api_key|keychain)/i
 const PHI_ACTIONS = /(patient|phi|medical|health|diagnosis|record)/i
 const PII_ACTIONS = /(ssn|social_security|passport|dob|address|email|phone)/i
 
+function firstString(...values: unknown[]): string | undefined {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) return value.trim()
+  }
+  return undefined
+}
+
+function stringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+  }
+  if (typeof value === 'string' && value.trim()) return [value.trim()]
+  return []
+}
+
+/**
+ * Build the identity envelope for an action request.
+ *
+ * This keeps `verifyAction({ actor, action, context })` simple while making
+ * the trust-boundary contract explicit: who/what is asking, through which
+ * tool/runtime/environment, for what permission, in what scope, and for how
+ * long. Downstream action tokens copy this envelope so executors can enforce it.
+ */
+export function deriveActionIdentity(request: ActionRequest): ActionIdentity {
+  const ctx = (request.context ?? {}) as Record<string, unknown>
+  const scope = [
+    ...stringArray(ctx.scope),
+    ...stringArray(ctx.scopes),
+    ...stringArray(ctx.permissions),
+    ...stringArray(ctx.resources),
+  ]
+  const destination = firstString(ctx.destination, ctx.to, ctx.url, ctx.path)
+  if (destination) scope.push(destination)
+
+  const correlationChain = [
+    ...stringArray(ctx.correlationChain),
+    ...stringArray(ctx.causalChain),
+    ...stringArray(ctx.recentActions),
+  ]
+  const parentAuditId = firstString(ctx.parentAuditId)
+  if (parentAuditId) correlationChain.push(parentAuditId)
+
+  return {
+    actorId: firstString(ctx.actorId, ctx.actor_identity, request.actor) ?? request.actor,
+    toolId: firstString(ctx.toolId, ctx.tool_id, ctx.toolIdentity, ctx.tool, ctx.mcpTool, ctx.mcpServer),
+    runtimeId: firstString(ctx.runtimeId, ctx.runtime_id, ctx.runtimeIdentity, ctx.runtime),
+    environmentId: firstString(ctx.environmentId, ctx.environment_id, ctx.environment, ctx.deployment, ctx.workspace),
+    requestedPermission: firstString(ctx.requestedPermission, ctx.permission, request.action) ?? request.action,
+    scope: [...new Set(scope)],
+    expiresAt: firstString(ctx.expiresAt, ctx.permissionExpiresAt, ctx.scopeExpiresAt),
+    correlationChain: [...new Set(correlationChain)],
+  }
+}
+
 /**
  * Estimate the "blast radius" of an action — what is affected if it runs,
  * and how recoverable the system is if the decision is wrong.
@@ -77,7 +131,7 @@ export function estimateBlastRadius(request: ActionRequest): BlastRadius {
     reversible = false
     factors.push('irreversible')
   }
-  if (EXTERNAL_ACTIONS.test(action) || typeof ctx.destination === 'string') {
+  if (EXTERNAL_ACTIONS.test(action) || ctx.externalDestination === true || typeof ctx.destination === 'string') {
     score += 10
     externalDestination = true
     factors.push('external destination')
