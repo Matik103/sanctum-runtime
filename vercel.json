@@ -7,6 +7,11 @@
   "trailingSlash": false,
   "redirects": [
     {
+      "source": "/:file([^/]+\\.[a-z0-9]+)/",
+      "destination": "/:file",
+      "statusCode": 308
+    },
+    {
       "source": "/:path*",
       "has": [{ "type": "host", "value": "sanctumruntime.com" }],
       "destination": "https://www.sanctumruntime.com/:path*",
