@@ -199,7 +199,8 @@ function isPublicPath(path: string): boolean {
     path === '/health' ||
     path === '/v1/billing/webhook' ||
     path === '/v1/verify-action' ||
-    path === '/v1/push/vapid-key'
+    path === '/v1/push/vapid-key' ||
+    path === '/.well-known/security.txt'
   ) return true
   if (path.startsWith('/v1/sso/')) return true
   if (!isProduction()) {
@@ -272,6 +273,24 @@ const publicApiUrl =
 
 const publicDocsUrl =
   process.env.SANCTUM_DOCS_URL?.trim() || 'https://www.sanctumruntime.com/docs'
+
+// RFC 9116 security.txt — researchers scanning the API hostname find the
+// disclosure policy without needing to know the marketing site URL.
+app.get('/.well-known/security.txt', async (_req, reply) => {
+  reply.type('text/plain; charset=utf-8')
+  reply.header('Cache-Control', 'public, max-age=3600, must-revalidate')
+  return [
+    '# RFC 9116 — https://www.rfc-editor.org/rfc/rfc9116',
+    'Contact: https://github.com/Matik103',
+    'Contact: mailto:ops@sanctumruntime.com',
+    'Expires: 2027-05-23T00:00:00.000Z',
+    'Preferred-Languages: en',
+    'Policy: https://github.com/Matik103/sanctum-runtime/blob/main/SECURITY.md',
+    'Acknowledgments: https://github.com/Matik103/sanctum-runtime/security/advisories',
+    'Canonical: https://www.sanctumruntime.com/.well-known/security.txt',
+    '',
+  ].join('\n')
+})
 
 app.get('/', async () => {
   if (isProduction()) {
