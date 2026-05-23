@@ -1229,13 +1229,46 @@ function logStartupSummary({ host, port }: { host: string; port: number }): void
   }
 }
 
-// Graceful shutdown: stop webhook worker and close server
-const shutdown = async (signal: string) => {
-  console.log(`Received ${signal} — shutting down`)
-  stopWebhookWorker?.()
-  stopEmailQueueWorker?.()
-  await app.close()
-  process.exit(0)
+// Graceful shutdown:
+//   1. Stop accepting new connections (app.close stops the listener)
+//   2. Drain in-flight requests (Fastify awaits onClose hooks)
+//   3. Stop background workers
+//   4. Hard-exit after SHUTDOWN_GRACE_MS even if anything hangs — Render's
+//      stopSignal grace is 30s, after which it sends SIGKILL anyway and we
+//      lose the chance to log a clean exit
+//
+// Idempotent: if SIGTERM arrives twice (e.g. Render impatient retry), the
+// second call short-circuits instead of double-closing the server.
+const SHUTDOWN_GRACE_MS = 25_000
+let shuttingDown = false
+
+const shutdown = async (signal: string): Promise<void> => {
+  if (shuttingDown) {
+    console.log(`[shutdown] ${signal} received during shutdown — ignoring`)
+    return
+  }
+  shuttingDown = true
+  console.log(`[shutdown] ${signal} received — draining`)
+
+  const hardExit = setTimeout(() => {
+    console.error(`[shutdown] grace period (${SHUTDOWN_GRACE_MS}ms) exceeded — forcing exit`)
+    process.exit(1)
+  }, SHUTDOWN_GRACE_MS)
+  hardExit.unref()
+
+  try {
+    // app.close() stops accepting new conns and awaits in-flight handlers
+    await app.close()
+    stopWebhookWorker?.()
+    stopEmailQueueWorker?.()
+    console.log('[shutdown] drained cleanly')
+    clearTimeout(hardExit)
+    process.exit(0)
+  } catch (err) {
+    console.error('[shutdown] error during drain:', err)
+    clearTimeout(hardExit)
+    process.exit(1)
+  }
 }
 
 process.on('SIGTERM', () => { void shutdown('SIGTERM') })
@@ -1255,6 +1288,7 @@ process.on('unhandledRejection', (reason, promise) => {
 process.on('uncaughtException', (err) => {
   console.error('[fatal] uncaughtException', { message: err.message, stack: err.stack })
   // Hand off to graceful shutdown so in-flight requests get a chance to finish
-  // before the container is replaced. Render will restart the service.
-  void shutdown('uncaughtException').finally(() => process.exit(1))
+  // before the container is replaced. shutdown() owns the exit; the hard-exit
+  // timer inside it guarantees we won't get stuck even if drain hangs.
+  void shutdown('uncaughtException')
 })
