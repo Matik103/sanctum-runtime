@@ -24,13 +24,16 @@ See [RENDER.md](./RENDER.md) for the full API checklist.
 | Key | Value |
 |-----|--------|
 | `NODE_VERSION` | `22` |
-| `SANCTUM_OFFLINE_MODE` | `true` |
+| `SANCTUM_OFFLINE_MODE` | `false` (use `true` only for an intentionally isolated deployment) |
 | `SANCTUM_RISK_PROVIDER` | `none` |
 | `SANCTUM_API_KEY` | `openssl rand -hex 32` |
 | `DASHBOARD_URL` | Your dashboard URL (set after §3) |
 | `SUPABASE_URL` | From Supabase (§2) |
 | `SUPABASE_SERVICE_ROLE_KEY` | **Secret** — API only |
 | `SUPABASE_ANON_KEY` | Optional on API; required for JWT validation path |
+| `SANCTUM_API_KEY_PEPPER` | **Secret** — dedicated hashing pepper (`openssl rand -base64 32`) |
+| `SANCTUM_ACTION_TOKEN_SECRET` | **Secret** — signed-action-token HMAC key (`openssl rand -base64 32`) |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | Web Push key pair for mobile approval notifications |
 
 **Persistence:**
 
@@ -228,6 +231,7 @@ Redeploy **sanctum-api**. Dashboard **Devices** shows `OpenAI-compatible` when a
 ```bash
 # API
 curl -s https://YOUR-API.onrender.com/health
+curl -s https://YOUR-API.onrender.com/v1/push/vapid-key
 
 # Auth + webhooks (if configured)
 curl -s -H "X-Sanctum-Key: $SANCTUM_API_KEY" https://YOUR-API.onrender.com/v1/webhooks/status
@@ -248,6 +252,8 @@ npm run example:npm
 ## 6. Production checklist
 
 - [ ] API on Render — health OK, `SANCTUM_API_KEY` set
+- [ ] API secrets set — dedicated `SANCTUM_API_KEY_PEPPER` and `SANCTUM_ACTION_TOKEN_SECRET`
+- [ ] Mobile push ready — `VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` on API and `/v1/push/vapid-key` returns the public key
 - [ ] Supabase migrations applied
 - [ ] `SUPABASE_*` on API — audit rows appear in Supabase
 - [ ] Dashboard static site — build env has `VITE_SANCTUM_API_URL` + Supabase anon

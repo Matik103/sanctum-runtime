@@ -11,7 +11,6 @@
   "dependencies": {
     "@sanctum-runtime/sdk": "*",
     "@supabase/supabase-js": "^2.105.4",
-    "firebase": "^12.13.0",
     "lucide-react": "^0.575.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

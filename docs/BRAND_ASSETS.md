@@ -1,6 +1,6 @@
 # Brand assets — canonical URLs
 
-Stable production URLs for Firebase, FCM, PWA, and social previews.
+Stable production URLs for Web Push, PWA, and social previews.
 
 ## Console (`console.sanctumruntime.com`)
 
@@ -8,10 +8,10 @@ Stable production URLs for Firebase, FCM, PWA, and social previews.
 |-------|-----|
 | Logo (wordmark) | https://console.sanctumruntime.com/sanctum-logo.png |
 | Favicon 32×32 | https://console.sanctumruntime.com/favicon.png |
-| Icon 512×512 (PWA, FCM notification icon) | https://console.sanctumruntime.com/favicon-512.png |
+| Icon 512×512 (PWA, Web Push notification icon) | https://console.sanctumruntime.com/favicon-512.png |
 | Apple touch 180×180 | https://console.sanctumruntime.com/apple-touch-icon.png |
 
-**FCM / push:** use `favicon-512.png` as the notification `icon` URL.
+**Web Push:** use `favicon-512.png` as the notification `icon` URL.
 
 ## Marketing (`www.sanctumruntime.com`)
 

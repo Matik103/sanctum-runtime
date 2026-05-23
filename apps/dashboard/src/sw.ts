@@ -1,11 +1,10 @@
 /// <reference lib="webworker" />
 import { clientsClaim } from 'workbox-core'
-import { precacheAndRoute, cleanupOutdatedCaches, createHandlerBoundToURL } from 'workbox-precaching'
+import { addRoute, precache, cleanupOutdatedCaches, createHandlerBoundToURL } from 'workbox-precaching'
 import { registerRoute, NavigationRoute } from 'workbox-routing'
 import { NetworkFirst, CacheFirst, StaleWhileRevalidate } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
-import { initializeApp } from 'firebase/app'
-import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw'
+import { sameOriginNotificationTarget } from './lib/notification-target'
 
 declare const self: ServiceWorkerGlobalScope & {
   __WB_MANIFEST: Array<{ url: string; revision: string | null }>
@@ -13,17 +12,17 @@ declare const self: ServiceWorkerGlobalScope & {
 
 // Bump this whenever the caching strategy or app shell changes.
 // Old caches whose name doesn't match are deleted on activate.
-const SW_VERSION = '4'
+const SW_VERSION = '5'
 
 const CACHE_NAMES = {
-  api:        `sanctum-api-v${SW_VERSION}`,
+  shell:      `sanctum-shell-v${SW_VERSION}`,
   fontsCss:   `google-fonts-stylesheets-v${SW_VERSION}`,
   fontsFiles: `google-fonts-webfonts-v${SW_VERSION}`,
   images:     `images-v${SW_VERSION}`,
 }
 
 clientsClaim()
-precacheAndRoute(self.__WB_MANIFEST)
+precache(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
 
 // Activate new SW immediately on install so the installed PWA picks up
@@ -47,22 +46,30 @@ self.addEventListener('activate', (event) => {
   )
 })
 
-// App-shell navigation fallback
-registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html'), {
+// Prefer fresh HTML while online so a deployed console release is visible
+// immediately; fall back to the precached shell when connectivity is absent.
+const navigationStrategy = new NetworkFirst({
+  cacheName: CACHE_NAMES.shell,
+  networkTimeoutSeconds: 4,
+})
+const offlineShell = createHandlerBoundToURL('index.html')
+
+registerRoute(new NavigationRoute(async (options) => {
+  try {
+    return await navigationStrategy.handle(options)
+  } catch {
+    return offlineShell(options)
+  }
+}, {
   denylist: [/^\/api\//, /^\/v1\//],
 }))
 
-// Sanctum API — NetworkFirst so fresh data loads when online, falls back to cache
-registerRoute(
-  ({ url }) => url.pathname.startsWith('/v1/') || url.pathname.startsWith('/api/'),
-  new NetworkFirst({
-    cacheName: CACHE_NAMES.api,
-    networkTimeoutSeconds: 10,
-    plugins: [
-      new ExpirationPlugin({ maxEntries: 60, maxAgeSeconds: 5 * 60 }),
-    ],
-  }),
-)
+// Register precached asset handling after the navigation strategy so cached
+// index.html cannot intercept online app-shell navigations.
+addRoute()
+
+// Never cache authenticated control-plane API data. Offline action submissions
+// are queued in app storage; historical and credential-bearing reads stay live.
 
 // Google Fonts
 registerRoute(
@@ -89,32 +96,7 @@ registerRoute(
   }),
 )
 
-// ── Firebase Cloud Messaging (background push) ───────────────────────────────
-
-const firebaseApp = initializeApp({
-  apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId:             import.meta.env.VITE_FIREBASE_APP_ID,
-})
-
-const messaging = getMessaging(firebaseApp)
-
-onBackgroundMessage(messaging, (payload) => {
-  const title = payload.notification?.title ?? 'Sanctum Alert'
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  self.registration.showNotification(title, {
-    body:    payload.notification?.body ?? '',
-    icon:    '/icon-192.png',
-    badge:   '/favicon.png',
-    tag:     payload.data?.type ? `${payload.data['orgId']}:${payload.data['type']}` : 'sanctum-alert',
-    data:    payload.data ?? {},
-  } as any)
-})
-
-// ── Raw VAPID web-push (server uses webpush.sendNotification, not FCM) ─────
+// ── VAPID web-push (server uses webpush.sendNotification) ──────────────────
 self.addEventListener('push', (event) => {
   if (!event.data) return
   let payload: {
@@ -141,12 +123,11 @@ self.addEventListener('push', (event) => {
   )
 })
 
-// Open/focus app on notification click — deep-link to verification page when available
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
   const data = (event.notification.data ?? {}) as { url?: string; entryId?: string; type?: string }
   // Prefer explicit URL; else build a deep-link for verification notifications
-  const target = data.url
+  const target = sameOriginNotificationTarget(data.url, self.location.origin)
     ?? (data.type === 'agent.require_verification' && data.entryId
       ? `/?page=activity&verify=${encodeURIComponent(data.entryId)}`
       : '/')

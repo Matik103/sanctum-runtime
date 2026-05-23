@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify'
+import type { PushSubscription } from 'web-push'
 import { z } from 'zod'
 import { createSupabaseAdmin, getSupabaseAuthConfig } from './auth.js'
 
@@ -29,11 +30,12 @@ export async function registerPushRoutes(app: FastifyInstance): Promise<void> {
   if (!cfg) return
 
   const admin = createSupabaseAdmin(cfg)
-  const vapidPublic = process.env.VITE_VAPID_PUBLIC_KEY?.trim() || process.env.VAPID_PUBLIC_KEY?.trim()
+  const vapidPublic = process.env.VAPID_PUBLIC_KEY?.trim() || process.env.VITE_VAPID_PUBLIC_KEY?.trim()
   const vapidPrivate = process.env.VAPID_PRIVATE_KEY?.trim()
+  const vapidConfigured = Boolean(vapidPublic && vapidPrivate)
 
   app.get('/v1/push/vapid-key', async (_req, reply) => {
-    return reply.send({ publicKey: vapidPublic ?? null })
+    return reply.send({ publicKey: vapidConfigured ? vapidPublic : null })
   })
 
   app.get('/v1/push/status', async (req, reply) => {
@@ -49,14 +51,15 @@ export async function registerPushRoutes(app: FastifyInstance): Promise<void> {
 
     return {
       deviceCount: count ?? 0,
-      vapidConfigured: Boolean(vapidPublic && vapidPrivate),
-      pushEnabled: Boolean(vapidPublic),
+      vapidConfigured,
+      pushEnabled: vapidConfigured,
     }
   })
 
   app.post('/v1/push/subscribe', async (req, reply) => {
     const user = (req as SanctumReq).sanctumUser
     if (!user) return reply.status(401).send({ error: 'unauthorized' })
+    if (!vapidConfigured) return reply.status(503).send({ error: 'push_not_configured' })
 
     const parsed = subscribeBody.safeParse(req.body)
     if (!parsed.success) {
@@ -125,7 +128,7 @@ export async function sendPushToUser(
   const admin = createSupabaseAdmin(cfg)
   const { data: rows, error } = await admin
     .from('push_subscriptions')
-    .select('subscription')
+    .select('endpoint,subscription')
     .eq('user_id', userId)
 
   if (error || !rows?.length) return
@@ -137,12 +140,27 @@ export async function sendPushToUser(
       icon: DEFAULT_PUSH_ICON,
       ...payload,
     })
-    await Promise.allSettled(
+    const results = await Promise.allSettled(
       rows.map((row) => {
-        const sub = row.subscription as webpush.PushSubscription
+        const sub = row.subscription as PushSubscription
         return webpush.sendNotification(sub, body)
       }),
     )
+    const expiredEndpoints = results.flatMap((result, index) => {
+      if (result.status !== 'rejected') return []
+      const statusCode =
+        typeof result.reason === 'object' && result.reason !== null && 'statusCode' in result.reason
+          ? Number((result.reason as { statusCode?: unknown }).statusCode)
+          : null
+      return statusCode === 404 || statusCode === 410 ? [rows[index].endpoint as string] : []
+    })
+    if (expiredEndpoints.length > 0) {
+      await admin
+        .from('push_subscriptions')
+        .delete()
+        .eq('user_id', userId)
+        .in('endpoint', expiredEndpoints)
+    }
   } catch (e) {
     console.warn('[push] send failed', e)
   }

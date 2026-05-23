@@ -41,6 +41,19 @@ async function main() {
     bad('GET /health', e.message)
   }
 
+  try {
+    const pushKey = await get('/v1/push/vapid-key')
+    if (pushKey.status !== 200) {
+      bad('GET /v1/push/vapid-key (public push enrollment)', pushKey.status)
+    } else if (pushKey.body?.publicKey) {
+      ok('GET /v1/push/vapid-key (web push configured)')
+    } else {
+      bad('web push configuration', 'VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY are not fully configured on API')
+    }
+  } catch (e) {
+    bad('GET /v1/push/vapid-key', e.message)
+  }
+
   if (KEY) {
     try {
       const status = await get('/v1/status', true)

@@ -22,12 +22,22 @@ services:
         value: "none"
       - key: SANCTUM_API_KEY
         generateValue: true
-      - key: VITE_SUPABASE_URL
+      - key: SANCTUM_API_KEY_PEPPER
+        generateValue: true
+      - key: SANCTUM_ACTION_TOKEN_SECRET
+        generateValue: true
+      - key: SUPABASE_URL
         sync: false
-      - key: VITE_SUPABASE_ANON_KEY
+      - key: SUPABASE_ANON_KEY
         sync: false
-      - key: VITE_SUPABASE_SERVICE_ROLE_KEY
+      - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        value: mailto:ops@sanctumruntime.com
       - key: DASHBOARD_URL
         value: https://console.sanctumruntime.com
       - key: SANCTUM_PUBLIC_API_URL

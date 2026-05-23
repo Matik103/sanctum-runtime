@@ -8,7 +8,7 @@ Use these stable URLs (see `docs/BRAND_ASSETS.md`):
 
 | Use | URL |
 |-----|-----|
-| FCM notification icon | https://console.sanctumruntime.com/favicon-512.png |
+| Web Push notification icon | https://console.sanctumruntime.com/favicon-512.png |
 | PWA install icon | https://console.sanctumruntime.com/favicon-512.png |
 | Wordmark | https://console.sanctumruntime.com/sanctum-logo.png |
 
@@ -46,16 +46,19 @@ Generate VAPID keys (once per environment):
 npx web-push generate-vapid-keys
 ```
 
-Add to **Render** (API + dashboard static site):
+Add to the **Render API service**:
 
 | Variable | Where |
 |----------|--------|
-| `VITE_VAPID_PUBLIC_KEY` | Dashboard build (baked into bundle) |
-| `VAPID_PUBLIC_KEY` | API (same value as above) |
+| `VAPID_PUBLIC_KEY` | API — public key exposed through `/v1/push/vapid-key` |
 | `VAPID_PRIVATE_KEY` | API only — secret |
 | `VAPID_SUBJECT` | API — e.g. `mailto:ops@yourdomain.com` |
 
-Apply migration **037** in Supabase SQL Editor:
+The dashboard does not need the public VAPID key baked into its static bundle; it loads
+the configured public key from the API. `VITE_VAPID_PUBLIC_KEY` remains a backward-compatible
+API alias only.
+
+Apply all current Supabase migrations, including `048_push_subscriptions_consolidated.sql`:
 
 ```bash
 # or
@@ -67,6 +70,10 @@ Users enable push under **Settings → Mobile push notifications**.
 ## Database
 
 `public.push_subscriptions` — one row per browser endpoint per user. Written by API with service role.
+
+The service worker deliberately does not cache authenticated API responses. Offline UI
+assets remain available, while audit, credential, and policy data must be fetched after
+the operator is authenticated and online.
 
 ## Sending pushes from code
 

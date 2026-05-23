@@ -178,7 +178,12 @@ app.setErrorHandler((err, _req, reply) => {
 })
 
 function isPublicPath(path: string): boolean {
-  if (path === '/health' || path === '/v1/billing/webhook' || path === '/v1/verify-action') return true
+  if (
+    path === '/health' ||
+    path === '/v1/billing/webhook' ||
+    path === '/v1/verify-action' ||
+    path === '/v1/push/vapid-key'
+  ) return true
   if (path.startsWith('/v1/sso/')) return true
   if (!isProduction()) {
     if (path === '/' || path === '/metrics' || path === '/v1/status') return true
