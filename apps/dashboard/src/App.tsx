@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useEffect } from 'react'
+import { lazy, Suspense, useCallback, useState, useEffect } from 'react'
 import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 import { ActionDrawer } from './components/ActionDrawer'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -56,6 +56,11 @@ function initialPage(): PageId {
   if (typeof window === 'undefined') return 'overview'
   const requested = new URLSearchParams(window.location.search).get('page') as PageId | null
   return requested && PAGE_IDS.includes(requested) ? requested : 'overview'
+}
+
+function scrollPageToTop() {
+  window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  document.querySelector<HTMLElement>('.main')?.scrollTo({ top: 0, left: 0, behavior: 'auto' })
 }
 
 export function App() {
@@ -118,10 +123,30 @@ export function App() {
   const { pendingCount: offlinePending, syncing: offlineSyncing } = useOfflineQueue(() => { void refresh() })
 
   const onSelect = (e: ActionResult) => setSelected(e)
+  const onPage = useCallback((nextPage: PageId) => {
+    if (nextPage === page) {
+      scrollPageToTop()
+      return
+    }
+    const params = new URLSearchParams(window.location.search)
+    params.set('page', nextPage)
+    window.history.pushState(null, '', `${window.location.pathname}?${params.toString()}`)
+    setPage(nextPage)
+    scrollPageToTop()
+  }, [page])
+
+  useEffect(() => {
+    const onPopState = () => {
+      setPage(initialPage())
+      scrollPageToTop()
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
 
   return (
     <div className="shell">
-      <Sidebar page={page} onPage={setPage} status={status} orgId={orgId} companionMode={companionMode} />
+      <Sidebar page={page} onPage={onPage} status={status} orgId={orgId} companionMode={companionMode} />
 
       <MainCanvas>
         <PwaInstallBanner />
@@ -168,7 +193,7 @@ export function App() {
                   {fleetStatus.pausedAt && ` · ${new Date(fleetStatus.pausedAt).toLocaleTimeString()}`}
                 </span>
               )}
-              {' '}Go to <button type="button" className="btn btn-ghost" style={{ padding: '0 0.25rem', fontSize: 'inherit', display: 'inline' }} onClick={() => setPage('fleet')}>Runtime Fleet</button> to resume.
+              {' '}Go to <button type="button" className="btn btn-ghost" style={{ padding: '0 0.25rem', fontSize: 'inherit', display: 'inline' }} onClick={() => onPage('fleet')}>Runtime Fleet</button> to resume.
             </div>
           </div>
         )}
@@ -179,7 +204,7 @@ export function App() {
             summary={summarizePendingActions(pendingReviewQueue.map((e) => e.action))}
             onReviewNext={openNextPendingReview}
             onDismissAll={() => markVerificationsDismissed('all')}
-            onViewActivity={() => setPage('activity')}
+            onViewActivity={() => onPage('activity')}
           />
         )}
 

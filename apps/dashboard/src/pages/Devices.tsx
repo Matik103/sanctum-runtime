@@ -196,7 +196,7 @@ export function Devices({ status }: Props) {
     <>
       <header className="page-header">
         <div>
-          <h1>Devices & API keys</h1>
+          <h1>Devices & API Keys</h1>
           <p>Connected runtimes, workspace credentials, and control-plane health</p>
         </div>
         <PageActions>

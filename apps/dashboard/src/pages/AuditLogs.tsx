@@ -57,7 +57,7 @@ export function AuditLogs({ audit, onSelect }: Props) {
     <>
       <header className="page-header">
         <div>
-          <h1>Audit logs</h1>
+          <h1>Audit Logs</h1>
           <p>
             Immutable record of every agent action and trust decision
           </p>
