@@ -9,7 +9,6 @@
       "source": "/:path*",
       "has": [{ "type": "host", "value": "sanctumruntime.com" }],
       "destination": "https://www.sanctumruntime.com/:path*",
-      "permanent": true,
       "statusCode": 308
     }
   ],
