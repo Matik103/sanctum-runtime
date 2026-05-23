@@ -2043,3 +2043,171 @@ tr.key-row--pending td {
 .legal-footer a:hover {
   text-decoration: underline;
 }
+
+/* ─── AI Model Card (Settings → AI risk scoring) ──────────────────────── */
+.model-card__identity {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.model-card__label {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.model-card__value-lg {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--fg);
+  margin-top: 0.15rem;
+  letter-spacing: -0.01em;
+}
+
+.model-card__sub {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 0.1rem;
+}
+
+.model-card__health {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.22);
+}
+
+.model-card__dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.model-card__dot--ok    { background: var(--success); box-shadow: 0 0 0 3px rgba(16,185,129,0.15); }
+.model-card__dot--warn  { background: var(--warn, #f59e0b); box-shadow: 0 0 0 3px rgba(245,158,11,0.15); }
+
+.model-card__health-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--fg);
+  letter-spacing: 0.01em;
+}
+
+.model-card__panel {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  padding: 0.85rem 1rem;
+}
+
+.model-card__panel-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.6rem;
+}
+
+.model-card__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  font-size: 0.85rem;
+  color: var(--fg);
+  line-height: 1.5;
+}
+
+.model-card__list li strong {
+  color: var(--muted);
+  font-weight: 500;
+  margin-right: 0.25rem;
+}
+
+.model-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.model-card__chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.6rem;
+  border-radius: 0.35rem;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.22);
+  color: var(--fg);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.inline-link {
+  color: var(--primary, #818cf8);
+  text-decoration: none;
+  border-bottom: 1px dotted currentColor;
+}
+
+.inline-link:hover {
+  border-bottom-style: solid;
+}
+
+/* ─── Per-decision model attribution (ActionDrawer) ───────────────────── */
+.model-attr {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: 0.55rem;
+  padding: 0.75rem 0.9rem;
+}
+
+.model-attr__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.3rem 0;
+  font-size: 0.85rem;
+}
+
+.model-attr__row + .model-attr__row {
+  border-top: 1px dashed var(--border);
+}
+
+.model-attr__label {
+  color: var(--muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+}
+
+.model-attr__value {
+  font-weight: 500;
+  color: var(--fg);
+  text-align: right;
+}
+
+.model-attr__footnote {
+  margin: 0.6rem 0 0;
+  font-size: 0.74rem;
+  color: var(--muted);
+  line-height: 1.5;
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+}

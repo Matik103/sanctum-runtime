@@ -36,13 +36,10 @@ export class OpenAICompatibleRiskProvider implements RiskModelProvider {
       )
     }
     this.apiKey = apiKey.trim()
+    // Default to gpt-4o-mini — fast, cheap, well-suited for JSON risk assessments.
+    // Override via SANCTUM_RISK_MODEL or OPENAI_MODEL env var.
     const model =
-      options.model ?? process.env.SANCTUM_RISK_MODEL ?? process.env.OPENAI_MODEL
-    if (!model) {
-      throw new Error(
-        'OpenAI-compatible provider requires model, SANCTUM_RISK_MODEL, or OPENAI_MODEL',
-      )
-    }
+      options.model ?? process.env.SANCTUM_RISK_MODEL ?? process.env.OPENAI_MODEL ?? 'gpt-4o-mini'
     this.model = model
     this.timeoutMs = options.timeoutMs ?? 120_000
   }

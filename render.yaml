@@ -19,7 +19,11 @@ services:
       - key: SANCTUM_OFFLINE_MODE
         value: "false"
       - key: SANCTUM_RISK_PROVIDER
-        value: "none"
+        value: "openai"
+      - key: SANCTUM_RISK_MODEL
+        value: "gpt-4o-mini"
+      - key: OPENAI_API_KEY
+        sync: false
       - key: SANCTUM_API_KEY
         generateValue: true
       - key: SANCTUM_API_KEY_PEPPER
@@ -62,8 +66,26 @@ services:
         name: X-Robots-Tag
         value: "noindex, nofollow, noarchive, nosnippet"
       - path: /*
+        name: Strict-Transport-Security
+        value: "max-age=63072000; includeSubDomains; preload"
+      - path: /*
+        name: X-Content-Type-Options
+        value: "nosniff"
+      - path: /*
+        name: X-Frame-Options
+        value: "DENY"
+      - path: /*
         name: Referrer-Policy
         value: "strict-origin-when-cross-origin"
+      - path: /*
+        name: Permissions-Policy
+        value: "camera=(), microphone=(), geolocation=(), payment=()"
+      - path: /*
+        name: Content-Security-Policy
+        value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' fonts.googleapis.com; font-src 'self' fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://api.sanctumruntime.com wss://api.sanctumruntime.com https://*.supabase.co wss://*.supabase.co https://fcm.googleapis.com; frame-ancestors 'none'; base-uri 'self'; upgrade-insecure-requests;"
+      - path: /*
+        name: Cross-Origin-Opener-Policy
+        value: "same-origin"
     envVars:
       - key: NODE_VERSION
         value: "22"
