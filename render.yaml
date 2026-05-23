@@ -55,6 +55,8 @@ services:
         name: Referrer-Policy
         value: "strict-origin-when-cross-origin"
     envVars:
+      - key: NODE_VERSION
+        value: "22"
       - key: VITE_SANCTUM_API_URL
         value: https://api.sanctumruntime.com
       - key: VITE_DOCS_URL
