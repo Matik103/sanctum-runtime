@@ -8,6 +8,7 @@ import Fastify from 'fastify'
 import { ZodError } from 'zod'
 import { z } from 'zod'
 import { attachHttpMetrics, recordRateLimitHit, renderHttpMetrics } from './http-metrics.js'
+import { getHeapPressureRatio, startHeapWatchdog } from './heap-watchdog.js'
 import { registerApiKeyRoutes } from './api-keys.js'
 import { registerControlPlaneRoutes } from './control-plane-routes.js'
 import { registerOrchestrationRoutes } from './orchestration-routes.js'
@@ -407,6 +408,7 @@ const escalationTimer = setInterval(async () => {
 }, 60_000)
 escalationTimer.unref?.()
 const stopEmailQueueWorker = supabaseAuth ? startEmailQueueWorker(supabaseAuth) : null
+const stopHeapWatchdog = startHeapWatchdog()
 
 // Fast readiness probe
 app.get('/readiness', async () => ({ ready: true }))
@@ -1167,6 +1169,9 @@ app.get('/metrics', async (_req, reply) => {
     '# HELP sanctum_process_external_mb V8 external memory in MiB',
     '# TYPE sanctum_process_external_mb gauge',
     `sanctum_process_external_mb ${externalMb}`,
+    '# HELP sanctum_process_heap_pressure_ratio used_heap_size / heap_size_limit (0–1)',
+    '# TYPE sanctum_process_heap_pressure_ratio gauge',
+    `sanctum_process_heap_pressure_ratio ${getHeapPressureRatio().toFixed(4)}`,
     ...renderHttpMetrics(),
   ]
   return reply.type('text/plain; version=0.0.4; charset=utf-8').send(lines.join('\n') + '\n')
@@ -1293,6 +1298,7 @@ const shutdown = async (signal: string): Promise<void> => {
     await app.close()
     stopWebhookWorker?.()
     stopEmailQueueWorker?.()
+    stopHeapWatchdog()
     console.log('[shutdown] drained cleanly')
     clearTimeout(hardExit)
     process.exit(0)
