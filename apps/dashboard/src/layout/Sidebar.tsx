@@ -56,24 +56,24 @@ export const COMPANION_NAV_IDS: PageId[] = [
   'settings',
 ]
 
-const NAV: { id: PageId; label: string; icon: typeof LayoutDashboard }[] = [
-  { id: 'overview',       label: 'Overview',         icon: LayoutDashboard },
-  { id: 'activity',       label: 'Runtime Activity',  icon: Activity },
-  { id: 'threats',        label: 'Threat Monitor',    icon: ShieldAlert },
-  { id: 'alerts',         label: 'Alerts',            icon: Bell },
-  { id: 'policies',       label: 'Policies',          icon: Shield },
-  { id: 'policy-history', label: 'Policy History',    icon: History },
-  { id: 'workflow-builder', label: 'Workflow Builder', icon: GitBranch },
-  { id: 'assurance',      label: 'Assurance',         icon: ShieldCheck },
-  { id: 'governance',     label: 'Governance',        icon: CheckSquare },
-  { id: 'compliance',     label: 'Compliance',        icon: FileText },
-  { id: 'agents',         label: 'Agents',            icon: Bot },
-  { id: 'devices',        label: 'Devices',           icon: Monitor },
-  { id: 'fleet',          label: 'Runtime Fleet',     icon: Radio },
-  { id: 'marketplace',    label: 'Marketplace',       icon: Package },
-  { id: 'audit',          label: 'Audit Logs',        icon: ScrollText },
-  { id: 'billing',        label: 'Billing',           icon: CreditCard },
-  { id: 'settings',       label: 'Settings',          icon: Settings },
+const NAV: { id: PageId; label: string; shortLabel: string; icon: typeof LayoutDashboard }[] = [
+  { id: 'overview',         label: 'Overview',         shortLabel: 'Overview',  icon: LayoutDashboard },
+  { id: 'activity',         label: 'Runtime Activity',  shortLabel: 'Activity',  icon: Activity },
+  { id: 'threats',          label: 'Threat Monitor',    shortLabel: 'Threats',   icon: ShieldAlert },
+  { id: 'alerts',           label: 'Alerts',            shortLabel: 'Alerts',    icon: Bell },
+  { id: 'policies',         label: 'Policies',          shortLabel: 'Policies',  icon: Shield },
+  { id: 'policy-history',   label: 'Policy History',    shortLabel: 'History',   icon: History },
+  { id: 'workflow-builder', label: 'Workflow Builder',  shortLabel: 'Workflows', icon: GitBranch },
+  { id: 'assurance',        label: 'Assurance',         shortLabel: 'Assurance', icon: ShieldCheck },
+  { id: 'governance',       label: 'Governance',        shortLabel: 'Govern',    icon: CheckSquare },
+  { id: 'compliance',       label: 'Compliance',        shortLabel: 'Comply',    icon: FileText },
+  { id: 'agents',           label: 'Agents',            shortLabel: 'Agents',    icon: Bot },
+  { id: 'devices',          label: 'Devices',           shortLabel: 'Devices',   icon: Monitor },
+  { id: 'fleet',            label: 'Runtime Fleet',     shortLabel: 'Fleet',     icon: Radio },
+  { id: 'marketplace',      label: 'Marketplace',       shortLabel: 'Market',    icon: Package },
+  { id: 'audit',            label: 'Audit Logs',        shortLabel: 'Audit',     icon: ScrollText },
+  { id: 'billing',          label: 'Billing',           shortLabel: 'Billing',   icon: CreditCard },
+  { id: 'settings',         label: 'Settings',          shortLabel: 'Settings',  icon: Settings },
 ]
 
 type Props = {
@@ -113,7 +113,7 @@ export function Sidebar({ page, onPage, status, orgId, companionMode }: Props) {
         </div>
 
         <nav>
-          {navItems.map(({ id, label, icon: Icon }) => (
+          {navItems.map(({ id, label, shortLabel, icon: Icon }) => (
             <button
               key={id}
               type="button"
@@ -121,7 +121,8 @@ export function Sidebar({ page, onPage, status, orgId, companionMode }: Props) {
               onClick={() => onPage(id)}
             >
               <Icon size={17} strokeWidth={1.75} aria-hidden />
-              <span className="nav-label">{label}</span>
+              <span className="nav-label nav-label--full">{label}</span>
+              <span className="nav-label nav-label--short">{shortLabel}</span>
             </button>
           ))}
 
@@ -218,6 +219,7 @@ export function Sidebar({ page, onPage, status, orgId, companionMode }: Props) {
                     <span>{label}</span>
                   </button>
                 ))}
+
               </div>
             )}
 
