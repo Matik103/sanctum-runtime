@@ -1,11 +1,11 @@
-import type { ActionResult } from '@sanctum-runtime/sdk/browser'
+import type { ActionResult, RuntimeStatus } from '@sanctum-runtime/sdk/browser'
 import { AuditRecord } from '../components/AuditRecord'
 import { PageActions } from '../components/ui/PageActions'
 import { decisionTone, timeAgo } from '../lib/format'
 import { decisionLabel } from '../lib/labels'
 import { auditRecordText } from '../lib/narrative'
 
-type Props = { audit: ActionResult[]; onSelect: (e: ActionResult) => void }
+type Props = { audit: ActionResult[]; onSelect: (e: ActionResult) => void; status?: RuntimeStatus | null }
 
 function download(filename: string, content: string, mime: string) {
   const blob = new Blob([content], { type: mime })
@@ -22,7 +22,8 @@ function escapeCsv(value: string): string {
   return `"${safe.replace(/"/g, '""')}"`
 }
 
-export function AuditLogs({ audit, onSelect }: Props) {
+export function AuditLogs({ audit, onSelect, status }: Props) {
+  const activeModel = status?.riskModel ?? status?.ollamaModel
   const exportJson = () => {
     download('sanctum-audit.json', JSON.stringify(audit, null, 2), 'application/json')
   }
@@ -112,7 +113,18 @@ export function AuditLogs({ audit, onSelect }: Props) {
                     </span>
                   </td>
                   <td style={{ color: 'var(--muted)', verticalAlign: 'top' }}>
-                    {e.modelInvoked ? 'AI model' : 'Policy'}
+                    {e.modelInvoked ? (
+                      <span title={activeModel ? `Scored by ${activeModel}` : 'Scored by AI risk model'}>
+                        AI model
+                        {activeModel && (
+                          <span style={{ display: 'block', fontSize: '0.7rem', opacity: 0.7, marginTop: '0.1rem' }}>
+                            {activeModel}
+                          </span>
+                        )}
+                      </span>
+                    ) : (
+                      'Policy'
+                    )}
                   </td>
                   <td style={{ color: 'var(--muted)', verticalAlign: 'top' }}>
                     {timeAgo(e.timestamp)}

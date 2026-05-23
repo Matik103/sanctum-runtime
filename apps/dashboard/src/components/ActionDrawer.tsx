@@ -1,5 +1,5 @@
-import { X } from 'lucide-react'
-import type { ActionResult } from '@sanctum-runtime/sdk/browser'
+import { Brain, X } from 'lucide-react'
+import type { ActionResult, RuntimeStatus } from '@sanctum-runtime/sdk/browser'
 import { actionLabel, anomalyLabel, decisionLabel, policyLabel, riskLabel } from '../lib/labels'
 import { decisionTone, timeAgo } from '../lib/format'
 import { extractHeardPhrase, extractIntent } from '../lib/narrative'
@@ -12,14 +12,23 @@ type Props = {
   onClose: () => void
   audit?: ActionResult[]
   onSelect?: (e: ActionResult) => void
+  status?: RuntimeStatus | null
 }
 
-export function ActionDrawer({ entry, onClose, audit, onSelect }: Props) {
+function providerDisplayName(provider: string | undefined): string {
+  if (provider === 'openai') return 'OpenAI'
+  if (provider === 'ollama') return 'Ollama (self-hosted)'
+  return provider ?? 'Unknown'
+}
+
+export function ActionDrawer({ entry, onClose, audit, onSelect, status }: Props) {
   if (!entry) return null
 
   const tone = decisionTone(entry.decision)
   const heard = extractHeardPhrase(entry.context)
   const intent = extractIntent(entry.context)
+  const modelProvider = status?.riskProvider ?? (entry.ollamaConnected ? 'ollama' : undefined)
+  const modelName = status?.riskModel ?? status?.ollamaModel
 
   return (
     <>
@@ -234,6 +243,65 @@ export function ActionDrawer({ entry, onClose, audit, onSelect }: Props) {
           </p>
         </section>
 
+        <section className="drawer-section">
+          <h3>
+            <Brain size={14} style={{ verticalAlign: 'middle', marginRight: '0.35rem', opacity: 0.75 }} />
+            Decision attribution
+          </h3>
+          {entry.modelInvoked ? (
+            <div className="model-attr">
+              <div className="model-attr__row">
+                <span className="model-attr__label">Scored by</span>
+                <span className="model-attr__value">
+                  {modelName ? (
+                    <>
+                      <code className="inline-code">{modelName}</code>
+                      <span style={{ marginLeft: '0.4rem', color: 'var(--muted)', fontSize: '0.78rem' }}>
+                        · {providerDisplayName(modelProvider)}
+                      </span>
+                    </>
+                  ) : (
+                    <span style={{ color: 'var(--muted)' }}>AI model</span>
+                  )}
+                </span>
+              </div>
+              {typeof entry.modelConfidence === 'number' && (
+                <div className="model-attr__row">
+                  <span className="model-attr__label">Model confidence</span>
+                  <span className="model-attr__value">
+                    {(entry.modelConfidence * 100).toFixed(0)}%
+                  </span>
+                </div>
+              )}
+              <div className="model-attr__row">
+                <span className="model-attr__label">Evaluation mode</span>
+                <span className="model-attr__value">
+                  <code className="inline-code" style={{ fontSize: '0.78rem' }}>{entry.evaluationMode}</code>
+                </span>
+              </div>
+              <p className="model-attr__footnote">
+                Risk model output is one input. Final decision combines deterministic policy + heuristics + model score.
+              </p>
+            </div>
+          ) : (
+            <div className="model-attr">
+              <div className="model-attr__row">
+                <span className="model-attr__label">Scored by</span>
+                <span className="model-attr__value">Deterministic policy + heuristics</span>
+              </div>
+              <div className="model-attr__row">
+                <span className="model-attr__label">Evaluation mode</span>
+                <span className="model-attr__value">
+                  <code className="inline-code" style={{ fontSize: '0.78rem' }}>{entry.evaluationMode}</code>
+                </span>
+              </div>
+              <p className="model-attr__footnote">
+                No AI model was invoked for this decision — fully deterministic.
+              </p>
+            </div>
+          )}
+        </section>
+
         {audit && audit.length > 0 && (
           <section className="drawer-section">
             <h3>Causal chain</h3>
@@ -247,7 +315,9 @@ export function ActionDrawer({ entry, onClose, audit, onSelect }: Props) {
             <li>Request received · {timeAgo(entry.timestamp)}</li>
             <li>Runtime intercepted</li>
             <li>
-              {entry.modelInvoked ? 'Risk analyzed (AI model)' : 'Policy evaluation'}
+              {entry.modelInvoked
+                ? `Risk analyzed${modelName ? ` (${modelName})` : ' (AI model)'}`
+                : 'Policy evaluation'}
             </li>
             <li>Policy checked</li>
             <li>{decisionLabel(entry.decision)}</li>

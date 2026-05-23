@@ -2169,3 +2169,45 @@ tr.key-row--pending td {
 .inline-link:hover {
   border-bottom-style: solid;
 }
+
+/* ─── Per-decision model attribution (ActionDrawer) ───────────────────── */
+.model-attr {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: 0.55rem;
+  padding: 0.75rem 0.9rem;
+}
+
+.model-attr__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.3rem 0;
+  font-size: 0.85rem;
+}
+
+.model-attr__row + .model-attr__row {
+  border-top: 1px dashed var(--border);
+}
+
+.model-attr__label {
+  color: var(--muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+}
+
+.model-attr__value {
+  font-weight: 500;
+  color: var(--fg);
+  text-align: right;
+}
+
+.model-attr__footnote {
+  margin: 0.6rem 0 0;
+  font-size: 0.74rem;
+  color: var(--muted);
+  line-height: 1.5;
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+}

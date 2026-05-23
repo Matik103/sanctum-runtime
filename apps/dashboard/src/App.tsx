@@ -247,7 +247,7 @@ export function App() {
           {page === 'devices' && <ErrorBoundary page="Devices"><Devices status={status} /></ErrorBoundary>}
           {page === 'fleet' && <ErrorBoundary page="Runtime Fleet"><Fleet /></ErrorBoundary>}
           {page === 'marketplace' && <ErrorBoundary page="Marketplace"><Marketplace /></ErrorBoundary>}
-          {page === 'audit' && <ErrorBoundary page="Audit Logs"><AuditLogs audit={audit} onSelect={onSelect} /></ErrorBoundary>}
+          {page === 'audit' && <ErrorBoundary page="Audit Logs"><AuditLogs audit={audit} onSelect={onSelect} status={status} /></ErrorBoundary>}
           {page === 'billing' && <ErrorBoundary page="Billing"><Billing /></ErrorBoundary>}
           {page === 'settings' && <ErrorBoundary page="Settings"><Settings status={status} /></ErrorBoundary>}
         </Suspense>
@@ -258,6 +258,7 @@ export function App() {
         onClose={() => setSelected(null)}
         audit={audit}
         onSelect={(e) => setSelected(e)}
+        status={status}
       />
 
       {pendingVerification && (
