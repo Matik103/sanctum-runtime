@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { lazy, Suspense, useState, useEffect } from 'react'
 import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 import { ActionDrawer } from './components/ActionDrawer'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -11,30 +11,57 @@ import { useDashboard } from './hooks/useDashboard'
 import { MainCanvas } from './layout/MainCanvas'
 import { Sidebar, type PageId } from './layout/Sidebar'
 import { getFleetStatus, type FleetPauseStatus } from './lib/api'
-import { Assurance } from './pages/Assurance'
-import { AuditLogs } from './pages/AuditLogs'
-import { Billing } from './pages/Billing'
-import { Compliance } from './pages/Compliance'
-import { Devices } from './pages/Devices'
-import { Fleet } from './pages/Fleet'
-import { Governance } from './pages/Governance'
-import { Marketplace } from './pages/Marketplace'
 import { Overview } from './pages/Overview'
-import { Policies } from './pages/Policies'
-import { PolicyHistory } from './pages/PolicyHistory'
-import { RuntimeActivity } from './pages/RuntimeActivity'
-import { Settings } from './pages/Settings'
-import { ThreatMonitor } from './pages/ThreatMonitor'
-import { WorkflowBuilder } from './pages/WorkflowBuilder'
-import { Agents } from './pages/Agents'
-import { Alerts } from './pages/Alerts'
 import { fetchMyOrgs } from './lib/fleet'
 import { useOfflineQueue } from './hooks/useOfflineQueue'
+
+const RuntimeActivity = lazy(() => import('./pages/RuntimeActivity').then((m) => ({ default: m.RuntimeActivity })))
+const ThreatMonitor = lazy(() => import('./pages/ThreatMonitor').then((m) => ({ default: m.ThreatMonitor })))
+const Agents = lazy(() => import('./pages/Agents').then((m) => ({ default: m.Agents })))
+const Alerts = lazy(() => import('./pages/Alerts').then((m) => ({ default: m.Alerts })))
+const Policies = lazy(() => import('./pages/Policies').then((m) => ({ default: m.Policies })))
+const PolicyHistory = lazy(() => import('./pages/PolicyHistory').then((m) => ({ default: m.PolicyHistory })))
+const WorkflowBuilder = lazy(() => import('./pages/WorkflowBuilder').then((m) => ({ default: m.WorkflowBuilder })))
+const Assurance = lazy(() => import('./pages/Assurance').then((m) => ({ default: m.Assurance })))
+const Governance = lazy(() => import('./pages/Governance').then((m) => ({ default: m.Governance })))
+const Compliance = lazy(() => import('./pages/Compliance').then((m) => ({ default: m.Compliance })))
+const Devices = lazy(() => import('./pages/Devices').then((m) => ({ default: m.Devices })))
+const Fleet = lazy(() => import('./pages/Fleet').then((m) => ({ default: m.Fleet })))
+const Marketplace = lazy(() => import('./pages/Marketplace').then((m) => ({ default: m.Marketplace })))
+const AuditLogs = lazy(() => import('./pages/AuditLogs').then((m) => ({ default: m.AuditLogs })))
+const Billing = lazy(() => import('./pages/Billing').then((m) => ({ default: m.Billing })))
+const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })))
+
+const PAGE_IDS: PageId[] = [
+  'overview',
+  'activity',
+  'threats',
+  'alerts',
+  'policies',
+  'policy-history',
+  'workflow-builder',
+  'assurance',
+  'governance',
+  'compliance',
+  'agents',
+  'devices',
+  'fleet',
+  'marketplace',
+  'audit',
+  'billing',
+  'settings',
+]
+
+function initialPage(): PageId {
+  if (typeof window === 'undefined') return 'overview'
+  const requested = new URLSearchParams(window.location.search).get('page') as PageId | null
+  return requested && PAGE_IDS.includes(requested) ? requested : 'overview'
+}
 
 export function App() {
   const online = useNetworkStatus()
   const companionMode = useCompanionMode()
-  const [page, setPage] = useState<PageId>('overview')
+  const [page, setPage] = useState<PageId>(initialPage)
   const [selected, setSelected] = useState<ActionResult | null>(null)
   const [orgId, setOrgId] = useState<string | null>(null)
   const [modalError, setModalError] = useState<string | null>(null)
@@ -171,32 +198,34 @@ export function App() {
             />
           </ErrorBoundary>
         )}
-        {page === 'activity' && <ErrorBoundary page="Runtime Activity"><RuntimeActivity audit={audit} onSelect={onSelect} /></ErrorBoundary>}
-        {page === 'threats' && <ErrorBoundary page="Threat Monitor"><ThreatMonitor audit={audit} onSelect={onSelect} /></ErrorBoundary>}
-        {page === 'agents' && <ErrorBoundary page="Agents"><Agents /></ErrorBoundary>}
-        {page === 'alerts' && <ErrorBoundary page="Alerts"><Alerts /></ErrorBoundary>}
-        {page === 'policies' && (
-          <ErrorBoundary page="Policies">
-            <Policies
-              policies={policies}
-              audit={audit}
-              supabaseConfigured={status?.supabaseConfigured}
-              onSetPolicy={setPolicy}
-              onPoliciesChange={replacePolicies}
-            />
-          </ErrorBoundary>
-        )}
-        {page === 'policy-history' && <ErrorBoundary page="Policy History"><PolicyHistory /></ErrorBoundary>}
-        {page === 'workflow-builder' && <ErrorBoundary page="Workflow Builder"><WorkflowBuilder /></ErrorBoundary>}
-        {page === 'assurance' && <ErrorBoundary page="Assurance"><Assurance /></ErrorBoundary>}
-        {page === 'governance' && <ErrorBoundary page="Governance"><Governance /></ErrorBoundary>}
-        {page === 'compliance' && <ErrorBoundary page="Compliance"><Compliance /></ErrorBoundary>}
-        {page === 'devices' && <ErrorBoundary page="Devices"><Devices status={status} /></ErrorBoundary>}
-        {page === 'fleet' && <ErrorBoundary page="Runtime Fleet"><Fleet /></ErrorBoundary>}
-        {page === 'marketplace' && <ErrorBoundary page="Marketplace"><Marketplace /></ErrorBoundary>}
-        {page === 'audit' && <ErrorBoundary page="Audit Logs"><AuditLogs audit={audit} onSelect={onSelect} /></ErrorBoundary>}
-        {page === 'billing' && <ErrorBoundary page="Billing"><Billing /></ErrorBoundary>}
-        {page === 'settings' && <ErrorBoundary page="Settings"><Settings status={status} /></ErrorBoundary>}
+        <Suspense fallback={<div className="page-loading" role="status">Loading view…</div>}>
+          {page === 'activity' && <ErrorBoundary page="Runtime Activity"><RuntimeActivity audit={audit} onSelect={onSelect} /></ErrorBoundary>}
+          {page === 'threats' && <ErrorBoundary page="Threat Monitor"><ThreatMonitor audit={audit} onSelect={onSelect} /></ErrorBoundary>}
+          {page === 'agents' && <ErrorBoundary page="Agents"><Agents /></ErrorBoundary>}
+          {page === 'alerts' && <ErrorBoundary page="Alerts"><Alerts /></ErrorBoundary>}
+          {page === 'policies' && (
+            <ErrorBoundary page="Policies">
+              <Policies
+                policies={policies}
+                audit={audit}
+                supabaseConfigured={status?.supabaseConfigured}
+                onSetPolicy={setPolicy}
+                onPoliciesChange={replacePolicies}
+              />
+            </ErrorBoundary>
+          )}
+          {page === 'policy-history' && <ErrorBoundary page="Policy History"><PolicyHistory /></ErrorBoundary>}
+          {page === 'workflow-builder' && <ErrorBoundary page="Workflow Builder"><WorkflowBuilder /></ErrorBoundary>}
+          {page === 'assurance' && <ErrorBoundary page="Assurance"><Assurance /></ErrorBoundary>}
+          {page === 'governance' && <ErrorBoundary page="Governance"><Governance /></ErrorBoundary>}
+          {page === 'compliance' && <ErrorBoundary page="Compliance"><Compliance /></ErrorBoundary>}
+          {page === 'devices' && <ErrorBoundary page="Devices"><Devices status={status} /></ErrorBoundary>}
+          {page === 'fleet' && <ErrorBoundary page="Runtime Fleet"><Fleet /></ErrorBoundary>}
+          {page === 'marketplace' && <ErrorBoundary page="Marketplace"><Marketplace /></ErrorBoundary>}
+          {page === 'audit' && <ErrorBoundary page="Audit Logs"><AuditLogs audit={audit} onSelect={onSelect} /></ErrorBoundary>}
+          {page === 'billing' && <ErrorBoundary page="Billing"><Billing /></ErrorBoundary>}
+          {page === 'settings' && <ErrorBoundary page="Settings"><Settings status={status} /></ErrorBoundary>}
+        </Suspense>
       </MainCanvas>
 
       <ActionDrawer

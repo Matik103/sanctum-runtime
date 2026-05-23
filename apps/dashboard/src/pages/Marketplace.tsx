@@ -186,7 +186,7 @@ export function Marketplace() {
       ) : (
         <>
           {categories.length > 1 && (
-            <div className="toolbar" style={{ marginBottom: '1rem', flexWrap: 'wrap' }}>
+            <div className="toolbar marketplace-filters">
               <button
                 type="button"
                 className={`chip ${categoryFilter === 'all' ? 'active' : ''}`}

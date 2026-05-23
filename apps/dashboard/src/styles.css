@@ -1298,6 +1298,14 @@ tr.key-row--pending td {
   flex-wrap: wrap;
 }
 
+.page-loading {
+  min-height: 8rem;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 /* ——— Workflow Builder ——— */
 
 .workflow-builder {
@@ -1362,6 +1370,11 @@ tr.key-row--pending td {
   min-width: 0;
   flex-direction: column;
   gap: 0.35rem;
+}
+
+.workflow-field .input {
+  min-width: 0;
+  width: 100%;
 }
 
 .workflow-field > span,
@@ -1638,6 +1651,23 @@ tr.key-row--pending td {
   .toolbar .chip {
     width: 100%;
     min-width: 0;
+  }
+
+  .marketplace-filters {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding: 0 0 0.35rem;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .marketplace-filters .chip {
+    flex: 0 0 auto;
+    width: auto;
+    white-space: nowrap;
   }
 
   .input {
