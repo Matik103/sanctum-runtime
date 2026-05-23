@@ -107,6 +107,38 @@ services:
       - path: /*
         name: Cross-Origin-Embedder-Policy
         value: "credentialless"
+      # Long-cache hashed bundles (Vite emits *.<hash>.{js,css}); HTML stays uncached
+      - path: /assets/*
+        name: Cache-Control
+        value: "public, max-age=31536000, immutable"
+      - path: /*.js
+        name: Cache-Control
+        value: "public, max-age=31536000, immutable"
+      - path: /*.css
+        name: Cache-Control
+        value: "public, max-age=31536000, immutable"
+      - path: /*.woff2
+        name: Cache-Control
+        value: "public, max-age=31536000, immutable"
+      - path: /*.png
+        name: Cache-Control
+        value: "public, max-age=31536000, immutable"
+      - path: /*.svg
+        name: Cache-Control
+        value: "public, max-age=31536000, immutable"
+      # HTML and the SW must always revalidate so users pick up new deploys
+      - path: /index.html
+        name: Cache-Control
+        value: "public, max-age=0, must-revalidate"
+      - path: /sw.js
+        name: Cache-Control
+        value: "public, max-age=0, must-revalidate"
+      - path: /sw.mjs
+        name: Cache-Control
+        value: "public, max-age=0, must-revalidate"
+      - path: /manifest.webmanifest
+        name: Cache-Control
+        value: "public, max-age=3600, must-revalidate"
     envVars:
       - key: NODE_VERSION
         value: "22"

@@ -59,6 +59,30 @@
           "value": "same-site"
         }
       ]
+    },
+    {
+      "source": "/_build/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/(.*\\.(js|css|woff2|woff|ttf|svg|png|jpg|jpeg|gif|webp|ico|avif))",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/(sitemap.xml|sitemap-index.xml|robots.txt|llms.txt)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=3600, must-revalidate" }
+      ]
     }
   ]
 }

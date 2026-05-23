@@ -1168,3 +1168,21 @@ const shutdown = async (signal: string) => {
 
 process.on('SIGTERM', () => { void shutdown('SIGTERM') })
 process.on('SIGINT', () => { void shutdown('SIGINT') })
+
+// Surface unhandled errors instead of crashing silently or — worse — leaving
+// the process in a half-dead state where Render's healthcheck still passes
+// but requests hang. Log + exit-on-uncaught is the Node 20+ default; we add
+// structured logging so the line shows up correctly in Render's log stream.
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[fatal] unhandledRejection', {
+    reason: reason instanceof Error ? { message: reason.message, stack: reason.stack } : reason,
+    promise: String(promise),
+  })
+})
+
+process.on('uncaughtException', (err) => {
+  console.error('[fatal] uncaughtException', { message: err.message, stack: err.stack })
+  // Hand off to graceful shutdown so in-flight requests get a chance to finish
+  // before the container is replaced. Render will restart the service.
+  void shutdown('uncaughtException').finally(() => process.exit(1))
+})
