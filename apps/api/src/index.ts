@@ -59,7 +59,7 @@ import {
 } from './scoped-policy-audit.js'
 import { assertOrgAllowed, type SanctumReq } from './org-scope.js'
 import { ControlPlaneStore } from './control-plane-store.js'
-import { createSupabaseAdmin } from './auth.js'
+import { createSupabaseAdmin, getSupabaseFetchTimeoutTotal } from './auth.js'
 import {
   loadRepoEnv,
   resolveApiListenTarget,
@@ -1234,6 +1234,9 @@ app.get('/metrics', async (_req, reply) => {
     '# HELP sanctum_audit_cap Configured in-memory audit entry cap',
     '# TYPE sanctum_audit_cap gauge',
     `sanctum_audit_cap ${runtime.getAuditStore().getEvictionStats().cap}`,
+    '# HELP sanctum_supabase_fetch_timeouts_total Supabase fetch calls aborted by the per-request timeout since boot',
+    '# TYPE sanctum_supabase_fetch_timeouts_total counter',
+    `sanctum_supabase_fetch_timeouts_total ${getSupabaseFetchTimeoutTotal()}`,
     '# HELP sanctum_policies_total Active policy count',
     '# TYPE sanctum_policies_total gauge',
     `sanctum_policies_total ${policyCount}`,

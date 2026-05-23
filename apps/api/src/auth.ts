@@ -6,6 +6,40 @@ export type SupabaseAuthConfig = {
   serviceRoleKey: string
 }
 
+// Hard per-request timeout for every Supabase HTTP call. Enforced at the fetch
+// layer so callers that bypass queryWithTimeout() still get protection — a
+// slow PostgREST region or saturated connection pool cannot stall an event
+// loop indefinitely. Default 8 s sits above Supabase free-tier's ~8s statement
+// timeout but well below any client-facing request timeout, so we always fail
+// fast with a clear error rather than holding a connection slot.
+const SUPABASE_FETCH_TIMEOUT_MS = Math.min(
+  30_000,
+  Math.max(1000, Number(process.env.SUPABASE_FETCH_TIMEOUT_MS ?? 8000) || 8000),
+)
+
+// Counter exposed via /metrics so timeout pressure is visible in Prometheus.
+let supabaseFetchTimeoutTotal = 0
+export function getSupabaseFetchTimeoutTotal(): number {
+  return supabaseFetchTimeoutTotal
+}
+
+function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const controller = new AbortController()
+  const incoming = init?.signal
+  // Honor any caller-supplied abort signal in addition to our timeout.
+  if (incoming) {
+    if (incoming.aborted) controller.abort(incoming.reason)
+    else incoming.addEventListener('abort', () => controller.abort(incoming.reason), { once: true })
+  }
+  const timer = setTimeout(() => {
+    supabaseFetchTimeoutTotal++
+    controller.abort(new Error(`supabase fetch timeout after ${SUPABASE_FETCH_TIMEOUT_MS}ms`))
+  }, SUPABASE_FETCH_TIMEOUT_MS)
+  // unref so a pending timer never holds the event loop open during shutdown.
+  if (typeof timer === 'object' && timer && 'unref' in timer) (timer as NodeJS.Timeout).unref()
+  return fetch(input, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer))
+}
+
 export function isSupabaseAuthEnabled(): boolean {
   const url = process.env.SUPABASE_URL?.trim()
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
@@ -22,6 +56,7 @@ export function getSupabaseAuthConfig(): SupabaseAuthConfig | null {
 export function createSupabaseAdmin(config: SupabaseAuthConfig) {
   return createClient(config.url, config.serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
+    global: { fetch: fetchWithTimeout },
   })
 }
 
