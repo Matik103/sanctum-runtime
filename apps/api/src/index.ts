@@ -7,7 +7,7 @@ import { ActionRequestSchema } from '@sanctum-runtime/sdk'
 import Fastify from 'fastify'
 import { ZodError } from 'zod'
 import { z } from 'zod'
-import { attachHttpMetrics, renderHttpMetrics } from './http-metrics.js'
+import { attachHttpMetrics, recordRateLimitHit, renderHttpMetrics } from './http-metrics.js'
 import { registerApiKeyRoutes } from './api-keys.js'
 import { registerControlPlaneRoutes } from './control-plane-routes.js'
 import { registerOrchestrationRoutes } from './orchestration-routes.js'
@@ -156,10 +156,23 @@ await app.register(rateLimit, {
   timeWindow: '1 minute',
   // No allowList — localhost bypass removed; apply limits everywhere including cloud VMs
   keyGenerator: rateLimitKey,
-  errorResponseBuilder: () => ({
-    error: 'rate_limit_exceeded',
-    hint: 'Too many requests — back off and retry',
-  }),
+  errorResponseBuilder: (req, context) => {
+    recordRateLimitHit()
+    // Structured log so log aggregators can alert on rate-limit spikes. We
+    // include the keyed bucket (IP or actor) and the route the client was
+    // hitting so a single noisy client is trivially identifiable.
+    req.log.warn({
+      rateLimited: true,
+      key: rateLimitKey(req),
+      route: req.url.split('?')[0],
+      limit: context.max,
+      ttlMs: context.ttl,
+    }, 'rate limit exceeded')
+    return {
+      error: 'rate_limit_exceeded',
+      hint: 'Too many requests — back off and retry',
+    }
+  },
 })
 
 // Echo request ID in responses for traceability
