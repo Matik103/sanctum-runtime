@@ -7,6 +7,7 @@ import { ActionRequestSchema } from '@sanctum-runtime/sdk'
 import Fastify from 'fastify'
 import { ZodError } from 'zod'
 import { z } from 'zod'
+import { attachHttpMetrics, renderHttpMetrics } from './http-metrics.js'
 import { registerApiKeyRoutes } from './api-keys.js'
 import { registerControlPlaneRoutes } from './control-plane-routes.js'
 import { registerOrchestrationRoutes } from './orchestration-routes.js'
@@ -165,6 +166,9 @@ await app.register(rateLimit, {
 app.addHook('onSend', async (req, reply) => {
   reply.header('X-Request-Id', req.id)
 })
+
+// HTTP request counters + latency histogram + slow-request log lines
+attachHttpMetrics(app)
 
 app.setErrorHandler((err, _req, reply) => {
   if (err instanceof ZodError) {
@@ -1131,6 +1135,7 @@ app.get('/metrics', async (_req, reply) => {
     '# HELP sanctum_process_external_mb V8 external memory in MiB',
     '# TYPE sanctum_process_external_mb gauge',
     `sanctum_process_external_mb ${externalMb}`,
+    ...renderHttpMetrics(),
   ]
   return reply.type('text/plain; version=0.0.4; charset=utf-8').send(lines.join('\n') + '\n')
 })
