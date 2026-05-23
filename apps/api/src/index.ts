@@ -167,16 +167,44 @@ await app.register(helmet, {
   crossOriginEmbedderPolicy: false,
 })
 
-function rateLimitKey(req: import('fastify').FastifyRequest): string {
-  const fwd = req.headers['x-forwarded-for']
-  const ip = Array.isArray(fwd) ? fwd[0] : (typeof fwd === 'string' ? fwd.split(',')[0].trim() : req.ip)
-  return ip ?? req.ip
+// Tiered rate limiting. Previously every request was keyed by IP at 200/min,
+// which meant a customer running an agent fleet from a single VPS (or behind
+// a NAT/egress gateway) shared the same bucket as anonymous traffic from
+// the same IP — they'd hit the cap fast, and a noisy neighbor on the same
+// egress could starve them entirely.
+//
+// Now: presence of an API key promotes the request to its own per-key bucket
+// (keyed by SHA-256 hash, not the raw key) with a much higher budget,
+// isolating each customer from each other and from anonymous traffic.
+const ANON_RATE_LIMIT    = Number(process.env.SANCTUM_RATE_LIMIT_ANON    ?? 200)
+const API_KEY_RATE_LIMIT = Number(process.env.SANCTUM_RATE_LIMIT_API_KEY ?? 1000)
+
+function requestApiKey(req: import('fastify').FastifyRequest): string | undefined {
+  const raw = req.headers['x-sanctum-key']
+  const v = Array.isArray(raw) ? raw[0] : raw
+  return v?.trim() || undefined
 }
 
-// Global default — 200 req/min per IP
+function rateLimitKey(req: import('fastify').FastifyRequest): string {
+  const key = requestApiKey(req)
+  if (key) {
+    // Hash so the raw key never appears in error responses, log lines, or
+    // the rate-limit plugin's internal storage. 16 hex chars is plenty for
+    // bucket separation and renders accidental disclosure useless.
+    return 'k:' + crypto.createHash('sha256').update(key).digest('hex').slice(0, 16)
+  }
+  const fwd = req.headers['x-forwarded-for']
+  const ip = Array.isArray(fwd) ? fwd[0] : (typeof fwd === 'string' ? fwd.split(',')[0].trim() : req.ip)
+  return 'ip:' + (ip ?? req.ip)
+}
+
+function rateLimitMax(req: import('fastify').FastifyRequest): number {
+  return requestApiKey(req) ? API_KEY_RATE_LIMIT : ANON_RATE_LIMIT
+}
+
 await app.register(rateLimit, {
   global: true,
-  max: 200,
+  max: rateLimitMax,
   timeWindow: '1 minute',
   // No allowList — localhost bypass removed; apply limits everywhere including cloud VMs
   keyGenerator: rateLimitKey,
