@@ -1531,6 +1531,7 @@ tr.key-row--pending td {
   .sidebar {
     order: 2;
     position: fixed;
+    top: auto;
     bottom: 0;
     left: 0;
     right: 0;
