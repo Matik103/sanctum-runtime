@@ -14,8 +14,6 @@ updates:
       time: "13:00"
       timezone: UTC
     open-pull-requests-limit: 5
-    labels:
-      - dependencies
     commit-message:
       prefix: deps
       prefix-development: deps-dev
@@ -52,8 +50,5 @@ updates:
       day: monday
       time: "13:00"
       timezone: UTC
-    labels:
-      - dependencies
-      - ci
     commit-message:
       prefix: ci(deps)

@@ -1,0 +1,12 @@
+# RFC 9116 — https://www.rfc-editor.org/rfc/rfc9116
+# Sanctum Runtime vulnerability disclosure policy.
+#
+# Please report responsibly. We aim to acknowledge within 72 hours.
+
+Contact: https://github.com/Matik103
+Contact: mailto:ops@sanctumruntime.com
+Expires: 2027-05-23T00:00:00.000Z
+Preferred-Languages: en
+Policy: https://github.com/Matik103/sanctum-runtime/blob/main/SECURITY.md
+Acknowledgments: https://github.com/Matik103/sanctum-runtime/security/advisories
+Canonical: https://www.sanctumruntime.com/.well-known/security.txt

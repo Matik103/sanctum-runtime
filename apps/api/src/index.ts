@@ -8,6 +8,7 @@ import Fastify from 'fastify'
 import { ZodError } from 'zod'
 import { z } from 'zod'
 import { attachHttpMetrics, recordRateLimitHit, renderHttpMetrics } from './http-metrics.js'
+import { getHeapPressureRatio, startHeapWatchdog } from './heap-watchdog.js'
 import { registerApiKeyRoutes } from './api-keys.js'
 import { registerControlPlaneRoutes } from './control-plane-routes.js'
 import { registerOrchestrationRoutes } from './orchestration-routes.js'
@@ -199,7 +200,8 @@ function isPublicPath(path: string): boolean {
     path === '/health' ||
     path === '/v1/billing/webhook' ||
     path === '/v1/verify-action' ||
-    path === '/v1/push/vapid-key'
+    path === '/v1/push/vapid-key' ||
+    path === '/.well-known/security.txt'
   ) return true
   if (path.startsWith('/v1/sso/')) return true
   if (!isProduction()) {
@@ -272,6 +274,24 @@ const publicApiUrl =
 
 const publicDocsUrl =
   process.env.SANCTUM_DOCS_URL?.trim() || 'https://www.sanctumruntime.com/docs'
+
+// RFC 9116 security.txt — researchers scanning the API hostname find the
+// disclosure policy without needing to know the marketing site URL.
+app.get('/.well-known/security.txt', async (_req, reply) => {
+  reply.type('text/plain; charset=utf-8')
+  reply.header('Cache-Control', 'public, max-age=3600, must-revalidate')
+  return [
+    '# RFC 9116 — https://www.rfc-editor.org/rfc/rfc9116',
+    'Contact: https://github.com/Matik103',
+    'Contact: mailto:ops@sanctumruntime.com',
+    'Expires: 2027-05-23T00:00:00.000Z',
+    'Preferred-Languages: en',
+    'Policy: https://github.com/Matik103/sanctum-runtime/blob/main/SECURITY.md',
+    'Acknowledgments: https://github.com/Matik103/sanctum-runtime/security/advisories',
+    'Canonical: https://www.sanctumruntime.com/.well-known/security.txt',
+    '',
+  ].join('\n')
+})
 
 app.get('/', async () => {
   if (isProduction()) {
@@ -388,6 +408,7 @@ const escalationTimer = setInterval(async () => {
 }, 60_000)
 escalationTimer.unref?.()
 const stopEmailQueueWorker = supabaseAuth ? startEmailQueueWorker(supabaseAuth) : null
+const stopHeapWatchdog = startHeapWatchdog()
 
 // Fast readiness probe
 app.get('/readiness', async () => ({ ready: true }))
@@ -1148,6 +1169,9 @@ app.get('/metrics', async (_req, reply) => {
     '# HELP sanctum_process_external_mb V8 external memory in MiB',
     '# TYPE sanctum_process_external_mb gauge',
     `sanctum_process_external_mb ${externalMb}`,
+    '# HELP sanctum_process_heap_pressure_ratio used_heap_size / heap_size_limit (0–1)',
+    '# TYPE sanctum_process_heap_pressure_ratio gauge',
+    `sanctum_process_heap_pressure_ratio ${getHeapPressureRatio().toFixed(4)}`,
     ...renderHttpMetrics(),
   ]
   return reply.type('text/plain; version=0.0.4; charset=utf-8').send(lines.join('\n') + '\n')
@@ -1274,6 +1298,7 @@ const shutdown = async (signal: string): Promise<void> => {
     await app.close()
     stopWebhookWorker?.()
     stopEmailQueueWorker?.()
+    stopHeapWatchdog()
     console.log('[shutdown] drained cleanly')
     clearTimeout(hardExit)
     process.exit(0)
