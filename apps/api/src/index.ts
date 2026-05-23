@@ -100,6 +100,15 @@ const app = Fastify({
   trustProxy: true,
   bodyLimit: 512 * 1024, // 512 KB
   genReqId: () => crypto.randomUUID(),
+  // Fastify defaults both timeouts to 0 (unlimited), which lets a slow-loris
+  // client tie up sockets indefinitely. Cap the full request lifecycle at 30 s
+  // — well above any legitimate handler (LLM risk analysis has its own 25 s
+  // OpenAI timeout, compliance exports are row-capped) — and the initial
+  // connection handshake at 60 s. Both can be overridden via env if a future
+  // long-running endpoint needs more, but anything that does should really
+  // be a background job.
+  connectionTimeout: Number(process.env.SANCTUM_HTTP_CONNECTION_TIMEOUT_MS ?? 60_000),
+  requestTimeout:    Number(process.env.SANCTUM_HTTP_REQUEST_TIMEOUT_MS    ?? 30_000),
 })
 
 const corsOrigins = new Set([
