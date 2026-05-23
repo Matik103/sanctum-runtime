@@ -145,45 +145,38 @@ export function Sidebar({ page, onPage, status, orgId, companionMode }: Props) {
         </nav>
 
         <div className="sidebar-footer">
-          {/* Notification bell */}
+          {/* Notifications row */}
           <button
             type="button"
             onClick={openNotifications}
             aria-label={unread > 0 ? `${unread} unread notifications` : 'Notifications'}
-            className="sf-notif-btn"
+            className="sf-row sf-row--btn"
           >
-            <span className="sf-notif-icon">
-              <Bell size={15} strokeWidth={1.75} />
-              {unread > 0 && <span className="sf-notif-badge">{unread > 9 ? '9+' : unread}</span>}
-            </span>
-            <span>Notifications</span>
-            {unread > 0 && <span className="sf-notif-count">{unread}</span>}
+            <Bell size={14} strokeWidth={1.75} className="sf-row__icon" />
+            <span className="sf-row__label">Notifications</span>
+            {unread > 0 && <span className="sf-badge">{unread > 9 ? '9+' : unread}</span>}
           </button>
 
           {/* Runtime status */}
-          <div className="sf-status-row">
-            <span className={`status-dot ${risk.dot}`} />
-            <span className="sf-status-label">{risk.label}</span>
-            <span className={`sf-runtime-badge ${status?.runtimeOnline === false ? 'offline' : 'online'}`}>
+          <div className="sf-row">
+            <span className={`status-dot ${risk.dot}`} style={{ flexShrink: 0 }} />
+            <span className="sf-row__label">{risk.label}</span>
+            <span className={`sf-status-pill ${status?.runtimeOnline === false ? 'sf-status-pill--off' : 'sf-status-pill--on'}`}>
               {status?.runtimeOnline === false ? 'offline' : 'active'}
             </span>
           </div>
 
-          {/* User card */}
+          {/* Account identity — AWS/GCP style: no avatar, plain text rows */}
           {isSupabaseConfigured && user && (
-            <div className="sf-user-card">
-              <div className="sf-avatar" aria-hidden>
-                {(user.email?.[0] ?? '?').toUpperCase()}
-              </div>
-              <span className="sf-email" title={user.email ?? ''}>{user.email}</span>
+            <div className="sf-account">
+              <div className="sf-account__email" title={user.email ?? ''}>{user.email}</div>
               <button
                 type="button"
-                className="sf-signout-btn"
+                className="sf-row sf-row--btn sf-row--signout"
                 onClick={() => signOut()}
-                title="Sign out"
-                aria-label="Sign out"
               >
-                <LogOut size={14} strokeWidth={1.75} />
+                <LogOut size={13} strokeWidth={1.75} className="sf-row__icon" />
+                <span className="sf-row__label">Sign out</span>
               </button>
             </div>
           )}
