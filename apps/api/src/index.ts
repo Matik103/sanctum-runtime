@@ -180,8 +180,14 @@ await app.register(rateLimit, {
 })
 
 // Echo request ID in responses for traceability
+// Also stamp sensitive /v1/* data endpoints as non-cacheable so no upstream
+// proxy or CDN accidentally serves a prior user's data to a new caller.
 app.addHook('onSend', async (req, reply) => {
   reply.header('X-Request-Id', req.id)
+  const path = req.url.split('?')[0]
+  if (path.startsWith('/v1/') && path !== '/v1/push/vapid-key') {
+    reply.header('Cache-Control', 'no-store')
+  }
 })
 
 // HTTP request counters + latency histogram + slow-request log lines
@@ -205,7 +211,8 @@ function isPublicPath(path: string): boolean {
     path === '/v1/billing/webhook' ||
     path === '/v1/verify-action' ||
     path === '/v1/push/vapid-key' ||
-    path === '/.well-known/security.txt'
+    path === '/.well-known/security.txt' ||
+    path === '/v1/client-errors'
   ) return true
   if (path.startsWith('/v1/sso/')) return true
   if (!isProduction()) {
@@ -295,6 +302,45 @@ app.get('/.well-known/security.txt', async (_req, reply) => {
     'Canonical: https://www.sanctumruntime.com/.well-known/security.txt',
     '',
   ].join('\n')
+})
+
+// ── Frontend error telemetry ─────────────────────────────────────────────────
+// Dashboard's React ErrorBoundary POSTs here when it catches a render error.
+// No auth required (the browser may not have a valid session when the crash
+// occurs), so we apply a tight rate limit (30/min per IP) and discard any body
+// larger than 8 KiB. Errors are logged at ERROR level so they flow into the
+// same structured log stream as server-side errors.
+const CLIENT_ERROR_SCHEMA = z.object({
+  page:       z.string().max(120).optional(),
+  message:    z.string().max(500),
+  stack:      z.string().max(4000).optional(),
+  componentStack: z.string().max(4000).optional(),
+  userAgent:  z.string().max(300).optional(),
+  href:       z.string().max(500).optional(),
+  buildId:    z.string().max(80).optional(),
+})
+
+app.post('/v1/client-errors', {
+  config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
+  bodyLimit: 8 * 1024,   // 8 KiB — enough for stack traces, blocks flood payloads
+}, async (req, reply) => {
+  const result = CLIENT_ERROR_SCHEMA.safeParse(req.body)
+  if (!result.success) {
+    return reply.status(400).send({ error: 'invalid_payload' })
+  }
+  req.log.error({
+    source:         'client',
+    clientError:    true,
+    page:           result.data.page,
+    message:        result.data.message,
+    stack:          result.data.stack,
+    componentStack: result.data.componentStack,
+    userAgent:      result.data.userAgent,
+    href:           result.data.href,
+    buildId:        result.data.buildId,
+    requestId:      req.id,
+  }, 'dashboard render error captured')
+  return reply.status(202).send({ ok: true })
 })
 
 app.get('/', async () => {
@@ -1171,6 +1217,12 @@ app.get('/metrics', async (_req, reply) => {
     '# HELP sanctum_audit_entries_total Total audit entries in memory',
     '# TYPE sanctum_audit_entries_total gauge',
     `sanctum_audit_entries_total ${status.auditCount}`,
+    '# HELP sanctum_audit_evictions_total Audit entries dropped from the in-memory cap since boot',
+    '# TYPE sanctum_audit_evictions_total counter',
+    `sanctum_audit_evictions_total ${runtime.getAuditStore().getEvictionStats().total}`,
+    '# HELP sanctum_audit_cap Configured in-memory audit entry cap',
+    '# TYPE sanctum_audit_cap gauge',
+    `sanctum_audit_cap ${runtime.getAuditStore().getEvictionStats().cap}`,
     '# HELP sanctum_policies_total Active policy count',
     '# TYPE sanctum_policies_total gauge',
     `sanctum_policies_total ${policyCount}`,
