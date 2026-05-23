@@ -1,0 +1,33 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Daily at 13:00 UTC catches CVEs disclosed between PRs
+    - cron: "0 13 * * *"
+
+jobs:
+  audit:
+    name: npm audit (production deps)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      # Fail only on high/critical — low/moderate CVEs are common in dev
+      # tooling (e.g. test runners, linters) and would create constant noise.
+      # Production deps only: --omit=dev excludes vitest, eslint, types, etc.
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      # Informational scan including dev deps. Non-blocking; surfaces the full
+      # picture in the job log so we can triage moderate issues over time.
+      - name: Full audit (dev deps, informational)
+        if: always()
+        run: npm audit --audit-level=moderate || true
