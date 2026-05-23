@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { createClient, type User } from '@supabase/supabase-js'
 import { allowOpenApi, isProduction } from './security.js'
 
@@ -60,14 +61,96 @@ export function createSupabaseAdmin(config: SupabaseAuthConfig) {
   })
 }
 
+// ── Supabase JWT verification cache ──────────────────────────────────────────
+// Every authenticated dashboard request previously made a network call to
+// Supabase's /auth/v1/user endpoint to verify the bearer token, even though
+// the same browser session re-presents the same JWT for the duration of its
+// 1-hour lifetime. With a moderately active user that's 60+ identical
+// round-trips per minute against an external service — measurable latency,
+// quota burn, and a single point of failure.
+//
+// Cache the verified User by SHA-256(token) — never the raw token, so a heap
+// dump doesn't leak credentials. Entries expire at min(now + TTL, jwt.exp),
+// so the cache can never extend a token's validity beyond what Supabase itself
+// would honor, and revocation propagates within TTL seconds.
+//
+// Bounded at 1024 entries with simple FIFO eviction: at 1024 active sessions
+// per pod the cache is already a rounding-error vs the cost of the calls it
+// saves, and FIFO avoids the per-touch bookkeeping cost of a true LRU.
+
+const JWT_CACHE_TTL_MS = Math.min(
+  300_000,
+  Math.max(1000, Number(process.env.SANCTUM_JWT_CACHE_TTL_MS ?? 30_000) || 30_000),
+)
+const JWT_CACHE_MAX_ENTRIES = 1024
+
+type CacheEntry = { user: User; expiresAt: number }
+const jwtCache = new Map<string, CacheEntry>()
+
+let jwtCacheHitTotal  = 0
+let jwtCacheMissTotal = 0
+export function getJwtCacheStats() {
+  return { hits: jwtCacheHitTotal, misses: jwtCacheMissTotal, size: jwtCache.size }
+}
+
+function hashToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex')
+}
+
+function jwtExpiryMs(token: string): number | null {
+  // JWTs are <header>.<payload>.<sig>; the payload is base64url-encoded JSON.
+  // Parsing failures are non-fatal — we just won't shorten the cache TTL.
+  const parts = token.split('.')
+  if (parts.length !== 3) return null
+  try {
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8')) as { exp?: number }
+    return typeof payload.exp === 'number' ? payload.exp * 1000 : null
+  } catch {
+    return null
+  }
+}
+
 export async function verifySupabaseAccessToken(
   config: SupabaseAuthConfig,
   accessToken: string,
 ): Promise<User | null> {
+  const key = hashToken(accessToken)
+  const now = Date.now()
+
+  const cached = jwtCache.get(key)
+  if (cached && cached.expiresAt > now) {
+    jwtCacheHitTotal++
+    return cached.user
+  }
+  // Lazy cleanup of the entry we just inspected; full sweeps happen on insert.
+  if (cached) jwtCache.delete(key)
+
+  jwtCacheMissTotal++
   const admin = createSupabaseAdmin(config)
   const { data, error } = await admin.auth.getUser(accessToken)
   if (error || !data.user) return null
+
+  const jwtExp = jwtExpiryMs(accessToken)
+  const ttlBound = now + JWT_CACHE_TTL_MS
+  const expiresAt = jwtExp != null ? Math.min(jwtExp, ttlBound) : ttlBound
+
+  // FIFO eviction when full — Map preserves insertion order so the oldest
+  // entry is .keys().next().value
+  if (jwtCache.size >= JWT_CACHE_MAX_ENTRIES) {
+    const oldest = jwtCache.keys().next().value
+    if (oldest !== undefined) jwtCache.delete(oldest)
+  }
+  jwtCache.set(key, { user: data.user, expiresAt })
+
   return data.user
+}
+
+/**
+ * Invalidates a single cached JWT — call from sign-out handlers if you ever
+ * add server-side session revocation. No-op if the token isn't cached.
+ */
+export function invalidateJwtCacheEntry(accessToken: string): void {
+  jwtCache.delete(hashToken(accessToken))
 }
 
 export type AuthResult =
