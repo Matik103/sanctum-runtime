@@ -90,7 +90,7 @@ export function Sidebar({ page, onPage, status, orgId, companionMode }: Props) {
   const [panelOpen, setPanelOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
 
-  const { notifications, unread, markAllRead } = useInAppNotifications(orgId)
+  const { notifications, unread, seenIds, markAllRead } = useInAppNotifications(orgId)
   const navItems = companionMode ? NAV.filter((n) => COMPANION_NAV_IDS.includes(n.id)) : NAV
   const overflowItems = companionMode ? NAV.filter((n) => !COMPANION_NAV_IDS.includes(n.id)) : []
 
@@ -285,6 +285,7 @@ export function Sidebar({ page, onPage, status, orgId, companionMode }: Props) {
           />
           <NotificationPanel
             notifications={notifications}
+            seenIds={seenIds}
             onClose={() => setPanelOpen(false)}
             onMarkAllRead={markAllRead}
             onNavigate={(p) => onPage(p as PageId)}
