@@ -4,12 +4,12 @@
   "buildCommand": "npm run build:vercel",
   "framework": null,
   "outputDirectory": ".vercel/output",
+  "trailingSlash": false,
   "redirects": [
     {
       "source": "/:path*",
       "has": [{ "type": "host", "value": "sanctumruntime.com" }],
       "destination": "https://www.sanctumruntime.com/:path*",
-      "permanent": true,
       "statusCode": 308
     }
   ],
@@ -20,6 +20,22 @@
         {
           "key": "Strict-Transport-Security",
           "value": "max-age=63072000; includeSubDomains; preload"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
         }
       ]
     }
