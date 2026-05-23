@@ -53,9 +53,9 @@ function BillingPage() {
         <p>
           You may cancel a subscription according to the process in the console or payment provider
           portal. Refunds and disputes are handled by Paddle as described in our{" "}
-          <Link to="/refund">Refund and Dispute Policy</Link>. After cancellation, you may retain
+          <Link to="/refund/">Refund and Dispute Policy</Link>. After cancellation, you may retain
           access until the end of the paid period; data retention follows your plan and our{" "}
-          <Link to="/privacy">Privacy Policy</Link>.
+          <Link to="/privacy/">Privacy Policy</Link>.
         </p>
       </section>
 
@@ -84,9 +84,9 @@ function BillingPage() {
           </a>
         </p>
         <p>
-          <Link to="/terms">Terms &amp; Conditions</Link> · <Link to="/privacy">Privacy Policy</Link>{" "}
-          · <Link to="/refund">Refund Policy</Link> · <Link to="/pricing">Pricing</Link> ·{" "}
-          <Link to="/contact">Contact</Link> · <Link to="/cookies">Cookies</Link>
+          <Link to="/terms/">Terms &amp; Conditions</Link> · <Link to="/privacy/">Privacy Policy</Link>{" "}
+          · <Link to="/refund/">Refund Policy</Link> · <Link to="/pricing/">Pricing</Link> ·{" "}
+          <Link to="/contact/">Contact</Link> · <Link to="/cookies/">Cookies</Link>
         </p>
       </section>
 

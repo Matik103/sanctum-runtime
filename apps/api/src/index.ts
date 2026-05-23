@@ -116,7 +116,9 @@ await app.register(websocket)
 function isAllowedCorsOrigin(origin: string): boolean {
   if (corsOrigins.has(origin)) return true
   try {
-    const host = new URL(origin).hostname
+    const parsed = new URL(origin)
+    if (parsed.protocol !== 'https:' || parsed.port) return false
+    const host = parsed.hostname
     // Exact match or strict subdomain — rejects evil-sanctumruntime.com
     return host === 'sanctumruntime.com' || /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.sanctumruntime\.com$/.test(host)
   } catch {
@@ -198,6 +200,7 @@ app.setErrorHandler((err, _req, reply) => {
 function isPublicPath(path: string): boolean {
   if (
     path === '/health' ||
+    path === '/readiness' ||
     path === '/v1/billing/webhook' ||
     path === '/v1/verify-action' ||
     path === '/v1/push/vapid-key' ||
@@ -1131,7 +1134,7 @@ app.post('/analyze-action', async (req) => {
   }
 })
 
-// Prometheus-format metrics (no auth — safe for scraping)
+// Prometheus-format metrics, hidden unless a metrics secret authorizes scraping.
 app.get('/metrics', async (_req, reply) => {
   const status = await runtime.getStatus()
   const policies = runtime.getPolicyEngine().getPolicies()

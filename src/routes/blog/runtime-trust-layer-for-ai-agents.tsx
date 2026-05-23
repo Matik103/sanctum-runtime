@@ -45,7 +45,7 @@ function PostPage() {
       <p>
         The same gate works for agents, ROS2 fleets, smart locks, industrial lines, and healthcare robotics — you
         define action names; Sanctum enforces policy. See{' '}
-        <Link to="/glossary" className="text-primary hover:underline">glossary</Link> and{' '}
+        <Link to="/glossary/" className="text-primary hover:underline">glossary</Link> and{' '}
         <Link to={docsPath}>documentation</Link> for integration patterns.
       </p>
       <h2>Start building</h2>

@@ -33,9 +33,18 @@ async function main() {
   console.log(`Production check → ${API}\n`)
 
   try {
+    const readiness = await get('/readiness')
+    if (readiness.status === 200 && readiness.body?.ready) ok('GET /readiness (public process probe)')
+    else bad('GET /readiness', readiness.status)
+  } catch (e) {
+    bad('GET /readiness', e.message)
+  }
+
+  try {
     const health = await get('/health')
     if (health.status === 200 && health.body?.ok) {
-      ok(`GET /health (policies=${health.body.policyCount}, audit=${health.body.auditCount})`)
+      const risk = health.body.riskModel
+      ok(`GET /health (risk=${risk?.provider ?? 'unknown'}, connected=${Boolean(risk?.connected)})`)
     } else bad('GET /health', health.status)
   } catch (e) {
     bad('GET /health', e.message)

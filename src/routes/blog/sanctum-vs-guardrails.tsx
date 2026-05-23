@@ -39,7 +39,7 @@ function PostPage() {
         agentic SaaS, robotics integrators, and enterprise automation.
       </p>
       <p>
-        <Link to="/security" className="text-primary hover:underline">Security overview</Link>
+        <Link to="/security/" className="text-primary hover:underline">Security overview</Link>
         {' · '}
         <Link to={blogPostPath('runtime-trust-layer-for-ai-agents')} className="text-primary hover:underline">
           Runtime trust layer

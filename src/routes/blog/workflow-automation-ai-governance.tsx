@@ -40,7 +40,7 @@ function PostPage() {
           Action approval
         </Link>
         {' · '}
-        <Link to="/enterprise" className="text-primary hover:underline">Enterprise</Link>
+        <Link to="/enterprise/" className="text-primary hover:underline">Enterprise</Link>
       </p>
     </BlogLayout>
   )

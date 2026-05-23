@@ -9,24 +9,18 @@ import { loadEnv } from "vite";
 
 // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
 // @cloudflare/vite-plugin builds from this — wrangler.jsonc main alone is insufficient.
-export default defineConfig(({ mode, command }) => {
-  const config = {
-    tanstackStart: {
-      server: { entry: "server" },
+const devEnv = loadEnv("development", process.cwd(), "");
+const configuredPort = Number(devEnv.SITE_PORT || 8080);
+
+export default defineConfig({
+  tanstackStart: {
+    server: { entry: "server" },
+  },
+  vite: {
+    server: {
+      host: devEnv.SITE_HOST || "127.0.0.1",
+      port: Number.isFinite(configuredPort) ? configuredPort : 8080,
+      strictPort: false,
     },
-    vite: {} as { server?: { host: string; port: number; strictPort: boolean } },
-  };
-
-  // Dev server only — production `vite build` (CI deploy) does not need SITE_* in .env
-  if (command === "serve") {
-    const env = loadEnv(mode, process.cwd(), "");
-    const host = env.SITE_HOST;
-    const port = env.SITE_PORT ? Number(env.SITE_PORT) : undefined;
-    if (!host || !port) {
-      throw new Error("Set SITE_HOST and SITE_PORT in .env (see .env.example)");
-    }
-    config.vite.server = { host, port, strictPort: false };
-  }
-
-  return config;
+  },
 });

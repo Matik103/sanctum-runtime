@@ -39,7 +39,7 @@ function PostPage() {
           Runtime trust layer
         </Link>
         {' · '}
-        <Link to="/sdk" className="text-primary hover:underline">SDK</Link>
+        <Link to="/sdk/" className="text-primary hover:underline">SDK</Link>
       </p>
     </BlogLayout>
   )

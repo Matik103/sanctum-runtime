@@ -44,7 +44,7 @@ function PostPage() {
           Action approval patterns
         </Link>
         {' · '}
-        <Link to="/docs" className="text-primary hover:underline">Docs</Link>
+        <Link to="/docs/" className="text-primary hover:underline">Docs</Link>
       </p>
     </BlogLayout>
   )

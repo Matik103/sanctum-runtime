@@ -26,7 +26,7 @@ function TermsPage() {
         <h2>1. Agreement</h2>
         <p>
           By accessing or using Sanctum Runtime, you agree to these Terms and our{" "}
-          <Link to="/privacy">Privacy Policy</Link>. If you use the service on behalf of an organization,
+          <Link to="/privacy/">Privacy Policy</Link>. If you use the service on behalf of an organization,
           you represent that you have authority to bind that organization.
         </p>
       </section>
@@ -115,9 +115,9 @@ function TermsPage() {
           </a>
         </p>
         <p>
-          <Link to="/privacy">Privacy Policy</Link> · <Link to="/refund">Refund Policy</Link> ·{" "}
-          <Link to="/billing">Billing</Link> · <Link to="/pricing">Pricing</Link> ·{" "}
-          <Link to="/contact">Contact</Link> · <Link to="/cookies">Cookies</Link>
+          <Link to="/privacy/">Privacy Policy</Link> · <Link to="/refund/">Refund Policy</Link> ·{" "}
+          <Link to="/billing/">Billing</Link> · <Link to="/pricing/">Pricing</Link> ·{" "}
+          <Link to="/contact/">Contact</Link> · <Link to="/cookies/">Cookies</Link>
         </p>
       </section>
 

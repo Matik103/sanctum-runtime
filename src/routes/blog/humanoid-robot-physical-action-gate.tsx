@@ -42,7 +42,7 @@ function PostPage() {
           Mobile verification
         </Link>
         {' · '}
-        <Link to="/what-is-sanctum-runtime" className="text-primary hover:underline">What is Sanctum</Link>
+        <Link to="/what-is-sanctum-runtime/" className="text-primary hover:underline">What is Sanctum</Link>
       </p>
     </BlogLayout>
   )

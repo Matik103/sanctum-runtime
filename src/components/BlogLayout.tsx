@@ -24,7 +24,7 @@ export function BlogLayout({ post, children }: Props) {
       <main className="pt-28 pb-24">
         <article className="container mx-auto px-6 max-w-3xl">
           <Link
-            to="/blog"
+            to="/blog/"
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-8"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -57,7 +57,7 @@ export function BlogLayout({ post, children }: Props) {
           </div>
           <p className="mt-12 pt-8 border-t border-border text-sm text-muted-foreground">
             More:{' '}
-            <Link to="/blog" className="text-primary hover:underline">
+            <Link to="/blog/" className="text-primary hover:underline">
               all posts
             </Link>
             {' · '}

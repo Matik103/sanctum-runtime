@@ -100,7 +100,7 @@ function PrivacyPage() {
         <p>
           We retain data only as long as needed for the purposes above. Retention for audit and usage
           data depends on your plan (see{" "}
-          <Link to="/billing" className="text-primary hover:underline">
+          <Link to="/billing/" className="text-primary hover:underline">
             Billing
           </Link>
           ). You may export organization data from the console where available (GDPR export). You may
@@ -143,9 +143,9 @@ function PrivacyPage() {
           </a>
         </p>
         <p>
-          See also: <Link to="/terms">Terms &amp; Conditions</Link>, <Link to="/refund">Refund Policy</Link>,{" "}
-          <Link to="/billing">Billing</Link>, <Link to="/pricing">Pricing</Link>,{" "}
-          <Link to="/contact">Contact</Link>, <Link to="/cookies">Cookies</Link>.
+          See also: <Link to="/terms/">Terms &amp; Conditions</Link>, <Link to="/refund/">Refund Policy</Link>,{" "}
+          <Link to="/billing/">Billing</Link>, <Link to="/pricing/">Pricing</Link>,{" "}
+          <Link to="/contact/">Contact</Link>, <Link to="/cookies/">Cookies</Link>.
         </p>
       </section>
 

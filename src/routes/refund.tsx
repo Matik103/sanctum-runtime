@@ -74,9 +74,9 @@ function RefundPage() {
           .
         </p>
         <p>
-          <Link to="/terms">Terms &amp; Conditions</Link> · <Link to="/privacy">Privacy Policy</Link> ·{" "}
-          <Link to="/billing">Billing</Link> · <Link to="/pricing">Pricing</Link> ·{" "}
-          <Link to="/contact">Contact</Link>
+          <Link to="/terms/">Terms &amp; Conditions</Link> · <Link to="/privacy/">Privacy Policy</Link> ·{" "}
+          <Link to="/billing/">Billing</Link> · <Link to="/pricing/">Pricing</Link> ·{" "}
+          <Link to="/contact/">Contact</Link>
         </p>
       </section>
 

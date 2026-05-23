@@ -50,7 +50,7 @@ function ContactPage() {
             cloud console
           </a>{" "}
           to manage runtimes, policies, and billing. Technical documentation is on our{" "}
-          <Link to="/docs">Documentation</Link> page.
+          <Link to="/docs/">Documentation</Link> page.
         </p>
       </section>
 
@@ -64,8 +64,8 @@ function ContactPage() {
           with your organization name and use case.
         </p>
         <p>
-          <Link to="/privacy">Privacy Policy</Link> · <Link to="/terms">Terms &amp; Conditions</Link> ·{" "}
-          <Link to="/refund">Refund Policy</Link> · <Link to="/pricing">Pricing</Link>
+          <Link to="/privacy/">Privacy Policy</Link> · <Link to="/terms/">Terms &amp; Conditions</Link> ·{" "}
+          <Link to="/refund/">Refund Policy</Link> · <Link to="/pricing/">Pricing</Link>
         </p>
       </section>
 

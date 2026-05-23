@@ -96,8 +96,8 @@ function PricingPage() {
             cloud console
           </a>{" "}
           to upgrade, view usage, and manage billing. See also our{" "}
-          <Link to="/billing">Billing policy</Link> and{" "}
-          <Link to="/refund">Refund and Dispute Policy</Link>.
+          <Link to="/billing/">Billing policy</Link> and{" "}
+          <Link to="/refund/">Refund and Dispute Policy</Link>.
         </p>
       </section>
 

@@ -41,7 +41,7 @@ function PostPage() {
       </p>
       <p>
         Related:{' '}
-        <Link to="/architecture" className="text-primary hover:underline">architecture</Link>,{' '}
+        <Link to="/architecture/" className="text-primary hover:underline">architecture</Link>,{' '}
         <Link to={blogPostPath('mobile-pwa-runtime-verification')} className="text-primary hover:underline">
           mobile verification companion
         </Link>.

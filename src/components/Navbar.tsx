@@ -18,9 +18,9 @@ export function Navbar() {
           <a href="#solution" className="hover:text-foreground transition-colors">Runtime</a>
           <a href="#sdk" className="hover:text-foreground transition-colors">SDK</a>
           <a href="#use-cases" className="hover:text-foreground transition-colors">Use cases</a>
-          <Link to="/blog" className="hover:text-foreground transition-colors">Blog</Link>
-          <Link to="/docs" className="hover:text-foreground transition-colors">Docs</Link>
-          <Link to="/pricing" className="hover:text-foreground transition-colors">Pricing</Link>
+          <Link to="/blog/" className="hover:text-foreground transition-colors">Blog</Link>
+          <Link to="/docs/" className="hover:text-foreground transition-colors">Docs</Link>
+          <Link to="/pricing/" className="hover:text-foreground transition-colors">Pricing</Link>
         </nav>
         <div className="flex items-center gap-2">
           <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex text-muted-foreground hover:text-foreground">

@@ -41,7 +41,11 @@ export class OpenAICompatibleRiskProvider implements RiskModelProvider {
     const model =
       options.model ?? process.env.SANCTUM_RISK_MODEL ?? process.env.OPENAI_MODEL ?? 'gpt-4o-mini'
     this.model = model
-    this.timeoutMs = options.timeoutMs ?? 120_000
+    const configuredTimeout = Number(process.env.SANCTUM_RISK_TIMEOUT_MS)
+    const defaultTimeout = Number.isFinite(configuredTimeout) && configuredTimeout >= 500
+      ? configuredTimeout
+      : 8_000
+    this.timeoutMs = options.timeoutMs ?? defaultTimeout
   }
 
   getInfo(): RiskModelInfo {

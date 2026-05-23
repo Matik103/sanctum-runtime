@@ -23,8 +23,17 @@ const PROVIDER_META: Record<string, ProviderMeta> = {
     privacyUrl: 'https://openai.com/enterprise-privacy/',
     termsUrl: 'https://openai.com/policies/business-terms/',
     noTraining: true,
-    retention: '0 days (API zero-retention by default)',
+    retention: 'Up to 30 days for abuse monitoring by default; zero retention requires approved configuration',
     certifications: ['SOC 2 Type 2', 'ISO 27001', 'GDPR', 'CCPA'],
+  },
+  compatible: {
+    vendor: 'OpenAI-compatible endpoint',
+    region: 'Provider configured endpoint',
+    privacyUrl: '',
+    termsUrl: '',
+    noTraining: false,
+    retention: 'Check the configured provider contract and retention controls',
+    certifications: [],
   },
   ollama: {
     vendor: 'Self-hosted (Ollama)',
@@ -42,7 +51,10 @@ export function AIModelCard({ status }: Props) {
   const model = status?.riskModel ?? status?.ollamaModel
   const endpoint = status?.riskEndpoint ?? status?.ollamaUrl
   const connected = status?.riskModelConnected ?? status?.ollamaConnected ?? false
-  const meta = provider !== 'none' ? PROVIDER_META[provider] : undefined
+  const metaKey = provider === 'openai' && endpoint && !endpoint.includes('api.openai.com')
+    ? 'compatible'
+    : provider
+  const meta = provider !== 'none' ? PROVIDER_META[metaKey] : undefined
 
   if (provider === 'none') {
     return (
@@ -122,10 +134,10 @@ export function AIModelCard({ status }: Props) {
           </div>
           <ul className="model-card__list">
             <li>
-              <strong>Sent to model:</strong> action name, policy excerpt, and minimal action context (no raw PII unless your policy includes it)
+              <strong>Sent to model:</strong> action name, policy excerpt, and the submitted action context needed for assessment
             </li>
             <li>
-              <strong>Not sent:</strong> API keys, signing secrets, user passwords, or other Sanctum-managed secrets
+              <strong>Not added by Sanctum:</strong> stored API keys, signing secrets, or user passwords
             </li>
             <li>
               <strong>Vendor retention:</strong> {meta?.retention}
@@ -147,7 +159,7 @@ export function AIModelCard({ status }: Props) {
           <ul className="model-card__list">
             <li>Deterministic policy rules evaluate before the model — model never overrides a hard policy block</li>
             <li>Risk model is one input; final decision is policy + heuristics + model score combined</li>
-            <li>Circuit breaker isolates the model on errors — system falls back to deterministic scoring within 5s</li>
+            <li>Model calls have a bounded timeout; deterministic scoring remains available when model scoring fails</li>
             <li>Every model invocation is recorded in the audit log with its score and reasoning</li>
           </ul>
         </div>
@@ -172,8 +184,8 @@ export function AIModelCard({ status }: Props) {
             <Zap size={14} aria-hidden /> Performance profile
           </div>
           <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: 0 }}>
-            Target latency budget: 800 ms p95. Risk model invocation is bounded by a 120 s timeout and isolated by a circuit breaker —
-            if the model is slow or fails, scoring falls back to deterministic policy + heuristics with no decision delay.
+            Risk model invocation is bounded by a configurable timeout (8 s by default).
+            When that bounded request fails or times out, scoring continues with deterministic policy and heuristics.
           </p>
         </div>
 

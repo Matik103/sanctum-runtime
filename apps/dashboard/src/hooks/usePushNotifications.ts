@@ -10,11 +10,24 @@ async function authJsonHeaders(): Promise<HeadersInit> {
   return h
 }
 
-type PushState = 'idle' | 'subscribing' | 'subscribed' | 'unsupported' | 'denied'
+type PushState = 'idle' | 'subscribing' | 'subscribed' | 'unsupported' | 'denied' | 'unavailable'
+
+async function storeSubscription(sub: PushSubscription): Promise<void> {
+  const res = await fetch(`${API_BASE}/v1/push/subscribe`, {
+    method: 'POST',
+    headers: await authJsonHeaders(),
+    body: JSON.stringify({
+      subscription: sub.toJSON(),
+      userAgent: navigator.userAgent,
+    }),
+  })
+  if (!res.ok) throw new Error('Could not register this device for push notifications.')
+}
 
 export function usePushNotifications() {
   const [state, setState] = useState<PushState>('idle')
   const [vapidKey, setVapidKey] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const supported =
     typeof window !== 'undefined' &&
@@ -27,30 +40,40 @@ export function usePushNotifications() {
       setState('unsupported')
       return
     }
-
-    // Fetch VAPID public key once
-    fetch(`${API_BASE}/v1/push/vapid-key`)
-      .then((r) => r.json())
-      .then((data: { publicKey?: string }) => {
-        if (data.publicKey) setVapidKey(data.publicKey)
-      })
-      .catch(() => {})
-
-    // Reflect existing permission/subscription state
     if (Notification.permission === 'denied') {
       setState('denied')
-    } else {
-      navigator.serviceWorker.ready
-        .then((reg) => reg.pushManager.getSubscription())
-        .then((sub) => {
-          if (sub) setState('subscribed')
-        })
-        .catch(() => {})
+      return
     }
+
+    let active = true
+    void (async () => {
+      try {
+        const keyResponse = await fetch(`${API_BASE}/v1/push/vapid-key`)
+        const data = keyResponse.ok ? await keyResponse.json() as { publicKey?: string } : {}
+        if (!active) return
+        if (data.publicKey) setVapidKey(data.publicKey)
+        else setState('unavailable')
+
+        const reg = await navigator.serviceWorker.ready
+        const sub = await reg.pushManager.getSubscription()
+        if (!active || !sub) return
+        setState('subscribed')
+        try {
+          await storeSubscription(sub)
+        } catch {
+          if (active) setError('This device is subscribed locally but could not be synchronized with Sanctum.')
+        }
+      } catch {
+        if (active) setState('unavailable')
+      }
+    })()
+
+    return () => { active = false }
   }, [supported])
 
   const subscribe = useCallback(async () => {
     if (!supported || !vapidKey) return
+    setError(null)
     if (Notification.permission === 'denied') {
       setState('denied')
       return
@@ -73,28 +96,17 @@ export function usePushNotifications() {
         })
       }
 
-      const res = await fetch(`${API_BASE}/v1/push/subscribe`, {
-        method: 'POST',
-        headers: await authJsonHeaders(),
-        body: JSON.stringify({
-          subscription: sub.toJSON(),
-          userAgent: navigator.userAgent,
-        }),
-      })
-      if (!res.ok) {
-        // Server refused (likely no org/user) — keep SW subscription so we can retry later
-        setState('idle')
-        return
-      }
-
+      await storeSubscription(sub)
       setState('subscribed')
-    } catch {
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not enable push notifications.')
       setState('idle')
     }
   }, [supported, vapidKey])
 
   const unsubscribe = useCallback(async () => {
     if (!supported) return
+    setError(null)
     try {
       const reg = await navigator.serviceWorker.ready
       const sub = await reg.pushManager.getSubscription()
@@ -102,19 +114,22 @@ export function usePushNotifications() {
         setState('idle')
         return
       }
-      await fetch(`${API_BASE}/v1/push/unsubscribe`, {
+      const res = await fetch(`${API_BASE}/v1/push/unsubscribe`, {
         method: 'DELETE',
         headers: await authJsonHeaders(),
         body: JSON.stringify({ endpoint: sub.endpoint }),
       })
-      await sub.unsubscribe()
+      if (!res.ok) throw new Error('Could not disable push notifications. Try again.')
+      const removed = await sub.unsubscribe()
+      if (!removed) throw new Error('The browser could not remove this push subscription.')
       setState('idle')
-    } catch {
-      setState('idle')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not disable push notifications.')
+      setState('subscribed')
     }
   }, [supported])
 
-  return { supported, state, subscribe, unsubscribe }
+  return { supported, state, error, subscribe, unsubscribe }
 }
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {

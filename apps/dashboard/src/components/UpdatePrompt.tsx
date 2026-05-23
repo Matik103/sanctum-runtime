@@ -1,19 +1,21 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { registerSW } from 'virtual:pwa-register'
 
-// When a new SW is available, reload immediately so the installed PWA always
-// boots into the latest version. Combined with self.skipWaiting() in sw.ts,
-// this means tapping the home-screen icon launches fresh code on every deploy.
 export function UpdatePrompt() {
+  const [needsRefresh, setNeedsRefresh] = useState(false)
+  const [applying, setApplying] = useState(false)
+  const activateUpdate = useRef<((reloadPage?: boolean) => Promise<void>) | null>(null)
+
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return
 
     const updateSW = registerSW({
       immediate: true,
       onNeedRefresh() {
-        void updateSW(true)
+        setNeedsRefresh(true)
       },
     })
+    activateUpdate.current = updateSW
 
     const checkForUpdate = () => {
       if (!navigator.onLine || document.visibilityState !== 'visible') return
@@ -32,8 +34,27 @@ export function UpdatePrompt() {
       window.clearInterval(intervalId)
       window.removeEventListener('online', checkForUpdate)
       document.removeEventListener('visibilitychange', onVisibilityChange)
+      activateUpdate.current = null
     }
   }, [])
 
-  return null
+  const refreshNow = async () => {
+    setApplying(true)
+    try {
+      await activateUpdate.current?.(true)
+    } finally {
+      setApplying(false)
+    }
+  }
+
+  if (!needsRefresh) return null
+
+  return (
+    <div className="pwa-update-banner" role="status" aria-live="polite">
+      <p>A console update is ready.</p>
+      <button type="button" className="btn btn-primary btn-sm" disabled={applying} onClick={() => void refreshNow()}>
+        {applying ? 'Refreshing...' : 'Refresh now'}
+      </button>
+    </div>
+  )
 }

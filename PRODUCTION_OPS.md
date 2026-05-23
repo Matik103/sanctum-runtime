@@ -27,6 +27,7 @@ See [RENDER.md](./RENDER.md) for the full API checklist.
 | `SANCTUM_OFFLINE_MODE` | `false` | `true` only for intentionally air-gapped deployments |
 | `SANCTUM_RISK_PROVIDER` | `openai` | Use `none` only if you have no OpenAI key |
 | `SANCTUM_RISK_MODEL` | `gpt-4o-mini` | Cost-effective default; swap for `gpt-4o` for higher accuracy |
+| `SANCTUM_RISK_TIMEOUT_MS` | `8000` | Maximum model wait before deterministic fallback |
 | `OPENAI_API_KEY` | `sk-…` | **Secret** — required when `SANCTUM_RISK_PROVIDER=openai` |
 | `SANCTUM_API_KEY` | `openssl rand -hex 32` | |
 | `DASHBOARD_URL` | Your dashboard URL (set after §3) | |
@@ -256,6 +257,7 @@ Better than heuristics-only when Ollama is not on the API host:
 | `SANCTUM_RISK_PROVIDER` | `openai` |
 | `SANCTUM_RISK_BASE_URL` | `https://api.openai.com/v1` (or compatible proxy) |
 | `SANCTUM_RISK_MODEL` | e.g. `gpt-4o-mini` |
+| `SANCTUM_RISK_TIMEOUT_MS` | `8000` (maximum wait before deterministic fallback) |
 | `OPENAI_API_KEY` | Your provider key |
 
 Redeploy **sanctum-api**. Dashboard **Devices** shows `OpenAI-compatible` when active.

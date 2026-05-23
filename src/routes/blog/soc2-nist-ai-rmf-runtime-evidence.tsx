@@ -37,7 +37,7 @@ function PostPage() {
         <a href={consoleUrl} className="text-primary hover:underline">operator console</a>.
       </p>
       <p>
-        <Link to="/security" className="text-primary hover:underline">Security overview</Link>
+        <Link to="/security/" className="text-primary hover:underline">Security overview</Link>
         {' · '}
         <Link to={blogPostPath('signed-action-tokens-executor-verification')} className="text-primary hover:underline">
           Signed action tokens

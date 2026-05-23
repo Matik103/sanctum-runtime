@@ -175,7 +175,7 @@ export function Settings({ status }: Props) {
     }
   }
 
-  const { state: pushState, subscribe: enablePush, unsubscribe: disablePush } = usePushNotifications()
+  const { state: pushState, error: pushError, subscribe: enablePush, unsubscribe: disablePush } = usePushNotifications()
   const [pushBusy, setPushBusy] = useState(false)
 
   const handlePushToggle = async () => {
@@ -332,6 +332,24 @@ export function Settings({ status }: Props) {
               <p className="hint-line" style={{ marginTop: '0.75rem' }}>
                 Email alerts require an active email integration on your deployment.
               </p>
+              <div className="settings-push">
+                <div className="settings-push__copy">
+                  <p className="settings-push__title">Mobile push</p>
+                  <p className="settings-push__detail">Approval and incident alerts on this device</p>
+                  {pushError && <p className="settings-push__error">{pushError}</p>}
+                </div>
+                <span className={`badge ${pushState === 'subscribed' ? 'success' : pushState === 'denied' || pushState === 'unavailable' ? 'warning' : 'neutral'}`}>
+                  {pushState === 'subscribed' ? 'Enabled' : pushState === 'denied' ? 'Blocked in browser' : pushState === 'unavailable' ? 'Unavailable' : 'Off'}
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  disabled={pushBusy || pushState === 'unsupported' || pushState === 'denied' || pushState === 'unavailable'}
+                  onClick={() => void handlePushToggle()}
+                >
+                  {pushBusy ? 'Updating...' : pushState === 'subscribed' ? 'Disable' : 'Enable'}
+                </button>
+              </div>
             </div>
           </section>
 

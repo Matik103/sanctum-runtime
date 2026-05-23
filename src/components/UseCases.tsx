@@ -60,11 +60,11 @@ export function UseCases() {
         </div>
 
         <p className="mt-10 text-center text-sm text-muted-foreground">
-          <Link to="/glossary" className="text-primary hover:underline">
+          <Link to="/glossary/" className="text-primary hover:underline">
             Glossary
           </Link>
           {' · '}
-          <Link to="/blog/embodied-ai-robotics-policy-gate" className="text-primary hover:underline">
+          <Link to="/blog/embodied-ai-robotics-policy-gate/" className="text-primary hover:underline">
             Embodied AI guide
           </Link>
           {' · '}

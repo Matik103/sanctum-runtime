@@ -409,7 +409,9 @@ export class RuntimeEngine {
       decision = 'BLOCKED'
       risk = 'high'
     } else if (!useHeuristicsOnly && this.riskModel) {
-      const RISK_MODEL_TIMEOUT_MS = 15_000
+      const configuredTimeout = Number(process.env.SANCTUM_RISK_TIMEOUT_MS)
+      const RISK_MODEL_TIMEOUT_MS =
+        Number.isFinite(configuredTimeout) && configuredTimeout >= 500 ? configuredTimeout : 8_000
       const timeoutError = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('risk_model_timeout')), RISK_MODEL_TIMEOUT_MS),
       )
@@ -445,7 +447,7 @@ export class RuntimeEngine {
       } else {
         evaluationMode = 'offline_model_failed'
         if (error === 'risk_model_timeout') {
-          console.warn('[sanctum] Risk model timed out after 15s — falling back to heuristics. Check model connectivity.')
+          console.warn(`[sanctum] Risk model timed out after ${RISK_MODEL_TIMEOUT_MS}ms — falling back to heuristics. Check model connectivity.`)
         } else if (error) {
           console.error(`[sanctum] Risk model error: ${error}`)
         }
