@@ -19,7 +19,11 @@ services:
       - key: SANCTUM_OFFLINE_MODE
         value: "false"
       - key: SANCTUM_RISK_PROVIDER
-        value: "none"
+        value: "openai"
+      - key: SANCTUM_RISK_MODEL
+        value: "gpt-4o-mini"
+      - key: OPENAI_API_KEY
+        sync: false
       - key: SANCTUM_API_KEY
         generateValue: true
       - key: SANCTUM_API_KEY_PEPPER
