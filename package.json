@@ -36,6 +36,8 @@
     "dev:runtime": "concurrently -n api,dash -c blue,magenta \"npm run dev:api\" \"node scripts/wait-for-api.mjs && npm run dev:dashboard\"",
     "dev:all": "concurrently -n api,dash,site -c blue,magenta,green \"npm run dev:api\" \"npm run dev:dashboard\" \"npm run dev\"",
     "smoke": "tsx scripts/smoke-test.ts",
+    "gen:vapid": "node scripts/gen-vapid.mjs",
+    "gen:secrets": "node -e \"const c=require('crypto');console.log('SANCTUM_ACTION_TOKEN_SECRET='+c.randomBytes(32).toString('hex'));console.log('SANCTUM_API_KEY_PEPPER='+c.randomBytes(32).toString('hex'))\"",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

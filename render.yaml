@@ -42,6 +42,24 @@ services:
         sync: false
       - key: VAPID_SUBJECT
         value: mailto:ops@sanctumruntime.com
+      - key: RESEND_API_KEY
+        sync: false
+      - key: NOTIFICATION_FROM_EMAIL
+        value: "Sanctum Runtime Alerts <alerts@sanctumruntime.com>"
+      # Paddle billing (Paddle Billing v2 — checkout.paddle.com).
+      # PADDLE_SANDBOX=true for sandbox-checkout.paddle.com during testing.
+      - key: PADDLE_VENDOR_ID
+        sync: false
+      - key: PADDLE_WEBHOOK_SECRET
+        sync: false
+      - key: PADDLE_PRODUCT_OPERATOR
+        sync: false
+      - key: PADDLE_PRODUCT_TEAM
+        sync: false
+      - key: PADDLE_PRODUCT_ENTERPRISE
+        sync: false
+      - key: PADDLE_SANDBOX
+        value: "false"
       - key: DASHBOARD_URL
         value: https://console.sanctumruntime.com
       - key: SANCTUM_PUBLIC_API_URL
@@ -86,6 +104,9 @@ services:
       - path: /*
         name: Cross-Origin-Opener-Policy
         value: "same-origin"
+      - path: /*
+        name: Cross-Origin-Embedder-Policy
+        value: "credentialless"
     envVars:
       - key: NODE_VERSION
         value: "22"
