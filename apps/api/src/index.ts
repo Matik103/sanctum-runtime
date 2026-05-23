@@ -59,7 +59,7 @@ import {
 } from './scoped-policy-audit.js'
 import { assertOrgAllowed, type SanctumReq } from './org-scope.js'
 import { ControlPlaneStore } from './control-plane-store.js'
-import { createSupabaseAdmin } from './auth.js'
+import { createSupabaseAdmin, getSupabaseFetchTimeoutTotal } from './auth.js'
 import {
   loadRepoEnv,
   resolveApiListenTarget,
@@ -113,7 +113,18 @@ for (const origin of process.env.SANCTUM_CORS_ORIGINS?.split(',') ?? []) {
   if (trimmed) corsOrigins.add(trimmed)
 }
 
-await app.register(websocket)
+// Cap inbound WS frame size at 64 KiB. SDK clients only send small JSON
+// ping/pong + command-result envelopes; anything larger is either a bug or
+// abuse. ws library default is 100 MiB which lets a single malicious frame
+// pin large amounts of heap. We also disable per-message deflate — Sanctum's
+// payloads are short JSON where compression overhead exceeds the savings and
+// it has been a source of CVEs in the wild.
+await app.register(websocket, {
+  options: {
+    maxPayload: 64 * 1024,
+    perMessageDeflate: false,
+  },
+})
 function isAllowedCorsOrigin(origin: string): boolean {
   if (corsOrigins.has(origin)) return true
   try {
@@ -1223,6 +1234,9 @@ app.get('/metrics', async (_req, reply) => {
     '# HELP sanctum_audit_cap Configured in-memory audit entry cap',
     '# TYPE sanctum_audit_cap gauge',
     `sanctum_audit_cap ${runtime.getAuditStore().getEvictionStats().cap}`,
+    '# HELP sanctum_supabase_fetch_timeouts_total Supabase fetch calls aborted by the per-request timeout since boot',
+    '# TYPE sanctum_supabase_fetch_timeouts_total counter',
+    `sanctum_supabase_fetch_timeouts_total ${getSupabaseFetchTimeoutTotal()}`,
     '# HELP sanctum_policies_total Active policy count',
     '# TYPE sanctum_policies_total gauge',
     `sanctum_policies_total ${policyCount}`,
