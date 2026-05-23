@@ -1,4 +1,7 @@
 import { createSupabaseAdmin, type SupabaseAuthConfig } from './auth.js'
+import { logger as rootLogger } from './logger.js'
+
+const log = rootLogger.child({ store: 'usage-store' })
 
 export const UsageMetrics = {
   RUNTIME_CONNECT: 'runtime.connect',
@@ -43,9 +46,9 @@ export class UsageStore {
         quantity,
         metadata: metadata ?? {},
       })
-      if (error) console.warn('[usage]', error.message)
+      if (error) log.warn({ error: error.message }, 'track insert failed')
     } catch (e) {
-      console.warn('[usage]', e instanceof Error ? e.message : e)
+      log.warn({ err: e instanceof Error ? e : new Error(String(e)) }, 'track error')
     }
   }
 
