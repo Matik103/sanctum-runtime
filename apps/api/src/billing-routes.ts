@@ -7,6 +7,38 @@ import { getEntitlementEngine, PLAN_DEFAULTS, type PlanId } from './entitlements
 import { getUsageStore } from './usage-store.js'
 import { sendNotificationDeduped } from './notifications.js'
 
+// ── Webhook deduplication ────────────────────────────────────────────────────
+// Paddle retries any webhook that times out or receives a 5xx response. The
+// underlying upsert into org_plans is itself idempotent, but reprocessing
+// still wastes work, fires duplicate notification emails, and burns Supabase
+// quota. Track event_ids we've already successfully processed and short-
+// circuit retries.
+//
+// Mark-after-success: we only record an event as processed once the handler
+// completes without error. If the upsert fails (returning 500), Paddle's
+// retry is allowed to attempt processing again — losing dedup is preferable
+// to silently dropping a billing event after a transient DB failure.
+//
+// Bounded FIFO: 5000 events at ~80 B each = ~400 KB ceiling.
+const PROCESSED_EVENT_TTL_MS  = 24 * 60 * 60 * 1000   // 24h covers Paddle's retry window
+const PROCESSED_EVENT_MAX     = 5000
+const processedEvents = new Map<string, number>()     // event_id → seenAt (epoch ms)
+
+function wasRecentlyProcessed(eventId: string | undefined): boolean {
+  if (!eventId) return false
+  const seenAt = processedEvents.get(eventId)
+  return seenAt != null && Date.now() - seenAt < PROCESSED_EVENT_TTL_MS
+}
+
+function markEventProcessed(eventId: string | undefined): void {
+  if (!eventId) return
+  if (processedEvents.size >= PROCESSED_EVENT_MAX) {
+    const oldest = processedEvents.keys().next().value
+    if (oldest !== undefined) processedEvents.delete(oldest)
+  }
+  processedEvents.set(eventId, Date.now())
+}
+
 type SanctumReq = FastifyRequest & {
   sanctumUser?: { id: string; email?: string }
 }
@@ -234,13 +266,25 @@ export async function registerBillingRoutes(app: FastifyInstance) {
 
     const event = req.body as Record<string, unknown>
     const eventType = event['event_type'] as string | undefined
-    app.log.info({ eventType }, '[billing/webhook] received')
+    const eventId   = event['event_id']   as string | undefined
+
+    // Skip if this exact event has been successfully processed within the
+    // retry window. The 200 response stops Paddle's retry without re-applying
+    // any state mutations.
+    if (wasRecentlyProcessed(eventId)) {
+      app.log.info({ eventId, eventType }, '[billing/webhook] duplicate event ignored')
+      return reply.status(200).send({ ok: true, duplicate: true })
+    }
+    app.log.info({ eventId, eventType }, '[billing/webhook] received')
 
     // Extract org_id from Paddle passthrough / custom_data
     const customData = (event['data'] as Record<string, unknown>)?.['custom_data'] as Record<string, unknown> | undefined
     const passthrough = customData?.['org_id'] as string | undefined
 
     if (!passthrough) {
+      // Nothing to do but it IS a successfully-handled event — mark it processed
+      // so Paddle doesn't retry the same payload forever.
+      markEventProcessed(eventId)
       return reply.status(200).send({ ok: true, note: 'no org_id in custom_data — skipped' })
     }
 
@@ -331,6 +375,10 @@ export async function registerBillingRoutes(app: FastifyInstance) {
       }).catch(() => {})
     }
 
+    // All side effects completed without error — record so Paddle retries
+    // (e.g., from a network timeout that arrived after we'd already finished)
+    // don't re-run the upsert + notifications.
+    markEventProcessed(eventId)
     return reply.status(200).send({ ok: true })
   })
 }
