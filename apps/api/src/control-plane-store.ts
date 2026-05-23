@@ -4,6 +4,9 @@ import { evaluateAndTokenize, type AttestationReport } from './attestation.js'
 import { createSupabaseAdmin, type SupabaseAuthConfig } from './auth.js'
 import { queryWithTimeout, SUPABASE_ROW_LIMITS } from './supabase-limits.js'
 import { recordUsage, UsageMetrics } from './usage-store.js'
+import { logger as rootLogger } from './logger.js'
+
+const log = rootLogger.child({ store: 'control-plane' })
 
 export type RuntimeMode = 'cloud' | 'edge' | 'airgap' | 'hybrid'
 
@@ -438,7 +441,7 @@ export class ControlPlaneStore {
       () => admin.from('organization_members').select('org_id').eq('user_id', userId),
     )
     if (result.error) {
-      console.warn(`[supabase] getUserOrgIds: ${result.error}`)
+      log.warn({ error: result.error }, 'getUserOrgIds query failed')
       return []
     }
     return result.data.map((r) => r.org_id as string)

@@ -18,6 +18,9 @@ import {
   spacer,
   wrapEmail,
 } from './email-layout.js'
+import { logger as rootLogger } from './logger.js'
+
+const log = rootLogger.child({ service: 'notifications' })
 
 export type NotificationEventType =
   // Anomaly / policy
@@ -260,8 +263,7 @@ async function sendOpsAlert(event: NotificationEvent, failures: ChannelFailure[]
     timestamp: new Date().toISOString(),
   }
 
-  // Structured log — searchable by any log drain
-  console.error('[SANCTUM-OPS-ALERT] All notification channels failed:', JSON.stringify(payload))
+  log.error({ opsAlert: true, ...payload }, 'all notification channels failed')
 
   const opsWebhook = process.env.OPS_ALERT_WEBHOOK_URL
   if (!opsWebhook) return
@@ -276,10 +278,10 @@ async function sendOpsAlert(event: NotificationEvent, failures: ChannelFailure[]
       body: JSON.stringify(payload),
     })
     if (!res.ok) {
-      console.error('[SANCTUM-OPS-ALERT] Ops webhook returned', res.status)
+      log.error({ opsAlert: true, status: res.status }, 'ops webhook returned error status')
     }
   } catch (e) {
-    console.error('[SANCTUM-OPS-ALERT] Ops webhook unreachable:', e)
+    log.error({ opsAlert: true, err: e instanceof Error ? e : new Error(String(e)) }, 'ops webhook unreachable')
   }
 }
 
@@ -306,10 +308,12 @@ async function _sendWithFailover(
 
   if (primary.length === 0) {
     // No channels configured — loud log so this is discoverable
-    console.warn(
-      `[notifications] No channels configured — ${(event.severity ?? 'info').toUpperCase()} ` +
-      `[${event.type}] org=${event.orgId}: ${event.title}`,
-    )
+    log.warn({
+      eventType:  event.type,
+      severity:   event.severity ?? 'info',
+      orgId:      event.orgId,
+      title:      event.title,
+    }, 'no notification channels configured')
     return
   }
 
@@ -327,7 +331,7 @@ async function _sendWithFailover(
       } else {
         const reason = (settled[i] as PromiseRejectedResult).reason
         failures.push({ channel: primary[i].name, error: String(reason) })
-        console.warn(`[notifications] ${primary[i].name} failed for ${event.type}:`, reason)
+        log.warn({ channel: primary[i].name, eventType: event.type, reason: String(reason) }, 'notification channel failed')
       }
     }
     if (!anyOk) await sendOpsAlert(event, failures)
@@ -339,7 +343,7 @@ async function _sendWithFailover(
         return // delivered — done
       } catch (e) {
         failures.push({ channel: channel.name, error: String(e) })
-        console.warn(`[notifications] ${channel.name} failed, trying next channel:`, e)
+        log.warn({ channel: channel.name, err: e instanceof Error ? e : new Error(String(e)) }, 'channel failed, trying next')
       }
     }
     // Every configured channel failed
@@ -353,7 +357,7 @@ async function _sendWithFailover(
     const cfg = getSupabaseAuthConfig()
     if (!cfg) return
     await sendFcmToOrg(event, cfg)
-  }).catch((e) => console.warn('[notifications] push error:', e))
+  }).catch((e) => log.warn({ err: e instanceof Error ? e : new Error(String(e)) }, 'push notification error'))
 }
 
 // ── Deduplication ─────────────────────────────────────────────────────────────
@@ -379,9 +383,9 @@ async function loadDedupState(): Promise<void> {
       const key = `${row.org_id}:${row.event_type}`
       alertCooldowns.set(key, new Date(row.last_sent_at).getTime())
     }
-    console.log(`[notifications] dedup state loaded (${data?.length ?? 0} entries)`)
+    log.info({ count: data?.length ?? 0 }, 'notification dedup state loaded')
   } catch (e) {
-    console.warn('[notifications] dedup state load failed:', e)
+    log.warn({ err: e instanceof Error ? e : new Error(String(e)) }, 'dedup state load failed')
   }
 }
 
@@ -396,7 +400,7 @@ async function persistDedupEntry(orgId: string, eventType: string): Promise<void
       { onConflict: 'org_id,event_type' },
     )
   } catch (e) {
-    console.warn('[notifications] dedup persist failed:', e)
+    log.warn({ err: e instanceof Error ? e : new Error(String(e)) }, 'dedup persist failed')
   }
 }
 
