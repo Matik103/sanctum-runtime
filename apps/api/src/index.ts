@@ -113,7 +113,18 @@ for (const origin of process.env.SANCTUM_CORS_ORIGINS?.split(',') ?? []) {
   if (trimmed) corsOrigins.add(trimmed)
 }
 
-await app.register(websocket)
+// Cap inbound WS frame size at 64 KiB. SDK clients only send small JSON
+// ping/pong + command-result envelopes; anything larger is either a bug or
+// abuse. ws library default is 100 MiB which lets a single malicious frame
+// pin large amounts of heap. We also disable per-message deflate — Sanctum's
+// payloads are short JSON where compression overhead exceeds the savings and
+// it has been a source of CVEs in the wild.
+await app.register(websocket, {
+  options: {
+    maxPayload: 64 * 1024,
+    perMessageDeflate: false,
+  },
+})
 function isAllowedCorsOrigin(origin: string): boolean {
   if (corsOrigins.has(origin)) return true
   try {
