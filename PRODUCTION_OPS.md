@@ -21,19 +21,55 @@ See [RENDER.md](./RENDER.md) for the full API checklist.
 
 **Minimum env (API service):**
 
-| Key | Value |
-|-----|--------|
-| `NODE_VERSION` | `22` |
-| `SANCTUM_OFFLINE_MODE` | `false` (use `true` only for an intentionally isolated deployment) |
-| `SANCTUM_RISK_PROVIDER` | `none` |
-| `SANCTUM_API_KEY` | `openssl rand -hex 32` |
-| `DASHBOARD_URL` | Your dashboard URL (set after §3) |
-| `SUPABASE_URL` | From Supabase (§2) |
-| `SUPABASE_SERVICE_ROLE_KEY` | **Secret** — API only |
-| `SUPABASE_ANON_KEY` | Optional on API; required for JWT validation path |
-| `SANCTUM_API_KEY_PEPPER` | **Secret** — dedicated hashing pepper (`openssl rand -base64 32`) |
-| `SANCTUM_ACTION_TOKEN_SECRET` | **Secret** — signed-action-token HMAC key (`openssl rand -base64 32`) |
-| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | Web Push key pair for mobile approval notifications |
+| Key | Value | Notes |
+|-----|--------|-------|
+| `NODE_VERSION` | `22` | |
+| `SANCTUM_OFFLINE_MODE` | `false` | `true` only for intentionally air-gapped deployments |
+| `SANCTUM_RISK_PROVIDER` | `openai` | Use `none` only if you have no OpenAI key |
+| `SANCTUM_RISK_MODEL` | `gpt-4o-mini` | Cost-effective default; swap for `gpt-4o` for higher accuracy |
+| `OPENAI_API_KEY` | `sk-…` | **Secret** — required when `SANCTUM_RISK_PROVIDER=openai` |
+| `SANCTUM_API_KEY` | `openssl rand -hex 32` | |
+| `DASHBOARD_URL` | Your dashboard URL (set after §3) | |
+| `SUPABASE_URL` | From Supabase (§2) | |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Secret** — API only | |
+| `SUPABASE_ANON_KEY` | Optional on API; required for JWT validation path | |
+| `SANCTUM_API_KEY_PEPPER` | `openssl rand -base64 32` | **Secret** — dedicated hashing pepper |
+| `SANCTUM_ACTION_TOKEN_SECRET` | `openssl rand -base64 32` | **Secret** — signed-action-token HMAC key |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | `npm run gen:vapid` | Web Push keypair for mobile approval notifications |
+| `VAPID_SUBJECT` | `mailto:ops@sanctumruntime.com` | Required by Web Push spec |
+| `RESEND_API_KEY` | `re_…` | **Secret** — transactional email (alerts, verifications) |
+| `NOTIFICATION_FROM_EMAIL` | `Sanctum Runtime Alerts <alerts@sanctumruntime.com>` | Must be a verified Resend sender domain |
+| `PADDLE_VENDOR_ID` | From Paddle dashboard | Billing integration |
+| `PADDLE_WEBHOOK_SECRET` | **Secret** — from Paddle | Required to verify billing webhooks |
+| `PADDLE_PRODUCT_OPERATOR` | Paddle product/price ID | Operator plan |
+| `PADDLE_PRODUCT_TEAM` | Paddle product/price ID | Team plan |
+| `PADDLE_PRODUCT_ENTERPRISE` | Paddle product/price ID | Enterprise plan |
+| `PADDLE_SANDBOX` | `false` | Set `true` during testing; `false` in production |
+| `SANCTUM_PUBLIC_API_URL` | `https://api.sanctumruntime.com` | Shown in action-token emails |
+
+> **Tip:** `npm run gen:vapid` prints the VAPID key pair ready to paste.  
+> `npm run gen:secrets` prints `SANCTUM_ACTION_TOKEN_SECRET` + `SANCTUM_API_KEY_PEPPER`.
+
+**Reading the startup banner** — on every boot the API prints a single summary block:
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+  Sanctum Runtime API  [production]
+├──────────────────────────────────────────────────────────────────┤
+  Listening     : http://0.0.0.0:3000
+  Risk model    : openai / gpt-4o-mini  offline=false  openai-key=✓
+  Supabase      : url=✓  service-role=✓  jwt-auth=✓
+  Email (Resend): ✓
+  Push (VAPID)  : ✓
+  Billing Paddle: ✓  sandbox=false
+  Auth          : Supabase JWT + X-Sanctum-Key
+  API key pepper: SANCTUM_API_KEY_PEPPER  ✓
+  CORS origins  : https://console.sanctumruntime.com + 1 more
+  Workers       : webhook=✓  email-queue=✓
+└──────────────────────────────────────────────────────────────────┘
+```
+
+`✗ NOT SET` on any line means that integration is disabled. Missing production integrations also emit a `[startup] WARN:` line for easy log-stream alerting.
 
 **Persistence:**
 

@@ -394,7 +394,19 @@ app.get('/health', async (_req, reply) => {
     if (supabaseAuth && !supabaseOk) {
       return reply.status(503).send({ ok: false, reason: 'supabase_unreachable' })
     }
-    return { ok: true }
+    // Surface risk model + offline-mode in the production health response so
+    // Render uptime monitors and status-page probes can detect misconfiguration
+    // without needing to scrape logs or call the private /v1/status endpoint.
+    const prodStatus = await runtime.getStatus()
+    return {
+      ok: true,
+      riskModel: {
+        provider: prodStatus.riskProvider,
+        model: prodStatus.riskModel ?? null,
+        offline: forceOffline || !prodStatus.riskModelConnected,
+        connected: prodStatus.riskModelConnected,
+      },
+    }
   }
 
   const status = await runtime.getStatus()
@@ -1125,36 +1137,91 @@ app.get('/metrics', async (_req, reply) => {
 
 try {
   await app.listen({ port, host })
-  console.log(`Sanctum API listening on http://${host}:${port}`)
-  if (supabaseAuth) console.log('Supabase JWT auth enabled')
-  if (process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
-    console.log('Supabase data sync enabled (audit_events, runtime_policies, webhook_deliveries)')
-  }
-  if (apiKey) console.log('Legacy API key auth enabled (SANCTUM_API_KEY env)')
-  if (supabaseAuth) {
-    const pepper = process.env.SANCTUM_API_KEY_PEPPER?.trim()
-    if (pepper && pepper.length >= 16) {
-      console.log('Dashboard API keys: bcrypt + SANCTUM_API_KEY_PEPPER')
-    } else if (process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
-      console.log('Dashboard API keys: bcrypt + pepper derived from SUPABASE_SERVICE_ROLE_KEY')
-    } else if (isProduction()) {
-      console.warn('WARN: Set SANCTUM_API_KEY_PEPPER or SUPABASE_SERVICE_ROLE_KEY for sk_sanctum_* keys')
-    } else {
-      console.log('Dashboard API keys: dev pepper')
-    }
-
-    // Warn if SANCTUM_API_KEY_PEPPER is not set in production
-    if (!process.env.SANCTUM_API_KEY_PEPPER?.trim() && isProduction()) {
-      console.warn('WARN: SANCTUM_API_KEY_PEPPER is not set. API key security relies on SUPABASE_SERVICE_ROLE_KEY pepper only.')
-    }
-
-    if (stopWebhookWorker) {
-      console.log('Webhook delivery worker started (30s interval)')
-    }
-  }
+  logStartupSummary({ host, port })
 } catch (err) {
   app.log.error(err)
   process.exit(1)
+}
+
+/**
+ * Emit a single structured startup banner so Render's log stream (and any
+ * log aggregator) gets the full configuration state at boot — no more
+ * grepping across a dozen scattered console.log lines to figure out why
+ * the risk model is offline or why email isn't delivering.
+ */
+function logStartupSummary({ host, port }: { host: string; port: number }): void {
+  const env = isProduction() ? 'production' : 'development'
+
+  // ── Auth ─────────────────────────────────────────────────────────────────
+  const hasSupabaseJwt = !!supabaseAuth
+  const hasServiceRole  = !!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
+  const hasApiKey       = !!apiKey
+
+  // ── API key pepper ────────────────────────────────────────────────────────
+  const pepper = process.env.SANCTUM_API_KEY_PEPPER?.trim()
+  const pepperState = pepper && pepper.length >= 16
+    ? 'SANCTUM_API_KEY_PEPPER  ✓'
+    : hasServiceRole
+      ? 'derived from SUPABASE_SERVICE_ROLE_KEY'
+      : isProduction()
+        ? 'MISSING — set SANCTUM_API_KEY_PEPPER'
+        : 'dev default'
+
+  // ── Risk model ────────────────────────────────────────────────────────────
+  const riskProvider = process.env.SANCTUM_RISK_PROVIDER ?? 'none'
+  const riskModel    = process.env.SANCTUM_RISK_MODEL ?? '(default)'
+  const offlineMode  = process.env.SANCTUM_OFFLINE_MODE === 'true'
+  const hasOpenAI    = !!process.env.OPENAI_API_KEY?.trim()
+
+  // ── Optional integrations ─────────────────────────────────────────────────
+  const hasResend     = !!process.env.RESEND_API_KEY?.trim()
+  const hasVapid      = !!process.env.VAPID_PUBLIC_KEY?.trim() && !!process.env.VAPID_PRIVATE_KEY?.trim()
+  const hasPaddle     = !!process.env.PADDLE_WEBHOOK_SECRET?.trim()
+  const paddleSandbox = process.env.PADDLE_SANDBOX === 'true'
+
+  // ── CORS ──────────────────────────────────────────────────────────────────
+  const origins = Array.from(corsOrigins)
+  const corsDisplay = origins.length <= 2
+    ? origins.join(', ')
+    : `${origins.slice(0, 2).join(', ')} + ${origins.length - 2} more`
+
+  const W = 66 // banner inner width
+  const pad = (s: string) => ('  ' + s).padEnd(W)
+  const hr  = '─'.repeat(W)
+
+  const ok  = (v: boolean, label?: string) => v ? `✓${label ? ' ' + label : ''}` : `✗ NOT SET`
+
+  const lines = [
+    `┌${hr}┐`,
+    pad(`Sanctum Runtime API  [${env}]`),
+    `├${hr}┤`,
+    pad(`Listening     : http://${host}:${port}`),
+    pad(`Risk model    : ${riskProvider} / ${riskModel}  offline=${offlineMode}  openai-key=${ok(hasOpenAI)}`),
+    pad(`Supabase      : url=${ok(hasSupabaseJwt)}  service-role=${ok(hasServiceRole)}  jwt-auth=${ok(hasSupabaseJwt)}`),
+    pad(`Email (Resend): ${ok(hasResend)}`),
+    pad(`Push (VAPID)  : ${ok(hasVapid)}`),
+    pad(`Billing Paddle: ${ok(hasPaddle)}${hasPaddle ? `  sandbox=${paddleSandbox}` : ''}`),
+    pad(`Auth          : ${[hasSupabaseJwt ? 'Supabase JWT' : '', hasApiKey ? 'X-Sanctum-Key' : ''].filter(Boolean).join(' + ') || 'none (open)'}`),
+    pad(`API key pepper: ${pepperState}`),
+    pad(`CORS origins  : ${corsDisplay}`),
+    pad(`Workers       : webhook=${ok(!!stopWebhookWorker)}  email-queue=${ok(!!stopEmailQueueWorker)}`),
+    `└${hr}┘`,
+  ]
+  console.log(lines.join('\n'))
+
+  // Emit targeted warnings for missing production integrations
+  if (isProduction()) {
+    if (!hasResend)
+      console.warn('[startup] WARN: RESEND_API_KEY not set — alert emails will not be delivered')
+    if (!hasVapid)
+      console.warn('[startup] WARN: VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY not set — push notifications disabled')
+    if (!hasPaddle)
+      console.warn('[startup] WARN: PADDLE_WEBHOOK_SECRET not set — billing webhooks will be rejected')
+    if (!hasOpenAI && riskProvider === 'openai' && !offlineMode)
+      console.warn('[startup] WARN: OPENAI_API_KEY not set but SANCTUM_RISK_PROVIDER=openai — will run offline')
+    if (!pepper || pepper.length < 16)
+      console.warn('[startup] WARN: SANCTUM_API_KEY_PEPPER not set — API key security degraded')
+  }
 }
 
 // Graceful shutdown: stop webhook worker and close server
