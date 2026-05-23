@@ -44,8 +44,8 @@ export const openCorePath = `${docsPath}#open-core`;
  */
 export const enterpriseAccessUrl = readEnv("VITE_EARLY_ACCESS_URL", "/enterprise");
 
-/** Machine-readable index for AI crawlers */
-export const llmsTxtUrl = "/llms.txt";
+/** Machine-readable index for AI crawlers — absolute so FooterNavLink uses <a>, not TanStack <Link> */
+export const llmsTxtUrl = marketingUrl.replace(/\/$/, "") + "/llms.txt";
 
 /** @deprecated Use enterpriseAccessUrl */
 export const earlyAccessUrl = enterpriseAccessUrl;
