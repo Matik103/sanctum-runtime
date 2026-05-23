@@ -9,6 +9,9 @@ import { z } from 'zod'
 import type { SupabaseAuthConfig } from './auth.js'
 import { createSupabaseAdmin } from './auth.js'
 import { ControlPlaneStore } from './control-plane-store.js'
+import { logger as rootLogger } from './logger.js'
+
+const log = rootLogger.child({ module: 'governance' })
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -336,7 +339,7 @@ export async function expireStaleApprovals(cfg: SupabaseAuthConfig): Promise<num
     .select('id')
 
   if (error) {
-    console.error('[governance] expireStaleApprovals error:', error.message)
+    log.error({ error: error.message }, 'expireStaleApprovals failed')
     return 0
   }
   return data?.length ?? 0

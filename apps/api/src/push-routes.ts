@@ -2,6 +2,9 @@ import type { FastifyInstance, FastifyRequest } from 'fastify'
 import type { PushSubscription } from 'web-push'
 import { z } from 'zod'
 import { createSupabaseAdmin, getSupabaseAuthConfig } from './auth.js'
+import { logger as rootLogger } from './logger.js'
+
+const log = rootLogger.child({ module: 'push-routes' })
 
 type SanctumReq = FastifyRequest & {
   sanctumUser?: { id: string; email?: string }
@@ -162,6 +165,6 @@ export async function sendPushToUser(
         .in('endpoint', expiredEndpoints)
     }
   } catch (e) {
-    console.warn('[push] send failed', e)
+    log.warn({ err: e instanceof Error ? e : new Error(String(e)) }, 'push send failed')
   }
 }

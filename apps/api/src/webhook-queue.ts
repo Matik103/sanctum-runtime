@@ -1,5 +1,8 @@
 import { createHmac } from 'node:crypto'
 import { createSupabaseAdmin, type SupabaseAuthConfig } from './auth.js'
+import { logger as rootLogger } from './logger.js'
+
+const log = rootLogger.child({ worker: 'webhook-queue' })
 
 export type WebhookQueueEntry = {
   id: string
@@ -175,7 +178,7 @@ export function startWebhookWorker(
 ): () => void {
   const timer = setInterval(() => {
     processWebhookQueue(cfg).catch((err) => {
-      console.error('[webhook-worker] processWebhookQueue error:', err)
+      log.error({ err }, 'processWebhookQueue error')
     })
   }, intervalMs)
 

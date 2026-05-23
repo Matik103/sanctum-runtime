@@ -9,6 +9,19 @@
  *   NOTIFICATION_WEBHOOK_URL     → generic webhook fallback (PagerDuty, OpsGenie, custom)
  */
 
+import {
+  button,
+  detailsTable,
+  escapeHtml,
+  plainText,
+  severityBadge,
+  spacer,
+  wrapEmail,
+} from './email-layout.js'
+import { logger as rootLogger } from './logger.js'
+
+const log = rootLogger.child({ service: 'notifications' })
+
 export type NotificationEventType =
   // Anomaly / policy
   | 'anomaly.spike'
@@ -61,88 +74,50 @@ function severityColor(severity: NotificationSeverity): string {
   }
 }
 
+const FONT_STACK = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
+
 function buildHtml(event: NotificationEvent): string {
   const sev = event.severity ?? 'info'
   const color = severityColor(sev)
   const ts = new Date().toUTCString()
-  const dashboardUrl = process.env.DASHBOARD_URL ?? 'https://app.sanctumruntime.com'
+  const dashboardUrl = process.env.DASHBOARD_URL ?? 'https://console.sanctumruntime.com'
 
-  const dataRows = event.data
+  const dataRows: Array<[string, string]> = event.data
     ? Object.entries(event.data)
         .filter(([, v]) => v !== undefined && v !== null)
-        .map(
-          ([k, v]) =>
-            `<tr><td style="padding:4px 16px 4px 0;color:#6b7280;font-size:13px;white-space:nowrap;">${k}</td>` +
-            `<td style="padding:4px 0;color:#d1d5db;font-size:13px;font-family:ui-monospace,monospace;">${String(v)}</td></tr>`,
-        )
-        .join('')
-    : ''
+        .map(([k, v]) => [k, String(v)])
+    : []
 
-  return `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#09090b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#09090b;padding:32px 16px;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="background:#111113;border:1px solid #27272a;border-radius:8px;overflow:hidden;max-width:600px;">
+  const sections: string[] = [
+    `<p style="margin:0 0 8px;font-size:11px;color:#52525b;text-transform:uppercase;letter-spacing:0.08em;font-family:${FONT_STACK};">${escapeHtml(event.type)}</p>`,
+    `<h1 style="margin:0 0 12px;font-size:22px;font-weight:600;color:#f4f4f5;line-height:1.3;font-family:${FONT_STACK};">${escapeHtml(event.title)}</h1>`,
+    `<p style="margin:0 0 24px;font-size:14px;color:#a1a1aa;line-height:1.6;font-family:${FONT_STACK};">${escapeHtml(event.body)}</p>`,
+  ]
 
-        <!-- Header -->
-        <tr>
-          <td style="background:#0f0f11;padding:20px 32px;border-bottom:1px solid #27272a;">
-            <table width="100%" cellpadding="0" cellspacing="0">
-              <tr>
-                <td>
-                  <span style="font-size:15px;font-weight:600;color:#f4f4f5;letter-spacing:-0.02em;">Sanctum Runtime</span>
-                  <span style="font-size:13px;color:#71717a;margin-left:8px;">alerts@sanctumruntime.com</span>
-                </td>
-                <td align="right">
-                  <span style="display:inline-block;background:${color}22;color:${color};font-size:11px;font-weight:600;padding:3px 10px;border-radius:4px;border:1px solid ${color}44;text-transform:uppercase;letter-spacing:0.05em;">${sev}</span>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
+  if (dataRows.length > 0) {
+    sections.push(
+      `<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background:#0f0f11;border:1px solid #27272a;border-radius:8px;"><tr><td style="padding:16px 20px;">${detailsTable(dataRows)}</td></tr></table>`,
+      spacer(24),
+    )
+  }
 
-        <!-- Body -->
-        <tr>
-          <td style="padding:32px;">
-            <p style="margin:0 0 8px;font-size:11px;color:#52525b;text-transform:uppercase;letter-spacing:0.08em;">${event.type}</p>
-            <h1 style="margin:0 0 16px;font-size:20px;font-weight:600;color:#f4f4f5;line-height:1.3;">${event.title}</h1>
-            <p style="margin:0 0 24px;font-size:14px;color:#a1a1aa;line-height:1.6;">${event.body}</p>
+  // Metadata strip — uses detailsTable for consistent spacing across clients
+  sections.push(
+    `<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background:#0f0f11;border:1px solid #27272a;border-radius:8px;"><tr><td style="padding:14px 20px;">${detailsTable([['Org', event.orgId], ['Time', ts]])}</td></tr></table>`,
+    spacer(28),
+    button({ text: 'Open dashboard', href: dashboardUrl, variant: 'primary' }),
+  )
 
-            ${dataRows ? `<table cellpadding="0" cellspacing="0" style="margin-bottom:24px;width:100%;">${dataRows}</table>` : ''}
-
-            <!-- Metadata strip -->
-            <table cellpadding="0" cellspacing="0" style="background:#0f0f11;border:1px solid #27272a;border-radius:6px;padding:12px 16px;width:100%;margin-bottom:28px;">
-              <tr>
-                <td style="font-size:12px;color:#52525b;">Org</td>
-                <td style="font-size:12px;color:#71717a;font-family:ui-monospace,monospace;padding-left:12px;">${event.orgId}</td>
-                <td style="font-size:12px;color:#52525b;padding-left:24px;">Time</td>
-                <td style="font-size:12px;color:#71717a;padding-left:12px;">${ts}</td>
-              </tr>
-            </table>
-
-            <a href="${dashboardUrl}" style="display:inline-block;background:#2563eb;color:#fff;font-size:14px;font-weight:500;padding:10px 22px;border-radius:6px;text-decoration:none;">
-              Open dashboard →
-            </a>
-          </td>
-        </tr>
-
-        <!-- Footer -->
-        <tr>
-          <td style="padding:16px 32px;border-top:1px solid #27272a;">
-            <p style="margin:0;font-size:12px;color:#52525b;">
-              Sanctum Runtime · Manage alerts in
-              <a href="${dashboardUrl}/settings" style="color:#3b82f6;text-decoration:none;">notification settings</a>
-            </p>
-          </td>
-        </tr>
-
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`
+  return wrapEmail({
+    title: event.title,
+    preheader: event.body.slice(0, 140),
+    accentColor: color,
+    headerAccent: severityBadge(sev, color),
+    sections,
+    footer:
+      `<strong style="color:#a1a1aa;">${escapeHtml(event.orgId)}</strong> · ` +
+      `Manage alerts in <a href="${escapeHtml(dashboardUrl)}/settings" style="color:#3b82f6;text-decoration:none;">notification settings</a>`,
+  })
 }
 
 async function sendResend(event: NotificationEvent, to: string): Promise<void> {
@@ -288,8 +263,7 @@ async function sendOpsAlert(event: NotificationEvent, failures: ChannelFailure[]
     timestamp: new Date().toISOString(),
   }
 
-  // Structured log — searchable by any log drain
-  console.error('[SANCTUM-OPS-ALERT] All notification channels failed:', JSON.stringify(payload))
+  log.error({ opsAlert: true, ...payload }, 'all notification channels failed')
 
   const opsWebhook = process.env.OPS_ALERT_WEBHOOK_URL
   if (!opsWebhook) return
@@ -304,10 +278,10 @@ async function sendOpsAlert(event: NotificationEvent, failures: ChannelFailure[]
       body: JSON.stringify(payload),
     })
     if (!res.ok) {
-      console.error('[SANCTUM-OPS-ALERT] Ops webhook returned', res.status)
+      log.error({ opsAlert: true, status: res.status }, 'ops webhook returned error status')
     }
   } catch (e) {
-    console.error('[SANCTUM-OPS-ALERT] Ops webhook unreachable:', e)
+    log.error({ opsAlert: true, err: e instanceof Error ? e : new Error(String(e)) }, 'ops webhook unreachable')
   }
 }
 
@@ -334,10 +308,12 @@ async function _sendWithFailover(
 
   if (primary.length === 0) {
     // No channels configured — loud log so this is discoverable
-    console.warn(
-      `[notifications] No channels configured — ${(event.severity ?? 'info').toUpperCase()} ` +
-      `[${event.type}] org=${event.orgId}: ${event.title}`,
-    )
+    log.warn({
+      eventType:  event.type,
+      severity:   event.severity ?? 'info',
+      orgId:      event.orgId,
+      title:      event.title,
+    }, 'no notification channels configured')
     return
   }
 
@@ -355,7 +331,7 @@ async function _sendWithFailover(
       } else {
         const reason = (settled[i] as PromiseRejectedResult).reason
         failures.push({ channel: primary[i].name, error: String(reason) })
-        console.warn(`[notifications] ${primary[i].name} failed for ${event.type}:`, reason)
+        log.warn({ channel: primary[i].name, eventType: event.type, reason: String(reason) }, 'notification channel failed')
       }
     }
     if (!anyOk) await sendOpsAlert(event, failures)
@@ -367,7 +343,7 @@ async function _sendWithFailover(
         return // delivered — done
       } catch (e) {
         failures.push({ channel: channel.name, error: String(e) })
-        console.warn(`[notifications] ${channel.name} failed, trying next channel:`, e)
+        log.warn({ channel: channel.name, err: e instanceof Error ? e : new Error(String(e)) }, 'channel failed, trying next')
       }
     }
     // Every configured channel failed
@@ -381,7 +357,7 @@ async function _sendWithFailover(
     const cfg = getSupabaseAuthConfig()
     if (!cfg) return
     await sendFcmToOrg(event, cfg)
-  }).catch((e) => console.warn('[notifications] push error:', e))
+  }).catch((e) => log.warn({ err: e instanceof Error ? e : new Error(String(e)) }, 'push notification error'))
 }
 
 // ── Deduplication ─────────────────────────────────────────────────────────────
@@ -407,9 +383,9 @@ async function loadDedupState(): Promise<void> {
       const key = `${row.org_id}:${row.event_type}`
       alertCooldowns.set(key, new Date(row.last_sent_at).getTime())
     }
-    console.log(`[notifications] dedup state loaded (${data?.length ?? 0} entries)`)
+    log.info({ count: data?.length ?? 0 }, 'notification dedup state loaded')
   } catch (e) {
-    console.warn('[notifications] dedup state load failed:', e)
+    log.warn({ err: e instanceof Error ? e : new Error(String(e)) }, 'dedup state load failed')
   }
 }
 
@@ -424,7 +400,7 @@ async function persistDedupEntry(orgId: string, eventType: string): Promise<void
       { onConflict: 'org_id,event_type' },
     )
   } catch (e) {
-    console.warn('[notifications] dedup persist failed:', e)
+    log.warn({ err: e instanceof Error ? e : new Error(String(e)) }, 'dedup persist failed')
   }
 }
 

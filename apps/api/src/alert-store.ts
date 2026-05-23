@@ -1,4 +1,7 @@
 import { createSupabaseAdmin, type SupabaseAuthConfig } from './auth.js'
+import { logger as rootLogger } from './logger.js'
+
+const log = rootLogger.child({ store: 'alert-store' })
 
 export type AlertSeverity = 'info' | 'warning' | 'critical' | 'emergency'
 export type AlertStatus = 'open' | 'acknowledged' | 'resolved'
@@ -67,7 +70,7 @@ export class AlertStore {
       .select('*')
       .single()
     if (error) {
-      console.warn('[alert-store] createAlert error:', error.message)
+      log.warn({ error: error.message }, 'createAlert error')
       return null
     }
     return row as Alert

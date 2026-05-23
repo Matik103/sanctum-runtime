@@ -59,7 +59,7 @@ import {
 } from './scoped-policy-audit.js'
 import { assertOrgAllowed, type SanctumReq } from './org-scope.js'
 import { ControlPlaneStore } from './control-plane-store.js'
-import { createSupabaseAdmin } from './auth.js'
+import { createSupabaseAdmin, getSupabaseFetchTimeoutTotal, getJwtCacheStats } from './auth.js'
 import {
   loadRepoEnv,
   resolveApiListenTarget,
@@ -100,6 +100,15 @@ const app = Fastify({
   trustProxy: true,
   bodyLimit: 512 * 1024, // 512 KB
   genReqId: () => crypto.randomUUID(),
+  // Fastify defaults both timeouts to 0 (unlimited), which lets a slow-loris
+  // client tie up sockets indefinitely. Cap the full request lifecycle at 30 s
+  // — well above any legitimate handler (LLM risk analysis has its own 25 s
+  // OpenAI timeout, compliance exports are row-capped) — and the initial
+  // connection handshake at 60 s. Both can be overridden via env if a future
+  // long-running endpoint needs more, but anything that does should really
+  // be a background job.
+  connectionTimeout: Number(process.env.SANCTUM_HTTP_CONNECTION_TIMEOUT_MS ?? 60_000),
+  requestTimeout:    Number(process.env.SANCTUM_HTTP_REQUEST_TIMEOUT_MS    ?? 30_000),
 })
 
 const corsOrigins = new Set([
@@ -113,7 +122,18 @@ for (const origin of process.env.SANCTUM_CORS_ORIGINS?.split(',') ?? []) {
   if (trimmed) corsOrigins.add(trimmed)
 }
 
-await app.register(websocket)
+// Cap inbound WS frame size at 64 KiB. SDK clients only send small JSON
+// ping/pong + command-result envelopes; anything larger is either a bug or
+// abuse. ws library default is 100 MiB which lets a single malicious frame
+// pin large amounts of heap. We also disable per-message deflate — Sanctum's
+// payloads are short JSON where compression overhead exceeds the savings and
+// it has been a source of CVEs in the wild.
+await app.register(websocket, {
+  options: {
+    maxPayload: 64 * 1024,
+    perMessageDeflate: false,
+  },
+})
 function isAllowedCorsOrigin(origin: string): boolean {
   if (corsOrigins.has(origin)) return true
   try {
@@ -147,16 +167,44 @@ await app.register(helmet, {
   crossOriginEmbedderPolicy: false,
 })
 
-function rateLimitKey(req: import('fastify').FastifyRequest): string {
-  const fwd = req.headers['x-forwarded-for']
-  const ip = Array.isArray(fwd) ? fwd[0] : (typeof fwd === 'string' ? fwd.split(',')[0].trim() : req.ip)
-  return ip ?? req.ip
+// Tiered rate limiting. Previously every request was keyed by IP at 200/min,
+// which meant a customer running an agent fleet from a single VPS (or behind
+// a NAT/egress gateway) shared the same bucket as anonymous traffic from
+// the same IP — they'd hit the cap fast, and a noisy neighbor on the same
+// egress could starve them entirely.
+//
+// Now: presence of an API key promotes the request to its own per-key bucket
+// (keyed by SHA-256 hash, not the raw key) with a much higher budget,
+// isolating each customer from each other and from anonymous traffic.
+const ANON_RATE_LIMIT    = Number(process.env.SANCTUM_RATE_LIMIT_ANON    ?? 200)
+const API_KEY_RATE_LIMIT = Number(process.env.SANCTUM_RATE_LIMIT_API_KEY ?? 1000)
+
+function requestApiKey(req: import('fastify').FastifyRequest): string | undefined {
+  const raw = req.headers['x-sanctum-key']
+  const v = Array.isArray(raw) ? raw[0] : raw
+  return v?.trim() || undefined
 }
 
-// Global default — 200 req/min per IP
+function rateLimitKey(req: import('fastify').FastifyRequest): string {
+  const key = requestApiKey(req)
+  if (key) {
+    // Hash so the raw key never appears in error responses, log lines, or
+    // the rate-limit plugin's internal storage. 16 hex chars is plenty for
+    // bucket separation and renders accidental disclosure useless.
+    return 'k:' + crypto.createHash('sha256').update(key).digest('hex').slice(0, 16)
+  }
+  const fwd = req.headers['x-forwarded-for']
+  const ip = Array.isArray(fwd) ? fwd[0] : (typeof fwd === 'string' ? fwd.split(',')[0].trim() : req.ip)
+  return 'ip:' + (ip ?? req.ip)
+}
+
+function rateLimitMax(req: import('fastify').FastifyRequest): number {
+  return requestApiKey(req) ? API_KEY_RATE_LIMIT : ANON_RATE_LIMIT
+}
+
 await app.register(rateLimit, {
   global: true,
-  max: 200,
+  max: rateLimitMax,
   timeWindow: '1 minute',
   // No allowList — localhost bypass removed; apply limits everywhere including cloud VMs
   keyGenerator: rateLimitKey,
@@ -180,8 +228,14 @@ await app.register(rateLimit, {
 })
 
 // Echo request ID in responses for traceability
+// Also stamp sensitive /v1/* data endpoints as non-cacheable so no upstream
+// proxy or CDN accidentally serves a prior user's data to a new caller.
 app.addHook('onSend', async (req, reply) => {
   reply.header('X-Request-Id', req.id)
+  const path = req.url.split('?')[0]
+  if (path.startsWith('/v1/') && path !== '/v1/push/vapid-key') {
+    reply.header('Cache-Control', 'no-store')
+  }
 })
 
 // HTTP request counters + latency histogram + slow-request log lines
@@ -205,7 +259,8 @@ function isPublicPath(path: string): boolean {
     path === '/v1/billing/webhook' ||
     path === '/v1/verify-action' ||
     path === '/v1/push/vapid-key' ||
-    path === '/.well-known/security.txt'
+    path === '/.well-known/security.txt' ||
+    path === '/v1/client-errors'
   ) return true
   if (path.startsWith('/v1/sso/')) return true
   if (!isProduction()) {
@@ -295,6 +350,45 @@ app.get('/.well-known/security.txt', async (_req, reply) => {
     'Canonical: https://www.sanctumruntime.com/.well-known/security.txt',
     '',
   ].join('\n')
+})
+
+// ── Frontend error telemetry ─────────────────────────────────────────────────
+// Dashboard's React ErrorBoundary POSTs here when it catches a render error.
+// No auth required (the browser may not have a valid session when the crash
+// occurs), so we apply a tight rate limit (30/min per IP) and discard any body
+// larger than 8 KiB. Errors are logged at ERROR level so they flow into the
+// same structured log stream as server-side errors.
+const CLIENT_ERROR_SCHEMA = z.object({
+  page:       z.string().max(120).optional(),
+  message:    z.string().max(500),
+  stack:      z.string().max(4000).optional(),
+  componentStack: z.string().max(4000).optional(),
+  userAgent:  z.string().max(300).optional(),
+  href:       z.string().max(500).optional(),
+  buildId:    z.string().max(80).optional(),
+})
+
+app.post('/v1/client-errors', {
+  config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
+  bodyLimit: 8 * 1024,   // 8 KiB — enough for stack traces, blocks flood payloads
+}, async (req, reply) => {
+  const result = CLIENT_ERROR_SCHEMA.safeParse(req.body)
+  if (!result.success) {
+    return reply.status(400).send({ error: 'invalid_payload' })
+  }
+  req.log.error({
+    source:         'client',
+    clientError:    true,
+    page:           result.data.page,
+    message:        result.data.message,
+    stack:          result.data.stack,
+    componentStack: result.data.componentStack,
+    userAgent:      result.data.userAgent,
+    href:           result.data.href,
+    buildId:        result.data.buildId,
+    requestId:      req.id,
+  }, 'dashboard render error captured')
+  return reply.status(202).send({ ok: true })
 })
 
 app.get('/', async () => {
@@ -1171,6 +1265,24 @@ app.get('/metrics', async (_req, reply) => {
     '# HELP sanctum_audit_entries_total Total audit entries in memory',
     '# TYPE sanctum_audit_entries_total gauge',
     `sanctum_audit_entries_total ${status.auditCount}`,
+    '# HELP sanctum_audit_evictions_total Audit entries dropped from the in-memory cap since boot',
+    '# TYPE sanctum_audit_evictions_total counter',
+    `sanctum_audit_evictions_total ${runtime.getAuditStore().getEvictionStats().total}`,
+    '# HELP sanctum_audit_cap Configured in-memory audit entry cap',
+    '# TYPE sanctum_audit_cap gauge',
+    `sanctum_audit_cap ${runtime.getAuditStore().getEvictionStats().cap}`,
+    '# HELP sanctum_supabase_fetch_timeouts_total Supabase fetch calls aborted by the per-request timeout since boot',
+    '# TYPE sanctum_supabase_fetch_timeouts_total counter',
+    `sanctum_supabase_fetch_timeouts_total ${getSupabaseFetchTimeoutTotal()}`,
+    '# HELP sanctum_jwt_cache_hits_total Supabase JWT verifications served from in-process cache',
+    '# TYPE sanctum_jwt_cache_hits_total counter',
+    `sanctum_jwt_cache_hits_total ${getJwtCacheStats().hits}`,
+    '# HELP sanctum_jwt_cache_misses_total Supabase JWT verifications that required a network call',
+    '# TYPE sanctum_jwt_cache_misses_total counter',
+    `sanctum_jwt_cache_misses_total ${getJwtCacheStats().misses}`,
+    '# HELP sanctum_jwt_cache_size Current entry count in the JWT verification cache',
+    '# TYPE sanctum_jwt_cache_size gauge',
+    `sanctum_jwt_cache_size ${getJwtCacheStats().size}`,
     '# HELP sanctum_policies_total Active policy count',
     '# TYPE sanctum_policies_total gauge',
     `sanctum_policies_total ${policyCount}`,

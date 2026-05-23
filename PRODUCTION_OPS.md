@@ -85,6 +85,47 @@ After deploy:
 curl -s https://YOUR-API.onrender.com/health
 ```
 
+### 1.1 Tuning knobs (all optional)
+
+All of the following have sensible defaults and only need to be set if you've
+observed a specific operational issue or want to tighten a particular
+ceiling. Most appear as gauges/counters under `GET /metrics` so you can see
+the effect of any change.
+
+**Logging**
+
+| Key | Default | Notes |
+|-----|---------|-------|
+| `LOG_LEVEL` | `info` (prod) / `debug` (dev) | `trace` `debug` `info` `warn` `error` `fatal`. Applies to both Fastify request logs and the shared logger used by background workers. |
+
+**HTTP timeouts** — protect against slow-loris clients and hung backends
+
+| Key | Default | Notes |
+|-----|---------|-------|
+| `SANCTUM_HTTP_CONNECTION_TIMEOUT_MS` | `60000` | Kills sockets stuck mid-handshake. |
+| `SANCTUM_HTTP_REQUEST_TIMEOUT_MS` | `30000` | Caps the full request lifecycle. Anything that legitimately takes longer should be a background job. |
+
+**Rate limiting** — tiered by auth signal
+
+| Key | Default | Notes |
+|-----|---------|-------|
+| `SANCTUM_RATE_LIMIT_ANON` | `200` | Per-IP request budget per minute for unauthenticated traffic. |
+| `SANCTUM_RATE_LIMIT_API_KEY` | `1000` | Per-key request budget per minute. Hashed bucket — one customer per bucket, no NAT-tenant noise. |
+
+**Supabase**
+
+| Key | Default | Notes |
+|-----|---------|-------|
+| `SUPABASE_FETCH_TIMEOUT_MS` | `8000` | Hard cap on every Supabase HTTP call (enforced at the `fetch` layer, not per-callsite). Clamped to 1 s – 30 s. Watch `sanctum_supabase_fetch_timeouts_total` in `/metrics`. |
+| `SANCTUM_JWT_CACHE_TTL_MS` | `30000` | In-process cache TTL for verified Supabase JWTs — cuts Supabase auth calls by ~50× on active sessions. Clamped 1 s – 5 min. Hit ratio: `sanctum_jwt_cache_hits_total` / `(hits + misses)`. |
+
+**Audit log (in-memory cap)** — the API mirrors audit entries to Supabase but keeps a hot in-memory window
+
+| Key | Default | Notes |
+|-----|---------|-------|
+| `SANCTUM_AUDIT_CAP` | `500` | Max in-memory audit entries before FIFO eviction kicks in. Watch `sanctum_audit_evictions_total` — a steady non-zero rate means cap is too low for your workload. |
+| `SANCTUM_AUDIT_DISK_BYTES` | `33554432` (32 MiB) | `audit.jsonl` rotation threshold. File is renamed to `audit.jsonl.1` (overwriting the previous `.1`) when exceeded; bounds total disk usage at ~2× this value. |
+
 ---
 
 ## 2. Supabase

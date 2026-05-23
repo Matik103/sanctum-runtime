@@ -67,9 +67,26 @@ export async function registerRuntimeWsRoutes(app: FastifyInstance) {
       const hint = reg.reason === 'org_limit_reached'
         ? `Organisation has reached the ${MAX_CONNECTIONS_PER_ORG}-connection limit`
         : 'Server connection limit reached — retry later'
+      req.log.warn({
+        wsRejected: true,
+        reason:     reg.reason,
+        runtimeId,
+        orgId,
+      }, 'runtime websocket rejected')
       socket.close(4429, hint)
       return
     }
+
+    // ws library emits 'error' for oversized payloads / protocol violations.
+    // Log them so a noisy SDK build doesn't go unnoticed; the socket auto-closes.
+    socket.on('error', (err) => {
+      req.log.warn({
+        wsError:   true,
+        runtimeId,
+        orgId,
+        message:   err.message,
+      }, 'runtime websocket error')
+    })
 
     const hello: WsConnectedMessage = { type: 'connected', runtimeId }
     socket.send(JSON.stringify(hello))

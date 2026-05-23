@@ -48,7 +48,8 @@ async function fetchRecentAlerts(): Promise<InAppNotification[]> {
 export function useInAppNotifications(orgId: string | null | undefined) {
   const [notifications, setNotifications] = useState<InAppNotification[]>([])
   const [unread, setUnread] = useState(0)
-  const seenRef = useRef<Set<string>>(loadSeen())
+  const [seenIds, setSeenIds] = useState<Set<string>>(() => loadSeen())
+  const seenRef = useRef<Set<string>>(seenIds)
   const channelRef = useRef<ReturnType<NonNullable<ReturnType<typeof getSupabase>>['channel']> | null>(null)
 
   const recalcUnread = useCallback((items: InAppNotification[]) => {
@@ -60,6 +61,7 @@ export function useInAppNotifications(orgId: string | null | undefined) {
     setNotifications((prev) => {
       for (const n of prev) seenRef.current.add(n.id)
       saveSeen(seenRef.current)
+      setSeenIds(new Set(seenRef.current))
       return prev
     })
     setUnread(0)
@@ -104,5 +106,5 @@ export function useInAppNotifications(orgId: string | null | undefined) {
     }
   }, [orgId])
 
-  return { notifications, unread, markAllRead, reload: load }
+  return { notifications, unread, seenIds, markAllRead, reload: load }
 }
