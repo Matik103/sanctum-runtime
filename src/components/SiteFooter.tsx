@@ -5,7 +5,6 @@ import {
   contactUrl,
   docsPath,
   llmsTxtUrl,
-  pricingUrl,
   privacyUrl,
   refundUrl,
   termsUrl,
@@ -74,8 +73,6 @@ export function SiteFooter() {
             <FooterNavLink href={refundUrl}>Refund Policy</FooterNavLink>
             <FooterNavLink href="/blog">Blog</FooterNavLink>
             <FooterNavLink href={docsPath}>Documentation</FooterNavLink>
-            <FooterNavLink href="/enterprise">Enterprise</FooterNavLink>
-            <FooterNavLink href={pricingUrl}>Pricing</FooterNavLink>
             <FooterNavLink href={llmsTxtUrl}>llms.txt</FooterNavLink>
             <FooterNavLink href={contactUrl}>Contact</FooterNavLink>
             <FooterNavLink href={consoleUrl} external>
