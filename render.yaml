@@ -10,6 +10,7 @@ services:
     runtime: node
     repo: https://github.com/Matik103/sanctum-runtime
     branch: main
+    autoDeploy: true
     buildCommand: npm ci && npm run build:sdk && npm run build:packages
     startCommand: npm run start -w @sanctum/api
     healthCheckPath: /health
@@ -70,6 +71,7 @@ services:
     runtime: static
     repo: https://github.com/Matik103/sanctum-runtime
     branch: main
+    autoDeploy: true
     buildCommand: npm ci && npm run build:sdk && npm run build -w @sanctum/dashboard
     staticPublishPath: apps/dashboard/dist
     routes:
