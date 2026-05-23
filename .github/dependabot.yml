@@ -1,0 +1,59 @@
+# Closes the loop with the Security workflow (npm audit):
+#   - npm audit catches CVEs in production deps
+#   - Dependabot opens PRs to upgrade them automatically
+# Without Dependabot, audit findings would accumulate untouched between
+# manual sweeps.
+
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "13:00"
+      timezone: UTC
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    commit-message:
+      prefix: deps
+      prefix-development: deps-dev
+      include: scope
+    # Group low-risk updates into a single PR to reduce review burden.
+    # Major bumps still get individual PRs so reviewers see breaking-change
+    # context per package.
+    groups:
+      runtime-patches:
+        applies-to: version-updates
+        update-types:
+          - patch
+      dev-deps:
+        applies-to: version-updates
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
+      types:
+        applies-to: version-updates
+        patterns:
+          - "@types/*"
+    ignore:
+      # SDK is published with pinned peer deps — let the SDK package own its
+      # own upgrade cadence rather than racing through monorepo updates.
+      - dependency-name: "@sanctum-runtime/sdk"
+
+  # Keep Actions versions current — supply-chain risk via tag-spoofing or
+  # compromised runners surfaces here.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "13:00"
+      timezone: UTC
+    labels:
+      - dependencies
+      - ci
+    commit-message:
+      prefix: ci(deps)
