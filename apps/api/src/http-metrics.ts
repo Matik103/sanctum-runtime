@@ -24,6 +24,7 @@ interface Counters {
   latencyBuckets: number[]
   latencySumSec: number
   latencyCount: number
+  rateLimited: number
 }
 
 const counters: Counters = {
@@ -33,6 +34,11 @@ const counters: Counters = {
   latencyBuckets: new Array(LATENCY_BUCKETS_SEC.length + 1).fill(0),
   latencySumSec: 0,
   latencyCount: 0,
+  rateLimited: 0,
+}
+
+export function recordRateLimitHit(): void {
+  counters.rateLimited += 1
 }
 
 function statusClass(code: number): StatusClass {
@@ -120,5 +126,10 @@ export function renderHttpMetrics(): string[] {
   lines.push(`sanctum_http_request_duration_seconds_bucket{le="+Inf"} ${cumulative}`)
   lines.push(`sanctum_http_request_duration_seconds_sum ${counters.latencySumSec.toFixed(6)}`)
   lines.push(`sanctum_http_request_duration_seconds_count ${counters.latencyCount}`)
+  lines.push(
+    '# HELP sanctum_rate_limit_exceeded_total Requests rejected with 429 by the global rate limiter',
+    '# TYPE sanctum_rate_limit_exceeded_total counter',
+    `sanctum_rate_limit_exceeded_total ${counters.rateLimited}`,
+  )
   return lines
 }
