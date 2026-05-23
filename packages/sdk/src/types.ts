@@ -112,6 +112,10 @@ export const ActionResultSchema = z.object({
   offlineMode: z.boolean(),
   evaluationMode: EvaluationModeSchema,
   modelInvoked: z.boolean(),
+  /** Provider that scored this specific decision — stamped at decision time for historical accuracy across rotations. */
+  riskModelProvider: z.enum(['ollama', 'openai']).optional(),
+  /** Model identifier (e.g. "gpt-4o-mini") that scored this specific decision. */
+  riskModelName: z.string().optional(),
   ollamaConnected: z.boolean(),
   /** Plain-language audit record (Humans-style compliance log). */
   humanRecord: z.string().optional(),

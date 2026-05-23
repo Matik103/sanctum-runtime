@@ -27,8 +27,10 @@ export function ActionDrawer({ entry, onClose, audit, onSelect, status }: Props)
   const tone = decisionTone(entry.decision)
   const heard = extractHeardPhrase(entry.context)
   const intent = extractIntent(entry.context)
-  const modelProvider = status?.riskProvider ?? (entry.ollamaConnected ? 'ollama' : undefined)
-  const modelName = status?.riskModel ?? status?.ollamaModel
+  // Prefer model identity stamped on the audit entry (historical accuracy across
+  // provider rotations); fall back to current runtime status for legacy entries.
+  const modelProvider = entry.riskModelProvider ?? status?.riskProvider ?? (entry.ollamaConnected ? 'ollama' : undefined)
+  const modelName = entry.riskModelName ?? status?.riskModel ?? status?.ollamaModel
 
   return (
     <>

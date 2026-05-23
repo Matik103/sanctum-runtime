@@ -396,6 +396,8 @@ export class RuntimeEngine {
     let modelConfidence: number | undefined
     let decision: Decision = 'APPROVED'
     let modelInvoked = false
+    let riskModelProvider: 'ollama' | 'openai' | undefined
+    let riskModelName: string | undefined
 
     if (policyEval.violations.includes('policy_auto_block')) {
       decision = 'BLOCKED'
@@ -419,6 +421,10 @@ export class RuntimeEngine {
       if (assessment) {
         modelInvoked = true
         evaluationMode = 'online_model'
+        // Capture exact model identity at decision time — survives provider rotations
+        const info = this.riskModel.getInfo()
+        riskModelProvider = info.provider
+        riskModelName = info.model
         const modelRisk = assessment.risk
         risk = mergeRisk(mergeRisk(modelRisk, riskFloor), riskFromBlastRadius(blastRadius.level))
         modelConfidence = assessment.confidence
@@ -539,6 +545,8 @@ export class RuntimeEngine {
       offlineMode: evaluationMode !== 'online_model',
       evaluationMode,
       modelInvoked,
+      riskModelProvider,
+      riskModelName,
       ollamaConnected: riskModelConnected,
       humanRecord: buildHumanAuditRecord({ ...partial, decision: elevatedDecision }),
       sourceTrust,

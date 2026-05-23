@@ -23,7 +23,7 @@ function escapeCsv(value: string): string {
 }
 
 export function AuditLogs({ audit, onSelect, status }: Props) {
-  const activeModel = status?.riskModel ?? status?.ollamaModel
+  const fallbackModel = status?.riskModel ?? status?.ollamaModel
   const exportJson = () => {
     download('sanctum-audit.json', JSON.stringify(audit, null, 2), 'application/json')
   }
@@ -113,16 +113,19 @@ export function AuditLogs({ audit, onSelect, status }: Props) {
                     </span>
                   </td>
                   <td style={{ color: 'var(--muted)', verticalAlign: 'top' }}>
-                    {e.modelInvoked ? (
-                      <span title={activeModel ? `Scored by ${activeModel}` : 'Scored by AI risk model'}>
-                        AI model
-                        {activeModel && (
-                          <span style={{ display: 'block', fontSize: '0.7rem', opacity: 0.7, marginTop: '0.1rem' }}>
-                            {activeModel}
-                          </span>
-                        )}
-                      </span>
-                    ) : (
+                    {e.modelInvoked ? (() => {
+                      const m = e.riskModelName ?? fallbackModel
+                      return (
+                        <span title={m ? `Scored by ${m}` : 'Scored by AI risk model'}>
+                          AI model
+                          {m && (
+                            <span style={{ display: 'block', fontSize: '0.7rem', opacity: 0.7, marginTop: '0.1rem' }}>
+                              {m}
+                            </span>
+                          )}
+                        </span>
+                      )
+                    })() : (
                       'Policy'
                     )}
                   </td>
