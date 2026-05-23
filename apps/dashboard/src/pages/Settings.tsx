@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { BarChart3, Bell, Download, Settings2 } from 'lucide-react'
 import type { RuntimeStatus } from '@sanctum-runtime/sdk/browser'
 import { Alert } from '../components/ui/Alert'
+import { AIModelCard } from '../components/AIModelCard'
 import { fetchMyOrgs, type FleetOrg } from '../lib/fleet'
 import { fetchOperatorContext } from '../lib/marketplace'
 import { riskModelMetaLine } from '../lib/risk-label'
@@ -191,8 +192,6 @@ export function Settings({ status }: Props) {
   }
 
   const operational = status?.runtimeOnline !== false
-  const provider = status?.riskProvider ?? (status?.ollamaConnected ? 'ollama' : 'none')
-  const modelReady = status?.riskModelConnected ?? status?.ollamaConnected ?? false
 
   return (
     <>
@@ -233,38 +232,7 @@ export function Settings({ status }: Props) {
         </div>
       </section>
 
-      <section className="section">
-        <div className="section__header">
-          <h2>Risk model</h2>
-          <p>Configure OPENAI_API_KEY or OLLAMA on the API host for live scoring</p>
-        </div>
-        <div className="section__body">
-          <dl className="detail-list">
-            <div>
-              <dt>Provider</dt>
-              <dd>{provider}</dd>
-            </div>
-            <div>
-              <dt>Connection</dt>
-              <dd>
-                <span className={`badge ${modelReady ? 'success' : 'neutral'}`}>
-                  {modelReady ? 'Connected' : provider === 'none' ? 'Not configured' : 'Disconnected'}
-                </span>
-              </dd>
-            </div>
-            <div>
-              <dt>Endpoint</dt>
-              <dd style={{ wordBreak: 'break-all', fontFamily: 'ui-monospace, monospace', fontSize: '0.85rem' }}>
-                {status?.riskEndpoint ?? status?.ollamaUrl ?? '—'}
-              </dd>
-            </div>
-            <div>
-              <dt>Active model</dt>
-              <dd>{status?.riskModel ?? status?.ollamaModel ?? '—'}</dd>
-            </div>
-          </dl>
-        </div>
-      </section>
+      <AIModelCard status={status} />
 
       {orgs.length > 0 && (
         <>
