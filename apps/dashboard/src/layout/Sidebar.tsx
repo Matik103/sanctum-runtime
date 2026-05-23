@@ -150,67 +150,40 @@ export function Sidebar({ page, onPage, status, orgId, companionMode }: Props) {
             type="button"
             onClick={openNotifications}
             aria-label={unread > 0 ? `${unread} unread notifications` : 'Notifications'}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              background: 'none',
-              border: 'none',
-              color: unread > 0 ? 'var(--text-primary, #f4f4f5)' : 'var(--muted, #71717a)',
-              cursor: 'pointer',
-              padding: '6px 0',
-              marginBottom: '0.5rem',
-              fontSize: '0.82rem',
-              position: 'relative',
-            }}
+            className="sf-notif-btn"
           >
-            <span style={{ position: 'relative', display: 'inline-flex' }}>
-              <Bell size={16} strokeWidth={1.75} />
-              {unread > 0 && (
-                <span style={{
-                  position: 'absolute',
-                  top: '-5px',
-                  right: '-6px',
-                  background: 'var(--danger, #ef4444)',
-                  color: '#fff',
-                  fontSize: '0.6rem',
-                  fontWeight: 700,
-                  lineHeight: 1,
-                  minWidth: '14px',
-                  height: '14px',
-                  borderRadius: '7px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '0 3px',
-                }}>
-                  {unread > 9 ? '9+' : unread}
-                </span>
-              )}
+            <span className="sf-notif-icon">
+              <Bell size={15} strokeWidth={1.75} />
+              {unread > 0 && <span className="sf-notif-badge">{unread > 9 ? '9+' : unread}</span>}
             </span>
-            Notifications
+            <span>Notifications</span>
+            {unread > 0 && <span className="sf-notif-count">{unread}</span>}
           </button>
 
-          <div style={{ marginBottom: '0.5rem' }}>
+          {/* Runtime status */}
+          <div className="sf-status-row">
             <span className={`status-dot ${risk.dot}`} />
-            {risk.label}
-          </div>
-          <div>
-            Runtime{' '}
-            <strong style={{ color: status?.runtimeOnline === false ? 'var(--danger)' : 'var(--success)' }}>
+            <span className="sf-status-label">{risk.label}</span>
+            <span className={`sf-runtime-badge ${status?.runtimeOnline === false ? 'offline' : 'online'}`}>
               {status?.runtimeOnline === false ? 'offline' : 'active'}
-            </strong>
+            </span>
           </div>
+
+          {/* User card */}
           {isSupabaseConfigured && user && (
-            <div style={{ marginTop: '0.75rem', fontSize: '0.78rem', color: 'var(--muted)' }}>
-              {user.email}
+            <div className="sf-user-card">
+              <div className="sf-avatar" aria-hidden>
+                {(user.email?.[0] ?? '?').toUpperCase()}
+              </div>
+              <span className="sf-email" title={user.email ?? ''}>{user.email}</span>
               <button
                 type="button"
-                className="btn btn-ghost"
-                style={{ display: 'block', marginTop: '0.35rem', padding: '0.25rem 0', fontSize: '0.78rem' }}
+                className="sf-signout-btn"
                 onClick={() => signOut()}
+                title="Sign out"
+                aria-label="Sign out"
               >
-                Sign out
+                <LogOut size={14} strokeWidth={1.75} />
               </button>
             </div>
           )}
