@@ -3,6 +3,8 @@ import { DEFAULT_POLICIES, DEFAULT_POLICY } from './default-policies.js'
 import { loadPoliciesFromDisk, savePoliciesToDisk } from './store.js'
 import { policiesFromYaml, policiesToYaml } from './yaml-policies.js'
 
+export { policiesFromYaml, policiesToYaml } from './yaml-policies.js'
+
 export type PolicyEvaluation = {
   policy: ActionPolicy
   policyPath: string

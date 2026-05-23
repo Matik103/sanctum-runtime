@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { History, RotateCcw, Tag } from 'lucide-react'
 import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
@@ -38,13 +38,13 @@ export function PolicyHistory() {
     fetchMyOrgs().then((orgs) => { if (orgs[0]) setOrgId(orgs[0].org_id) }).catch(() => {})
   }, [])
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!orgId) return
     const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/policy-snapshots`, { headers: await authHeaders() })
     if (res.ok) setSnapshots(await res.json() as PolicySnapshot[])
-  }
+  }, [orgId])
 
-  useEffect(() => { void load() }, [orgId])
+  useEffect(() => { void load() }, [load])
 
   const saveSnapshot = async () => {
     if (!orgId) return

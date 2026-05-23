@@ -92,6 +92,7 @@ async function main() {
       }
       console.error('Unknown policies subcommand. Try: sanctum policies export')
       process.exit(1)
+      break
     }
     default:
       console.error(`Unknown command: ${cmd}\n`)

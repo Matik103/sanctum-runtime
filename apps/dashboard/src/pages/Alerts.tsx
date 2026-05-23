@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   AlertTriangle,
   Bell,
@@ -136,7 +136,7 @@ export function Alerts({ onPage }: { onPage?: (p: PageId) => void }) {
     fetchMyOrgs().then((orgs) => { if (orgs[0]) setOrgId(orgs[0].org_id) }).catch(() => {})
   }, [])
 
-  const loadIncidents = async () => {
+  const loadIncidents = useCallback(async () => {
     if (!orgId) return
     const params = new URLSearchParams()
     if (statusFilter !== 'all') params.set('status', statusFilter)
@@ -149,17 +149,17 @@ export function Alerts({ onPage }: { onPage?: (p: PageId) => void }) {
       const d = await res.json() as { alerts: AlertRecord[] }
       setIncidents(d.alerts)
     }
-  }
+  }, [orgId, severityFilter, statusFilter])
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     if (!orgId) return
     const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/alerts/stats`, {
       headers: await authHeaders(),
     })
     if (res.ok) setStats(await res.json() as Stats)
-  }
+  }, [orgId])
 
-  const loadRules = async () => {
+  const loadRules = useCallback(async () => {
     if (!orgId) return
     const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/alert-rules`, {
       headers: await authHeaders(),
@@ -168,13 +168,13 @@ export function Alerts({ onPage }: { onPage?: (p: PageId) => void }) {
       const d = await res.json() as { rules: AlertRule[] }
       setRules(d.rules)
     }
-  }
+  }, [orgId])
 
   useEffect(() => {
     void loadIncidents()
     void loadStats()
     void loadRules()
-  }, [orgId, statusFilter, severityFilter])
+  }, [loadIncidents, loadRules, loadStats])
 
   const acknowledge = async (id: string) => {
     setBusy(true)

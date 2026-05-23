@@ -14,6 +14,13 @@ function normalizePolicy(raw: unknown): ActionPolicy {
     blockWhenOffline: parsed.blockWhenOffline ?? false,
     ...(parsed.allowedActors ? { allowedActors: parsed.allowedActors } : {}),
     ...(parsed.riskPrompt ? { riskPrompt: parsed.riskPrompt } : {}),
+    ...(parsed.requireSecondApprover !== undefined
+      ? { requireSecondApprover: parsed.requireSecondApprover }
+      : {}),
+    ...(parsed.autoEscalateAfterMinutes !== undefined
+      ? { autoEscalateAfterMinutes: parsed.autoEscalateAfterMinutes }
+      : {}),
+    ...(parsed.conditions ? { conditions: parsed.conditions } : {}),
   }
 }
 

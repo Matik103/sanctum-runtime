@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
 import { fetchMyOrgs } from '../lib/fleet'
@@ -36,7 +36,7 @@ export function Agents() {
     fetchMyOrgs().then((orgs) => { if (orgs[0]) setOrgId(orgs[0].org_id) }).catch(() => {})
   }, [])
 
-  const load = async (oid = orgId) => {
+  const load = useCallback(async (oid: string) => {
     if (!oid) return
     setLoading(true)
     try {
@@ -46,9 +46,9 @@ export function Agents() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load agents')
     } finally { setLoading(false) }
-  }
+  }, [])
 
-  useEffect(() => { void load() }, [orgId])
+  useEffect(() => { void load(orgId) }, [load, orgId])
 
   const create = async () => {
     if (!name.trim() || !orgId) { setError('Enter an agent name'); return }
@@ -63,7 +63,7 @@ export function Agents() {
       const data = await res.json() as { token: string; name: string; token_hint: string }
       setNewToken({ name: data.name, token: data.token, hint: data.token_hint })
       setName(''); setDesc('')
-      await load()
+      await load(orgId)
     } catch (e) { setError(e instanceof Error ? e.message : 'Failed') }
     finally { setCreating(false) }
   }
@@ -76,7 +76,7 @@ export function Agents() {
         headers: await authHeaders(),
       })
       if (!res.ok) { setError(`Revoke failed: ${res.status}`); return }
-      await load()
+      await load(orgId)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Revoke failed')
     }

@@ -6,7 +6,7 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", ".output", ".vinxi"] },
+  { ignores: ["**/dist/**", "**/.output/**", "**/.vinxi/**"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
@@ -32,9 +32,18 @@ export default tseslint.config(
           ],
         },
       ],
-      "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
+      // Components intentionally export related hooks, nav data, and style variants.
+      // Fast Refresh boundaries do not affect production correctness.
+      "react-refresh/only-export-components": "off",
       "@typescript-eslint/no-unused-vars": "off",
     },
   },
   eslintPluginPrettier,
+  {
+    rules: {
+      // This monorepo contains established package-specific formatting styles.
+      // Keep formatting opt-in through `npm run format`; lint should report correctness issues.
+      "prettier/prettier": "off",
+    },
+  },
 );

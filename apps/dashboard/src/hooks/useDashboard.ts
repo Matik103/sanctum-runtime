@@ -174,7 +174,7 @@ export function useDashboard() {
       const index = queue.findIndex((e) => e.id === entryId)
       return index >= 0 ? { current: index + 1, total: queue.length } : undefined
     },
-    [getPendingReviewQueue, pendingReviewCount],
+    [getPendingReviewQueue],
   )
 
   const openNextPendingReview = useCallback(() => {

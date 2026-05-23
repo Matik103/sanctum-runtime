@@ -3,7 +3,8 @@ import helmet from '@fastify/helmet'
 import rateLimit from '@fastify/rate-limit'
 import websocket from '@fastify/websocket'
 import { RuntimeEngine } from '@sanctum/runtime-engine'
-import { ActionRequestSchema } from '@sanctum-runtime/sdk'
+import { ActionRequestSchema, PolicyConditionSchema } from '@sanctum-runtime/sdk'
+import { policiesFromYaml, policiesToYaml } from '@sanctum/policy-engine'
 import Fastify from 'fastify'
 import { ZodError } from 'zod'
 import { z } from 'zod'
@@ -530,6 +531,7 @@ const policyPatchSchema = z.object({
   riskPrompt: z.string().max(8000).optional(),
   requireSecondApprover: z.boolean().optional(),
   autoEscalateAfterMinutes: z.number().int().min(1).max(1440).optional(),
+  conditions: z.array(PolicyConditionSchema).optional(),
 })
 
 const policyActionSchema = z
@@ -623,24 +625,45 @@ app.delete('/v1/policies/:action', async (req, reply) => {
 
 app.get('/v1/policies/export.yaml', async (req, reply) => {
   const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
-  if (scope !== null) {
-    return reply.status(403).send({ error: 'org_scoped_export_forbidden' })
+  const q = req.query as { org_id?: string }
+  if (scope === null && !q.org_id) {
+    return reply.type('text/yaml; charset=utf-8').send(runtime.exportPoliciesYaml())
   }
-  return reply.type('text/yaml; charset=utf-8').send(runtime.exportPoliciesYaml())
+  const picked = pickScopedOrgs(scope, q.org_id, { requireSingle: true })
+  if ('status' in picked) return reply.status(picked.status).send(picked.body)
+  return reply
+    .type('text/yaml; charset=utf-8')
+    .send(policiesToYaml(runtime.getPoliciesForOrg(picked.orgIds[0])))
 })
 
 app.post('/v1/policies/import.yaml', async (req, reply) => {
   const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
-  if (scope !== null) {
-    return reply.status(403).send({ error: 'org_scoped_import_forbidden' })
-  }
   const body = z
     .object({
       yaml: z.string().min(1),
       merge: z.boolean().optional().default(true),
+      org_id: z.string().min(1).max(128).optional(),
     })
     .parse(req.body)
-  return runtime.importPoliciesYaml(body.yaml, body.merge)
+  if (scope === null && !body.org_id) {
+    return runtime.importPoliciesYaml(body.yaml, body.merge)
+  }
+  const picked = pickScopedOrgs(scope, body.org_id, { requireSingle: true })
+  if ('status' in picked) return reply.status(picked.status).send(picked.body)
+  const orgId = picked.orgIds[0]
+  const imported = policiesFromYaml(body.yaml)
+  const validatedPolicies = Object.entries(imported).map(
+    ([action, policy]) => [policyActionSchema.parse(action), policy] as const,
+  )
+  if (!body.merge) {
+    await runtime.removePolicyKeys(
+      Object.keys(runtime.getPoliciesForOrg(orgId)).map((action) => `${orgId}:${action}`),
+    )
+  }
+  for (const [action, policy] of validatedPolicies) {
+    await runtime.getPolicyEngine().createPolicy(policyStorageKey(action, orgId, scope), policy)
+  }
+  return mergePoliciesForOrgs(runtime, [orgId])
 })
 
 app.get('/v1/webhooks/status', async () => runtime.getWebhookStatus())

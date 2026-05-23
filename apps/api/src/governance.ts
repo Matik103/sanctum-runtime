@@ -73,7 +73,7 @@ export function matchesPattern(action: string, pattern: string): boolean {
   const regexStr = escaped
     .replace(/\*\*/g, '\x00') // placeholder for **
     .replace(/\*/g, '[^.]*')  // * → any chars except dot
-    .replace(/\x00/g, '.*')   // ** → any chars including dot
+    .split('\x00').join('.*') // ** → any chars including dot
     .replace(/\?/g, '.')
   const re = new RegExp(`^${regexStr}$`)
   return re.test(action)

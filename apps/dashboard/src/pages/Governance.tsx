@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { CheckCircle, Clock, XCircle, GitBranch, AlertTriangle, ChevronRight } from 'lucide-react'
 import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
@@ -73,7 +73,7 @@ export function Governance() {
     fetchMyOrgs().then((orgs) => { if (orgs[0]) setOrgId(orgs[0].org_id) }).catch(() => {})
   }, [])
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!orgId) return
     const h = await authHeaders()
     const q = statusFilter === 'all' ? '' : `?status=${statusFilter}`
@@ -83,9 +83,9 @@ export function Governance() {
     ])
     if (aRes.ok) setApprovals(await aRes.json() as PendingApproval[])
     if (wRes.ok) setWorkflows(await wRes.json() as Workflow[])
-  }
+  }, [orgId, statusFilter])
 
-  useEffect(() => { void load() }, [orgId, statusFilter])
+  useEffect(() => { void load() }, [load])
 
   const decide = async (id: string, decision: 'approve' | 'reject') => {
     if (!orgId) return

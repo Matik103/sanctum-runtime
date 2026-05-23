@@ -18,7 +18,7 @@ function toActionKey(raw: string): string {
   return raw
     .trim()
     .replace(/([a-z])([A-Z])/g, '$1_$2')
-    .replace(/[\s\-]+/g, '_')
+    .replace(/[\s-]+/g, '_')
     .toLowerCase()
     .replace(/[^a-z0-9_.:@]/g, '')
     .replace(/_+/g, '_')

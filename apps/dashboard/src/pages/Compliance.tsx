@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Download, ShieldCheck, BarChart3, FileText, BookOpen } from 'lucide-react'
 import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
@@ -66,7 +66,7 @@ export function Compliance() {
     })
   }, [])
 
-  const loadReport = async () => {
+  const loadReport = useCallback(async () => {
     if (!orgId) return
     setLoading(true)
     setError(null)
@@ -84,9 +84,9 @@ export function Compliance() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [endDate, orgId, startDate])
 
-  useEffect(() => { void loadReport() }, [orgId])
+  useEffect(() => { void loadReport() }, [loadReport])
 
   const downloadReport = async () => {
     if (!orgId) return
