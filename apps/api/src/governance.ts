@@ -374,6 +374,7 @@ const decideSchema = z.object({
 
 type SanctumReq = FastifyRequest & {
   sanctumUser?: { id: string; email?: string }
+  sanctumApiKeyScope?: string[]
 }
 
 /**
@@ -418,6 +419,11 @@ export async function registerGovernanceRoutes(
         userId: req.sanctumUser.id,
         userRole: (member?.role as string | undefined) ?? 'member',
       }
+    }
+
+    if (req.sanctumApiKeyScope !== undefined) {
+      if (!req.sanctumApiKeyScope.includes(orgId)) return { allowed: false }
+      return { allowed: true, userRole: 'admin' }
     }
 
     const key = headerKey(req)

@@ -7,6 +7,7 @@ import { assertOrgRole } from './rbac.js'
 
 type SanctumReq = import('fastify').FastifyRequest & {
   sanctumUser?: { id: string; email?: string }
+  sanctumApiKeyScope?: string[]
 }
 
 function signingSecret(): string {
@@ -88,6 +89,10 @@ export async function registerAgentTokenRoutes(
       } catch {
         return { ok: false as const }
       }
+    }
+    if (req.sanctumApiKeyScope !== undefined) {
+      if (!req.sanctumApiKeyScope.includes(orgId)) return { ok: false as const }
+      return { ok: true as const, userId: undefined }
     }
     const rawKey = req.headers['x-sanctum-key']
     const key = Array.isArray(rawKey) ? rawKey[0] : rawKey

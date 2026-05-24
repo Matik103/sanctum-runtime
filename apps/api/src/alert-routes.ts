@@ -6,6 +6,7 @@ import { ControlPlaneStore } from './control-plane-store.js'
 
 type SanctumReq = FastifyRequest & {
   sanctumUser?: { id: string; email?: string }
+  sanctumApiKeyScope?: string[]
 }
 
 function headerKey(req: FastifyRequest): string | undefined {
@@ -15,6 +16,7 @@ function headerKey(req: FastifyRequest): string | undefined {
 
 async function resolveOrgScope(req: SanctumReq, store: ControlPlaneStore): Promise<string[] | null> {
   if (req.sanctumUser) return store.getUserOrgIds(req.sanctumUser.id)
+  if (req.sanctumApiKeyScope !== undefined) return req.sanctumApiKeyScope
   const key = headerKey(req)
   if (key?.startsWith('sk_sanctum_')) {
     const orgId = await store.getApiKeyOrgId(key)

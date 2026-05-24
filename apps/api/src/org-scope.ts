@@ -4,6 +4,8 @@ import type { ControlPlaneStore } from './control-plane-store.js'
 
 export type SanctumReq = FastifyRequest & {
   sanctumUser?: { id: string; email?: string }
+  /** Scope already established while validating a dashboard-issued API key. */
+  sanctumApiKeyScope?: string[]
 }
 
 export function headerKey(req: SanctumReq): string | undefined {
@@ -20,6 +22,7 @@ export async function resolveOrgScope(
   store: ControlPlaneStore,
 ): Promise<string[] | null> {
   if (req.sanctumUser) return store.getUserOrgIds(req.sanctumUser.id)
+  if (req.sanctumApiKeyScope !== undefined) return req.sanctumApiKeyScope
 
   const key = headerKey(req)
   if (key?.startsWith('sk_sanctum_')) {

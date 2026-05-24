@@ -155,7 +155,7 @@ export function invalidateJwtCacheEntry(accessToken: string): void {
 
 export type AuthResult =
   | { ok: true; method: 'supabase'; user: User }
-  | { ok: true; method: 'api_key' }
+  | { ok: true; method: 'api_key'; orgScope?: string[] }
   | { ok: true; method: 'none' }
   | { ok: false; reason: 'missing' | 'invalid' }
 
@@ -183,8 +183,9 @@ export async function authenticateRequest(
 
   if (options.supabase && key?.startsWith('sk_sanctum_')) {
     const { validateStoredApiKey } = await import('./api-keys.js')
-    if (await validateStoredApiKey(options.supabase, key)) {
-      return { ok: true, method: 'api_key' }
+    const validation = await validateStoredApiKey(options.supabase, key)
+    if (validation.valid) {
+      return { ok: true, method: 'api_key', orgScope: validation.orgId ? [validation.orgId] : [] }
     }
   }
 

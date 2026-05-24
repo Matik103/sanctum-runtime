@@ -28,6 +28,9 @@ async function requireOrgAccess(
       return { ok: false }
     }
   }
+  if (req.sanctumApiKeyScope !== undefined) {
+    return req.sanctumApiKeyScope.includes(orgId) ? { ok: true } : { ok: false }
+  }
   const key = headerKey(req)
   if (key?.startsWith('sk_sanctum_')) {
     const store = new ControlPlaneStore(cfg)

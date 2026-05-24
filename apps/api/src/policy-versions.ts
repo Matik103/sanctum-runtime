@@ -18,6 +18,7 @@ export type PolicySnapshot = {
 
 type SanctumReq = import('fastify').FastifyRequest & {
   sanctumUser?: { id: string; email?: string }
+  sanctumApiKeyScope?: string[]
 }
 
 function headerKey(req: SanctumReq): string | undefined {
@@ -126,6 +127,10 @@ export async function registerPolicyVersionRoutes(
       } catch {
         return { ok: false }
       }
+    }
+    if (req.sanctumApiKeyScope !== undefined) {
+      if (!req.sanctumApiKeyScope.includes(orgId)) return { ok: false }
+      return { ok: true, userId: undefined }
     }
     const key = headerKey(req)
     if (key?.startsWith('sk_sanctum_')) {

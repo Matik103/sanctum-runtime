@@ -206,32 +206,50 @@ function formatDisplayKey(prefix: string, suffix: string | null): string {
   return `${prefix}…`
 }
 
-/** Validate dashboard-issued keys (peppered bcrypt or legacy sha256). */
+export type StoredApiKeyValidation =
+  | { valid: true; orgId: string | null }
+  | { valid: false }
+
+/**
+ * Validate dashboard-issued keys and carry their scope forward with the
+ * successful authentication. Multiple keys can share the displayed prefix,
+ * so verify every prefix candidate instead of relying on maybeSingle().
+ */
 export async function validateStoredApiKey(
   supabase: SupabaseAuthConfig,
   presentedKey: string,
-): Promise<boolean> {
-  if (!presentedKey.startsWith('sk_sanctum_')) return false
+): Promise<StoredApiKeyValidation> {
+  if (!presentedKey.startsWith('sk_sanctum_')) return { valid: false }
   const admin = createSupabaseAdmin(supabase)
   const prefix = presentedKey.slice(0, 16)
-  const { data } = await admin
-    .from('api_keys')
-    .select('id, key_hash, hash_version')
-    .eq('key_prefix', prefix)
-    .is('revoked_at', null)
-    .limit(1)
-    .maybeSingle()
-
-  if (!data) return false
-  const version = (data.hash_version as string) ?? 'sha256_v1'
-  const ok = await verifyApiKey(presentedKey, data.key_hash as string, version)
-  if (ok) {
-    await admin
+  try {
+    const { data, error } = await admin
       .from('api_keys')
-      .update({ last_used_at: new Date().toISOString() })
-      .eq('id', data.id)
+      .select('id, key_hash, hash_version, org_id')
+      .eq('key_prefix', prefix)
+      .is('revoked_at', null)
+      .limit(20)
+
+    if (error || !data?.length) return { valid: false }
+    for (const row of data) {
+      const version = (row.hash_version as string) ?? 'sha256_v1'
+      if (await verifyApiKey(presentedKey, row.key_hash as string, version)) {
+        // This is activity telemetry; a transient write failure must not invalidate a verified key.
+        void admin
+          .from('api_keys')
+          .update({ last_used_at: new Date().toISOString() })
+          .eq('id', row.id)
+          .then(
+            () => undefined,
+            () => undefined,
+          )
+        return { valid: true, orgId: (row.org_id as string | null) ?? null }
+      }
+    }
+  } catch {
+    return { valid: false }
   }
-  return ok
+  return { valid: false }
 }
 
 /** @deprecated use hashApiKeyV1 — kept for tests referencing legacy */

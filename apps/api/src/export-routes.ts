@@ -9,6 +9,7 @@ import { queryWithTimeout, SUPABASE_ROW_LIMITS, verifyOrgMembership } from './su
 
 type SanctumReq = FastifyRequest & {
   sanctumUser?: { id: string; email?: string }
+  sanctumApiKeyScope?: string[]
 }
 
 function headerKey(req: FastifyRequest): string | undefined {
@@ -56,6 +57,11 @@ export async function registerExportRoutes(app: FastifyInstance) {
       if (orgIdParam) return orgs?.includes(orgIdParam) ? orgIdParam : null
       return orgs?.[0] ?? null
     }
+    if (req.sanctumApiKeyScope !== undefined) {
+      const keyOrg = req.sanctumApiKeyScope[0] ?? null
+      if (orgIdParam && keyOrg !== orgIdParam) return null
+      return keyOrg
+    }
     const key = headerKey(req)
     if (key?.startsWith('sk_sanctum_')) {
       const keyOrg = await store.getApiKeyOrgId(key)
@@ -72,6 +78,9 @@ export async function registerExportRoutes(app: FastifyInstance) {
   ): Promise<{ orgId: string | null; warning?: string }> {
     if (req.sanctumUser) {
       return verifyOrgMembership(admin, req.sanctumUser.id, orgIdParam)
+    }
+    if (req.sanctumApiKeyScope !== undefined) {
+      return { orgId: req.sanctumApiKeyScope.includes(orgIdParam) ? orgIdParam : null }
     }
     const key = headerKey(req)
     if (key?.startsWith('sk_sanctum_')) {

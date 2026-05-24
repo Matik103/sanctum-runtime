@@ -52,12 +52,19 @@ export async function registerRuntimeWsRoutes(app: FastifyInstance) {
     }
 
     if (auth.method === 'api_key') {
-      const key = headerKey(req)
-      if (key?.startsWith('sk_sanctum_')) {
-        const keyOrg = await store.getApiKeyOrgId(key)
-        if (keyOrg && keyOrg !== orgId) {
+      if (auth.orgScope !== undefined) {
+        if (!auth.orgScope.includes(orgId)) {
           socket.close(4403, 'org_forbidden')
           return
+        }
+      } else {
+        const key = headerKey(req)
+        if (key?.startsWith('sk_sanctum_')) {
+          const keyOrg = await store.getApiKeyOrgId(key)
+          if (keyOrg && keyOrg !== orgId) {
+            socket.close(4403, 'org_forbidden')
+            return
+          }
         }
       }
     }

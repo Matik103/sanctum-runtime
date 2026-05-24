@@ -93,8 +93,11 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
 
     const scope = await resolveOrgScope(req as SanctumReq, store)
     let orgId = body.organizationId
+    const scopedKeyOrgs = (req as SanctumReq).sanctumApiKeyScope
     const key = headerKey(req)
-    if (key?.startsWith('sk_sanctum_')) {
+    if (scopedKeyOrgs !== undefined && scopedKeyOrgs[0]) {
+      orgId = scopedKeyOrgs[0]
+    } else if (key?.startsWith('sk_sanctum_')) {
       const keyOrg = await store.getApiKeyOrgId(key)
       if (keyOrg) orgId = keyOrg
     }
@@ -383,6 +386,15 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
       return {
         defaultOrganizationId: organizationIds[0] ?? null,
         organizationIds,
+      }
+    }
+    const scopedKeyOrgs = (req as SanctumReq).sanctumApiKeyScope
+    if (scopedKeyOrgs !== undefined) {
+      const keyOrg = scopedKeyOrgs[0] ?? null
+      if (keyOrg) logDataAccess(cfg, req, { orgId: keyOrg, resource: 'operator_context' })
+      return {
+        defaultOrganizationId: keyOrg,
+        organizationIds: scopedKeyOrgs,
       }
     }
     const key = headerKey(req)

@@ -457,6 +457,7 @@ async function generateAnomalyTimeline(
 
 type SanctumReq = FastifyRequest & {
   sanctumUser?: { id: string; email?: string }
+  sanctumApiKeyScope?: string[]
 }
 
 /**
@@ -487,6 +488,11 @@ export async function registerComplianceRoutes(
 
       const role = (member?.role as string | undefined) ?? 'member'
       return { allowed: true, isAdmin: role === 'owner' || role === 'admin' }
+    }
+
+    if (req.sanctumApiKeyScope !== undefined) {
+      if (!req.sanctumApiKeyScope.includes(orgId)) return { allowed: false, isAdmin: false }
+      return { allowed: true, isAdmin: true }
     }
 
     const key = headerKey(req)

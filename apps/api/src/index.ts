@@ -301,6 +301,8 @@ app.addHook('onRequest', async (req, reply) => {
       id: auth.user.id,
       email: auth.user.email,
     }
+  } else if (auth.method === 'api_key' && auth.orgScope !== undefined) {
+    ;(req as SanctumReq).sanctumApiKeyScope = auth.orgScope
   }
 })
 

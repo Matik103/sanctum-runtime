@@ -41,6 +41,7 @@ function markEventProcessed(eventId: string | undefined): void {
 
 type SanctumReq = FastifyRequest & {
   sanctumUser?: { id: string; email?: string }
+  sanctumApiKeyScope?: string[]
 }
 
 function headerKey(req: FastifyRequest): string | undefined {
@@ -51,6 +52,9 @@ function headerKey(req: FastifyRequest): string | undefined {
 async function resolveOrgId(req: SanctumReq, store: ControlPlaneStore, qOrgId?: string): Promise<string | null> {
   if (qOrgId) {
     const scope = req.sanctumUser ? await store.getUserOrgIds(req.sanctumUser.id) : null
+    if (req.sanctumApiKeyScope !== undefined) {
+      return req.sanctumApiKeyScope.includes(qOrgId) ? qOrgId : null
+    }
     const key = headerKey(req)
     if (!req.sanctumUser && key?.startsWith('sk_sanctum_')) {
       const keyOrg = await store.getApiKeyOrgId(key)
@@ -64,6 +68,7 @@ async function resolveOrgId(req: SanctumReq, store: ControlPlaneStore, qOrgId?: 
     const orgs = await store.getUserOrgIds(req.sanctumUser.id)
     return orgs?.[0] ?? null
   }
+  if (req.sanctumApiKeyScope !== undefined) return req.sanctumApiKeyScope[0] ?? null
   const key = headerKey(req)
   if (key?.startsWith('sk_sanctum_')) return store.getApiKeyOrgId(key)
   return null
