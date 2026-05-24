@@ -10,7 +10,84 @@ async function authJsonHeaders(): Promise<HeadersInit> {
   return h
 }
 
-type PushState = 'idle' | 'subscribing' | 'subscribed' | 'unsupported' | 'denied' | 'unavailable'
+/**
+ * Push subscription state machine.
+ *
+ *   idle              — supported but not yet subscribed
+ *   subscribing       — permission prompt in flight
+ *   subscribed        — active push subscription on this device
+ *   denied            — user blocked notifications in OS / browser settings
+ *   unavailable       — backend hasn't published a VAPID key (operator config)
+ *   ios_install_required  — iOS Safari tab; Apple only exposes Web Push to
+ *                           installed PWAs. User must Add to Home Screen.
+ *   ios_upgrade_required  — iOS PWA running on iOS < 16.4 (no Web Push)
+ *   unsupported       — non-iOS browser without serviceWorker / PushManager /
+ *                       Notification API (older Firefox, niche browsers).
+ */
+export type PushState =
+  | 'idle'
+  | 'subscribing'
+  | 'subscribed'
+  | 'unsupported'
+  | 'denied'
+  | 'unavailable'
+  | 'ios_install_required'
+  | 'ios_upgrade_required'
+
+type Environment = {
+  hasServiceWorker: boolean
+  hasNotification: boolean
+  hasPushManager: boolean
+  isIos: boolean
+  isStandalone: boolean
+}
+
+function detectEnvironment(): Environment {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return {
+      hasServiceWorker: false,
+      hasNotification: false,
+      hasPushManager: false,
+      isIos: false,
+      isStandalone: false,
+    }
+  }
+  const ua = navigator.userAgent || ''
+  // iPadOS reports as Mac with touch — include it so iPad PWAs detect correctly.
+  const isIos =
+    /iphone|ipad|ipod/i.test(ua) ||
+    (ua.includes('Mac') && typeof document !== 'undefined' && 'ontouchend' in document)
+  const isStandalone =
+    window.matchMedia?.('(display-mode: standalone)').matches === true ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true
+  return {
+    hasServiceWorker: 'serviceWorker' in navigator,
+    hasNotification: 'Notification' in window,
+    hasPushManager: 'PushManager' in window,
+    isIos,
+    isStandalone,
+  }
+}
+
+/**
+ * Returns the appropriate "not yet able to subscribe" state for the
+ * current environment, or null if the environment fully supports push.
+ *
+ * Order of precedence matches what gives the user the clearest action:
+ *  1. iOS Safari tab    → tell them to install
+ *  2. iOS PWA on old iOS → tell them to update
+ *  3. Other browser without push APIs → generic unsupported
+ */
+function gatingState(env: Environment): PushState | null {
+  if (env.isIos) {
+    if (!env.isStandalone) return 'ios_install_required'
+    if (!env.hasPushManager || !env.hasNotification) return 'ios_upgrade_required'
+  }
+  if (!env.hasServiceWorker || !env.hasPushManager || !env.hasNotification) {
+    return 'unsupported'
+  }
+  return null
+}
 
 async function storeSubscription(sub: PushSubscription): Promise<void> {
   const res = await fetch(`${API_BASE}/v1/push/subscribe`, {
@@ -28,16 +105,14 @@ export function usePushNotifications() {
   const [state, setState] = useState<PushState>('idle')
   const [vapidKey, setVapidKey] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [env] = useState<Environment>(detectEnvironment)
 
-  const supported =
-    typeof window !== 'undefined' &&
-    'serviceWorker' in navigator &&
-    'PushManager' in window &&
-    'Notification' in window
+  const gating = gatingState(env)
+  const supported = gating === null
 
   useEffect(() => {
-    if (!supported) {
-      setState('unsupported')
+    if (gating) {
+      setState(gating)
       return
     }
     if (Notification.permission === 'denied') {
@@ -69,7 +144,7 @@ export function usePushNotifications() {
     })()
 
     return () => { active = false }
-  }, [supported])
+  }, [gating])
 
   const subscribe = useCallback(async () => {
     if (!supported || !vapidKey) return
@@ -129,7 +204,7 @@ export function usePushNotifications() {
     }
   }, [supported])
 
-  return { supported, state, error, subscribe, unsubscribe }
+  return { supported, state, error, environment: env, subscribe, unsubscribe }
 }
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
