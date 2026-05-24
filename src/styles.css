@@ -101,15 +101,25 @@
 
 @layer base {
   * { border-color: var(--color-border); }
-  html { scroll-behavior: smooth; }
+  html {
+    scroll-behavior: smooth;
+    /* iOS PWA stability: prevent the rubber-band scroll from exposing the
+       page background and avoid horizontal overflow shifting layouts. */
+    overflow-x: clip;
+    -webkit-text-size-adjust: 100%;
+  }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
     font-feature-settings: "ss01", "cv11";
     -webkit-font-smoothing: antialiased;
+    overflow-x: clip;
+    /* Long technical terms (CSP directives, env var names) wrap mid-token
+       on narrow phones instead of busting the viewport horizontally. */
+    overflow-wrap: anywhere;
   }
-  h1, h2, h3, h4 { font-family: var(--font-display); letter-spacing: -0.02em; }
+  h1, h2, h3, h4 { font-family: var(--font-display); letter-spacing: -0.02em; overflow-wrap: anywhere; }
 }
 
 @layer utilities {

@@ -15,7 +15,7 @@ export function DiscoverPageLayout({ title, eyebrow, lead, children }: DiscoverP
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <main className="pt-28 pb-24">
+      <main className="pt-[calc(7rem+env(safe-area-inset-top,0px))] pb-24">
         <article className="container mx-auto px-6 max-w-3xl">
           <Link
             to="/"

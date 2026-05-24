@@ -315,9 +315,17 @@ a:hover {
 
 /* ——— Responsive: main padding ——— */
 
+/* Notch clearance: env(safe-area-inset-top) returns 0 on devices without a
+   notch, so this is a no-op on desktop / Android phones. iPhone X+ gets the
+   ~44–59px clearance needed to keep page-header content out from under the
+   status-bar cutout. Left/right insets cover landscape rotation. */
+
 @media (max-width: 900px) {
   .main__content {
     padding: 1rem 1rem 5.5rem;
+    padding-top: calc(1rem + env(safe-area-inset-top, 0px));
+    padding-left: max(1rem, env(safe-area-inset-left, 0px));
+    padding-right: max(1rem, env(safe-area-inset-right, 0px));
     padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
   }
 }
@@ -325,6 +333,9 @@ a:hover {
 @media (max-width: 480px) {
   .main__content {
     padding: 0.85rem 0.85rem 5.25rem;
+    padding-top: calc(0.85rem + env(safe-area-inset-top, 0px));
+    padding-left: max(0.85rem, env(safe-area-inset-left, 0px));
+    padding-right: max(0.85rem, env(safe-area-inset-right, 0px));
     padding-bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
   }
 }
