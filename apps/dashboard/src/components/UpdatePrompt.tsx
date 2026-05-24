@@ -14,6 +14,14 @@ export function UpdatePrompt() {
       onNeedRefresh() {
         setNeedsRefresh(true)
       },
+      onRegisteredSW(swScriptUrl) {
+        // Render may retain an over-broad static cache rule for /sw.js.
+        // Persist a bypassing registration so update checks always fetch the worker fresh.
+        void navigator.serviceWorker
+          .register(swScriptUrl, { scope: '/', updateViaCache: 'none' })
+          .then((registration) => registration.update())
+          .catch(() => {})
+      },
     })
     activateUpdate.current = updateSW
 
