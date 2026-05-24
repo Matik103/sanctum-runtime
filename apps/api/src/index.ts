@@ -936,18 +936,25 @@ app.post('/v1/actions/verify', {
       .then(() => {})
   }
 
+  // Every production action must carry organization identity from an
+  // authenticated scope. Agent tokens are already single-org; API keys and
+  // operator sessions are resolved here so audit and policy lookup cannot
+  // depend on a caller self-reporting org_id.
+  let orgId = agentClaims?.orgId
+  if (!orgId) {
+    const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
+    const requestedOrgId =
+      typeof body.context?.org_id === 'string' ? body.context.org_id : undefined
+    const picked = pickScopedOrgs(scope, requestedOrgId, { requireSingle: true })
+    if ('status' in picked) return reply.status(picked.status).send(picked.body)
+    orgId = picked.orgIds[0]
+  }
+
   const request = ActionRequestSchema.parse({
     actor: body.actor,
     action: body.action,
-    // Inject verified org_id so policy engine scopes correctly
-    context: agentClaims
-      ? { ...body.context, org_id: agentClaims.orgId }
-      : body.context,
+    context: orgId ? { ...body.context, org_id: orgId } : body.context,
   })
-
-  // orgId from token takes precedence over self-reported context value
-  const orgId = agentClaims?.orgId ??
-    (typeof body.context?.org_id === 'string' ? body.context.org_id : undefined)
 
   // Fleet kill-switch: if the org has paused all agent actions, block immediately
   if (orgId && supabaseAuth) {
