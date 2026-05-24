@@ -10,8 +10,11 @@ export const getRouter = () => {
     context: { queryClient },
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
-    // Blog index is registered at /blog/; normalize bare /blog for nav links.
-    trailingSlash: "always",
+    // "never" keeps trailing-slash behaviour consistent with vercel.json
+    // (trailingSlash: false). "always" caused a redirect loop: TanStack added
+    // a trailing slash; Vercel's edge immediately stripped it → Google saw an
+    // infinite redirect chain and reported all blog URLs as "Redirect error".
+    trailingSlash: "never",
   });
 
   return router;
