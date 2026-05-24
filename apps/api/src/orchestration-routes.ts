@@ -27,7 +27,7 @@ export async function registerOrchestrationRoutes(app: FastifyInstance) {
         name: z.string().min(1).max(120),
         region: z.string().max(64).optional(),
         description: z.string().max(500).optional(),
-        metadata: z.record(z.unknown()).optional(),
+        metadata: z.record(z.string(), z.unknown()).optional(),
       })
       .parse(req.body)
 
@@ -69,7 +69,7 @@ export async function registerOrchestrationRoutes(app: FastifyInstance) {
       .object({
         organizationId: z.string().min(1).max(64),
         command: z.string().min(1).max(120),
-        payload: z.record(z.unknown()).optional(),
+        payload: z.record(z.string(), z.unknown()).optional(),
         runtimeId: z.string().uuid().optional(),
         deploymentGroupId: z.string().uuid().optional(),
         region: z.string().max(64).optional(),

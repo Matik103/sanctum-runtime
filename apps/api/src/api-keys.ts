@@ -67,7 +67,7 @@ export async function registerApiKeyRoutes(
         .safeParse(req.body)
 
       if (!parsed.success) {
-        return reply.status(400).send({ error: 'validation_error', details: parsed.error.flatten() })
+        return reply.status(400).send({ error: 'validation_error', details: z.flattenError(parsed.error) })
       }
 
       const secret = generateApiKeySecret()

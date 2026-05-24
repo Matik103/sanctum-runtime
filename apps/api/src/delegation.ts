@@ -274,7 +274,7 @@ export function registerDelegationRoutes(app: FastifyInstance, cfg: SupabaseAuth
 
     const parsed = GrantSchema.safeParse(req.body)
     if (!parsed.success) {
-      return reply.status(400).send({ error: 'invalid_body', detail: parsed.error.flatten() })
+      return reply.status(400).send({ error: 'invalid_body', detail: z.flattenError(parsed.error) })
     }
     const body = parsed.data
 
@@ -304,7 +304,7 @@ export function registerDelegationRoutes(app: FastifyInstance, cfg: SupabaseAuth
 
     const parsed = ValidateSchema.safeParse(req.body)
     if (!parsed.success) {
-      return reply.status(400).send({ error: 'invalid_body', detail: parsed.error.flatten() })
+      return reply.status(400).send({ error: 'invalid_body', detail: z.flattenError(parsed.error) })
     }
     const { parentAgentId, childAgentId, action } = parsed.data
 

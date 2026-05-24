@@ -81,8 +81,8 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
         organizationId: z.string().min(1).max(64),
         mode: modeSchema.optional().default('cloud'),
         fingerprint: z.string().min(8).max(128).optional(),
-        metadata: z.record(z.unknown()).optional(),
-        telemetry: z.record(z.unknown()).optional(),
+        metadata: z.record(z.string(), z.unknown()).optional(),
+        telemetry: z.record(z.string(), z.unknown()).optional(),
         activeModel: z.string().optional(),
         currentTask: z.string().optional(),
         attestation: attestationSchema,
@@ -203,7 +203,7 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
     const { runtimeId } = req.params as { runtimeId: string }
     const body = z
       .object({
-        telemetry: z.record(z.unknown()).optional(),
+        telemetry: z.record(z.string(), z.unknown()).optional(),
         currentTask: z.string().optional(),
         activeModel: z.string().optional(),
         status: z.enum(['online', 'offline', 'degraded']).optional(),
@@ -282,7 +282,7 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
         id: z.string().min(1).max(120),
         model: z.string().optional(),
         permissions: z.array(z.string()).optional(),
-        metadata: z.record(z.unknown()).optional(),
+        metadata: z.record(z.string(), z.unknown()).optional(),
       })
       .parse(req.body)
 
@@ -312,7 +312,7 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
       .object({
         eventType: z.string().min(1).max(120),
         agentId: z.string().optional(),
-        payload: z.record(z.unknown()).optional(),
+        payload: z.record(z.string(), z.unknown()).optional(),
         organizationId: z.string().optional(),
       })
       .parse(req.body)

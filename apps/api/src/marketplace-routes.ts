@@ -55,8 +55,8 @@ export async function registerMarketplaceRoutes(app: FastifyInstance, runtime: R
         name: z.string().min(1).max(120),
         description: z.string().max(2000).optional(),
         category: z.string().max(64).optional(),
-        connectDefaults: z.record(z.unknown()).optional(),
-        policyTemplates: z.array(z.record(z.unknown())).optional(),
+        connectDefaults: z.record(z.string(), z.unknown()).optional(),
+        policyTemplates: z.array(z.record(z.string(), z.unknown())).optional(),
         readme: z.string().max(8000).optional(),
       })
       .parse(req.body);
@@ -91,7 +91,7 @@ export async function registerMarketplaceRoutes(app: FastifyInstance, runtime: R
     const body = z
       .object({
         organizationId: z.string().min(1).max(64),
-        config: z.record(z.unknown()).optional(),
+        config: z.record(z.string(), z.unknown()).optional(),
       })
       .parse(req.body);
 

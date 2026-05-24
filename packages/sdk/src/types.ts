@@ -3,7 +3,7 @@ import { z } from 'zod'
 export const ActionRequestSchema = z.object({
   actor: z.string().min(1),
   action: z.string().min(1),
-  context: z.record(z.unknown()).default({}),
+  context: z.record(z.string(), z.unknown()).default({}),
 })
 
 export type ActionRequest = z.infer<typeof ActionRequestSchema>
@@ -100,7 +100,7 @@ export const ActionResultSchema = z.object({
   correlationId: z.string(),
   actor: z.string(),
   action: z.string(),
-  context: z.record(z.unknown()),
+  context: z.record(z.string(), z.unknown()),
   decision: DecisionSchema,
   risk: RiskLevelSchema,
   reasoning: z.string(),

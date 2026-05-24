@@ -76,7 +76,7 @@ function severityColor(severity: NotificationSeverity): string {
 
 const FONT_STACK = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
 
-function buildHtml(event: NotificationEvent): string {
+export function buildNotificationEmailHtml(event: NotificationEvent): string {
   const sev = event.severity ?? 'info'
   const color = severityColor(sev)
   const ts = new Date().toUTCString()
@@ -136,7 +136,7 @@ async function sendResend(event: NotificationEvent, to: string): Promise<void> {
     : '[INFO]'
 
   const subject = `${prefix} ${event.title}`
-  const html = buildHtml(event)
+  const html = buildNotificationEmailHtml(event)
   const text = [
     event.title,
     '',

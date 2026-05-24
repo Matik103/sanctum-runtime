@@ -245,7 +245,7 @@ app.setErrorHandler((err, _req, reply) => {
   if (err instanceof ZodError) {
     return reply.status(400).send({
       error: 'validation_error',
-      details: err.flatten(),
+      details: z.flattenError(err),
     })
   }
   app.log.error(err)
@@ -642,7 +642,7 @@ app.post('/v1/policies/simulate', async (req) => {
     .object({
       actor: z.string().min(1),
       action: z.string().min(1),
-      context: z.record(z.unknown()).default({}),
+      context: z.record(z.string(), z.unknown()).default({}),
     })
     .parse(req.body)
   const request = ActionRequestSchema.parse(body)
@@ -894,7 +894,7 @@ app.post('/v1/actions/verify', {
     .object({
       actor: z.string().max(512),
       action: z.string().max(512),
-      context: z.record(z.unknown()).default({}),
+      context: z.record(z.string(), z.unknown()).default({}),
       offlineMode: z.boolean().optional(),
       correlationId: z.string().optional(),
     })
@@ -1220,7 +1220,7 @@ app.post('/analyze-action', async (req) => {
     .object({
       actor: z.string().min(1),
       action: z.string(),
-      context: z.union([z.record(z.unknown()), z.string()]).optional(),
+      context: z.union([z.record(z.string(), z.unknown()), z.string()]).optional(),
     })
     .parse(req.body)
 

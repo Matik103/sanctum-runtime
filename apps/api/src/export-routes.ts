@@ -611,7 +611,7 @@ export async function registerExportRoutes(app: FastifyInstance) {
     if (!resolvedOrg) return reply.status(403).send({ error: 'org_forbidden' })
 
     const body = z.object({
-      notification_email: z.string().email().nullable().optional(),
+      notification_email: z.email().nullable().optional(),
       // Webhooks: omit key = keep existing; null = clear; string = update
       slack_webhook_url: z.string().url().nullable().optional(),
       notification_webhook_url: z.string().url().nullable().optional(),

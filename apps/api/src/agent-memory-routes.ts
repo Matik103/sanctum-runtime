@@ -17,7 +17,7 @@ const blobSchema = z.object({
   iv: z.string().min(1).max(64),
   algorithm: z.literal('aes-256-gcm').optional(),
   keyHint: z.string().max(64).optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 })
 
 export async function registerAgentMemoryRoutes(app: FastifyInstance) {

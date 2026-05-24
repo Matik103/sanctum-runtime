@@ -56,6 +56,71 @@ export function verifyToken(token: string): { id: string; decision: 'APPROVED' |
 
 const RISK_COLORS = { high: '#ef4444', medium: '#f59e0b', low: '#10b981' } as const
 
+export interface VerificationEmailContent {
+  actor: string
+  action: string
+  context: Record<string, unknown>
+  risk: string
+  approveUrl: string
+  blockUrl: string
+}
+
+export function buildVerificationEmail(content: VerificationEmailContent): { html: string; text: string } {
+  const riskKey = (content.risk in RISK_COLORS ? content.risk : 'medium') as keyof typeof RISK_COLORS
+  const riskColor = RISK_COLORS[riskKey]
+
+  const contextRows: Array<[string, string]> = Object.entries(content.context)
+    .filter(([k]) => !['org_id', 'orgId'].includes(k))
+    .slice(0, 8)
+    .map(([k, v]) => [k, String(v)])
+
+  const allRows: Array<[string, string]> = [
+    ['Agent', content.actor],
+    ['Action', content.action],
+    ['Risk', content.risk.toUpperCase()],
+    ...contextRows,
+  ]
+
+  const font = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
+  const sections: string[] = [
+    `<p style="margin:0 0 8px;font-size:11px;color:#52525b;text-transform:uppercase;letter-spacing:0.08em;font-family:${font};">Action approval required</p>`,
+    `<h1 style="margin:0 0 12px;font-size:22px;font-weight:600;color:#f4f4f5;line-height:1.3;font-family:${font};">${escapeHtml(content.actor)} wants to <span style="color:${riskColor};">${escapeHtml(content.action)}</span></h1>`,
+    `<p style="margin:0 0 24px;font-size:14px;color:#a1a1aa;line-height:1.6;font-family:${font};">An AI agent has requested a sensitive action. Review the details below and respond. Either button records your decision and notifies the agent.</p>`,
+    `<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background:#0f0f11;border:1px solid #27272a;border-radius:8px;"><tr><td style="padding:16px 20px;">${detailsTable(allRows)}</td></tr></table>`,
+    spacer(28),
+    buttonRow([
+      { text: 'Approve action', href: content.approveUrl, variant: 'success' },
+      { text: 'Block action', href: content.blockUrl, variant: 'danger' },
+    ]),
+    spacer(20),
+    `<p style="margin:0;font-size:12px;color:#71717a;line-height:1.5;font-family:${font};text-align:center;">Links expire in 24&nbsp;hours. Each link can only be used once.</p>`,
+  ]
+
+  const dashboardUrl = process.env.DASHBOARD_URL ?? 'https://console.sanctumruntime.com'
+  return {
+    html: wrapEmail({
+      title: `Approval required: ${content.action}`,
+      preheader: `${content.actor} wants to ${content.action} - risk ${content.risk.toUpperCase()}. Approve or block from your inbox.`,
+      accentColor: riskColor,
+      headerAccent: severityBadge(content.risk, riskColor),
+      sections,
+      footer:
+        `Review activity at <a href="${escapeHtml(dashboardUrl)}" style="color:#3b82f6;text-decoration:none;">console.sanctumruntime.com</a> &middot; ` +
+        `Manage approvals in <a href="${escapeHtml(dashboardUrl)}/settings" style="color:#3b82f6;text-decoration:none;">notification settings</a>`,
+    }),
+    text: plainText({
+      title: `Approval required: ${content.action}`,
+      body: `${content.actor} wants to ${content.action}. Risk: ${content.risk.toUpperCase()}.`,
+      details: contextRows,
+      actions: [
+        { text: 'Approve', href: content.approveUrl },
+        { text: 'Block', href: content.blockUrl },
+      ],
+      footer: 'Links expire in 24 hours. Each can only be used once.',
+    }),
+  }
+}
+
 export async function sendVerificationEmail(opts: {
   to: string
   actionId: string
@@ -71,62 +136,7 @@ export async function sendVerificationEmail(opts: {
   const blockToken = signVerifyToken(opts.actionId, 'BLOCKED')
   const approveUrl = `${opts.publicApiUrl}/v1/verify-action?token=${approveToken}`
   const blockUrl = `${opts.publicApiUrl}/v1/verify-action?token=${blockToken}`
-
-  const riskKey = (opts.risk in RISK_COLORS ? opts.risk : 'medium') as keyof typeof RISK_COLORS
-  const riskColor = RISK_COLORS[riskKey]
-
-  const contextRows: Array<[string, string]> = Object.entries(opts.context)
-    .filter(([k]) => !['org_id', 'orgId'].includes(k))
-    .slice(0, 8)
-    .map(([k, v]) => [k, String(v)])
-
-  const allRows: Array<[string, string]> = [
-    ['Agent', opts.actor],
-    ['Action', opts.action],
-    ['Risk', opts.risk.toUpperCase()],
-    ...contextRows,
-  ]
-
-  const FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
-
-  const sections: string[] = [
-    `<p style="margin:0 0 8px;font-size:11px;color:#52525b;text-transform:uppercase;letter-spacing:0.08em;font-family:${FONT};">Action approval required</p>`,
-    `<h1 style="margin:0 0 12px;font-size:22px;font-weight:600;color:#f4f4f5;line-height:1.3;font-family:${FONT};">${escapeHtml(opts.actor)} wants to <span style="color:${riskColor};">${escapeHtml(opts.action)}</span></h1>`,
-    `<p style="margin:0 0 24px;font-size:14px;color:#a1a1aa;line-height:1.6;font-family:${FONT};">An AI agent has requested a sensitive action. Review the details below and respond. Either button records your decision and notifies the agent.</p>`,
-    `<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background:#0f0f11;border:1px solid #27272a;border-radius:8px;"><tr><td style="padding:16px 20px;">${detailsTable(allRows)}</td></tr></table>`,
-    spacer(28),
-    // ── BUTTON ROW — table-based with explicit 16px spacer cell ─────────────
-    buttonRow([
-      { text: 'Approve action', href: approveUrl, variant: 'success' },
-      { text: 'Block action',   href: blockUrl,   variant: 'danger'  },
-    ]),
-    spacer(20),
-    `<p style="margin:0;font-size:12px;color:#71717a;line-height:1.5;font-family:${FONT};text-align:center;">Links expire in 24&nbsp;hours. Each link can only be used once.</p>`,
-  ]
-
-  const dashboardUrl = process.env.DASHBOARD_URL ?? 'https://console.sanctumruntime.com'
-
-  const html = wrapEmail({
-    title: `Approval required: ${opts.action}`,
-    preheader: `${opts.actor} wants to ${opts.action} — risk ${opts.risk.toUpperCase()}. Approve or block from your inbox.`,
-    accentColor: riskColor,
-    headerAccent: severityBadge(opts.risk, riskColor),
-    sections,
-    footer:
-      `Review activity at <a href="${escapeHtml(dashboardUrl)}" style="color:#3b82f6;text-decoration:none;">console.sanctumruntime.com</a> · ` +
-      `Manage approvals in <a href="${escapeHtml(dashboardUrl)}/settings" style="color:#3b82f6;text-decoration:none;">notification settings</a>`,
-  })
-
-  const text = plainText({
-    title: `Approval required: ${opts.action}`,
-    body: `${opts.actor} wants to ${opts.action}. Risk: ${opts.risk.toUpperCase()}.`,
-    details: contextRows,
-    actions: [
-      { text: 'Approve', href: approveUrl },
-      { text: 'Block',   href: blockUrl  },
-    ],
-    footer: 'Links expire in 24 hours. Each can only be used once.',
-  })
+  const { html, text } = buildVerificationEmail({ ...opts, approveUrl, blockUrl })
 
   await fetch('https://api.resend.com/emails', {
     method: 'POST',

@@ -55,43 +55,40 @@ export function button(opts: {
   const v = BUTTON_STYLES[opts.variant ?? 'primary']
   const widthAttr = opts.fullWidth ? ' width="100%"' : ''
   const align = opts.fullWidth ? 'center' : 'left'
+  const linkDisplay = opts.fullWidth ? 'block' : 'inline-block'
   return (
-    `<table role="presentation" border="0" cellpadding="0" cellspacing="0"${widthAttr} style="border-collapse:separate;">` +
+    `<table role="presentation" border="0" cellpadding="0" cellspacing="0"${widthAttr} style="${opts.fullWidth ? 'width:100%;' : ''}border-collapse:separate;">` +
     `<tr><td align="${align}" bgcolor="${v.bg}" ` +
     `style="background:${v.bg};border:1px solid ${v.border};border-radius:8px;padding:14px 28px;mso-padding-alt:14px 28px;">` +
     `<a href="${escapeHtml(opts.href)}" target="_blank" ` +
-    `style="display:inline-block;color:${v.fg};font-family:${FONT_STACK};font-size:15px;font-weight:600;line-height:1;text-decoration:none;">` +
+    `style="display:${linkDisplay};color:${v.fg};font-family:${FONT_STACK};font-size:15px;font-weight:600;line-height:1;text-align:center;text-decoration:none;">` +
     `${escapeHtml(opts.text)}</a></td></tr></table>`
   )
 }
 
 /**
- * Two-button row with a hard-coded 16px spacer cell. This is the spacing fix —
- * Gmail/Outlook ignore `display:flex` and `gap`, so we use a 3-column table
- * (button | 16px spacer | button) which renders identically everywhere.
- *
- * On narrow viewports the spacer remains because we don't try to stack
- * (stacking requires `@media` which Gmail strips). Two buttons at 28px
- * horizontal padding each fit a 320px viewport without overlap.
+ * A vertical action group. Decisions are deliberately stacked rather than
+ * relying on media queries: mail clients that remove responsive CSS still
+ * render full-width buttons without crowding or overlap.
  */
 export function buttonRow(
   buttons: Array<{ text: string; href: string; variant?: EmailButtonVariant }>,
   opts: { gap?: number } = {},
 ): string {
-  const gap = opts.gap ?? 16
-  const cells = buttons
+  const gap = opts.gap ?? 12
+  const rows = buttons
     .map((b, i) => {
-      const buttonCell = `<td valign="middle">${button(b)}</td>`
-      const spacerCell =
+      const actionRow = `<tr><td valign="middle">${button({ ...b, fullWidth: true })}</td></tr>`
+      const spacerRow =
         i < buttons.length - 1
-          ? `<td width="${gap}" style="width:${gap}px;font-size:0;line-height:0;">&nbsp;</td>`
+          ? `<tr><td height="${gap}" style="height:${gap}px;font-size:0;line-height:0;">&nbsp;</td></tr>`
           : ''
-      return buttonCell + spacerCell
+      return actionRow + spacerRow
     })
     .join('')
   return (
-    `<table role="presentation" border="0" cellpadding="0" cellspacing="0" ` +
-    `style="border-collapse:separate;margin:0 auto;"><tr>${cells}</tr></table>`
+    `<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" ` +
+    `style="width:100%;border-collapse:separate;margin:0 auto;">${rows}</table>`
   )
 }
 
@@ -102,7 +99,7 @@ export function detailsTable(rows: Array<[string, string]>): string {
     .map(
       ([k, v]) =>
         `<tr>` +
-        `<td style="padding:6px 16px 6px 0;color:#9ca3af;font-size:13px;font-family:${FONT_STACK};white-space:nowrap;vertical-align:top;">${escapeHtml(k)}</td>` +
+        `<td width="36%" style="width:36%;padding:6px 16px 6px 0;color:#9ca3af;font-size:13px;font-family:${FONT_STACK};word-break:break-word;vertical-align:top;">${escapeHtml(k)}</td>` +
         `<td style="padding:6px 0;color:#f3f4f6;font-size:13px;font-family:${FONT_STACK};word-break:break-word;">${escapeHtml(v)}</td>` +
         `</tr>`,
     )
@@ -177,9 +174,9 @@ export function wrapEmail(opts: {
     `<div style="display:none;font-size:1px;color:#09090b;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${escapeHtml(opts.preheader)}</div>` +
     `<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" bgcolor="#09090b" style="background:#09090b;padding:32px 16px;">` +
     `<tr><td align="center">` +
-    `<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="600" style="max-width:600px;background:#111113;border:1px solid #27272a;border-top:3px solid ${accent};border-radius:8px;overflow:hidden;">` +
+    `<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="width:100%;max-width:600px;background:#111113;border:1px solid #27272a;border-top:3px solid ${accent};border-radius:8px;overflow:hidden;">` +
     // Header
-    `<tr><td style="padding:20px 32px;background:#0f0f11;border-bottom:1px solid #27272a;">` +
+    `<tr><td style="padding:20px;background:#0f0f11;border-bottom:1px solid #27272a;">` +
     `<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%"><tr>` +
     `<td valign="middle" style="font-family:${FONT_STACK};">` +
     `<span style="font-size:15px;font-weight:600;color:#f4f4f5;letter-spacing:-0.01em;">Sanctum Runtime</span>` +
@@ -188,10 +185,10 @@ export function wrapEmail(opts: {
     `</tr></table>` +
     `</td></tr>` +
     // Body
-    `<tr><td style="padding:32px;font-family:${FONT_STACK};">${content}</td></tr>` +
+    `<tr><td style="padding:28px 20px;font-family:${FONT_STACK};">${content}</td></tr>` +
     // Footer
     (footer
-      ? `<tr><td style="padding:16px 32px;border-top:1px solid #27272a;font-family:${FONT_STACK};font-size:12px;color:#52525b;line-height:1.5;">${footer}</td></tr>`
+      ? `<tr><td style="padding:16px 20px;border-top:1px solid #27272a;font-family:${FONT_STACK};font-size:12px;color:#52525b;line-height:1.5;">${footer}</td></tr>`
       : '') +
     `</table>` +
     `</td></tr></table>` +

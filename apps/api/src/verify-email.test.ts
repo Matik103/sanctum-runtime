@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { signVerifyToken, verifyToken } from './verify-email'
+import { buildVerificationEmail, signVerifyToken, verifyToken } from './verify-email'
 
 describe('verify-email tokens', () => {
   afterEach(() => vi.useRealTimers())
@@ -43,5 +43,28 @@ describe('verify-email tokens', () => {
     const a = signVerifyToken('audit-123', 'APPROVED')
     const b = signVerifyToken('audit-123', 'BLOCKED')
     expect(a).not.toBe(b)
+  })
+})
+
+describe('verification email layout', () => {
+  it('uses fluid stacked action buttons and escapes action context', () => {
+    const { html, text } = buildVerificationEmail({
+      actor: 'agent <alpha>',
+      action: 'send & publish',
+      context: { destination: 'ops <external>' },
+      risk: 'high',
+      approveUrl: 'https://api.example.test/approve?x=1&y=2',
+      blockUrl: 'https://api.example.test/block?x=1&y=2',
+    })
+
+    expect(html).toContain('width="100%" style="width:100%;max-width:600px')
+    expect(html).toContain('Approve action')
+    expect(html).toContain('Block action')
+    expect(html).not.toContain('display:flex')
+    expect(html).not.toContain('agent <alpha>')
+    expect(html).toContain('agent &lt;alpha&gt;')
+    expect(html).toContain('ops &lt;external&gt;')
+    expect(html).toContain('x=1&amp;y=2')
+    expect(text).toContain('Approve: https://api.example.test/approve?x=1&y=2')
   })
 })

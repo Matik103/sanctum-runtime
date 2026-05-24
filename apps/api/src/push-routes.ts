@@ -66,7 +66,7 @@ export async function registerPushRoutes(app: FastifyInstance): Promise<void> {
 
     const parsed = subscribeBody.safeParse(req.body)
     if (!parsed.success) {
-      return reply.status(400).send({ error: 'invalid_body', detail: parsed.error.flatten() })
+      return reply.status(400).send({ error: 'invalid_body', detail: z.flattenError(parsed.error) })
     }
 
     const { subscription, userAgent } = parsed.data
@@ -91,7 +91,7 @@ export async function registerPushRoutes(app: FastifyInstance): Promise<void> {
 
     const parsed = unsubscribeBody.safeParse(req.body)
     if (!parsed.success) {
-      return reply.status(400).send({ error: 'invalid_body', detail: parsed.error.flatten() })
+      return reply.status(400).send({ error: 'invalid_body', detail: z.flattenError(parsed.error) })
     }
 
     const { error } = await admin
