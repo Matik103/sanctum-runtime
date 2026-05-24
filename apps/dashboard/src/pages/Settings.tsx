@@ -336,10 +336,29 @@ export function Settings({ status }: Props) {
                 <div className="settings-push__copy">
                   <p className="settings-push__title">Mobile push</p>
                   <p className="settings-push__detail">Approval and incident alerts on this device</p>
+                  {pushState === 'unavailable' && (
+                    <p className="settings-push__detail" style={{ marginTop: '0.35rem' }}>
+                      Push delivery is not configured on this deployment. Ask your administrator to set
+                      <code style={{ margin: '0 0.25rem' }}>VAPID_PUBLIC_KEY</code>
+                      and
+                      <code style={{ margin: '0 0.25rem' }}>VAPID_PRIVATE_KEY</code>
+                      on the API service.
+                    </p>
+                  )}
+                  {pushState === 'denied' && (
+                    <p className="settings-push__detail" style={{ marginTop: '0.35rem' }}>
+                      Notifications are blocked in the browser. Re-enable them in your device settings to receive alerts.
+                    </p>
+                  )}
+                  {pushState === 'unsupported' && (
+                    <p className="settings-push__detail" style={{ marginTop: '0.35rem' }}>
+                      This browser does not support web push. On iPhone or iPad, install Sanctum to the home screen first.
+                    </p>
+                  )}
                   {pushError && <p className="settings-push__error">{pushError}</p>}
                 </div>
                 <span className={`badge ${pushState === 'subscribed' ? 'success' : pushState === 'denied' || pushState === 'unavailable' ? 'warning' : 'neutral'}`}>
-                  {pushState === 'subscribed' ? 'Enabled' : pushState === 'denied' ? 'Blocked in browser' : pushState === 'unavailable' ? 'Unavailable' : 'Off'}
+                  {pushState === 'subscribed' ? 'Enabled' : pushState === 'denied' ? 'Blocked in browser' : pushState === 'unavailable' ? 'Not configured' : pushState === 'unsupported' ? 'Install required' : 'Off'}
                 </span>
                 <button
                   type="button"

@@ -577,6 +577,12 @@ table.data td.audit-record-cell {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  /* Prevent long tag text (e.g. policy IDs, agent names) from busting
+     narrow phone viewports. word-break wraps mid-token when needed. */
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
 }
 
 .badge.success {

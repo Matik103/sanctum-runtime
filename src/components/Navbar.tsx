@@ -7,8 +7,8 @@ const enterpriseIsInternal = !enterpriseAccessUrl.startsWith("http");
 
 export function Navbar() {
   return (
-    <header className="fixed top-0 inset-x-0 z-50 glass">
-      <div className="container mx-auto flex h-16 items-center justify-between px-6">
+    <header className="fixed top-0 inset-x-0 z-50 glass pt-[env(safe-area-inset-top)]">
+      <div className="container mx-auto flex h-16 items-center justify-between px-6 pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))]">
         <Link to="/" className="flex items-center gap-2">
           <img src={logo} alt="Sanctum" className="h-8 w-8" />
           <span className="font-display text-lg font-semibold tracking-tight">Sanctum</span>

@@ -22,7 +22,7 @@ function BlogIndexPage() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <main className="pt-28 pb-24">
+      <main className="pt-[calc(7rem+env(safe-area-inset-top,0px))] pb-24">
         <div className="container mx-auto px-6 max-w-4xl">
           <p className="text-sm font-medium text-primary uppercase tracking-wider">Blog</p>
           <h1 className="mt-3 text-4xl md:text-5xl font-semibold tracking-tight">
