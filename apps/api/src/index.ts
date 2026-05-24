@@ -717,6 +717,10 @@ app.delete('/v1/policies/:action', async (req, reply) => {
   const picked = pickScopedOrgs(scope, q.org_id, { requireSingle: true })
   if ('status' in picked) return reply.status(picked.status).send(picked.body)
   const key = policyStorageKey(action, picked.orgIds[0], scope)
+  if (key.includes(':')) {
+    await runtime.removePolicyKeys([key])
+    return mergePoliciesForOrgs(runtime, [picked.orgIds[0]])
+  }
   return runtime.getPolicyEngine().deletePolicy(key)
 })
 

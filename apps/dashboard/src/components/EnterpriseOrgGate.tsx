@@ -11,11 +11,15 @@ type Props = { children: ReactNode }
 export function EnterpriseOrgGate({ children }: Props) {
   const { user, signOut } = useAuth()
   const [checking, setChecking] = useState(true)
+  const [checkError, setCheckError] = useState<string | null>(null)
+  const [retryAttempt, setRetryAttempt] = useState(0)
   const [portalType, setPortalType] = useState<'operator' | 'enterprise' | null>(null)
   const [orgCount, setOrgCount] = useState(0)
   const [email, setEmail] = useState<string | null>(null)
 
   useEffect(() => {
+    setChecking(true)
+    setCheckError(null)
     if (!user) {
       setChecking(false)
       return
@@ -30,11 +34,20 @@ export function EnterpriseOrgGate({ children }: Props) {
     let cancelled = false
     void (async () => {
       try {
-        const state = await completeEnterpriseSignIn(sb, user)
+        const state = await Promise.race([
+          completeEnterpriseSignIn(sb, user),
+          new Promise<never>((_, reject) => {
+            window.setTimeout(() => reject(new Error('workspace_bootstrap_timeout')), 12_000)
+          }),
+        ])
         if (cancelled) return
         setPortalType(state.portalType)
         setOrgCount(state.orgs.length)
         setEmail(user.email ?? null)
+      } catch {
+        if (!cancelled) {
+          setCheckError('Workspace access could not be verified. Check your connection and retry.')
+        }
       } finally {
         if (!cancelled) setChecking(false)
       }
@@ -43,12 +56,41 @@ export function EnterpriseOrgGate({ children }: Props) {
     return () => {
       cancelled = true
     }
-  }, [user])
+  }, [user, retryAttempt])
 
   if (checking) {
     return (
       <div className="auth-loading">
         <div className="auth-loading__ring" aria-label="Loading workspace" />
+      </div>
+    )
+  }
+
+  if (checkError) {
+    return (
+      <div className="auth-loading" style={{ flexDirection: 'column', gap: '1rem', padding: '2rem' }}>
+        <p style={{ margin: 0, fontWeight: 600, fontSize: '1.1rem' }}>Workspace unavailable</p>
+        <p
+          role="alert"
+          style={{
+            margin: 0,
+            fontSize: '0.875rem',
+            color: 'var(--muted)',
+            maxWidth: '26rem',
+            textAlign: 'center',
+            lineHeight: 1.5,
+          }}
+        >
+          {checkError}
+        </p>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+          <button type="button" className="btn btn-primary" onClick={() => setRetryAttempt((n) => n + 1)}>
+            Retry
+          </button>
+          <button type="button" className="btn btn-ghost" onClick={() => void signOut()}>
+            Sign out
+          </button>
+        </div>
       </div>
     )
   }

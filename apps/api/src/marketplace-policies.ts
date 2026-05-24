@@ -1,4 +1,4 @@
-import type { ActionPolicy, PolicyCondition } from "@sanctum-runtime/sdk";
+import type { ActionPolicy, PolicyCondition, PolicyMap } from "@sanctum-runtime/sdk";
 import type { RuntimeEngine } from "@sanctum/runtime-engine";
 
 const CONDITION_OPS = new Set<PolicyCondition["op"]>([
@@ -97,6 +97,23 @@ export async function applyMarketplacePolicyTemplates(
   return applied;
 }
 
+/** Capture policies an install is about to replace so uninstall is reversible. */
+export function snapshotMarketplacePolicyTemplates(
+  runtime: RuntimeEngine,
+  orgId: string,
+  templates: unknown[],
+): Record<string, ActionPolicy | null> {
+  const existing = runtime.getPolicyEngine().getPolicies();
+  const snapshot: Record<string, ActionPolicy | null> = {};
+  for (const raw of templates ?? []) {
+    const parsed = parseMarketplacePolicyTemplate(raw);
+    if (!parsed) continue;
+    const key = `${orgId}:${parsed.action}`;
+    snapshot[key] = existing[key] ?? null;
+  }
+  return snapshot;
+}
+
 /** Remove policies recorded on install (best-effort, no full-map Supabase upsert). */
 export async function removeMarketplacePolicyTemplates(
   runtime: RuntimeEngine,
@@ -104,6 +121,34 @@ export async function removeMarketplacePolicyTemplates(
 ): Promise<void> {
   if (policyKeys.length === 0) return;
   await runtime.removePolicyKeys(policyKeys);
+}
+
+function restoredPoliciesFromInstallConfig(
+  config: Record<string, unknown> | undefined,
+  policyKeys: string[],
+): PolicyMap {
+  const raw = config?.replacedPolicies;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const allowed = new Set(policyKeys);
+  const restored: PolicyMap = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!allowed.has(key) || !value || typeof value !== "object" || Array.isArray(value)) continue;
+    restored[key] = value as ActionPolicy;
+  }
+  return restored;
+}
+
+/** Remove package-installed values and put replaced operator policies back. */
+export async function uninstallMarketplacePolicyTemplates(
+  runtime: RuntimeEngine,
+  policyKeys: string[],
+  config: Record<string, unknown> | undefined,
+): Promise<void> {
+  await removeMarketplacePolicyTemplates(runtime, policyKeys);
+  const restored = restoredPoliciesFromInstallConfig(config, policyKeys);
+  for (const [key, policy] of Object.entries(restored)) {
+    await runtime.getPolicyEngine().createPolicy(key, policy);
+  }
 }
 
 export function policyKeysFromInstallConfig(config: Record<string, unknown> | undefined): string[] {

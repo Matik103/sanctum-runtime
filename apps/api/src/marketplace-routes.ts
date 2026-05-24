@@ -6,7 +6,8 @@ import { ControlPlaneStore } from "./control-plane-store.js";
 import {
   applyMarketplacePolicyTemplates,
   policyKeysForUninstall,
-  removeMarketplacePolicyTemplates,
+  snapshotMarketplacePolicyTemplates,
+  uninstallMarketplacePolicyTemplates,
 } from "./marketplace-policies.js";
 import { MarketplaceStore } from "./marketplace-store.js";
 import { recordUsage, UsageMetrics } from "./usage-store.js";
@@ -103,18 +104,36 @@ export async function registerMarketplaceRoutes(app: FastifyInstance, runtime: R
       const catalog = await market.getBySlug(slug, body.organizationId);
       if (!catalog) return reply.status(404).send({ error: "package_not_found" });
 
+      const existingInstall = catalog.installed
+        ? await market.getInstallRecord(body.organizationId, slug)
+        : null;
+      const existingConfig =
+        (existingInstall?.install.config as Record<string, unknown> | undefined) ?? undefined;
+      const existingBackup = existingConfig?.replacedPolicies;
+      const replacedPolicies =
+        existingBackup && typeof existingBackup === "object" && !Array.isArray(existingBackup)
+          ? existingBackup
+          : snapshotMarketplacePolicyTemplates(runtime, body.organizationId, catalog.policy_templates);
       const appliedPolicyKeys = await applyMarketplacePolicyTemplates(
         runtime,
         body.organizationId,
         catalog.policy_templates,
       );
 
-      const { install, package: pkg } = await market.install(body.organizationId, slug, {
-        ...(body.config ?? {}),
-        appliedPolicyKeys,
-        packageSlug: slug,
-        packageVersion: catalog.version,
-      });
+      let result: Awaited<ReturnType<typeof market.install>>;
+      try {
+        result = await market.install(body.organizationId, slug, {
+          ...(body.config ?? {}),
+          appliedPolicyKeys,
+          replacedPolicies,
+          packageSlug: slug,
+          packageVersion: catalog.version,
+        });
+      } catch (e) {
+        await uninstallMarketplacePolicyTemplates(runtime, appliedPolicyKeys, { replacedPolicies });
+        throw e;
+      }
+      const { install, package: pkg } = result;
       await store.insertEvent({
         orgId: body.organizationId,
         eventType: "marketplace.installed",
@@ -169,7 +188,11 @@ export async function registerMarketplaceRoutes(app: FastifyInstance, runtime: R
     await store.ensureOrg(orgId);
 
     try {
-      await removeMarketplacePolicyTemplates(runtime, policyKeys);
+      await uninstallMarketplacePolicyTemplates(
+        runtime,
+        policyKeys,
+        (installRow.install.config as Record<string, unknown> | undefined) ?? undefined,
+      );
     } catch (e) {
       req.log.warn({ err: e, slug, orgId }, "marketplace policy cleanup failed");
     }
@@ -179,9 +202,17 @@ export async function registerMarketplaceRoutes(app: FastifyInstance, runtime: R
       removed = await market.uninstall(orgId, slug);
     } catch (e) {
       req.log.error({ err: e, slug, orgId }, "marketplace uninstall db error");
+      try {
+        await applyMarketplacePolicyTemplates(runtime, orgId, installRow.package.policy_templates);
+      } catch (restoreError) {
+        req.log.error({ err: restoreError, slug, orgId }, "marketplace uninstall rollback failed");
+      }
       return reply.status(500).send({ error: "uninstall_failed" });
     }
-    if (!removed) return reply.status(404).send({ error: "not_installed" });
+    if (!removed) {
+      await applyMarketplacePolicyTemplates(runtime, orgId, installRow.package.policy_templates);
+      return reply.status(404).send({ error: "not_installed" });
+    }
 
     try {
       await store.insertEvent({
