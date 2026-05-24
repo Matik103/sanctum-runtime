@@ -111,11 +111,8 @@ services:
       - path: /*
         name: Cross-Origin-Embedder-Policy
         value: "credentialless"
-      # Long-cache hashed bundles (Vite emits *.<hash>.{js,css}); HTML stays uncached
+      # Long-cache hashed bundles. Root-level sw.js must remain revalidated below.
       - path: /assets/*
-        name: Cache-Control
-        value: "public, max-age=31536000, immutable"
-      - path: /*.js
         name: Cache-Control
         value: "public, max-age=31536000, immutable"
       - path: /*.css
