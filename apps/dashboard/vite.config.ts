@@ -53,7 +53,9 @@ export default defineConfig(({ mode, command }) => {
           display: 'standalone',
           orientation: 'any',
           scope: '/',
-          start_url: '/?source=pwa',
+          // Launch through the explicitly revalidated document. Render rewrites `/`
+          // to index.html without applying that file's no-cache response header.
+          start_url: '/index.html?source=pwa',
           id: '/',
           lang: 'en',
           categories: ['productivity', 'security'],
