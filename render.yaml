@@ -111,23 +111,14 @@ services:
       - path: /*
         name: Cross-Origin-Embedder-Policy
         value: "credentialless"
-      # Long-cache hashed bundles. Root-level sw.js must remain revalidated below.
+      # Only hashed bundles under /assets/* are safe to cache immutably.
+      # Vite emits *.<hash>.{js,css,woff2,png,svg} into /assets/, so this rule
+      # covers every fingerprinted artifact. Unhashed root-level files
+      # (sw.js, manifest.webmanifest, favicon.png, etc.) must revalidate so
+      # clients pick up new deploys without a stale-cache window.
       - path: /assets/*
         name: Cache-Control
         value: "public, max-age=31536000, immutable"
-      - path: /*.css
-        name: Cache-Control
-        value: "public, max-age=31536000, immutable"
-      - path: /*.woff2
-        name: Cache-Control
-        value: "public, max-age=31536000, immutable"
-      - path: /*.png
-        name: Cache-Control
-        value: "public, max-age=31536000, immutable"
-      - path: /*.svg
-        name: Cache-Control
-        value: "public, max-age=31536000, immutable"
-      # HTML and the SW must always revalidate so users pick up new deploys
       - path: /index.html
         name: Cache-Control
         value: "public, max-age=0, must-revalidate"
