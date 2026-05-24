@@ -6,6 +6,7 @@ import { RuntimeEngine } from '@sanctum/runtime-engine'
 import { ActionRequestSchema, PolicyConditionSchema } from '@sanctum-runtime/sdk'
 import { policiesFromYaml, policiesToYaml } from '@sanctum/policy-engine'
 import Fastify from 'fastify'
+import { createHash } from 'node:crypto'
 import { ZodError } from 'zod'
 import { z } from 'zod'
 import { attachHttpMetrics, recordRateLimitHit, renderHttpMetrics } from './http-metrics.js'
@@ -191,7 +192,7 @@ function rateLimitKey(req: import('fastify').FastifyRequest): string {
     // Hash so the raw key never appears in error responses, log lines, or
     // the rate-limit plugin's internal storage. 16 hex chars is plenty for
     // bucket separation and renders accidental disclosure useless.
-    return 'k:' + crypto.createHash('sha256').update(key).digest('hex').slice(0, 16)
+    return 'k:' + createHash('sha256').update(key).digest('hex').slice(0, 16)
   }
   const fwd = req.headers['x-forwarded-for']
   const ip = Array.isArray(fwd) ? fwd[0] : (typeof fwd === 'string' ? fwd.split(',')[0].trim() : req.ip)
