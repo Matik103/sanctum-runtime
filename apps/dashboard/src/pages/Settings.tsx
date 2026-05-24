@@ -175,7 +175,12 @@ export function Settings({ status }: Props) {
     }
   }
 
-  const { state: pushState, error: pushError, subscribe: enablePush, unsubscribe: disablePush } = usePushNotifications()
+  const {
+    state: pushState,
+    error: pushError,
+    subscribe: enablePush,
+    unsubscribe: disablePush,
+  } = usePushNotifications()
   const [pushBusy, setPushBusy] = useState(false)
 
   const handlePushToggle = async () => {
@@ -336,7 +341,7 @@ export function Settings({ status }: Props) {
                 <div className="settings-push__copy">
                   <p className="settings-push__title">Mobile push</p>
                   <p className="settings-push__detail">Approval and incident alerts on this device</p>
-                  {pushState === 'unavailable' && (
+                  {pushState === 'unavailable' && !pushError && (
                     <p className="settings-push__detail" style={{ marginTop: '0.35rem' }}>
                       Push delivery is not configured on this deployment. Ask your administrator to set
                       <code style={{ margin: '0 0.25rem' }}>VAPID_PUBLIC_KEY</code>
@@ -347,8 +352,8 @@ export function Settings({ status }: Props) {
                   )}
                   {pushState === 'denied' && (
                     <p className="settings-push__detail" style={{ marginTop: '0.35rem' }}>
-                      Notifications are blocked. Open iPhone <strong>Settings → Notifications → Sanctum</strong> and
-                      allow alerts, then return to this page.
+                      Notifications are blocked. Allow alerts for Sanctum in your device or browser notification
+                      settings, then return to this page.
                     </p>
                   )}
                   {pushState === 'ios_install_required' && (
@@ -376,7 +381,9 @@ export function Settings({ status }: Props) {
                   : 'neutral'
                 }`}>
                   {pushState === 'subscribed' ? 'Enabled'
-                    : pushState === 'denied' ? 'Blocked in iOS'
+                    : pushState === 'checking' ? 'Checking'
+                    : pushState === 'subscribing' ? 'Enabling'
+                    : pushState === 'denied' ? 'Blocked'
                     : pushState === 'unavailable' ? 'Not configured'
                     : pushState === 'ios_install_required' ? 'Add to Home Screen'
                     : pushState === 'ios_upgrade_required' ? 'Update iOS'
@@ -388,6 +395,8 @@ export function Settings({ status }: Props) {
                   className="btn btn-ghost"
                   disabled={
                     pushBusy
+                    || pushState === 'checking'
+                    || pushState === 'subscribing'
                     || pushState === 'unsupported'
                     || pushState === 'denied'
                     || pushState === 'unavailable'
@@ -396,7 +405,7 @@ export function Settings({ status }: Props) {
                   }
                   onClick={() => void handlePushToggle()}
                 >
-                  {pushBusy ? 'Updating...' : pushState === 'subscribed' ? 'Disable' : 'Enable'}
+                  {pushBusy || pushState === 'subscribing' ? 'Updating...' : pushState === 'subscribed' ? 'Disable' : 'Enable'}
                 </button>
               </div>
             </div>

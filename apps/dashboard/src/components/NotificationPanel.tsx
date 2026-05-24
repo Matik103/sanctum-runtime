@@ -24,13 +24,13 @@ export function NotificationPanel({ notifications, seenIds, onClose, onMarkAllRe
     <aside
       role="dialog"
       aria-label="Notifications"
+      className="notification-panel"
       style={{
         position: 'fixed',
         top: 0,
         right: 0,
         width: '380px',
         maxWidth: '100vw',
-        height: '100vh',
         background: 'var(--bg-card, #111113)',
         borderLeft: '1px solid var(--border, #27272a)',
         zIndex: 1000,

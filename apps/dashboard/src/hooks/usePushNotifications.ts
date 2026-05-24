@@ -1,30 +1,21 @@
 import { useState, useEffect, useCallback } from 'react'
+import { apiBaseUrl } from '../lib/api-url'
+import { urlBase64ToUint8Array } from '../lib/push'
 import { getAccessToken } from '../lib/supabase'
-
-const API_BASE = import.meta.env.VITE_SANCTUM_API_URL ?? ''
 
 async function authJsonHeaders(): Promise<HeadersInit> {
   const token = await getAccessToken()
   const h: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (token) h['Authorization'] = `Bearer ${token}`
+  if (token) h.Authorization = `Bearer ${token}`
   return h
 }
 
 /**
- * Push subscription state machine.
- *
- *   idle              — supported but not yet subscribed
- *   subscribing       — permission prompt in flight
- *   subscribed        — active push subscription on this device
- *   denied            — user blocked notifications in OS / browser settings
- *   unavailable       — backend hasn't published a VAPID key (operator config)
- *   ios_install_required  — iOS Safari tab; Apple only exposes Web Push to
- *                           installed PWAs. User must Add to Home Screen.
- *   ios_upgrade_required  — iOS PWA running on iOS < 16.4 (no Web Push)
- *   unsupported       — non-iOS browser without serviceWorker / PushManager /
- *                       Notification API (older Firefox, niche browsers).
+ * Push subscription state machine. iOS exposes Web Push only to installed
+ * Home Screen apps on iOS 16.4 and newer.
  */
 export type PushState =
+  | 'checking'
   | 'idle'
   | 'subscribing'
   | 'subscribed'
@@ -38,6 +29,7 @@ type Environment = {
   hasServiceWorker: boolean
   hasNotification: boolean
   hasPushManager: boolean
+  isSecureContext: boolean
   isIos: boolean
   isStandalone: boolean
 }
@@ -48,12 +40,12 @@ function detectEnvironment(): Environment {
       hasServiceWorker: false,
       hasNotification: false,
       hasPushManager: false,
+      isSecureContext: false,
       isIos: false,
       isStandalone: false,
     }
   }
   const ua = navigator.userAgent || ''
-  // iPadOS reports as Mac with touch — include it so iPad PWAs detect correctly.
   const isIos =
     /iphone|ipad|ipod/i.test(ua) ||
     (ua.includes('Mac') && typeof document !== 'undefined' && 'ontouchend' in document)
@@ -64,33 +56,47 @@ function detectEnvironment(): Environment {
     hasServiceWorker: 'serviceWorker' in navigator,
     hasNotification: 'Notification' in window,
     hasPushManager: 'PushManager' in window,
+    isSecureContext: window.isSecureContext,
     isIos,
     isStandalone,
   }
 }
 
-/**
- * Returns the appropriate "not yet able to subscribe" state for the
- * current environment, or null if the environment fully supports push.
- *
- * Order of precedence matches what gives the user the clearest action:
- *  1. iOS Safari tab    → tell them to install
- *  2. iOS PWA on old iOS → tell them to update
- *  3. Other browser without push APIs → generic unsupported
- */
 function gatingState(env: Environment): PushState | null {
   if (env.isIos) {
     if (!env.isStandalone) return 'ios_install_required'
     if (!env.hasPushManager || !env.hasNotification) return 'ios_upgrade_required'
   }
-  if (!env.hasServiceWorker || !env.hasPushManager || !env.hasNotification) {
+  if (!env.isSecureContext || !env.hasServiceWorker || !env.hasPushManager || !env.hasNotification) {
     return 'unsupported'
   }
   return null
 }
 
+const SERVICE_WORKER_TIMEOUT_MS = 8_000
+
+async function readyServiceWorker(): Promise<ServiceWorkerRegistration> {
+  const current = await navigator.serviceWorker.getRegistration()
+  if (current?.active) return current
+
+  let timeoutId: number | undefined
+  try {
+    return await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise<never>((_, reject) => {
+        timeoutId = window.setTimeout(
+          () => reject(new Error('The app is still preparing notifications. Close and reopen Sanctum, then try again.')),
+          SERVICE_WORKER_TIMEOUT_MS,
+        )
+      }),
+    ])
+  } finally {
+    if (timeoutId !== undefined) window.clearTimeout(timeoutId)
+  }
+}
+
 async function storeSubscription(sub: PushSubscription): Promise<void> {
-  const res = await fetch(`${API_BASE}/v1/push/subscribe`, {
+  const res = await fetch(`${apiBaseUrl}/v1/push/subscribe`, {
     method: 'POST',
     headers: await authJsonHeaders(),
     body: JSON.stringify({
@@ -102,15 +108,16 @@ async function storeSubscription(sub: PushSubscription): Promise<void> {
 }
 
 export function usePushNotifications() {
-  const [state, setState] = useState<PushState>('idle')
+  const [state, setState] = useState<PushState>('checking')
   const [vapidKey, setVapidKey] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [env] = useState<Environment>(detectEnvironment)
+  const [environment] = useState<Environment>(detectEnvironment)
 
-  const gating = gatingState(env)
+  const gating = gatingState(environment)
   const supported = gating === null
 
   useEffect(() => {
+    setError(null)
     if (gating) {
       setState(gating)
       return
@@ -123,23 +130,35 @@ export function usePushNotifications() {
     let active = true
     void (async () => {
       try {
-        const keyResponse = await fetch(`${API_BASE}/v1/push/vapid-key`)
+        setState('checking')
+        const keyResponse = await fetch(`${apiBaseUrl}/v1/push/vapid-key`)
         const data = keyResponse.ok ? await keyResponse.json() as { publicKey?: string } : {}
         if (!active) return
-        if (data.publicKey) setVapidKey(data.publicKey)
-        else setState('unavailable')
+        if (!data.publicKey) {
+          setError('Push configuration is unavailable on the runtime API.')
+          setState('unavailable')
+          return
+        }
+        setVapidKey(data.publicKey)
 
-        const reg = await navigator.serviceWorker.ready
+        const reg = await readyServiceWorker()
         const sub = await reg.pushManager.getSubscription()
-        if (!active || !sub) return
+        if (!active) return
+        if (!sub) {
+          setState('idle')
+          return
+        }
         setState('subscribed')
         try {
           await storeSubscription(sub)
         } catch {
           if (active) setError('This device is subscribed locally but could not be synchronized with Sanctum.')
         }
-      } catch {
-        if (active) setState('unavailable')
+      } catch (e) {
+        if (active) {
+          setError(e instanceof Error ? e.message : 'Push notifications are unavailable on this device.')
+          setState('unavailable')
+        }
       }
     })()
 
@@ -147,7 +166,15 @@ export function usePushNotifications() {
   }, [gating])
 
   const subscribe = useCallback(async () => {
-    if (!supported || !vapidKey) return
+    if (gating) {
+      setState(gating)
+      return
+    }
+    if (!vapidKey) {
+      setError('Push configuration is not ready. Try again in a moment.')
+      setState('unavailable')
+      return
+    }
     setError(null)
     if (Notification.permission === 'denied') {
       setState('denied')
@@ -158,11 +185,12 @@ export function usePushNotifications() {
     try {
       const permission = await Notification.requestPermission()
       if (permission !== 'granted') {
-        setState('denied')
+        setState(permission === 'denied' ? 'denied' : 'idle')
+        if (permission !== 'denied') setError('Notifications were not enabled. Tap Enable when you are ready.')
         return
       }
 
-      const reg = await navigator.serviceWorker.ready
+      const reg = await readyServiceWorker()
       let sub = await reg.pushManager.getSubscription()
       if (!sub) {
         sub = await reg.pushManager.subscribe({
@@ -177,19 +205,19 @@ export function usePushNotifications() {
       setError(e instanceof Error ? e.message : 'Could not enable push notifications.')
       setState('idle')
     }
-  }, [supported, vapidKey])
+  }, [gating, vapidKey])
 
   const unsubscribe = useCallback(async () => {
     if (!supported) return
     setError(null)
     try {
-      const reg = await navigator.serviceWorker.ready
+      const reg = await readyServiceWorker()
       const sub = await reg.pushManager.getSubscription()
       if (!sub) {
         setState('idle')
         return
       }
-      const res = await fetch(`${API_BASE}/v1/push/unsubscribe`, {
+      const res = await fetch(`${apiBaseUrl}/v1/push/unsubscribe`, {
         method: 'DELETE',
         headers: await authJsonHeaders(),
         body: JSON.stringify({ endpoint: sub.endpoint }),
@@ -204,12 +232,5 @@ export function usePushNotifications() {
     }
   }, [supported])
 
-  return { supported, state, error, environment: env, subscribe, unsubscribe }
-}
-
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
-  const raw = atob(base64)
-  return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)))
+  return { supported, state, error, environment, subscribe, unsubscribe }
 }
