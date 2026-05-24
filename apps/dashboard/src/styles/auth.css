@@ -19,10 +19,16 @@
 }
 
 .auth-bg {
-  position: fixed;
+  /* position: absolute anchors the background to .auth-root, NOT to the
+     iOS visual viewport. With position: fixed, opening the on-screen
+     keyboard shrinks the visual viewport and yanks the background up
+     across the layout — the page looks like it is sliding around while
+     typing. Absolute pins it to the document. */
+  position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 0;
+  overflow: hidden;
 }
 
 .auth-bg__grid {
@@ -519,7 +525,10 @@
   border: 1px solid var(--border);
   background: rgba(0, 0, 0, 0.35);
   color: var(--text);
-  font-size: 0.9rem;
+  /* iOS Safari force-zooms when a focused input has font-size < 16px.
+     The zoom-in/zoom-out is exactly the "drift" users see while typing
+     credentials. 16px keeps the page stable. */
+  font-size: 16px;
   transition:
     border-color 0.15s,
     box-shadow 0.15s;
@@ -685,6 +694,30 @@
   .auth-shell {
     align-items: start;
     gap: 1rem;
+  }
+
+  /* Kill the animated orb drift + scan-line on phones. They look slick
+     on desktop but on a small viewport they cause the page to visibly
+     pulse, which combined with the iOS keyboard appearance reads as the
+     "page drifting everywhere" the user reported. */
+  .auth-bg__orb--blue,
+  .auth-bg__orb--purple {
+    animation: none;
+  }
+
+  .auth-bg__scan {
+    display: none;
+  }
+}
+
+/* Always respect reduced-motion: kill the background animations so users
+   who opted out of motion never see the drift. */
+@media (prefers-reduced-motion: reduce) {
+  .auth-bg__orb--blue,
+  .auth-bg__orb--purple,
+  .auth-bg__scan,
+  .auth-spinner {
+    animation: none !important;
   }
 }
 

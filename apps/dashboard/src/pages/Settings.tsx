@@ -347,23 +347,53 @@ export function Settings({ status }: Props) {
                   )}
                   {pushState === 'denied' && (
                     <p className="settings-push__detail" style={{ marginTop: '0.35rem' }}>
-                      Notifications are blocked in the browser. Re-enable them in your device settings to receive alerts.
+                      Notifications are blocked. Open iPhone <strong>Settings → Notifications → Sanctum</strong> and
+                      allow alerts, then return to this page.
+                    </p>
+                  )}
+                  {pushState === 'ios_install_required' && (
+                    <p className="settings-push__detail" style={{ marginTop: '0.35rem' }}>
+                      iOS only delivers web push to installed apps. Tap the <strong>Share</strong> icon in Safari,
+                      choose <strong>Add to Home Screen</strong>, then open Sanctum from the new icon and reload this page.
+                    </p>
+                  )}
+                  {pushState === 'ios_upgrade_required' && (
+                    <p className="settings-push__detail" style={{ marginTop: '0.35rem' }}>
+                      Web push on iOS requires iOS 16.4 or later. Update your device in
+                      <strong> Settings → General → Software Update</strong>, then reopen Sanctum from the home screen.
                     </p>
                   )}
                   {pushState === 'unsupported' && (
                     <p className="settings-push__detail" style={{ marginTop: '0.35rem' }}>
-                      This browser does not support web push. On iPhone or iPad, install Sanctum to the home screen first.
+                      This browser does not support web push notifications. Try Safari (iOS) or Chrome / Edge (desktop / Android).
                     </p>
                   )}
                   {pushError && <p className="settings-push__error">{pushError}</p>}
                 </div>
-                <span className={`badge ${pushState === 'subscribed' ? 'success' : pushState === 'denied' || pushState === 'unavailable' ? 'warning' : 'neutral'}`}>
-                  {pushState === 'subscribed' ? 'Enabled' : pushState === 'denied' ? 'Blocked in browser' : pushState === 'unavailable' ? 'Not configured' : pushState === 'unsupported' ? 'Install required' : 'Off'}
+                <span className={`badge ${
+                  pushState === 'subscribed' ? 'success'
+                  : pushState === 'denied' || pushState === 'unavailable' || pushState === 'ios_upgrade_required' ? 'warning'
+                  : 'neutral'
+                }`}>
+                  {pushState === 'subscribed' ? 'Enabled'
+                    : pushState === 'denied' ? 'Blocked in iOS'
+                    : pushState === 'unavailable' ? 'Not configured'
+                    : pushState === 'ios_install_required' ? 'Add to Home Screen'
+                    : pushState === 'ios_upgrade_required' ? 'Update iOS'
+                    : pushState === 'unsupported' ? 'Unsupported'
+                    : 'Off'}
                 </span>
                 <button
                   type="button"
                   className="btn btn-ghost"
-                  disabled={pushBusy || pushState === 'unsupported' || pushState === 'denied' || pushState === 'unavailable'}
+                  disabled={
+                    pushBusy
+                    || pushState === 'unsupported'
+                    || pushState === 'denied'
+                    || pushState === 'unavailable'
+                    || pushState === 'ios_install_required'
+                    || pushState === 'ios_upgrade_required'
+                  }
                   onClick={() => void handlePushToggle()}
                 >
                   {pushBusy ? 'Updating...' : pushState === 'subscribed' ? 'Disable' : 'Enable'}
