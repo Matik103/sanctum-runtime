@@ -122,6 +122,9 @@ services:
       - path: /index.html
         name: Cache-Control
         value: "public, max-age=0, must-revalidate"
+      - path: /
+        name: Cache-Control
+        value: "public, max-age=0, must-revalidate"
       - path: /sw.js
         name: Cache-Control
         value: "public, max-age=0, must-revalidate"
