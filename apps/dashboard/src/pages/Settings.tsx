@@ -178,8 +178,12 @@ export function Settings({ status }: Props) {
   const {
     state: pushState,
     error: pushError,
+    deviceCount: pushDeviceCount,
+    testBusy: pushTestBusy,
+    testMessage: pushTestMessage,
     subscribe: enablePush,
     unsubscribe: disablePush,
+    sendTest: sendPushTest,
   } = usePushNotifications()
   const [pushBusy, setPushBusy] = useState(false)
 
@@ -374,6 +378,12 @@ export function Settings({ status }: Props) {
                     </p>
                   )}
                   {pushError && <p className="settings-push__error">{pushError}</p>}
+                  {pushState === 'subscribed' && pushDeviceCount !== null && (
+                    <p className="settings-push__detail" style={{ marginTop: '0.35rem' }}>
+                      {pushDeviceCount} subscribed device{pushDeviceCount === 1 ? '' : 's'} ready for delivery.
+                    </p>
+                  )}
+                  {pushTestMessage && <p className="settings-push__detail" style={{ marginTop: '0.35rem' }}>{pushTestMessage}</p>}
                 </div>
                 <span className={`badge ${
                   pushState === 'subscribed' ? 'success'
@@ -407,6 +417,16 @@ export function Settings({ status }: Props) {
                 >
                   {pushBusy || pushState === 'subscribing' ? 'Updating...' : pushState === 'subscribed' ? 'Disable' : 'Enable'}
                 </button>
+                {pushState === 'subscribed' && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    disabled={pushTestBusy}
+                    onClick={() => void sendPushTest()}
+                  >
+                    {pushTestBusy ? 'Sending...' : 'Send test'}
+                  </button>
+                )}
               </div>
             </div>
           </section>

@@ -19,6 +19,7 @@ export default defineConfig({
     'src/bedrock-agents.ts',
     'src/browser-use.ts',
     'src/home-assistant.ts',
+    'src/model-tools.ts',
   ],
   format: ['esm'],
   dts: true,

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
 import { fetchMyOrgs } from '../lib/fleet'
+import { AgentConnectStudio } from '../components/AgentConnectStudio'
 
 type AgentReg = {
   id: string
@@ -21,7 +22,11 @@ async function authHeaders(json = false): Promise<Record<string, string>> {
   return h
 }
 
-export function Agents() {
+type Props = {
+  onOpenDevices: () => void
+}
+
+export function Agents({ onOpenDevices }: Props) {
   const [orgId, setOrgId] = useState('')
   const [agents, setAgents] = useState<AgentReg[]>([])
   const [loading, setLoading] = useState(false)
@@ -158,6 +163,12 @@ export function Agents() {
           Each registered agent gets a signed token. The API extracts the org ID from the token — the agent never self-reports it, eliminating org impersonation risk.
         </p>
       </div>
+
+      <AgentConnectStudio
+        agentToken={newToken}
+        orgId={orgId}
+        onOpenDevices={onOpenDevices}
+      />
 
       {/* Agent list */}
       {loading ? (

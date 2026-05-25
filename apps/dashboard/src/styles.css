@@ -1256,6 +1256,231 @@ table.data td.audit-record-cell {
   min-width: 12rem;
 }
 
+/* Guided connection workflow - complements SDK / adapter integrations. */
+.connect-studio .section__body {
+  padding: 1.15rem;
+}
+
+.connect-truth {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.8rem 0.9rem;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  border-radius: 8px;
+  background: rgba(16, 185, 129, 0.08);
+  color: #a7f3d0;
+}
+
+.connect-truth svg {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.connect-truth p {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.connect-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+  list-style: none;
+  margin: 0 0 1.1rem;
+  padding: 0;
+}
+
+.connect-steps li {
+  display: flex;
+  gap: 0.65rem;
+  min-width: 0;
+  padding: 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--elevated);
+}
+
+.connect-steps li > span {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--link);
+}
+
+.connect-steps li.ready > span {
+  background: var(--success-soft);
+  color: #6ee7b7;
+}
+
+.connect-steps strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.86rem;
+}
+
+.connect-steps p {
+  margin: 0 0 0.5rem;
+  color: var(--muted);
+  font-size: 0.77rem;
+  line-height: 1.45;
+}
+
+.connect-steps p:last-child {
+  margin-bottom: 0;
+}
+
+.connect-label {
+  margin: 1rem 0 0.45rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.provider-picker,
+.boundary-picker {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.provider-picker {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.boundary-picker {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.provider-option,
+.boundary-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  min-height: 58px;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--elevated);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.provider-option:hover,
+.boundary-option:hover,
+.provider-option.active,
+.boundary-option.active {
+  border-color: rgba(79, 124, 255, 0.48);
+}
+
+.provider-option.active,
+.boundary-option.active {
+  background: var(--accent-soft);
+}
+
+.provider-option strong,
+.boundary-option strong {
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.provider-option span,
+.boundary-option span {
+  margin-top: 0.18rem;
+  color: var(--muted);
+  font-size: 0.73rem;
+  line-height: 1.35;
+}
+
+.connect-sdk-summary h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+}
+
+.connect-sdk-summary p {
+  margin: 0 0 0.8rem;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.adapter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.adapter-chips span {
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--elevated);
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.connect-output {
+  margin-top: 1.05rem;
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--elevated);
+}
+
+.connect-output__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.connect-output__head h3 {
+  margin: 0 0 0.2rem;
+  font-size: 0.9rem;
+}
+
+.connect-output__head p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.77rem;
+}
+
+.connect-code {
+  box-sizing: border-box;
+  width: 100%;
+  max-height: 22rem;
+  overflow: auto;
+  padding: 0.8rem;
+  margin: 0;
+  border-radius: 8px;
+  background: rgba(7, 11, 20, 0.72);
+  color: #c7d2fe;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.77rem;
+  line-height: 1.5;
+  white-space: pre;
+}
+
+.connect-footnote {
+  margin: 0.85rem 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
 .key-table td {
   vertical-align: middle;
 }
@@ -1930,6 +2155,28 @@ tr.key-row--pending td {
   .responsive-form-grid .btn,
   .responsive-form-grid button {
     width: 100%;
+  }
+
+  .connect-steps,
+  .boundary-picker {
+    grid-template-columns: 1fr;
+  }
+
+  .provider-picker {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .connect-output__head {
+    flex-direction: column;
+  }
+
+  .connect-output__head .copy-btn {
+    width: 100%;
+  }
+
+  .connect-code {
+    max-height: 18rem;
+    font-size: 0.72rem;
   }
 
   .threat-grid {

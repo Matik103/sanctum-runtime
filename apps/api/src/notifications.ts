@@ -299,6 +299,20 @@ async function _sendWithFailover(
   const slackUrl   = prefs?.slackWebhookUrl        ?? process.env.SLACK_WEBHOOK_URL
   const webhookUrl = prefs?.notificationWebhookUrl ?? process.env.NOTIFICATION_WEBHOOK_URL
 
+  // PWA web push is independent of the email/webhook failover channels. Start
+  // it before any early return so a successful email does not suppress mobile
+  // alerts and a push-only organization still receives incidents.
+  void import('./push-routes.js').then(async ({ sendWebPushToOrg }) => {
+    await sendWebPushToOrg(event.orgId, {
+      title: event.title,
+      body: event.body,
+      tag: `${event.type}:${event.orgId}`,
+      requireInteraction: event.severity === 'critical' || event.severity === 'emergency',
+      url: '/?page=alerts',
+      data: { ...(event.data ?? {}), type: event.type, orgId: event.orgId },
+    })
+  }).catch((e) => log.warn({ err: e instanceof Error ? e : new Error(String(e)) }, 'web push notification error'))
+
   // Primary channels participate in the failover logic
   type Channel = { name: string; fn: () => Promise<void> }
   const primary: Channel[] = []
@@ -307,13 +321,14 @@ async function _sendWithFailover(
   if (webhookUrl) primary.push({ name: 'webhook', fn: () => sendWebhook(event, webhookUrl) })
 
   if (primary.length === 0) {
-    // No channels configured — loud log so this is discoverable
-    log.warn({
+    // Web push has already been dispatched; record that no external channel
+    // is configured without treating a push-only workspace as an error.
+    log.info({
       eventType:  event.type,
       severity:   event.severity ?? 'info',
       orgId:      event.orgId,
       title:      event.title,
-    }, 'no notification channels configured')
+    }, 'no email, Slack, or webhook notification channels configured')
     return
   }
 
@@ -350,14 +365,6 @@ async function _sendWithFailover(
     await sendOpsAlert(event, failures)
   }
 
-  // Web push is always attempted in parallel as a secondary channel.
-  // Its failure does not trigger the ops alert — if no tokens are registered this is normal.
-  void import('./fcm.js').then(async ({ sendFcmToOrg }) => {
-    const { getSupabaseAuthConfig } = await import('./auth.js')
-    const cfg = getSupabaseAuthConfig()
-    if (!cfg) return
-    await sendFcmToOrg(event, cfg)
-  }).catch((e) => log.warn({ err: e instanceof Error ? e : new Error(String(e)) }, 'push notification error'))
 }
 
 // ── Deduplication ─────────────────────────────────────────────────────────────

@@ -6,6 +6,11 @@ export type SanctumClientOptions = {
   offlineMode?: boolean
   /** Sent as X-Sanctum-Key when SANCTUM_API_KEY is configured on the server. */
   apiKey?: string
+  /**
+   * Signed credential issued from Console > Agents. Sent as X-Agent-Token and
+   * scoped to the registered agent's organization.
+   */
+  agentToken?: string
   /** Supabase session access token → Authorization: Bearer (dashboard). */
   getAccessToken?: () => Promise<string | undefined>
 }
@@ -14,6 +19,7 @@ export class SanctumClient {
   private baseUrl: string
   private offlineMode: boolean
   private apiKey?: string
+  private agentToken?: string
   private getAccessToken?: () => Promise<string | undefined>
 
   constructor(options: SanctumClientOptions = {}) {
@@ -30,6 +36,9 @@ export class SanctumClient {
     this.apiKey =
       options.apiKey ??
       (typeof process !== 'undefined' ? process.env.SANCTUM_API_KEY : undefined)
+    this.agentToken =
+      options.agentToken ??
+      (typeof process !== 'undefined' ? process.env.SANCTUM_AGENT_TOKEN : undefined)
     this.getAccessToken = options.getAccessToken
   }
 
@@ -39,6 +48,10 @@ export class SanctumClient {
 
   getApiKey(): string | undefined {
     return this.apiKey
+  }
+
+  getAgentToken(): string | undefined {
+    return this.agentToken
   }
 
   async request<T = unknown>(
@@ -73,12 +86,14 @@ export class SanctumClient {
     return text ? (JSON.parse(text) as T) : (undefined as T)
   }
 
-  private async headers(json = true): Promise<HeadersInit> {
+  private async headers(json = true, agentScoped = false): Promise<HeadersInit> {
     const h: Record<string, string> = {}
     if (json) h['Content-Type'] = 'application/json'
     const token = this.getAccessToken ? await this.getAccessToken() : undefined
     if (token) h['Authorization'] = `Bearer ${token}`
+    else if (agentScoped && this.agentToken) h['X-Agent-Token'] = this.agentToken
     else if (this.apiKey) h['X-Sanctum-Key'] = this.apiKey
+    else if (this.agentToken) h['X-Agent-Token'] = this.agentToken
     return h
   }
 
@@ -88,7 +103,7 @@ export class SanctumClient {
   ): Promise<ActionResult> {
     const res = await fetch(`${this.baseUrl}/v1/actions/verify`, {
       method: 'POST',
-      headers: await this.headers(),
+      headers: await this.headers(true, true),
       body: JSON.stringify({
         ...request,
         offlineMode: options.offlineMode ?? this.offlineMode,

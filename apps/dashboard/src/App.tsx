@@ -226,7 +226,7 @@ export function App() {
         <Suspense fallback={<div className="page-loading" role="status">Loading view…</div>}>
           {page === 'activity' && <ErrorBoundary page="Runtime Activity"><RuntimeActivity audit={audit} onSelect={onSelect} /></ErrorBoundary>}
           {page === 'threats' && <ErrorBoundary page="Threat Monitor"><ThreatMonitor audit={audit} onSelect={onSelect} /></ErrorBoundary>}
-          {page === 'agents' && <ErrorBoundary page="Agents"><Agents /></ErrorBoundary>}
+          {page === 'agents' && <ErrorBoundary page="Agents"><Agents onOpenDevices={() => onPage('devices')} /></ErrorBoundary>}
           {page === 'alerts' && <ErrorBoundary page="Alerts"><Alerts /></ErrorBoundary>}
           {page === 'policies' && (
             <ErrorBoundary page="Policies">

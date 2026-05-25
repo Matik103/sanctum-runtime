@@ -111,10 +111,22 @@ export function usePushNotifications() {
   const [state, setState] = useState<PushState>('checking')
   const [vapidKey, setVapidKey] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [deviceCount, setDeviceCount] = useState<number | null>(null)
+  const [testBusy, setTestBusy] = useState(false)
+  const [testMessage, setTestMessage] = useState<string | null>(null)
   const [environment] = useState<Environment>(detectEnvironment)
 
   const gating = gatingState(environment)
   const supported = gating === null
+
+  const refreshStatus = useCallback(async () => {
+    const res = await fetch(`${apiBaseUrl}/v1/push/status`, {
+      headers: await authJsonHeaders(),
+    })
+    if (!res.ok) return
+    const data = await res.json() as { deviceCount?: number }
+    setDeviceCount(typeof data.deviceCount === 'number' ? data.deviceCount : null)
+  }, [])
 
   useEffect(() => {
     setError(null)
@@ -151,6 +163,7 @@ export function usePushNotifications() {
         setState('subscribed')
         try {
           await storeSubscription(sub)
+          await refreshStatus()
         } catch {
           if (active) setError('This device is subscribed locally but could not be synchronized with Sanctum.')
         }
@@ -163,7 +176,7 @@ export function usePushNotifications() {
     })()
 
     return () => { active = false }
-  }, [gating])
+  }, [gating, refreshStatus])
 
   const subscribe = useCallback(async () => {
     if (gating) {
@@ -200,12 +213,13 @@ export function usePushNotifications() {
       }
 
       await storeSubscription(sub)
+      await refreshStatus()
       setState('subscribed')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not enable push notifications.')
       setState('idle')
     }
-  }, [gating, vapidKey])
+  }, [gating, vapidKey, refreshStatus])
 
   const unsubscribe = useCallback(async () => {
     if (!supported) return
@@ -225,12 +239,42 @@ export function usePushNotifications() {
       if (!res.ok) throw new Error('Could not disable push notifications. Try again.')
       const removed = await sub.unsubscribe()
       if (!removed) throw new Error('The browser could not remove this push subscription.')
+      await refreshStatus()
       setState('idle')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not disable push notifications.')
       setState('subscribed')
     }
-  }, [supported])
+  }, [supported, refreshStatus])
 
-  return { supported, state, error, environment, subscribe, unsubscribe }
+  const sendTest = useCallback(async () => {
+    setTestBusy(true)
+    setTestMessage(null)
+    try {
+      const res = await fetch(`${apiBaseUrl}/v1/push/test`, {
+        method: 'POST',
+        headers: await authJsonHeaders(),
+      })
+      if (res.status === 409) {
+        const data = await res.json().catch(() => ({})) as { error?: string }
+        setTestMessage(
+          data.error === 'stale_push_subscription'
+            ? 'This saved subscription expired. Disable and re-enable push on this device.'
+            : 'No subscribed device was found. Enable push on this device first.',
+        )
+        return
+      }
+      if (!res.ok) throw new Error('No device accepted the test notification. Try re-enabling push or check device permissions.')
+      const data = await res.json() as { delivered?: number }
+      const delivered = data.delivered ?? 1
+      setTestMessage(`Test notification delivered to ${delivered} device${delivered === 1 ? '' : 's'}.`)
+      await refreshStatus()
+    } catch (e) {
+      setTestMessage(e instanceof Error ? e.message : 'Could not send a test push notification.')
+    } finally {
+      setTestBusy(false)
+    }
+  }, [refreshStatus])
+
+  return { supported, state, error, environment, deviceCount, testBusy, testMessage, subscribe, unsubscribe, sendTest }
 }

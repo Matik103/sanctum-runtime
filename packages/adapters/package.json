@@ -1,7 +1,7 @@
 {
   "name": "@sanctum-runtime/adapters",
   "version": "0.2.0",
-  "description": "Sanctum Runtime framework adapters — gate every agent / robot / MCP / workflow action through Sanctum. Supports LangChain, Vercel AI SDK, OpenAI Agents, Mastra, MCP, CrewAI, ROS2, Claude Desktop, n8n, AutoGen, Pydantic AI, LlamaIndex, smolagents, AWS Bedrock Agents, Browser-use, Home Assistant. Plus a generic gate() for anything else.",
+  "description": "Sanctum Runtime framework adapters — gate every agent / robot / MCP / workflow action through Sanctum. Includes provider-neutral model-tool dispatch for OpenAI, Claude, Gemini, Grok, DeepSeek, NVIDIA NIM and compatible APIs, plus LangChain, Vercel AI SDK, OpenAI Agents, MCP, CrewAI, ROS2 and more.",
   "type": "module",
   "license": "MIT",
   "keywords": [
@@ -10,7 +10,7 @@
     "mcp", "model-context-protocol", "crewai", "autogen", "pydantic-ai",
     "llamaindex", "smolagents", "bedrock-agents", "browser-use",
     "home-assistant", "n8n", "zapier", "ros2", "claude-desktop",
-    "computer-use", "tool-use", "function-calling", "indirect-prompt-injection",
+    "computer-use", "tool-use", "function-calling", "gemini", "grok", "deepseek", "nvidia-nim", "indirect-prompt-injection",
     "runtime", "policy-engine", "sanctum"
   ],
   "main": "./dist/index.js",
@@ -32,7 +32,8 @@
     "./smolagents": "./dist/smolagents.js",
     "./bedrock-agents": "./dist/bedrock-agents.js",
     "./browser-use": "./dist/browser-use.js",
-    "./home-assistant": "./dist/home-assistant.js"
+    "./home-assistant": "./dist/home-assistant.js",
+    "./model-tools": "./dist/model-tools.js"
   },
   "files": [
     "dist",

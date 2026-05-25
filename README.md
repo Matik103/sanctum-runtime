@@ -33,7 +33,7 @@ Not a chat guardrail. Not an audit log. **The boundary.**
 - **Fleet kill switch** — operator-triggered org-wide pause that returns BLOCKED on every verify until resumed.
 - **Policy replay** — *"if today's policies had existed yesterday, what would have changed?"*
 - **NIST AI RMF + SOC2 evidence exports** — 16 mapped controls (GOVERN / MAP / MEASURE / MANAGE) with implementation evidence.
-- **16 framework adapters** — LangChain, Vercel AI, OpenAI Agents, Mastra, MCP, CrewAI, ROS2, Claude Desktop, n8n/Zapier, AutoGen, Pydantic AI, LlamaIndex, smolagents, Bedrock Agents, Browser-use, Home Assistant.
+- **Easy Connect plus 16 framework adapters** — provider-neutral model-tool gating for OpenAI, Claude, Gemini, Grok, DeepSeek, NVIDIA NIM and compatible APIs, alongside LangChain, Vercel AI, OpenAI Agents, MCP, CrewAI, ROS2, Claude Desktop, n8n/Zapier, AutoGen, Pydantic AI, LlamaIndex, smolagents, Bedrock Agents, Browser-use and Home Assistant.
 - **Domain policy packs** — installable from the marketplace: healthcare PHI, finance transfers, ROS2 safety, MCP baseline, Claude Desktop.
 
 | | |

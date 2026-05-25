@@ -21,6 +21,8 @@
  *   - AWS Bedrock Agents (action-group Lambdas)
  *   - Browser-use / Stagehand (browser automation)
  *   - Home Assistant (smart home service calls)
+ *   - Provider-neutral model tool calls (OpenAI, Claude, Gemini, Grok,
+ *     DeepSeek, NVIDIA NIM and other function-calling APIs)
  *
  * Anything not listed: use the generic `gate()` function — works with any
  * framework where you can `await` a Promise.
@@ -29,6 +31,15 @@ export { gate } from './gate.js'
 
 // Shared types
 export type { SanctumAdapterOptions, ActionContext } from './types.js'
+
+// Provider-neutral LLM / hosted model tool dispatch
+export {
+  gateModelToolCall,
+  wrapModelToolExecutor,
+  type ModelProvider,
+  type ModelToolCall,
+  type ModelToolOptions,
+} from './model-tools.js'
 
 // Error classes
 export {

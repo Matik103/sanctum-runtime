@@ -26,7 +26,19 @@ matches its shape.
 | AWS Bedrock Agents | Action-group Lambda handlers                                               | `@sanctum-runtime/adapters/bedrock-agents`          |
 | Browser-use / Stagehand | Browser-automation primitive executors                                  | `@sanctum-runtime/adapters/browser-use`             |
 | Home Assistant     | `domain.service(entity_id, data)` calls                                    | `@sanctum-runtime/adapters/home-assistant`          |
+| Model tool dispatch| OpenAI, Claude, Gemini, Grok, DeepSeek, NVIDIA NIM and compatible APIs      | `@sanctum-runtime/adapters/model-tools`              |
 | **Generic**        | Anything else — wrap your own dispatcher                                   | `@sanctum-runtime/adapters` → `gate()`              |
+
+## Choose your connection path
+
+| Path | Best for | Credentials | Result |
+| ---- | -------- | ----------- | ------ |
+| **Easy Connect** | Model tool dispatchers and MCP tool servers | Registered agent token | One guided wrapper at the execute boundary |
+| **SDK + adapters** | Production agents, devices, robotics, workflows and fleets | Agent token and/or runtime API key | Full telemetry, runtime registration, policy and action-token workflows |
+
+The console **Agents** page exposes both paths. Easy Connect covers any model
+provider that gives your application a tool/function execution hook; it does
+not claim access to unconnected consumer chat sessions.
 
 ## Domain example walkthroughs
 
@@ -36,6 +48,7 @@ Real-world, end-to-end:
 - [Finance transfers](../examples/finance-transfers.md) — wire / invoice / refund / trade with dual approver
 - [Robotics / ROS2](../examples/robotics-ros2.md) — physical-world safety, ISO 10218 mapping
 - [MCP tool servers](../examples/mcp-tools.md) — gate `@modelcontextprotocol/server-*` calls
+- [Provider-neutral model tools](./model-tools.md) — gate function calls from hosted or local models
 
 ## Older single-file guides
 

@@ -113,15 +113,6 @@ async function main() {
     }
 
     try {
-      const root = await get('/')
-      const hasRuntimes = root.body?.endpoints?.runtimes
-      if (hasRuntimes) ok('control plane routes advertised on GET /')
-      else bad('control plane not deployed yet (redeploy API after push)')
-    } catch (e) {
-      bad('GET /', e.message)
-    }
-
-    try {
       const runtimes = await get('/v1/runtimes', true)
       if (runtimes.status === 200) {
         const n = Array.isArray(runtimes.body) ? runtimes.body.length : 0

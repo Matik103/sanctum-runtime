@@ -22,6 +22,7 @@ import { SanctumRuntime } from '@sanctum-runtime/sdk'
 
 const sanctum = new SanctumRuntime({
   baseUrl: process.env.SANCTUM_API_URL!, // your Sanctum API
+  agentToken: process.env.SANCTUM_AGENT_TOKEN, // Console > Agents (recommended for one agent)
 })
 
 const result = await sanctum.verifyAction({
@@ -31,6 +32,12 @@ const result = await sanctum.verifyAction({
 })
 // APPROVED | REQUIRE_VERIFICATION | BLOCKED
 ```
+
+`agentToken` is the signed identity returned when an operator registers an
+agent in the console. Use `apiKey` instead for runtime hosts, administrative
+pipelines, or fleet-level integrations. If a process supplies both, action
+verification uses the agent token while control-plane requests keep the
+workspace API key.
 
 ## What you can do
 
@@ -44,6 +51,35 @@ const result = await sanctum.verifyAction({
 | `getAudit()` | Compliance-style audit trail |
 
 Use **`riskPrompt`** per action for custom LLM scoring instructions. Works with **Ollama**, **OpenAI-compatible** APIs, or heuristics-only.
+
+## Easy Connect for model tools
+
+Model providers differ in API shape, but their risky boundary is the same:
+before executing a named tool/function call. The provider-neutral adapter
+supports OpenAI, Anthropic/Claude, Google Gemini, xAI Grok, DeepSeek, NVIDIA
+NIM, Bedrock, local and compatible models:
+
+```ts
+import { SanctumClient } from '@sanctum-runtime/sdk'
+import { wrapModelToolExecutor } from '@sanctum-runtime/adapters/model-tools'
+
+const client = new SanctumClient({
+  baseUrl: process.env.SANCTUM_API_URL!,
+  agentToken: process.env.SANCTUM_AGENT_TOKEN!,
+})
+
+const runTool = wrapModelToolExecutor(executeTool, {
+  client,
+  provider: 'google-gemini',
+  agentId: 'support-agent',
+})
+
+await runTool({ name: call.name, arguments: call.arguments })
+```
+
+Sanctum gates connected action/tool execution. It does not passively monitor a
+consumer ChatGPT, Claude, Gemini or other account that has not connected a tool
+boundary.
 
 ## Run the API locally
 
