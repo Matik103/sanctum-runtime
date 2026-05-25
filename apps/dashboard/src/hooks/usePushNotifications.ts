@@ -3,9 +3,10 @@ import { apiBaseUrl } from '../lib/api-url'
 import { urlBase64ToUint8Array } from '../lib/push'
 import { getAccessToken } from '../lib/supabase'
 
-async function authJsonHeaders(): Promise<HeadersInit> {
+async function authHeaders(json = false): Promise<HeadersInit> {
   const token = await getAccessToken()
-  const h: Record<string, string> = { 'Content-Type': 'application/json' }
+  const h: Record<string, string> = {}
+  if (json) h['Content-Type'] = 'application/json'
   if (token) h.Authorization = `Bearer ${token}`
   return h
 }
@@ -98,7 +99,7 @@ async function readyServiceWorker(): Promise<ServiceWorkerRegistration> {
 async function storeSubscription(sub: PushSubscription): Promise<void> {
   const res = await fetch(`${apiBaseUrl}/v1/push/subscribe`, {
     method: 'POST',
-    headers: await authJsonHeaders(),
+    headers: await authHeaders(true),
     body: JSON.stringify({
       subscription: sub.toJSON(),
       userAgent: navigator.userAgent,
@@ -120,7 +121,7 @@ function subscriptionUsesKey(sub: PushSubscription, publicKey: string): boolean 
 async function removeSubscription(sub: PushSubscription): Promise<void> {
   const res = await fetch(`${apiBaseUrl}/v1/push/unsubscribe`, {
     method: 'DELETE',
-    headers: await authJsonHeaders(),
+    headers: await authHeaders(true),
     body: JSON.stringify({ endpoint: sub.endpoint }),
   })
   if (!res.ok) throw new Error('Could not remove the previous push subscription.')
@@ -156,7 +157,7 @@ export function usePushNotifications() {
 
   const refreshStatus = useCallback(async () => {
     const res = await fetch(`${apiBaseUrl}/v1/push/status`, {
-      headers: await authJsonHeaders(),
+      headers: await authHeaders(),
     })
     if (!res.ok) return
     const data = await res.json() as { deviceCount?: number }
@@ -281,7 +282,7 @@ export function usePushNotifications() {
     try {
       const res = await fetch(`${apiBaseUrl}/v1/push/test`, {
         method: 'POST',
-        headers: await authJsonHeaders(),
+        headers: await authHeaders(),
       })
       if (res.status === 409) {
         const data = await res.json().catch(() => ({})) as { error?: string }
