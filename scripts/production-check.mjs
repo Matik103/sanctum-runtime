@@ -29,6 +29,48 @@ async function get(path, auth = false) {
   return { status: res.status, body: text ? JSON.parse(text) : null }
 }
 
+function hasRevalidateHeader(res) {
+  const cacheControl = res.headers.get('cache-control') ?? ''
+  return /\bmax-age=0\b/.test(cacheControl) && /\bmust-revalidate\b/.test(cacheControl)
+}
+
+async function checkDashboardDeployment() {
+  const probe = `production-check=${Date.now()}`
+  const launch = await fetch(`${DASHBOARD}/index.html?source=pwa&${probe}`, { cache: 'no-store' })
+  if (!launch.ok) {
+    bad('dashboard launch document', launch.status)
+    return
+  }
+  if (hasRevalidateHeader(launch)) ok('dashboard launch document revalidates on PWA startup')
+  else bad('dashboard launch document cache', launch.headers.get('cache-control') ?? 'missing Cache-Control')
+
+  const html = await launch.text()
+  const assets = [...new Set(
+    [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map((match) => match[1]),
+  )]
+  if (!assets.length) {
+    bad('dashboard entry assets', 'no hashed assets referenced by index.html')
+  }
+  for (const assetPath of assets) {
+    const asset = await fetch(`${DASHBOARD}${assetPath}`, { cache: 'no-store' })
+    const cacheControl = asset.headers.get('cache-control') ?? ''
+    if (asset.status !== 200) {
+      bad(
+        `dashboard asset ${assetPath}`,
+        `${asset.status}; purge cached error responses and set Cloudflare asset 404/5xx Edge TTL to 0`,
+      )
+    } else if (!/\bimmutable\b/.test(cacheControl)) {
+      bad(`dashboard asset cache ${assetPath}`, cacheControl || 'missing Cache-Control')
+    } else {
+      ok(`dashboard asset available (${assetPath})`)
+    }
+  }
+
+  const serviceWorker = await fetch(`${DASHBOARD}/sw.js?${probe}`, { cache: 'no-store' })
+  if (serviceWorker.ok && hasRevalidateHeader(serviceWorker)) ok('dashboard service worker revalidates')
+  else bad('dashboard service worker cache', serviceWorker.headers.get('cache-control') ?? serviceWorker.status)
+}
+
 async function main() {
   console.log(`Production check → ${API}\n`)
 
@@ -130,9 +172,7 @@ async function main() {
 
   if (DASHBOARD) {
     try {
-      const res = await fetch(DASHBOARD, { method: 'HEAD' })
-      if (res.ok) ok(`dashboard reachable (${DASHBOARD})`)
-      else bad('dashboard HEAD', res.status)
+      await checkDashboardDeployment()
     } catch (e) {
       bad('dashboard reachable', e.message)
     }
