@@ -249,6 +249,9 @@ app.setErrorHandler((err, _req, reply) => {
       details: z.flattenError(err),
     })
   }
+  if (err && typeof err === 'object' && 'code' in err && err.code === 'FST_ERR_CTP_EMPTY_JSON_BODY') {
+    return reply.status(400).send({ error: 'empty_json_body' })
+  }
   app.log.error(err)
   return reply.status(500).send(internalErrorBody(err))
 })
@@ -278,6 +281,14 @@ app.addHook('onRequest', async (req, reply) => {
     return reply.status(404).send({ error: 'not_found' })
   }
   if (isPublicPath(path)) return
+  // Agent credentials are validated inside the only endpoint where they are
+  // accepted, including registration revocation checks and organization
+  // scoping. Let that route inspect the signed token instead of rejecting it
+  // in the generic JWT/API-key gate first.
+  if (
+    path === '/v1/actions/verify' &&
+    extractAgentToken(req as { headers: Record<string, string | string[] | undefined> })
+  ) return
 
   const auth = await authenticateRequest(req.headers, {
     supabase: supabaseAuth,
