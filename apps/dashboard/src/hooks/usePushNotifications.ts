@@ -107,6 +107,41 @@ async function storeSubscription(sub: PushSubscription): Promise<void> {
   if (!res.ok) throw new Error('Could not register this device for push notifications.')
 }
 
+function subscriptionUsesKey(sub: PushSubscription, publicKey: string): boolean {
+  const subscriptionKey = sub.options.applicationServerKey
+  if (!subscriptionKey) return false
+
+  const current = new Uint8Array(subscriptionKey)
+  const expected = urlBase64ToUint8Array(publicKey)
+  if (current.byteLength !== expected.byteLength) return false
+  return current.every((byte, index) => byte === expected[index])
+}
+
+async function removeSubscription(sub: PushSubscription): Promise<void> {
+  const res = await fetch(`${apiBaseUrl}/v1/push/unsubscribe`, {
+    method: 'DELETE',
+    headers: await authJsonHeaders(),
+    body: JSON.stringify({ endpoint: sub.endpoint }),
+  })
+  if (!res.ok) throw new Error('Could not remove the previous push subscription.')
+  const removed = await sub.unsubscribe()
+  if (!removed) throw new Error('The browser could not replace its previous push subscription.')
+}
+
+async function currentSubscription(
+  reg: ServiceWorkerRegistration,
+  publicKey: string,
+): Promise<PushSubscription | null> {
+  const sub = await reg.pushManager.getSubscription()
+  if (!sub || subscriptionUsesKey(sub, publicKey)) return sub
+
+  await removeSubscription(sub)
+  return reg.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(publicKey) as unknown as ArrayBuffer,
+  })
+}
+
 export function usePushNotifications() {
   const [state, setState] = useState<PushState>('checking')
   const [vapidKey, setVapidKey] = useState<string | null>(null)
@@ -154,7 +189,7 @@ export function usePushNotifications() {
         setVapidKey(data.publicKey)
 
         const reg = await readyServiceWorker()
-        const sub = await reg.pushManager.getSubscription()
+        const sub = await currentSubscription(reg, data.publicKey)
         if (!active) return
         if (!sub) {
           setState('idle')
@@ -204,7 +239,7 @@ export function usePushNotifications() {
       }
 
       const reg = await readyServiceWorker()
-      let sub = await reg.pushManager.getSubscription()
+      let sub = await currentSubscription(reg, vapidKey)
       if (!sub) {
         sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
@@ -231,14 +266,7 @@ export function usePushNotifications() {
         setState('idle')
         return
       }
-      const res = await fetch(`${apiBaseUrl}/v1/push/unsubscribe`, {
-        method: 'DELETE',
-        headers: await authJsonHeaders(),
-        body: JSON.stringify({ endpoint: sub.endpoint }),
-      })
-      if (!res.ok) throw new Error('Could not disable push notifications. Try again.')
-      const removed = await sub.unsubscribe()
-      if (!removed) throw new Error('The browser could not remove this push subscription.')
+      await removeSubscription(sub)
       await refreshStatus()
       setState('idle')
     } catch (e) {
@@ -264,7 +292,9 @@ export function usePushNotifications() {
         )
         return
       }
-      if (!res.ok) throw new Error('No device accepted the test notification. Try re-enabling push or check device permissions.')
+      if (!res.ok) {
+        throw new Error('No device accepted the test notification. Open Settings on the enrolled device to refresh its secure subscription, then try again.')
+      }
       const data = await res.json() as { delivered?: number }
       const delivered = data.delivered ?? 1
       setTestMessage(`Test notification delivered to ${delivered} device${delivered === 1 ? '' : 's'}.`)
