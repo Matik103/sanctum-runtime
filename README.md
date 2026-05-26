@@ -22,10 +22,11 @@ Not a chat guardrail. Not an audit log. **The boundary.**
   executor verifies → side effect runs → result reported back
 ```
 
-**About this repo:** open-source runtime trust boundary for autonomous AI, robots, MCP tools, smart home, financial and healthcare agents. Signed action tokens · blast-radius scoring · source-trust classification (indirect-prompt-injection defense) · dual-approver workflows · auto-escalation · fleet kill switch · policy replay · SOC2 + NIST AI RMF evidence · 16 framework adapters. MIT · `npm install @sanctum-runtime/sdk`
+**About this repo:** open-source runtime trust boundary for autonomous AI, robots, MCP tools, smart home, financial and healthcare agents. Sanctum Shield early warning and containment · signed action tokens · blast-radius scoring · source-trust classification (indirect-prompt-injection defense) · dual-approver workflows · auto-escalation · fleet kill switch · policy replay · SOC2 + NIST AI RMF evidence · 16 framework adapters. MIT · `npm install @sanctum-runtime/sdk`
 
 ## What's new in this release
 
+- **Sanctum Shield** — detects suspicious runtime behavior, blocks critical execution before side effects, revokes matching temporary approval windows in the hosted control plane, and raises emergency incidents for operator response.
 - **Signed action tokens** — HMAC-SHA256, scoped to actor + action + org + audit id, 5 min TTL. Executors must verify before running.
 - **Blast-radius scoring** — every action gets `{ level, score 0-100, factors, reversible, dataSensitivity, externalDestination, physicalWorld, estimatedValue }`.
 - **Source-trust classification** — 7 levels including `untrusted_content` and `tool_output` for deterministic indirect-prompt-injection defense.
@@ -70,6 +71,7 @@ If you only need chat guardrails, look at prompt filters. If you need **executio
 |------------------------------|:---------------:|:---------:|:----------:|:-------:|:------------------------:|
 | **Open source (MIT)**        | ✅              | ❌        | ❌         | ❌      | ❌                       |
 | **Pre-execution action gate**| ✅              | ✅        | ✅         | ✅      | partial                  |
+| **Early warning + automatic containment** | ✅       | partial   | partial    | partial | partial                  |
 | **Signed action tokens**     | ✅              | partial   | ❌         | ❌      | ❌                       |
 | **Blast-radius scoring**     | ✅              | ❌        | ❌         | partial | ❌                       |
 | **Source-trust / indirect-injection** | ✅     | ❌        | ❌         | ❌      | partial                  |
@@ -235,6 +237,7 @@ Sanctum is moving beyond advisory guardrails into enforceable action control:
 - **Execution receipts** — executors can report succeeded / failed / skipped outcomes back onto the audit record after token-verified side effects.
 - **Source-trust classification** — actions record whether instructions came from trusted users, system flows, memory, tool output, or untrusted content.
 - **Blast-radius scoring** — every action can be scored for reversibility, data sensitivity, physical-world impact, external destination, and monetary value.
+- **Sanctum Shield** — deterministic threat signals score suspicious behavior; critical attempts are blocked before execution, alert operators, and cause hosted control-plane approval windows for the actor/action to be revoked.
 - **Policy replay** — replay recent audit events against current policies before rollout.
 - **Evidence summaries** — export control evidence for audit, incident review, and compliance workflows.
 

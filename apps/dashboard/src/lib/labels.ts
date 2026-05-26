@@ -61,6 +61,15 @@ const ANOMALY_LABELS: Record<string, string> = {
   rapid_repeat_action: 'Rapid repeat',
   privilege_escalation_chain: 'Privilege escalation',
   high_value_transfer: 'High-value transfer',
+  untrusted_source_side_effect: 'Untrusted side effect',
+  high_blast_radius: 'High blast radius',
+  unknown_device_or_location: 'Unknown device or location',
+  secret_access_attempt: 'Secret access attempt',
+  security_control_tamper: 'Security control tampering',
+  physical_safety_emergency: 'Physical safety emergency',
+  critical_financial_exposure: 'Critical financial exposure',
+  repeated_blocked_attempts: 'Repeated blocked attempts',
+  approval_fatigue_pattern: 'Approval fatigue pattern',
 }
 
 export function contextFieldLabel(key: string): string {

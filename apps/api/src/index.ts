@@ -39,7 +39,7 @@ import { AlertStore } from './alert-store.js'
 import { sendVerificationEmail, verifyToken } from './verify-email.js'
 import { loadPoliciesFromSupabase, detectAnomalies, heuristicRiskFloor, verifyActionToken } from '@sanctum/runtime-engine'
 import { verifyAgentToken, extractAgentToken, registerAgentTokenRoutes } from './agent-tokens.js'
-import { checkActiveGrant, createGrant } from './policy-grants.js'
+import { checkActiveGrant, createGrant, revokeActiveGrantsForAction } from './policy-grants.js'
 import {
   authenticateRequest,
   getSupabaseAuthConfig,
@@ -1013,7 +1013,13 @@ app.post('/v1/actions/verify', {
 
   // Time-bounded grant: if a previous approval granted this action for a window,
   // auto-approve without interrupting the agent again
-  if (result.decision === 'REQUIRE_VERIFICATION' && supabaseAuth && orgId) {
+  if (
+    result.decision === 'REQUIRE_VERIFICATION' &&
+    result.shield?.level !== 'high' &&
+    result.shield?.level !== 'critical' &&
+    supabaseAuth &&
+    orgId
+  ) {
     try {
       const grant = await checkActiveGrant(supabaseAuth, orgId, body.action, body.actor)
       if (grant) {
@@ -1071,15 +1077,47 @@ app.post('/v1/actions/verify', {
     }).catch(() => { /* best-effort */ })
   }
 
-  // Persist alert + notify on anomaly spikes (BLOCKED or anomaly flags present)
+  const riskPercent = result.risk === 'high' ? 100 : result.risk === 'medium' ? 60 : 30
+  let revokedTemporaryPermissions = 0
+  let temporaryPermissionRevocation: 'not_applicable' | 'complete' | 'failed' = 'not_applicable'
+
+  if (result.shield?.level === 'critical' && supabaseAuth && orgId) {
+    try {
+      revokedTemporaryPermissions = await revokeActiveGrantsForAction(
+        supabaseAuth,
+        orgId,
+        body.action,
+        body.actor,
+      )
+      temporaryPermissionRevocation = 'complete'
+    } catch {
+      temporaryPermissionRevocation = 'failed'
+    }
+  }
+
+  // Persist alert + notify on anomaly spikes and Shield containment.
   if (supabaseAuth && orgId && (result.decision === 'BLOCKED' || result.anomalyFlags.length > 0)) {
-    const severity = result.decision === 'BLOCKED' ? 'critical' : 'warning'
-    const eventType = result.decision === 'BLOCKED' ? 'agent.blocked_action' : 'anomaly.spike'
-    const title = result.decision === 'BLOCKED'
-      ? `Action blocked: ${body.action}`
+    const shieldCritical = result.shield?.level === 'critical'
+    const severity = shieldCritical ? 'emergency' : result.decision === 'BLOCKED' ? 'critical' : 'warning'
+    const eventType = shieldCritical ? 'shield.containment' : result.decision === 'BLOCKED' ? 'agent.blocked_action' : 'anomaly.spike'
+    const title = shieldCritical
+      ? `Shield containment: ${body.action} blocked`
+      : result.decision === 'BLOCKED'
+        ? `Action blocked: ${body.action}`
       : `Anomaly detected: ${body.action}`
-    const message = `Actor "${body.actor}" triggered ${result.anomalyFlags.join(', ') || 'a block'} on action "${body.action}". Decision: ${result.decision}. Risk: ${(result.risk * 100).toFixed(0)}%.`
-    const metadata = { action: body.action, actor: body.actor, decision: result.decision, risk: result.risk, anomalyFlags: result.anomalyFlags }
+    const message = shieldCritical
+      ? `Sanctum Shield blocked "${body.action}" from "${body.actor}" before execution. Threat score: ${result.shield?.score ?? 100}/100.${temporaryPermissionRevocation === 'failed' ? ' Temporary permission revocation failed and requires manual action.' : ''} Review containment actions immediately.`
+      : `Actor "${body.actor}" triggered ${result.anomalyFlags.join(', ') || 'a block'} on action "${body.action}". Decision: ${result.decision}. Risk: ${riskPercent}%.`
+    const metadata = {
+      action: body.action,
+      actor: body.actor,
+      decision: result.decision,
+      risk: result.risk,
+      anomalyFlags: result.anomalyFlags,
+      shield: result.shield,
+      revokedTemporaryPermissions,
+      temporaryPermissionRevocation,
+    }
 
     // Persist to alerts table (always)
     const alertStore = new AlertStore(supabaseAuth)
@@ -1145,7 +1183,7 @@ app.post('/v1/actions/verify', {
         await Promise.allSettled(
           members.map((m) => sendPushToUser(m.user_id as string, {
             title: `Verification required: ${body.action}`,
-            body: `${body.actor} is waiting on your approval (risk ${(result.risk * 100).toFixed(0)}%).`,
+            body: `${body.actor} is waiting on your approval (risk ${riskPercent}%).`,
             tag: `verify:${result.id}`,
             requireInteraction: true,
             url: `/?page=activity&verify=${encodeURIComponent(result.id)}`,

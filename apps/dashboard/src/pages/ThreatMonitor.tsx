@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { OctagonX, ShieldAlert, Siren } from 'lucide-react'
 import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 import { decisionTone, timeAgo } from '../lib/format'
 import {
@@ -10,23 +11,35 @@ import {
 } from '../lib/labels'
 
 const THREAT_TYPES = [
+  { id: 'security_control_tamper', label: 'Security tampering', severity: 'critical' },
+  { id: 'physical_safety_emergency', label: 'Physical safety', severity: 'critical' },
+  { id: 'critical_financial_exposure', label: 'Critical financial', severity: 'critical' },
+  { id: 'repeated_blocked_attempts', label: 'Repeated blocked', severity: 'critical' },
+  { id: 'secret_access_attempt', label: 'Secret access', severity: 'high' },
+  { id: 'untrusted_source_side_effect', label: 'Untrusted side effect', severity: 'high' },
+  { id: 'high_blast_radius', label: 'High blast radius', severity: 'high' },
+  { id: 'approval_fatigue_pattern', label: 'Approval fatigue', severity: 'high' },
   { id: 'unusual_time_access', label: 'Abnormal timing', severity: 'medium' },
+  { id: 'unknown_device_or_location', label: 'Unknown environment', severity: 'medium' },
   { id: 'owner_absent_or_sleeping', label: 'Owner vulnerable', severity: 'high' },
   { id: 'suspicious_prompt_pattern', label: 'Prompt injection', severity: 'high' },
   { id: 'unsafe_command_chain', label: 'Unsafe escalation', severity: 'high' },
   { id: 'rapid_repeat_action', label: 'Rapid repeat', severity: 'medium' },
   { id: 'privilege_escalation_chain', label: 'Privilege escalation', severity: 'high' },
-  { id: 'high_value_transfer', label: 'High-value transfer', severity: 'medium' },
-]
+  { id: 'high_value_transfer', label: 'High-value transfer', severity: 'high' },
+] as const
 
 type Props = { audit: ActionResult[]; onSelect: (e: ActionResult) => void }
 
 export function ThreatMonitor({ audit, onSelect }: Props) {
-  const [severityFilter, setSeverityFilter] = useState<'all' | 'high' | 'medium'>('all')
+  const [severityFilter, setSeverityFilter] = useState<'all' | 'critical' | 'high' | 'medium'>('all')
 
   const withAnomalies = audit.filter((e) => e.anomalyFlags.length > 0)
   const blocked = audit.filter((e) => e.decision === 'BLOCKED')
   const held = audit.filter((e) => e.decision === 'REQUIRE_VERIFICATION')
+  const shieldIncidents = audit.filter((e) => e.shield && e.shield.level !== 'clear')
+  const shieldCritical = audit.filter((e) => e.shield?.level === 'critical')
+  const contained = audit.filter((e) => e.shield?.automaticResponse.includes('block_action'))
 
   const threats = audit.filter(
     (e) => e.decision !== 'APPROVED' || e.anomalyFlags.length > 0,
@@ -34,14 +47,10 @@ export function ThreatMonitor({ audit, onSelect }: Props) {
 
   const filtered = threats.filter((e) => {
     if (severityFilter === 'all') return true
-    if (severityFilter === 'high') {
-      return (
-        e.decision === 'BLOCKED' ||
-        e.anomalyFlags.some(
-          (f) => THREAT_TYPES.find((t) => t.id === f)?.severity === 'high',
-        )
-      )
-    }
+    if (severityFilter === 'critical') return e.shield?.level === 'critical'
+    if (severityFilter === 'high') return e.shield?.level === 'high' || e.anomalyFlags.some(
+      (f) => THREAT_TYPES.find((t) => t.id === f)?.severity === 'high',
+    )
     return e.anomalyFlags.some(
       (f) => THREAT_TYPES.find((t) => t.id === f)?.severity === 'medium',
     )
@@ -52,9 +61,36 @@ export function ThreatMonitor({ audit, onSelect }: Props) {
       <header className="page-header">
         <div>
           <h1>Threat Monitor</h1>
-          <p>Behavioral anomaly detection and threat response</p>
+          <p>Sanctum Shield early-warning detection and automatic containment</p>
         </div>
       </header>
+
+      <section className="shield-overview" aria-label="Sanctum Shield status">
+        <div className="shield-overview__identity">
+          <ShieldAlert size={22} />
+          <div>
+            <h2>Shield active</h2>
+            <p>Critical behavior is blocked before execution and surfaced for operator review.</p>
+          </div>
+        </div>
+        <div className="shield-overview__metrics">
+          <div>
+            <Siren size={16} />
+            <strong>{shieldCritical.length}</strong>
+            <span>Critical incidents</span>
+          </div>
+          <div>
+            <OctagonX size={16} />
+            <strong>{contained.length}</strong>
+            <span>Contained actions</span>
+          </div>
+          <div>
+            <ShieldAlert size={16} />
+            <strong>{shieldIncidents.length}</strong>
+            <span>Shield findings</span>
+          </div>
+        </div>
+      </section>
 
       <div className="stat-strip" style={{ marginBottom: '1rem' }}>
         <div className="stat-strip__item">
@@ -103,7 +139,7 @@ export function ThreatMonitor({ audit, onSelect }: Props) {
       </div>
 
       <div className="toolbar" style={{ marginBottom: '0.75rem' }}>
-        {([['all', 'All'], ['high', 'High severity'], ['medium', 'Medium severity']] as const).map(
+        {([['all', 'All'], ['critical', 'Critical'], ['high', 'High'], ['medium', 'Medium']] as const).map(
           ([id, label]) => (
             <button
               key={id}
@@ -150,6 +186,17 @@ export function ThreatMonitor({ audit, onSelect }: Props) {
                   <td>{actorLabel(e.actor)}</td>
                   <td style={{ maxWidth: 280 }}>{e.reasoning}</td>
                   <td>
+                    {e.shield && e.shield.level !== 'clear' && (
+                      <span className={`badge ${
+                        e.shield.level === 'critical'
+                          ? 'danger'
+                          : e.shield.level === 'high'
+                            ? 'warning'
+                            : 'neutral'
+                      }`}>
+                        Shield {e.shield.level} · {e.shield.score}/100
+                      </span>
+                    )}
                     <span className={`badge ${decisionTone(e.decision)}`}>
                       {decisionLabel(e.decision)}
                     </span>

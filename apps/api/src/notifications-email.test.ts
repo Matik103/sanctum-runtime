@@ -6,6 +6,7 @@ const notificationTypes: NotificationEventType[] = [
   'agent.policy_violation',
   'agent.loop_detected',
   'agent.blocked_action',
+  'shield.containment',
   'runtime.offline',
   'runtime.extended_offline',
   'runtime.tampered',

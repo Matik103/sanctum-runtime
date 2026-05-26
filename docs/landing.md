@@ -21,6 +21,7 @@ Sanctum is that layer.
 
 | Capability                         | What it does                                                                |
 | ---------------------------------- | --------------------------------------------------------------------------- |
+| **Sanctum Shield**                 | Early warning and containment; blocks critical execution before side effects |
 | **Signed action tokens**           | HMAC-signed, 5-min TTL, scoped — executor refuses to run without one        |
 | **Blast-radius scoring**           | 0-100 score with factors (money, data, reversibility, physical, external)   |
 | **Source-trust classification**    | 7 levels; deterministic indirect-prompt-injection defense                   |
@@ -93,6 +94,7 @@ desktop or mobile.
    │  ─ blast-radius scoring      │
    │  ─ source-trust classifier   │
    │  ─ anomaly detection         │
+   │  ─ Shield containment        │
    │  ─ optional risk model       │
    └─────────────────────────────┘
         │

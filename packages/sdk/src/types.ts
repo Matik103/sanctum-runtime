@@ -95,6 +95,34 @@ export const ActionExecutionSchema = z.object({
 })
 export type ActionExecution = z.infer<typeof ActionExecutionSchema>
 
+export const ShieldSignalSchema = z.object({
+  id: z.string(),
+  category: z.enum(['identity', 'behavior', 'injection', 'financial', 'physical', 'secrets', 'security_control', 'blast_radius']),
+  severity: z.enum(['low', 'medium', 'high', 'critical']),
+  label: z.string(),
+  evidence: z.string(),
+})
+export type ShieldSignal = z.infer<typeof ShieldSignalSchema>
+
+export const ShieldAssessmentSchema = z.object({
+  score: z.number().min(0).max(100),
+  level: z.enum(['clear', 'elevated', 'high', 'critical']),
+  signals: z.array(ShieldSignalSchema),
+  requiredDecision: z.enum(['BLOCKED', 'REQUIRE_VERIFICATION']).optional(),
+  automaticResponse: z.array(z.enum(['block_action', 'hold_for_review', 'alert_operator'])),
+  recommendedResponse: z.array(z.enum([
+    'revoke_temporary_permissions',
+    'isolate_actor',
+    'disconnect_tool',
+    'pause_runtime_session',
+    'pause_fleet',
+    'rotate_credentials',
+    'incident_review',
+  ])),
+  summary: z.string(),
+})
+export type ShieldAssessment = z.infer<typeof ShieldAssessmentSchema>
+
 export const ActionResultSchema = z.object({
   id: z.string(),
   correlationId: z.string(),
@@ -143,6 +171,8 @@ export const ActionResultSchema = z.object({
   escalatedAt: z.string().optional(),
   /** Parent audit entry id — links related actions in a causal chain. */
   parentAuditId: z.string().optional(),
+  /** Sanctum Shield early-warning assessment and containment response. */
+  shield: ShieldAssessmentSchema.optional(),
 })
 
 export type ActionResult = z.infer<typeof ActionResultSchema>

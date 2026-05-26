@@ -614,6 +614,10 @@ table.data td.audit-record-cell {
   color: var(--muted);
 }
 
+table.data td .badge + .badge {
+  margin-left: 0.35rem;
+}
+
 .drawer-backdrop {
   position: fixed;
   inset: 0;
@@ -900,6 +904,79 @@ table.data td.audit-record-cell {
   background: var(--danger-soft);
   color: #fca5a5;
   border-color: rgba(239, 68, 68, 0.35);
+}
+
+.shield-overview {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1rem 1.1rem;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 8px;
+  background: rgba(16, 185, 129, 0.06);
+}
+
+.shield-overview__identity {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  color: var(--success);
+}
+
+.shield-overview__identity h2 {
+  margin: 0 0 0.25rem;
+  font-size: 0.98rem;
+  color: var(--foreground);
+}
+
+.shield-overview__identity p {
+  margin: 0;
+  max-width: 32rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.shield-overview__metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(6.25rem, 1fr));
+  gap: 0.55rem;
+}
+
+.shield-overview__metrics div {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  justify-content: start;
+  column-gap: 0.35rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.shield-overview__metrics svg {
+  color: var(--muted);
+}
+
+.shield-overview__metrics strong {
+  font-size: 1rem;
+  color: var(--foreground);
+}
+
+.shield-overview__metrics span {
+  grid-column: 1 / -1;
+  margin-top: 0.15rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.shield-assessment {
+  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.04);
 }
 
 .threat-grid {
@@ -2179,6 +2256,15 @@ tr.key-row--pending td {
     font-size: 0.72rem;
   }
 
+  .shield-overview {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .shield-overview__metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .threat-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -2401,6 +2487,14 @@ tr.key-row--pending td {
 }
 
 @media (max-width: 480px) {
+  .shield-overview__metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .shield-overview__metrics span {
+    white-space: normal;
+  }
+
   .threat-grid {
     grid-template-columns: 1fr;
   }

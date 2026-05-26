@@ -44,6 +44,7 @@ import { resolveDecision } from './decision.js'
 import { heuristicRiskFloor, heuristicRiskReason, mergeRisk } from './risk-heuristics.js'
 import { deriveActionIdentity, deriveSourceTrust, estimateBlastRadius } from './action-context.js'
 import { issueActionToken, verifyActionToken } from './action-token.js'
+import { assessShield } from './shield.js'
 
 export type RuntimeEngineOptions = {
   policyEngine?: PolicyEngine
@@ -387,7 +388,16 @@ export class RuntimeEngine {
     const sourceTrust = deriveSourceTrust(request)
     const blastRadius = estimateBlastRadius(request)
     const actionIdentity = deriveActionIdentity(request)
-    const anomalyFlags = detectAnomalies(request)
+    const detectedAnomalies = detectAnomalies(request)
+    const shield = assessShield(request, {
+      anomalyFlags: detectedAnomalies,
+      sourceTrust,
+      blastRadius,
+      recentAudit: this.auditStore.list(100),
+    })
+    const anomalyFlags = [
+      ...new Set([...detectedAnomalies, ...shield.signals.map((signal) => signal.id)]),
+    ]
     const riskFloor = heuristicRiskFloor(request, anomalyFlags)
     const policyEval = this.policyEngine.evaluate(request, useHeuristicsOnly)
 
@@ -399,7 +409,13 @@ export class RuntimeEngine {
     let riskModelProvider: 'ollama' | 'openai' | undefined
     let riskModelName: string | undefined
 
-    if (policyEval.violations.includes('policy_auto_block')) {
+    if (shield.requiredDecision === 'BLOCKED') {
+      decision = 'BLOCKED'
+      risk = 'high'
+    } else if (shield.requiredDecision === 'REQUIRE_VERIFICATION') {
+      decision = 'REQUIRE_VERIFICATION'
+      risk = 'high'
+    } else if (policyEval.violations.includes('policy_auto_block')) {
       decision = 'BLOCKED'
       risk = 'high'
     } else if (policyEval.violations.includes('policy_block_when_offline')) {
@@ -497,7 +513,7 @@ export class RuntimeEngine {
       decision = 'REQUIRE_VERIFICATION'
     }
 
-    const reasoning = buildPolicyReasoning({
+    const policyReasoning = buildPolicyReasoning({
       request,
       policy: policyEval.policy,
       policyPath: policyEval.policyPath,
@@ -507,6 +523,8 @@ export class RuntimeEngine {
       risk,
       modelReason,
     })
+    const reasoning =
+      shield.level === 'clear' ? policyReasoning : `${policyReasoning} ${shield.summary}`
 
     const partial = {
       actor: request.actor,
@@ -554,6 +572,7 @@ export class RuntimeEngine {
       sourceTrust,
       blastRadius,
       actionIdentity,
+      shield,
       requiresSecondApproval:
         requiresSecondApproval ||
         (elevatedDecision === 'REQUIRE_VERIFICATION' && blastRadius.level === 'critical')
@@ -598,18 +617,30 @@ export class RuntimeEngine {
     const sourceTrust = deriveSourceTrust(request)
     const blastRadius = estimateBlastRadius(request)
     const actionIdentity = deriveActionIdentity(request)
-    const anomalyFlags = detectAnomalies(request)
+    const detectedAnomalies = detectAnomalies(request)
+    const shield = assessShield(request, {
+      anomalyFlags: detectedAnomalies,
+      sourceTrust,
+      blastRadius,
+    })
+    const anomalyFlags = [
+      ...new Set([...detectedAnomalies, ...shield.signals.map((signal) => signal.id)]),
+    ]
     const useHeuristicsOnly = options.offlineMode === true || this.forceOfflineMode
     const policyEval = this.policyEngine.evaluate(request, useHeuristicsOnly)
     const risk = mergeRisk(
       heuristicRiskFloor(request, anomalyFlags),
       riskFromBlastRadius(blastRadius.level),
     )
-    const decision = resolveDecision({
+    let decision = resolveDecision({
       policy: policyEval.policy,
       risk,
       anomalyFlags,
     })
+    if (shield.requiredDecision === 'BLOCKED') decision = 'BLOCKED'
+    else if (shield.requiredDecision === 'REQUIRE_VERIFICATION' && decision === 'APPROVED') {
+      decision = 'REQUIRE_VERIFICATION'
+    }
 
     return {
       simulation: true as const,
@@ -620,6 +651,7 @@ export class RuntimeEngine {
       sourceTrust,
       blastRadius,
       actionIdentity,
+      shield,
       conditionMatched: policyEval.policyPath.includes('.condition['),
       policyFlags: {
         autoBlock: policyEval.policy.autoBlock,
@@ -699,6 +731,7 @@ export class RuntimeEngine {
         signedActionTokens: Boolean(process.env.SANCTUM_ACTION_TOKEN_SECRET || process.env.SANCTUM_API_KEY_PEPPER || process.env.SANCTUM_API_KEY),
         sourceTrustClassification: true,
         blastRadiusScoring: true,
+        shieldEarlyWarningContainment: true,
         policyReplay: true,
         humanVerification: true,
         auditTrail: true,
@@ -722,6 +755,7 @@ export class RuntimeEngine {
         `${executed} approved action(s) reported post-execution status; ${executionFailed} reported failure.`,
         `${highBlast} action(s) carried high or critical blast-radius metadata.`,
         `${untrustedSource} action(s) originated from untrusted content or tool output.`,
+        `${audit.filter((e) => e.shield?.level === 'critical').length} action(s) triggered critical Sanctum Shield containment.`,
       ],
     }
   }
@@ -767,6 +801,7 @@ export { registerAnomalyRule, type AnomalyRule, detectAnomalies } from './anomal
 export { loadPoliciesFromSupabase } from './supabase-policies.js'
 export { heuristicRiskFloor } from './risk-heuristics.js'
 export { verifyActionToken } from './action-token.js'
+export { assessShield } from './shield.js'
 
 function riskFromBlastRadius(level: 'low' | 'medium' | 'high' | 'critical'): RiskLevel {
   if (level === 'critical' || level === 'high') return 'high'

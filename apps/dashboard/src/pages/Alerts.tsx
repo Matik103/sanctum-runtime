@@ -96,6 +96,7 @@ function StatusIcon({ status }: { status: AlertStatus }) {
 }
 
 const EVENT_TYPES = [
+  'shield.containment',
   'anomaly.spike',
   'agent.blocked_action',
   'agent.policy_violation',

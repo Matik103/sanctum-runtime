@@ -151,6 +151,34 @@ export function ActionDrawer({ entry, onClose, audit, onSelect, status }: Props)
           </section>
         )}
 
+        {entry.shield && entry.shield.level !== 'clear' && (
+          <section className="drawer-section shield-assessment">
+            <h3>Sanctum Shield</h3>
+            <p style={{ margin: '0 0 0.6rem', display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+              <span className={`badge ${
+                entry.shield.level === 'critical'
+                  ? 'danger'
+                  : entry.shield.level === 'high'
+                    ? 'warning'
+                    : 'neutral'
+              }`}>{entry.shield.level} · {entry.shield.score}/100</span>
+              {entry.shield.automaticResponse.map((response) => (
+                <span key={response} className="badge neutral">
+                  {response.replace(/_/g, ' ')}
+                </span>
+              ))}
+            </p>
+            <p style={{ margin: 0, fontSize: '0.88rem', lineHeight: 1.5 }}>
+              {entry.shield.summary}
+            </p>
+            {entry.shield.recommendedResponse.length > 0 && (
+              <p style={{ margin: '0.6rem 0 0', fontSize: '0.8rem', color: 'var(--muted)', lineHeight: 1.5 }}>
+                Recommended: {entry.shield.recommendedResponse.map((response) => response.replace(/_/g, ' ')).join(' · ')}
+              </p>
+            )}
+          </section>
+        )}
+
         <section className="drawer-section">
           <h3>Risk analysis</h3>
           <p style={{ margin: 0, fontSize: '0.9rem', lineHeight: 1.5 }}>{entry.reasoning}</p>

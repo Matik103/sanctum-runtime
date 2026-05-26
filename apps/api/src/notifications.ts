@@ -28,6 +28,7 @@ export type NotificationEventType =
   | 'agent.policy_violation'
   | 'agent.loop_detected'
   | 'agent.blocked_action'
+  | 'shield.containment'
   // Runtime / infrastructure
   | 'runtime.offline'
   | 'runtime.extended_offline'

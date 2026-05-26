@@ -63,6 +63,28 @@ export async function createGrant(
   return data as PolicyGrant
 }
 
+/** Revoke current approval windows for a contained actor/action pair. */
+export async function revokeActiveGrantsForAction(
+  cfg: SupabaseAuthConfig,
+  orgId: string,
+  action: string,
+  actor: string,
+): Promise<number> {
+  const admin = createSupabaseAdmin(cfg)
+  const safeActor = actor.replace(/[",\\]/g, '')
+  const { data, error } = await admin
+    .from('policy_grants')
+    .update({ revoked_at: new Date().toISOString() })
+    .eq('org_id', orgId)
+    .eq('action', action)
+    .is('revoked_at', null)
+    .gt('expires_at', new Date().toISOString())
+    .or(`actor.is.null,actor.eq."${safeActor}"`)
+    .select('id')
+  if (error) throw new Error(error.message)
+  return data?.length ?? 0
+}
+
 /** List active grants for an org. */
 export async function listActiveGrants(
   cfg: SupabaseAuthConfig,
