@@ -163,7 +163,7 @@ await app.register(cors, {
     cb(null, isAllowedCorsOrigin(origin))
   },
   methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Sanctum-Key', 'X-Request-Id'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Sanctum-Key', 'X-Request-Id', 'X-Sanctum-Agent-Token', 'X-Agent-Token'],
   exposedHeaders: ['X-Request-Id', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
 })
 
@@ -270,9 +270,12 @@ function isPublicPath(path: string): boolean {
     path === '/v1/verify-action' ||
     path === '/v1/push/vapid-key' ||
     path === '/.well-known/security.txt' ||
-    path === '/v1/client-errors'
+    path === '/v1/client-errors' ||
+    path === '/v1/proxy/platforms'
   ) return true
   if (path.startsWith('/v1/sso/')) return true
+  // Proxy endpoints authenticate via X-Sanctum-Agent-Token (validated inside the route handler)
+  if (path.startsWith('/v1/proxy/')) return true
   if (!isProduction()) {
     if (path === '/' || path === '/metrics' || path === '/v1/status') return true
   }
@@ -480,8 +483,10 @@ if (supabaseAuth) {
   await registerPushRoutes(app)
   registerShieldRoutes(app)
   await registerAgentTokenRoutes(app, supabaseAuth)
-  registerProxyRoutes(app)
 }
+
+// Proxy routes work in standalone mode too (tool call logging is skipped without Supabase)
+registerProxyRoutes(app)
 
 const stopWebhookWorker = supabaseAuth ? startWebhookWorker(supabaseAuth) : null
 
