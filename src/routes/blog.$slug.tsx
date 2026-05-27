@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { BlogLayout } from '@/components/BlogLayout'
+import { BlogConsoleCta } from '@/components/BlogConsoleCta'
 import { BLOG_ANSWER_POSTS } from '@/lib/blog-answers'
 import { blogPostPath, getBlogPost } from '@/lib/blog-posts'
 import { articleJsonLd, pageSeo } from '@/lib/seo'
@@ -77,7 +78,7 @@ function PostPage() {
   }
 
   return (
-    <BlogLayout post={post}>
+    <BlogLayout post={post} showConsoleCta={false}>
       <p>{content.intro}</p>
       <h2>Key takeaways</h2>
       <ul>
@@ -101,7 +102,9 @@ function PostPage() {
         </div>
       ))}
 
-      <p>
+      <BlogConsoleCta slug={slug} />
+
+      <p className="!mt-8">
         Related:{' '}
         {content.related.map((slugItem, index) => (
           <span key={slugItem}>

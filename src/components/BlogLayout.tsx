@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ArrowLeft, Calendar, Clock } from 'lucide-react'
 import { Navbar } from '@/components/Navbar'
+import { BlogConsoleCta } from '@/components/BlogConsoleCta'
 import { CtaFooter } from '@/components/CtaFooter'
 import type { BlogPostMeta } from '@/lib/blog-posts'
 import { blogPostPath } from '@/lib/blog-posts'
@@ -10,9 +11,11 @@ import { consoleUrl } from '@/lib/site-links'
 type Props = {
   post: BlogPostMeta
   children: ReactNode
+  /** Set false when the article body renders its own console CTA (e.g. before related links). */
+  showConsoleCta?: boolean
 }
 
-export function BlogLayout({ post, children }: Props) {
+export function BlogLayout({ post, children, showConsoleCta = true }: Props) {
   const date = new Date(post.publishedAt).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
@@ -56,6 +59,7 @@ export function BlogLayout({ post, children }: Props) {
           <div className="mt-10 space-y-6 text-muted-foreground leading-relaxed [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-foreground [&_h2]:mt-10 [&_h2]:mb-3 [&_h3]:text-foreground [&_h3]:font-medium [&_h3]:mt-6 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-2 [&_a]:text-primary [&_a]:hover:underline [&_pre]:bg-surface [&_pre]:border [&_pre]:border-border [&_pre]:rounded-lg [&_pre]:p-4 [&_pre]:text-sm [&_pre]:overflow-x-auto [&_code]:font-mono [&_code]:text-sm">
             {children}
           </div>
+          {showConsoleCta ? <BlogConsoleCta slug={post.slug} /> : null}
           <p className="mt-12 pt-8 border-t border-border text-sm text-muted-foreground">
             More:{' '}
             <Link to="/blog/" className="text-primary hover:underline">
