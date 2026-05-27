@@ -173,4 +173,173 @@ export async function registerAgentTokenRoutes(
     if (error) return reply.status(500).send({ error: error.message })
     return { ok: true }
   })
+
+  // Token rotation — POST /v1/orgs/:orgId/agents/:agentId/rotate
+  app.post('/v1/orgs/:orgId/agents/:agentId/rotate', async (req, reply) => {
+    const { orgId, agentId } = req.params as { orgId: string; agentId: string }
+    orgIdSchema.parse(orgId)
+    const access = await resolveUser(req as SanctumReq, orgId, 'admin')
+    if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
+
+    // Issue new token (new iat — later than any previous token)
+    const newIat = Date.now()
+    const payload = Buffer.from(JSON.stringify({ id: agentId, orgId, iat: newIat })).toString('base64url')
+    const { createHmac } = await import('crypto')
+    const sig = createHmac('sha256', signingSecret()).update(payload).digest('base64url')
+    const token = `sk_agent_${payload}.${sig}`
+    const hint = token.slice(-6)
+
+    // Invalidate all previous tokens by setting token_iat_min = newIat
+    const { error } = await admin
+      .from('agent_registrations')
+      .update({ token_hint: hint, token_iat_min: newIat })
+      .eq('id', agentId)
+      .eq('org_id', orgId)
+      .is('revoked_at', null)
+
+    if (error) return reply.status(500).send({ error: error.message })
+    return reply.status(200).send({
+      token,
+      token_hint: hint,
+      note: 'Previous token is now invalid. Store this token immediately — it cannot be retrieved again.',
+    })
+  })
+
+  // Per-agent audit log — GET /v1/orgs/:orgId/agents/:agentId/audit
+  app.get('/v1/orgs/:orgId/agents/:agentId/audit', async (req, reply) => {
+    const { orgId, agentId } = req.params as { orgId: string; agentId: string }
+    orgIdSchema.parse(orgId)
+    const access = await resolveUser(req as SanctumReq, orgId, 'member')
+    if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
+
+    const q = req.query as { limit?: string }
+    const limit = Math.min(200, Math.max(1, Number(q.limit ?? 50) || 50))
+
+    // Get agent name to use as actor filter
+    const { data: reg } = await admin
+      .from('agent_registrations')
+      .select('name')
+      .eq('id', agentId)
+      .eq('org_id', orgId)
+      .maybeSingle()
+
+    if (!reg) return reply.status(404).send({ error: 'agent_not_found' })
+
+    const { data, error } = await admin
+      .from('audit_events')
+      .select('id,actor,action,decision,risk,reasoning,anomaly_flags,shield_level,shield_score,created_at')
+      .eq('org_id', orgId)
+      .eq('actor', reg.name)
+      .order('created_at', { ascending: false })
+      .limit(limit)
+
+    if (error) return reply.status(500).send({ error: error.message })
+    return { entries: data ?? [], actor: reg.name }
+  })
+
+  // Per-agent stats — GET /v1/orgs/:orgId/agents/:agentId/stats
+  app.get('/v1/orgs/:orgId/agents/:agentId/stats', async (req, reply) => {
+    const { orgId, agentId } = req.params as { orgId: string; agentId: string }
+    orgIdSchema.parse(orgId)
+    const access = await resolveUser(req as SanctumReq, orgId, 'member')
+    if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
+
+    const { data: reg } = await admin
+      .from('agent_registrations')
+      .select('name')
+      .eq('id', agentId)
+      .eq('org_id', orgId)
+      .maybeSingle()
+
+    if (!reg) return reply.status(404).send({ error: 'agent_not_found' })
+
+    const since24h = new Date(Date.now() - 86_400_000).toISOString()
+
+    const { data, error } = await admin
+      .from('audit_events')
+      .select('decision,shield_level,shield_score,created_at')
+      .eq('org_id', orgId)
+      .eq('actor', reg.name)
+      .gte('created_at', since24h)
+
+    if (error) return reply.status(500).send({ error: error.message })
+
+    const rows = (data ?? []) as Array<{ decision: string; shield_level: string | null; shield_score: number | null; created_at: string }>
+    const blocked24h = rows.filter(r => r.decision === 'BLOCKED').length
+    const held24h = rows.filter(r => r.decision === 'REQUIRE_VERIFICATION').length
+    const approved24h = rows.filter(r => r.decision === 'APPROVED').length
+    const shieldLevels = ['critical', 'high', 'elevated', 'clear']
+    const worstShield = shieldLevels.find(l => rows.some(r => r.shield_level === l)) ?? null
+    const maxScore = rows.reduce((m, r) => Math.max(m, r.shield_score ?? 0), 0)
+
+    return { blocked24h, held24h, approved24h, total24h: rows.length, worstShield, maxScore, actor: reg.name }
+  })
+
+  // Per-agent grants — GET /v1/orgs/:orgId/agents/:agentId/grants
+  app.get('/v1/orgs/:orgId/agents/:agentId/grants', async (req, reply) => {
+    const { orgId, agentId } = req.params as { orgId: string; agentId: string }
+    orgIdSchema.parse(orgId)
+    const access = await resolveUser(req as SanctumReq, orgId, 'member')
+    if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
+
+    const { data: reg } = await admin
+      .from('agent_registrations')
+      .select('name')
+      .eq('id', agentId)
+      .eq('org_id', orgId)
+      .maybeSingle()
+
+    if (!reg) return reply.status(404).send({ error: 'agent_not_found' })
+
+    const { data, error } = await admin
+      .from('policy_grants')
+      .select('*')
+      .eq('org_id', orgId)
+      .eq('actor', reg.name)
+      .is('revoked_at', null)
+      .gt('expires_at', new Date().toISOString())
+      .order('expires_at', { ascending: true })
+
+    if (error) return reply.status(500).send({ error: error.message })
+    return { grants: data ?? [], actor: reg.name }
+  })
+
+  // Create grant for agent — POST /v1/orgs/:orgId/agents/:agentId/grants
+  app.post('/v1/orgs/:orgId/agents/:agentId/grants', async (req, reply) => {
+    const { orgId, agentId } = req.params as { orgId: string; agentId: string }
+    orgIdSchema.parse(orgId)
+    const access = await resolveUser(req as SanctumReq, orgId, 'admin')
+    if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
+
+    const body = z.object({
+      action: z.string().min(1).max(200),
+      durationMinutes: z.number().int().min(1).max(10080), // max 1 week
+    }).parse(req.body)
+
+    const { data: reg } = await admin
+      .from('agent_registrations')
+      .select('name')
+      .eq('id', agentId)
+      .eq('org_id', orgId)
+      .maybeSingle()
+
+    if (!reg) return reply.status(404).send({ error: 'agent_not_found' })
+
+    const expiresAt = new Date(Date.now() + body.durationMinutes * 60_000).toISOString()
+    const { data, error } = await admin
+      .from('policy_grants')
+      .insert({
+        org_id: orgId,
+        action: body.action,
+        actor: reg.name,
+        granted_by: access.userId ?? 'operator',
+        duration_minutes: body.durationMinutes,
+        expires_at: expiresAt,
+      })
+      .select()
+      .single()
+
+    if (error || !data) return reply.status(500).send({ error: error?.message ?? 'Failed to create grant' })
+    return reply.status(201).send({ grant: data })
+  })
 }
