@@ -168,15 +168,17 @@ export function registerShieldRoutes(app: FastifyInstance): void {
 
     const { id } = req.params as { id: string }
     const admin = createSupabaseAdmin(cfg)
-    const { error } = await admin
+    const { data, error } = await admin
       .from('shield_rules')
       .delete()
       .eq('id', id)
       .eq('org_id', orgId)
+      .select('id')
+      .single()
 
-    if (error) {
+    if (error || !data) {
       log.error({ err: error, orgId, id }, 'Failed to delete shield rule')
-      return reply.code(500).send({ error: 'Failed to delete rule' })
+      return reply.code(error ? 500 : 404).send({ error: error ? 'Failed to delete rule' : 'Rule not found' })
     }
     invalidateShieldRulesCache(orgId)
     return reply.code(204).send()
@@ -283,6 +285,12 @@ export type ShieldRuleRow = {
   label: string
 }
 
+function resolveContextAmount(ctx: Record<string, unknown>): number | null {
+  const raw = ctx['amount'] ?? ctx['value'] ?? ctx['total']
+  const n = Number(raw)
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
 /**
  * Evaluate custom Shield rules against an incoming action.
  *
@@ -302,15 +310,16 @@ export function evaluateShieldRules(
 
     // Pattern matching: exact match or glob-prefix (e.g. "transfer_*" matches "transfer_funds")
     const pattern = rule.action_pattern
+    const prefix = pattern.endsWith('*') ? pattern.slice(0, -1) : null
     const matches =
       pattern === action ||
-      (pattern.endsWith('*') && action.startsWith(pattern.slice(0, -1)))
+      (prefix !== null && prefix.length > 0 && action.startsWith(prefix))
 
     if (!matches) continue
 
     // Optional amount threshold (financial rules)
     if (rule.min_amount !== null) {
-      const amount = typeof context['amount'] === 'number' ? context['amount'] : null
+      const amount = resolveContextAmount(context)
       if (amount === null || amount < rule.min_amount) continue
     }
 
@@ -338,6 +347,7 @@ export function evaluateShieldRules(
 type CacheEntry = { rules: ShieldRuleRow[]; expiresAt: number }
 const ruleCache = new Map<string, CacheEntry>()
 const RULE_CACHE_TTL_MS = 30_000
+const RULE_CACHE_ERROR_TTL_MS = 10_000
 
 /** Invalidate the cached rules for an org (called after any write to shield_rules). */
 export function invalidateShieldRulesCache(orgId: string): void {
@@ -363,11 +373,15 @@ export async function loadShieldRules(orgId: string): Promise<ShieldRuleRow[]> {
       .eq('org_id', orgId)
       .eq('enabled', true)
 
-    if (error) return []
+    if (error) {
+      ruleCache.set(orgId, { rules: [], expiresAt: Date.now() + RULE_CACHE_ERROR_TTL_MS })
+      return []
+    }
     const rules = (data ?? []) as ShieldRuleRow[]
     ruleCache.set(orgId, { rules, expiresAt: Date.now() + RULE_CACHE_TTL_MS })
     return rules
   } catch {
+    ruleCache.set(orgId, { rules: [], expiresAt: Date.now() + RULE_CACHE_ERROR_TTL_MS })
     return []
   }
 }

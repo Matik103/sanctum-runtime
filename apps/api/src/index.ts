@@ -38,7 +38,7 @@ import { registerPushRoutes, sendPushToUser } from './push-routes.js'
 import { registerShieldRoutes, loadShieldRules, evaluateShieldRules, logContainmentEvent } from './shield-routes.js'
 import { AlertStore } from './alert-store.js'
 import { sendVerificationEmail, verifyToken } from './verify-email.js'
-import { loadPoliciesFromSupabase, detectAnomalies, heuristicRiskFloor, verifyActionToken } from '@sanctum/runtime-engine'
+import { loadPoliciesFromSupabase, detectAnomalies, heuristicRiskFloor, verifyActionToken, maybeSyncAuditToSupabase } from '@sanctum/runtime-engine'
 import { verifyAgentToken, extractAgentToken, registerAgentTokenRoutes } from './agent-tokens.js'
 import { checkActiveGrant, createGrant, revokeActiveGrantsForAction } from './policy-grants.js'
 import {
@@ -1013,8 +1013,30 @@ app.post('/v1/actions/verify', {
           customRuleLabel = match.matchedRule.label
           if (match.response === 'BLOCK') {
             const blockId = crypto.randomUUID()
+            const blockResult: ActionResult = {
+              id: blockId,
+              correlationId: body.correlationId ?? crypto.randomUUID(),
+              actor: body.actor,
+              action: body.action,
+              context: body.context ?? {},
+              decision: 'BLOCKED',
+              risk: 'high',
+              reasoning: `Blocked by Shield rule: "${customRuleLabel}". This action is not permitted under the operator's security policy.`,
+              policyPath: 'shield:custom_rule',
+              policyVersion: 'shield:1',
+              anomalyFlags: ['custom_shield_rule'],
+              modelInvoked: false,
+              modelConfidence: null,
+              timestamp: new Date().toISOString(),
+              offlineMode: false,
+              ollamaConnected: false,
+            }
+            // Write to audit store so behavioral signals (repeated_blocked_attempts) see it
+            void runtime.getAuditStore().append(blockResult)
+            void maybeSyncAuditToSupabase(blockResult)
             void logContainmentEvent({
               orgId,
+              auditId: blockId,
               actor: body.actor,
               action: body.action,
               shieldLevel: 'critical',
@@ -1022,21 +1044,7 @@ app.post('/v1/actions/verify', {
               signals: [`custom_rule:${match.matchedRule.id}`],
               automaticResponse: ['block_action'],
             })
-            return reply.status(200).send({
-              id: blockId,
-              correlationId: body.correlationId ?? crypto.randomUUID(),
-              actor: body.actor,
-              action: body.action,
-              context: request.context,
-              decision: 'BLOCKED',
-              risk: 'high',
-              reasoning: `Blocked by Shield rule: "${customRuleLabel}". This action is not permitted under the operator's security policy.`,
-              policyPath: 'shield:custom_rule',
-              anomalyFlags: ['custom_shield_rule'],
-              modelInvoked: false,
-              modelConfidence: null,
-              timestamp: new Date().toISOString(),
-            })
+            return reply.status(200).send(blockResult)
           }
         }
       }
@@ -1061,6 +1069,7 @@ app.post('/v1/actions/verify', {
 
   // Time-bounded grant: if a previous approval granted this action for a window,
   // auto-approve without interrupting the agent again
+  let grantApplied = false
   if (
     result.decision === 'REQUIRE_VERIFICATION' &&
     result.shield?.level !== 'high' &&
@@ -1077,7 +1086,7 @@ app.post('/v1/actions/verify', {
           resolvedBy: `grant:${grant.granted_by}`,
           note: `Auto-approved by time-bounded grant (active until ${expiresStr})`,
         })
-        if (resolved) result = resolved
+        if (resolved) { result = resolved; grantApplied = true }
       }
     } catch { /* non-fatal — fall through to normal verification flow */ }
   }
@@ -1144,13 +1153,18 @@ app.post('/v1/actions/verify', {
   }
 
   // Upgrade decision if a custom REQUIRE_VERIFICATION rule matched and the AI didn't block
-  if (customRuleDecision === 'REQUIRE_VERIFICATION' && result.decision === 'APPROVED' && customRuleLabel) {
-    const resolved = await runtime.resolveAuditEntry(result.id, {
+  if (customRuleDecision === 'REQUIRE_VERIFICATION' && result.decision === 'APPROVED' && !grantApplied && customRuleLabel) {
+    const upgraded: ActionResult = {
+      ...result,
       decision: 'REQUIRE_VERIFICATION',
-      resolvedBy: 'shield:custom_rule',
-      note: `Held by Shield rule: "${customRuleLabel}"`,
-    }).catch(() => null)
-    if (resolved) result = resolved
+      reasoning: `${result.reasoning} [Held by Shield rule: "${customRuleLabel}"]`,
+      policyPath: 'shield:custom_rule',
+    }
+    // Update in-memory store and sync to Supabase — don't use resolveAuditEntry
+    // because that method only processes entries already in REQUIRE_VERIFICATION state.
+    await runtime.getAuditStore().updateEntry(result.id, upgraded).catch(() => null)
+    void maybeSyncAuditToSupabase(upgraded)
+    result = upgraded
   }
 
   // LOG_ONLY rule: action was allowed but the rule wants a record.
@@ -1173,10 +1187,8 @@ app.post('/v1/actions/verify', {
       signals: [`custom_rule:log_only`],
       automaticResponse: ['log_action'],
     })
-  }
-
   // Log containment events for high/critical Shield findings
-  if (orgId && result.shield && (result.shield.level === 'high' || result.shield.level === 'critical')) {
+  } else if (orgId && result.shield && (result.shield.level === 'high' || result.shield.level === 'critical')) {
     void logContainmentEvent({
       orgId,
       auditId: result.id,

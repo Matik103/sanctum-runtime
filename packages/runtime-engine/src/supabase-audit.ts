@@ -78,6 +78,12 @@ export async function maybeSyncAuditToSupabase(entry: ActionResult): Promise<voi
   const sb = getSupabaseServiceClient()
   if (!sb) return
 
+  const shieldExtras: Record<string, unknown> = {}
+  if (entry.shield?.level != null) {
+    shieldExtras['shield_level'] = entry.shield.level
+    shieldExtras['shield_score'] = entry.shield.score ?? null
+  }
+
   const { error } = await sb.from('audit_events').upsert(
     {
       id: entry.id,
@@ -96,9 +102,7 @@ export async function maybeSyncAuditToSupabase(entry: ActionResult): Promise<voi
       payload: entry,
       created_at: entry.timestamp,
       resolved_at: entry.resolvedAt ?? null,
-      // Shield columns (migration 052) — populated when a Shield assessment ran.
-      shield_level: entry.shield?.level ?? null,
-      shield_score: entry.shield?.score ?? null,
+      ...shieldExtras,
     },
     { onConflict: 'id' },
   )
