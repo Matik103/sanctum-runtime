@@ -96,6 +96,9 @@ export async function maybeSyncAuditToSupabase(entry: ActionResult): Promise<voi
       payload: entry,
       created_at: entry.timestamp,
       resolved_at: entry.resolvedAt ?? null,
+      // Shield columns (migration 052) — populated when a Shield assessment ran.
+      shield_level: entry.shield?.level ?? null,
+      shield_score: entry.shield?.score ?? null,
     },
     { onConflict: 'id' },
   )

@@ -1153,6 +1153,28 @@ app.post('/v1/actions/verify', {
     if (resolved) result = resolved
   }
 
+  // LOG_ONLY rule: action was allowed but the rule wants a record.
+  // Annotate the audit entry's anomaly flags so the dashboard can surface it,
+  // and write a containment event so operators see it in the Shield log.
+  if (customRuleDecision === 'LOG_ONLY' && customRuleLabel && orgId) {
+    const flagged = await runtime.resolveAuditEntry(result.id, {
+      decision: result.decision,
+      resolvedBy: 'shield:log_only_rule',
+      note: `Logged by Shield rule: "${customRuleLabel}"`,
+    }).catch(() => null)
+    if (flagged) result = flagged
+    void logContainmentEvent({
+      orgId,
+      auditId: result.id,
+      actor: body.actor,
+      action: body.action,
+      shieldLevel: 'elevated',
+      shieldScore: result.shield?.score ?? 0,
+      signals: [`custom_rule:log_only`],
+      automaticResponse: ['log_action'],
+    })
+  }
+
   // Log containment events for high/critical Shield findings
   if (orgId && result.shield && (result.shield.level === 'high' || result.shield.level === 'critical')) {
     void logContainmentEvent({
