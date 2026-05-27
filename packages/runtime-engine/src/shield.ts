@@ -20,6 +20,11 @@ const SECURITY_TAMPER_PATTERN = /(disable|turn[_ -]?off|bypass|delete|erase|stop
 const PHYSICAL_HARM_PATTERN = /(unlock|disable_alarm|move_robot|drive|fly|actuate|open_gate|administer|dispense|fire|launch)/i
 const MONEY_PATTERN = /(transfer|wire|withdraw|pay|payment|charge|trade|refund)/i
 
+// Elevated financial review threshold: amounts in this range require human verification.
+// Amounts at or above CRITICAL_FINANCIAL_THRESHOLD trigger automatic block.
+const ELEVATED_FINANCIAL_THRESHOLD = 1_000
+const CRITICAL_FINANCIAL_THRESHOLD = 10_000
+
 const FLAG_SIGNALS: Record<string, Omit<ShieldSignal, 'id'>> = {
   suspicious_prompt_pattern: {
     category: 'injection',
@@ -67,7 +72,7 @@ const FLAG_SIGNALS: Record<string, Omit<ShieldSignal, 'id'>> = {
     category: 'financial',
     severity: 'high',
     label: 'High-value financial request',
-    evidence: 'A transfer exceeded the elevated review threshold.',
+    evidence: `A transfer exceeded the elevated review threshold (≥$${ELEVATED_FINANCIAL_THRESHOLD.toLocaleString()}).`,
   },
   high_blast_radius: {
     category: 'blast_radius',
@@ -119,11 +124,13 @@ export function assessShield(request: ActionRequest, inputs: ShieldInputs): Shie
   const text = contextText(request)
   const now = inputs.now ?? new Date()
 
+  // Lift known anomaly flags into named signals so they appear in the assessment.
   for (const flag of inputs.anomalyFlags) {
     const known = FLAG_SIGNALS[flag]
     if (known) addSignal(signals, { id: flag, ...known })
   }
 
+  // Identity: unknown or untrusted execution environment
   if (
     ctx.deviceKnown === false ||
     ctx.trustedDevice === false ||
@@ -140,6 +147,7 @@ export function assessShield(request: ActionRequest, inputs: ShieldInputs): Shie
     })
   }
 
+  // Secrets: accessing credentials or secret material
   if (SECRET_PATTERN.test(text) || ctx.dataSensitivity === 'secret') {
     addSignal(signals, {
       id: 'secret_access_attempt',
@@ -150,6 +158,7 @@ export function assessShield(request: ActionRequest, inputs: ShieldInputs): Shie
     })
   }
 
+  // Security controls: tampering with monitoring, alarms, policies, or audit trail
   if (SECURITY_TAMPER_PATTERN.test(text)) {
     addSignal(signals, {
       id: 'security_control_tamper',
@@ -160,6 +169,7 @@ export function assessShield(request: ActionRequest, inputs: ShieldInputs): Shie
     })
   }
 
+  // Physical safety: dangerous physical-world actions in a vulnerable context
   if (
     PHYSICAL_HARM_PATTERN.test(request.action) &&
     (ctx.owner_sleeping === true || ctx.ownerPresent === false || ctx.safetyImpact === 'lethal')
@@ -173,20 +183,43 @@ export function assessShield(request: ActionRequest, inputs: ShieldInputs): Shie
     })
   }
 
-  if (
-    MONEY_PATTERN.test(request.action) &&
-    typeof inputs.blastRadius.estimatedValue === 'number' &&
-    inputs.blastRadius.estimatedValue >= 10_000
-  ) {
+  // Financial: tiered severity based on amount
+  if (MONEY_PATTERN.test(request.action) && typeof inputs.blastRadius.estimatedValue === 'number') {
+    const amount = inputs.blastRadius.estimatedValue
+    if (amount >= CRITICAL_FINANCIAL_THRESHOLD) {
+      // Auto-block threshold: irreversible and high-value
+      addSignal(signals, {
+        id: 'critical_financial_exposure',
+        category: 'financial',
+        severity: 'critical',
+        label: 'Critical financial exposure',
+        evidence: `A high-value monetary action exceeded the containment threshold ($${CRITICAL_FINANCIAL_THRESHOLD.toLocaleString()}).`,
+      })
+    } else if (amount >= ELEVATED_FINANCIAL_THRESHOLD) {
+      // Elevated review threshold: requires human verification
+      addSignal(signals, {
+        id: 'high_value_transfer',
+        category: 'financial',
+        severity: 'high',
+        label: 'High-value financial request',
+        evidence: `A transfer of $${amount.toLocaleString()} exceeded the elevated review threshold ($${ELEVATED_FINANCIAL_THRESHOLD.toLocaleString()}).`,
+      })
+    }
+  }
+
+  // Blast radius: explicitly emit a signal when the impact scope is high or critical
+  // so the named signal appears in the assessment rather than only affecting the score.
+  if (inputs.blastRadius.level === 'high' || inputs.blastRadius.level === 'critical') {
     addSignal(signals, {
-      id: 'critical_financial_exposure',
-      category: 'financial',
-      severity: 'critical',
-      label: 'Critical financial exposure',
-      evidence: 'A high-value monetary action exceeded the containment threshold.',
+      id: 'high_blast_radius',
+      category: 'blast_radius',
+      severity: 'high',
+      label: 'High blast radius',
+      evidence: `The requested action has ${inputs.blastRadius.level} potential impact on systems, data, or people.`,
     })
   }
 
+  // Behavioral: repeated blocks from the same actor in the last 15 minutes
   const actorHistory = (inputs.recentAudit ?? []).filter(
     (entry) => entry.actor === request.actor && isRecent(entry, now, 15),
   )
@@ -212,8 +245,11 @@ export function assessShield(request: ActionRequest, inputs: ShieldInputs): Shie
     })
   }
 
+  // Score: sum signal points, enforce minimums based on blast radius
   let score = Math.min(100, signals.reduce((sum, signal) => sum + SCORE[signal.severity], 0))
   if (inputs.blastRadius.level === 'critical') score = Math.max(score, 70)
+  if (inputs.blastRadius.level === 'high')     score = Math.max(score, 40)
+
   const critical = signals.some((signal) => signal.severity === 'critical') || score >= 80
   const high = !critical && (signals.some((signal) => signal.severity === 'high') || score >= 50)
   const elevated = !critical && !high && signals.length > 0
