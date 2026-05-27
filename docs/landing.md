@@ -68,14 +68,18 @@ npm install @sanctum-runtime/sdk @sanctum-runtime/adapters
 import { SanctumClient } from '@sanctum-runtime/sdk'
 import { wrapLangChainTool } from '@sanctum-runtime/adapters/langchain'
 
-const client = new SanctumClient({ baseUrl: 'http://localhost:8080' })
+const client = new SanctumClient({ baseUrl: 'http://localhost:3001' })
 const safeTransfer = wrapLangChainTool(transferTool, { client, agentId: 'my-agent' })
 
-# 3. Run Sanctum API locally
-docker run -p 8080:8080 sanctum/runtime
+# 3. Run Sanctum API locally (Docker)
+docker build -t sanctum/runtime . && docker run -p 3001:3001 sanctum/runtime
+
+# — or — run from source
+git clone https://github.com/Matik103/sanctum-runtime && cd sanctum-runtime
+cp .env.example .env && npm install && npm run dev:api
 
 # 4. Watch verify requests in the dashboard
-open https://console.sanctumruntime.com
+open http://localhost:5174
 ```
 
 That's it. Every call to `safeTransfer` now flows through Sanctum first.

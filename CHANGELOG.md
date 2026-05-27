@@ -4,6 +4,58 @@ All notable changes to the public Sanctum open-core runtime are documented here.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-05-27
+
+### Added
+
+**Sanctum Shield — behavioral detection and containment**
+
+- `assessShield()` engine: 8 signal categories (identity, behavior, injection, financial, physical, secrets, security_control, blast_radius)
+- Tiered financial signals: `high_value_transfer` (≥$1k) → high; `critical_financial_exposure` (≥$10k) → critical
+- Score floors: blast radius `critical` → min 70; blast radius `high` → min 40
+- Custom operator rules: `POST /v1/shield/rules` with action pattern (glob), response (BLOCK / REQUIRE_VERIFICATION / LOG_ONLY), `minAmount`, JSONB conditions
+- 30-second in-process rule cache per org; immediate invalidation on write/delete
+- `LOG_ONLY` logs containment events without blocking; `BLOCK` writes audit entry before rejecting
+- Shield containment auto-resolve: `POST /v1/audit/:id/resolve` now closes linked `shield_containment_events` rows
+- Dashboard: Shield page with containment log, custom rule editor, fleet kill switch
+
+**Agent management**
+
+- `POST /v1/orgs/:orgId/agents/:agentId/rotate` — new HMAC token; sets `token_iat_min` (old tokens immediately rejected)
+- `GET /v1/orgs/:orgId/agents/:agentId/audit` — per-agent audit log (actor filter, paginated)
+- `GET /v1/orgs/:orgId/agents/:agentId/stats` — 24h blocked/held/approved + worstShield + maxScore
+- `GET /v1/orgs/:orgId/agents/:agentId/grants` — active time-bounded policy grants
+- `POST /v1/orgs/:orgId/agents/:agentId/grants` — create grant (`action` + `durationMinutes`)
+- Dashboard Agents page: multi-org switcher, StatusBadge (active/recent/idle/never), ThreatBadge, click-to-expand AgentDetail, Download .env, rotation UI, inline two-step revoke, zero-install callout
+
+**Production hardening**
+
+- Migration `051_shield_rules.sql`: `shield_rules` + `shield_containment_events` tables
+- Migration `052_audit_shield_level.sql`: `shield_level` / `shield_score` columns on `audit_events`
+- Migration `053_agent_token_rotation.sql`: `token_iat_min bigint` on `agent_registrations`
+- Migration `054_production_indexes.sql`: `audit_events(actor)`, `audit_events(action)`, `shield_containment_events(audit_id)`, webhook dead-letter index
+- Structured logging: replaced all `console.log/warn/error` in `heap-watchdog.ts`, `email-queue-worker.ts`, `index.ts` startup/shutdown with pino child loggers
+- `GET /v1/webhooks/dead` — org-scoped dead-letter endpoint for permanently-failed webhook deliveries
+- `Dockerfile` — production-ready multi-stage Docker image (`docker build -t sanctum/runtime .`)
+
+**CLI expansion** (`@sanctum-runtime/cli`): 3 → 11 commands
+
+- `sanctum audit [--limit N] [--org id]`
+- `sanctum policies list` / `policies import --file <yaml>`
+- `sanctum agents list | rotate | stats` (with `--org`, `--agent`)
+- `sanctum shield rules | events`
+- `sanctum webhooks dead | status`
+
+### Fixed
+
+- Shield test fixtures used wrong action names for blast-radius tests
+- Custom BLOCK rules wrote no audit entry (now appended before returning 403)
+- `resolveAuditEntry()` guard skipped REQUIRE_VERIFICATION upgrade; now uses `updateEntry()` directly
+- Double containment logging when LOG_ONLY + high/critical both fired for same action
+- Bare `*` wildcard pattern in Shield rules crashed `action.startsWith('')`
+- Amount coercion in rule evaluation now resolves `amount ?? value ?? total`
+- Shield upsert crashed on pre-052 Supabase instances; columns now conditionally included
+
 ## [0.1.1] - 2026-05-16
 
 ### Added

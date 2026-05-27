@@ -60,7 +60,7 @@ Docs: configure `SITE_*` in `.env`, then `npm run dev` → `/docs#quickstart`
 | Audit | Local JSONL + optional Supabase mirror | Multi-tenant cloud control plane |
 | Policies | Unlimited + YAML + org keys | Fleet-wide sync, policy DSL |
 | Hosting | [HOSTED.md](./HOSTED.md) self-host | Managed Sanctum Cloud |
-| Webhooks | HTTP POST + HMAC | DLQ, retry, multi-tenant routing |
+| Webhooks | HTTP POST + HMAC + dead-letter (`GET /v1/webhooks/dead`) | Multi-tenant routing, advanced retry orchestration |
 
 ### OSS limitations (by design)
 
@@ -74,7 +74,7 @@ These stay **out of this repo** so adoption stays open and the moat stays privat
 | Advanced analytics, trust scoring, behavioral graphs | Private telemetry & models |
 | Compliance packs, signed attestation, TPM identity | Enterprise security sales |
 | SIEM connectors, signed attestation packs, fleet deployment orchestration | Enterprise integrations |
-| Advanced webhook routing, retry DLQ, multi-tenant signing | Enterprise control plane |
+| Advanced webhook routing, multi-tenant signing | Enterprise control plane |
 
 **Transparency:** OSS includes **basic** heuristics, policy rules, and optional **local** Ollama scoring — not the full proprietary enterprise intelligence stack.
 
