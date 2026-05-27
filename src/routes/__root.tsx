@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
+import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import {
   defaultDescription,
   organizationJsonLd,
@@ -121,6 +122,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <head>
+        <GoogleAnalytics />
         <HeadContent />
         <script
           type="application/ld+json"
