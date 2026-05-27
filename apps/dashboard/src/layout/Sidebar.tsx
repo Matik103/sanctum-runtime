@@ -32,6 +32,8 @@ export type PageId =
   | 'overview'
   | 'activity'
   | 'threats'
+  | 'shield'
+  | 'shield-rules'
   | 'alerts'
   | 'policies'
   | 'policy-history'
@@ -60,6 +62,8 @@ const NAV: { id: PageId; label: string; shortLabel: string; icon: typeof LayoutD
   { id: 'overview',         label: 'Overview',         shortLabel: 'Overview',  icon: LayoutDashboard },
   { id: 'activity',         label: 'Runtime Activity',  shortLabel: 'Activity',  icon: Activity },
   { id: 'threats',          label: 'Threat Monitor',    shortLabel: 'Threats',   icon: ShieldAlert },
+  { id: 'shield',           label: 'Sanctum Shield',    shortLabel: 'Shield',    icon: ShieldCheck },
+  { id: 'shield-rules',     label: 'Shield Rules',      shortLabel: 'S.Rules',   icon: Shield },
   { id: 'alerts',           label: 'Alerts',            shortLabel: 'Alerts',    icon: Bell },
   { id: 'policies',         label: 'Policies',          shortLabel: 'Policies',  icon: Shield },
   { id: 'policy-history',   label: 'Policy History',    shortLabel: 'History',   icon: History },
