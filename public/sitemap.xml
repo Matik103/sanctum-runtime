@@ -2,200 +2,320 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://www.sanctumruntime.com/</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.00</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.88</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/docs</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.90</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/enterprise</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.82</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/what-is-sanctum-runtime</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/architecture</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/sdk</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/security</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/glossary</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/privacy</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.50</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/terms</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.50</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/billing</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.50</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/cookies</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.50</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/runtime-trust-layer-for-ai-agents</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ai-agent-action-approval-before-execution</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/embodied-ai-robotics-policy-gate</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/sanctum-vs-guardrails</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/mobile-pwa-runtime-verification</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/mcp-server-action-gate</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ros2-safety-policy-runtime</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/soc2-nist-ai-rmf-runtime-evidence</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/fleet-kill-switch-autonomous-systems</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/langchain-agent-middleware-verification</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/smart-home-ai-unlock-door-policy</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/signed-action-tokens-executor-verification</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/indirect-prompt-injection-source-trust</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/local-ollama-offline-runtime-trust</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/workflow-automation-ai-governance</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/healthcare-robotics-phi-policy-packs</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/humanoid-robot-physical-action-gate</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
-    <loc>https://www.sanctumruntime.com/pricing</loc>
-    <lastmod>2026-05-22</lastmod>
+    <loc>https://www.sanctumruntime.com/blog/what-is-ai-agent-observability-vs-control</loc>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.70</priority>
+    <priority>0.75</priority>
   </url>
   <url>
-    <loc>https://www.sanctumruntime.com/contact</loc>
-    <lastmod>2026-05-22</lastmod>
+    <loc>https://www.sanctumruntime.com/blog/how-to-stop-ai-agents-from-sending-emails-without-approval</loc>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.65</priority>
+    <priority>0.75</priority>
   </url>
   <url>
-    <loc>https://www.sanctumruntime.com/refund</loc>
-    <lastmod>2026-05-22</lastmod>
+    <loc>https://www.sanctumruntime.com/blog/can-ai-agents-be-soc2-compliant</loc>
+    <lastmod>2026-05-27</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.50</priority>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://www.sanctumruntime.com/blog/mcp-server-security-checklist-2026</loc>
+    <lastmod>2026-05-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://www.sanctumruntime.com/blog/what-is-human-in-the-loop-for-ai-agents</loc>
+    <lastmod>2026-05-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://www.sanctumruntime.com/blog/how-to-approve-ai-agent-actions-on-mobile</loc>
+    <lastmod>2026-05-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://www.sanctumruntime.com/blog/can-you-run-ai-agent-security-offline</loc>
+    <lastmod>2026-05-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://www.sanctumruntime.com/blog/how-to-prevent-ai-agent-data-exfiltration</loc>
+    <lastmod>2026-05-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://www.sanctumruntime.com/blog/what-is-confused-deputy-in-ai-agents</loc>
+    <lastmod>2026-05-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://www.sanctumruntime.com/blog/ai-agent-kill-switch-best-practices</loc>
+    <lastmod>2026-05-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://www.sanctumruntime.com/blog/runtime-authorization-vs-guardrails-explained</loc>
+    <lastmod>2026-05-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://www.sanctumruntime.com/blog/how-to-audit-ai-agent-decisions</loc>
+    <lastmod>2026-05-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://www.sanctumruntime.com/blog/can-openai-claude-gemini-share-one-agent-control-plane</loc>
+    <lastmod>2026-05-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://www.sanctumruntime.com/blog/ai-agent-rbac-for-tool-permissions</loc>
+    <lastmod>2026-05-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://www.sanctumruntime.com/blog/ai-agent-incident-response-runbook</loc>
+    <lastmod>2026-05-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://www.sanctumruntime.com/blog/how-to-validate-tool-arguments-in-mcp</loc>
+    <lastmod>2026-05-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://www.sanctumruntime.com/blog/ai-agent-approval-sla-and-escalation-design</loc>
+    <lastmod>2026-05-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://www.sanctumruntime.com/blog/ai-agent-policy-versioning-and-replay</loc>
+    <lastmod>2026-05-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://www.sanctumruntime.com/blog/safe-ai-agent-automation-for-crm-and-slack</loc>
+    <lastmod>2026-05-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://www.sanctumruntime.com/blog/ai-agent-security-checklist-for-production</loc>
+    <lastmod>2026-05-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://www.sanctumruntime.com/blog/what-is-agentic-ai-risk-management</loc>
+    <lastmod>2026-05-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://www.sanctumruntime.com/blog/best-practices-for-ai-agent-tool-calling</loc>
+    <lastmod>2026-05-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://www.sanctumruntime.com/blog/how-to-design-ai-agent-policies-that-scale</loc>
+    <lastmod>2026-05-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
   </url>
 </urlset>

@@ -42,6 +42,7 @@ import { Route as BlogHealthcareRoboticsPhiPolicyPacksRouteImport } from './rout
 import { Route as BlogFleetKillSwitchAutonomousSystemsRouteImport } from './routes/blog/fleet-kill-switch-autonomous-systems'
 import { Route as BlogEmbodiedAiRoboticsPolicyGateRouteImport } from './routes/blog/embodied-ai-robotics-policy-gate'
 import { Route as BlogAiAgentActionApprovalBeforeExecutionRouteImport } from './routes/blog/ai-agent-action-approval-before-execution'
+import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 
 const WhatIsSanctumRuntimeRoute = WhatIsSanctumRuntimeRouteImport.update({
   id: '/what-is-sanctum-runtime',
@@ -223,6 +224,11 @@ const BlogAiAgentActionApprovalBeforeExecutionRoute =
     path: '/blog/ai-agent-action-approval-before-execution',
     getParentRoute: () => rootRouteImport,
   } as any)
+const BlogSlugRoute = BlogSlugRouteImport.update({
+  id: '/blog/$slug',
+  path: '/blog/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -240,6 +246,7 @@ export interface FileRoutesByFullPath {
   '/security': typeof SecurityRoute
   '/terms': typeof TermsRoute
   '/what-is-sanctum-runtime': typeof WhatIsSanctumRuntimeRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/blog/ai-agent-action-approval-before-execution': typeof BlogAiAgentActionApprovalBeforeExecutionRoute
   '/blog/embodied-ai-robotics-policy-gate': typeof BlogEmbodiedAiRoboticsPolicyGateRoute
   '/blog/fleet-kill-switch-autonomous-systems': typeof BlogFleetKillSwitchAutonomousSystemsRoute
@@ -275,6 +282,7 @@ export interface FileRoutesByTo {
   '/security': typeof SecurityRoute
   '/terms': typeof TermsRoute
   '/what-is-sanctum-runtime': typeof WhatIsSanctumRuntimeRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/blog/ai-agent-action-approval-before-execution': typeof BlogAiAgentActionApprovalBeforeExecutionRoute
   '/blog/embodied-ai-robotics-policy-gate': typeof BlogEmbodiedAiRoboticsPolicyGateRoute
   '/blog/fleet-kill-switch-autonomous-systems': typeof BlogFleetKillSwitchAutonomousSystemsRoute
@@ -311,6 +319,7 @@ export interface FileRoutesById {
   '/security': typeof SecurityRoute
   '/terms': typeof TermsRoute
   '/what-is-sanctum-runtime': typeof WhatIsSanctumRuntimeRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/blog/ai-agent-action-approval-before-execution': typeof BlogAiAgentActionApprovalBeforeExecutionRoute
   '/blog/embodied-ai-robotics-policy-gate': typeof BlogEmbodiedAiRoboticsPolicyGateRoute
   '/blog/fleet-kill-switch-autonomous-systems': typeof BlogFleetKillSwitchAutonomousSystemsRoute
@@ -348,6 +357,7 @@ export interface FileRouteTypes {
     | '/security'
     | '/terms'
     | '/what-is-sanctum-runtime'
+    | '/blog/$slug'
     | '/blog/ai-agent-action-approval-before-execution'
     | '/blog/embodied-ai-robotics-policy-gate'
     | '/blog/fleet-kill-switch-autonomous-systems'
@@ -383,6 +393,7 @@ export interface FileRouteTypes {
     | '/security'
     | '/terms'
     | '/what-is-sanctum-runtime'
+    | '/blog/$slug'
     | '/blog/ai-agent-action-approval-before-execution'
     | '/blog/embodied-ai-robotics-policy-gate'
     | '/blog/fleet-kill-switch-autonomous-systems'
@@ -418,6 +429,7 @@ export interface FileRouteTypes {
     | '/security'
     | '/terms'
     | '/what-is-sanctum-runtime'
+    | '/blog/$slug'
     | '/blog/ai-agent-action-approval-before-execution'
     | '/blog/embodied-ai-robotics-policy-gate'
     | '/blog/fleet-kill-switch-autonomous-systems'
@@ -454,6 +466,7 @@ export interface RootRouteChildren {
   SecurityRoute: typeof SecurityRoute
   TermsRoute: typeof TermsRoute
   WhatIsSanctumRuntimeRoute: typeof WhatIsSanctumRuntimeRoute
+  BlogSlugRoute: typeof BlogSlugRoute
   BlogAiAgentActionApprovalBeforeExecutionRoute: typeof BlogAiAgentActionApprovalBeforeExecutionRoute
   BlogEmbodiedAiRoboticsPolicyGateRoute: typeof BlogEmbodiedAiRoboticsPolicyGateRoute
   BlogFleetKillSwitchAutonomousSystemsRoute: typeof BlogFleetKillSwitchAutonomousSystemsRoute
@@ -707,6 +720,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogAiAgentActionApprovalBeforeExecutionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/blog/$slug': {
+      id: '/blog/$slug'
+      path: '/blog/$slug'
+      fullPath: '/blog/$slug'
+      preLoaderRoute: typeof BlogSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -726,6 +746,7 @@ const rootRouteChildren: RootRouteChildren = {
   SecurityRoute: SecurityRoute,
   TermsRoute: TermsRoute,
   WhatIsSanctumRuntimeRoute: WhatIsSanctumRuntimeRoute,
+  BlogSlugRoute: BlogSlugRoute,
   BlogAiAgentActionApprovalBeforeExecutionRoute:
     BlogAiAgentActionApprovalBeforeExecutionRoute,
   BlogEmbodiedAiRoboticsPolicyGateRoute: BlogEmbodiedAiRoboticsPolicyGateRoute,

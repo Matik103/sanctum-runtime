@@ -16,7 +16,7 @@
 - robots.txt: https://www.sanctumruntime.com/robots.txt
 - Blog: https://www.sanctumruntime.com/blog
 
-## Blog (17 articles)
+## Blog (40 articles)
 
 - https://www.sanctumruntime.com/blog/runtime-trust-layer-for-ai-agents
 - https://www.sanctumruntime.com/blog/mcp-server-action-gate
@@ -35,6 +35,29 @@
 - https://www.sanctumruntime.com/blog/healthcare-robotics-phi-policy-packs
 - https://www.sanctumruntime.com/blog/sanctum-vs-guardrails
 - https://www.sanctumruntime.com/blog/mobile-pwa-runtime-verification
+- https://www.sanctumruntime.com/blog/what-is-ai-agent-observability-vs-control
+- https://www.sanctumruntime.com/blog/how-to-stop-ai-agents-from-sending-emails-without-approval
+- https://www.sanctumruntime.com/blog/can-ai-agents-be-soc2-compliant
+- https://www.sanctumruntime.com/blog/mcp-server-security-checklist-2026
+- https://www.sanctumruntime.com/blog/what-is-human-in-the-loop-for-ai-agents
+- https://www.sanctumruntime.com/blog/how-to-approve-ai-agent-actions-on-mobile
+- https://www.sanctumruntime.com/blog/can-you-run-ai-agent-security-offline
+- https://www.sanctumruntime.com/blog/how-to-prevent-ai-agent-data-exfiltration
+- https://www.sanctumruntime.com/blog/what-is-confused-deputy-in-ai-agents
+- https://www.sanctumruntime.com/blog/ai-agent-kill-switch-best-practices
+- https://www.sanctumruntime.com/blog/runtime-authorization-vs-guardrails-explained
+- https://www.sanctumruntime.com/blog/how-to-audit-ai-agent-decisions
+- https://www.sanctumruntime.com/blog/can-openai-claude-gemini-share-one-agent-control-plane
+- https://www.sanctumruntime.com/blog/ai-agent-rbac-for-tool-permissions
+- https://www.sanctumruntime.com/blog/ai-agent-incident-response-runbook
+- https://www.sanctumruntime.com/blog/how-to-validate-tool-arguments-in-mcp
+- https://www.sanctumruntime.com/blog/ai-agent-approval-sla-and-escalation-design
+- https://www.sanctumruntime.com/blog/ai-agent-policy-versioning-and-replay
+- https://www.sanctumruntime.com/blog/safe-ai-agent-automation-for-crm-and-slack
+- https://www.sanctumruntime.com/blog/ai-agent-security-checklist-for-production
+- https://www.sanctumruntime.com/blog/what-is-agentic-ai-risk-management
+- https://www.sanctumruntime.com/blog/best-practices-for-ai-agent-tool-calling
+- https://www.sanctumruntime.com/blog/how-to-design-ai-agent-policies-that-scale
 
 ## Machine-readable pages
 

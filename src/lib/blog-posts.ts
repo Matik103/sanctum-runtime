@@ -170,6 +170,214 @@ export const BLOG_POSTS: BlogPostMeta[] = [
     tags: ['humanoids', 'embodied-ai', 'robotics', 'verification'],
     readTime: 8,
   },
+  {
+    slug: 'what-is-ai-agent-observability-vs-control',
+    title: 'AI agent observability vs control: what actually prevents incidents?',
+    description:
+      'Observability helps you investigate. Runtime control prevents irreversible side effects before they run. Learn how leading teams combine both in production.',
+    publishedAt: '2026-05-27',
+    tags: ['ai-agents', 'observability', 'runtime-trust', 'security'],
+    readTime: 6,
+    featured: true,
+  },
+  {
+    slug: 'how-to-stop-ai-agents-from-sending-emails-without-approval',
+    title: 'How to stop AI agents from sending emails without approval',
+    description:
+      'Use execution-time policy gates and human verification to prevent accidental or malicious outbound email from autonomous agents.',
+    publishedAt: '2026-05-27',
+    tags: ['ai-agents', 'human-in-the-loop', 'email-automation', 'policy-engine'],
+    readTime: 6,
+  },
+  {
+    slug: 'can-ai-agents-be-soc2-compliant',
+    title: 'Can AI agents be SOC 2 compliant?',
+    description:
+      'A practical SOC 2 answer for autonomous systems: map runtime controls, approval logs, policy versions, and exportable evidence.',
+    publishedAt: '2026-05-27',
+    tags: ['soc2', 'compliance', 'ai-governance', 'audit-log'],
+    readTime: 7,
+  },
+  {
+    slug: 'mcp-server-security-checklist-2026',
+    title: 'MCP server security checklist (2026): what to lock down first',
+    description:
+      'A practical MCP hardening guide for tool poisoning, prompt injection, argument validation, and pre-execution policy gates.',
+    publishedAt: '2026-05-27',
+    tags: ['mcp', 'llm-security', 'tool-use', 'prompt-injection'],
+    readTime: 7,
+  },
+  {
+    slug: 'what-is-human-in-the-loop-for-ai-agents',
+    title: 'What is human-in-the-loop for AI agents? (real enforcement edition)',
+    description:
+      'HITL is not a prompt suggestion. It is an execution pause outside the model with approve, block, and escalation paths.',
+    publishedAt: '2026-05-27',
+    tags: ['human-in-the-loop', 'ai-agents', 'verification', 'operations'],
+    readTime: 6,
+  },
+  {
+    slug: 'how-to-approve-ai-agent-actions-on-mobile',
+    title: 'How to approve AI agent actions on mobile',
+    description:
+      'Installable PWA + push notifications let operators review and resolve high-risk AI actions from phone or desktop with full auditability.',
+    publishedAt: '2026-05-27',
+    tags: ['pwa', 'mobile', 'human-in-the-loop', 'operations'],
+    readTime: 5,
+  },
+  {
+    slug: 'can-you-run-ai-agent-security-offline',
+    title: 'Can you run AI agent security offline?',
+    description:
+      'Yes. Keep deterministic policy gates offline, add local model scoring, and define strict fallback behavior for disconnected environments.',
+    publishedAt: '2026-05-27',
+    tags: ['offline', 'local-llm', 'sovereign-ai', 'runtime-trust'],
+    readTime: 6,
+  },
+  {
+    slug: 'how-to-prevent-ai-agent-data-exfiltration',
+    title: 'How to prevent AI agent data exfiltration',
+    description:
+      'Stop exfiltration chains with least-privilege tools, source-trust classification, pre-execution verification, and export controls.',
+    publishedAt: '2026-05-27',
+    tags: ['data-security', 'llm-security', 'policy-engine', 'ai-agents'],
+    readTime: 7,
+  },
+  {
+    slug: 'what-is-confused-deputy-in-ai-agents',
+    title: 'What is confused deputy risk in AI agents?',
+    description:
+      'How untrusted intent can exploit trusted credentials in agent systems — and how runtime authorization breaks the attack path.',
+    publishedAt: '2026-05-27',
+    tags: ['security', 'ai-agents', 'mcp', 'runtime-trust'],
+    readTime: 6,
+  },
+  {
+    slug: 'ai-agent-kill-switch-best-practices',
+    title: 'AI agent kill switch best practices for incident response',
+    description:
+      'Design a fast, auditable containment switch that stops state-changing actions across fleets while preserving visibility for triage.',
+    publishedAt: '2026-05-27',
+    tags: ['incident-response', 'fleet', 'ai-safety', 'operations'],
+    readTime: 6,
+  },
+  {
+    slug: 'runtime-authorization-vs-guardrails-explained',
+    title: 'Runtime authorization vs guardrails, explained simply',
+    description:
+      'Guardrails filter language. Runtime authorization controls side effects. Why production teams need both layers together.',
+    publishedAt: '2026-05-27',
+    tags: ['guardrails', 'runtime-trust', 'ai-safety', 'comparison'],
+    readTime: 6,
+  },
+  {
+    slug: 'how-to-audit-ai-agent-decisions',
+    title: 'How to audit AI agent decisions (and prove controls worked)',
+    description:
+      'Build replayable decision trails with policy versioning, correlation IDs, and execution receipts for compliance and incident review.',
+    publishedAt: '2026-05-27',
+    tags: ['audit-log', 'compliance', 'ai-governance', 'verification'],
+    readTime: 7,
+  },
+  {
+    slug: 'can-openai-claude-gemini-share-one-agent-control-plane',
+    title: 'Can OpenAI, Claude, and Gemini share one agent control plane?',
+    description:
+      'Yes — if you normalize action events and enforce policy at execution time instead of coupling controls to one model provider.',
+    publishedAt: '2026-05-27',
+    tags: ['openai', 'claude', 'gemini', 'ai-agents'],
+    readTime: 7,
+  },
+  {
+    slug: 'ai-agent-rbac-for-tool-permissions',
+    title: 'AI agent RBAC for tool permissions: practical design',
+    description:
+      'Enforce role-based permissions where it matters: at tool execution with actor, org, and scope context in every action check.',
+    publishedAt: '2026-05-27',
+    tags: ['rbac', 'tool-use', 'security', 'ai-agents'],
+    readTime: 6,
+  },
+  {
+    slug: 'ai-agent-incident-response-runbook',
+    title: 'AI agent incident response runbook: contain, investigate, recover',
+    description:
+      'A practical runbook for autonomous-system incidents: kill switch, evidence capture, replay, policy updates, and staged recovery.',
+    publishedAt: '2026-05-27',
+    tags: ['incident-response', 'operations', 'ai-safety', 'audit-log'],
+    readTime: 7,
+  },
+  {
+    slug: 'how-to-validate-tool-arguments-in-mcp',
+    title: 'How to validate tool arguments in MCP servers',
+    description:
+      'Treat model-generated parameters as untrusted input. Validate shape, ranges, and paths before policy and execution.',
+    publishedAt: '2026-05-27',
+    tags: ['mcp', 'input-validation', 'security', 'tool-use'],
+    readTime: 6,
+  },
+  {
+    slug: 'ai-agent-approval-sla-and-escalation-design',
+    title: 'AI agent approval SLA and escalation design',
+    description:
+      'Design approval queues that do not stall operations: SLA tiers, backup approvers, timeout policy, and mobile response patterns.',
+    publishedAt: '2026-05-27',
+    tags: ['human-in-the-loop', 'operations', 'workflow', 'ai-governance'],
+    readTime: 6,
+  },
+  {
+    slug: 'ai-agent-policy-versioning-and-replay',
+    title: 'AI agent policy versioning and replay: why teams need both',
+    description:
+      'Version every policy change and replay historical decisions to verify safer behavior before rollout.',
+    publishedAt: '2026-05-27',
+    tags: ['policy-engine', 'replay', 'compliance', 'ai-governance'],
+    readTime: 6,
+  },
+  {
+    slug: 'safe-ai-agent-automation-for-crm-and-slack',
+    title: 'Safe AI agent automation for CRM and Slack workflows',
+    description:
+      'Keep workflow speed while controlling business risk: verify high-impact actions before posting, updating, or sending.',
+    publishedAt: '2026-05-27',
+    tags: ['workflow', 'automation', 'slack', 'crm'],
+    readTime: 6,
+  },
+  {
+    slug: 'ai-agent-security-checklist-for-production',
+    title: 'AI agent security checklist for production teams',
+    description:
+      'A practical production baseline: execution gates, approvals, least privilege, replay, kill switch, and incident drills.',
+    publishedAt: '2026-05-27',
+    tags: ['security-checklist', 'ai-agents', 'runtime-trust', 'operations'],
+    readTime: 7,
+  },
+  {
+    slug: 'what-is-agentic-ai-risk-management',
+    title: 'What is agentic AI risk management?',
+    description:
+      'A simple framework for governing autonomous AI across policy, verification, execution control, and audit evidence.',
+    publishedAt: '2026-05-27',
+    tags: ['ai-governance', 'risk-management', 'ai-agents', 'compliance'],
+    readTime: 6,
+  },
+  {
+    slug: 'best-practices-for-ai-agent-tool-calling',
+    title: 'Best practices for AI agent tool calling in production',
+    description:
+      'Standardize tool wrappers, verify actions, validate arguments, and bind approvals to signed execution tokens.',
+    publishedAt: '2026-05-27',
+    tags: ['tool-use', 'ai-agents', 'sdk', 'security'],
+    readTime: 6,
+  },
+  {
+    slug: 'how-to-design-ai-agent-policies-that-scale',
+    title: 'How to design AI agent policies that scale',
+    description:
+      'Build policy systems that stay usable as teams grow: action taxonomy, risk tiers, versioning, and replay-based improvement.',
+    publishedAt: '2026-05-27',
+    tags: ['policy-engine', 'ai-governance', 'operations', 'scaling'],
+    readTime: 7,
+  },
 ]
 
 export function getBlogPost(slug: string): BlogPostMeta | undefined {
