@@ -26,6 +26,9 @@ import { registerPolicyVersionRoutes } from './policy-versions.js'
 import { registerDelegationRoutes } from './delegation.js'
 import { startWebhookWorker } from './webhook-queue.js'
 import { startEmailQueueWorker } from './email-queue-worker.js'
+import { logger as rootLogger } from './logger.js'
+
+const bootLog = rootLogger.child({ context: 'startup' })
 import { riskModelBreaker } from './circuit-breaker.js'
 import { traced } from './telemetry.js'
 import { sendNotificationDeduped, initDedupCache } from './notifications.js'
@@ -36,6 +39,7 @@ import { runtimeWsHub } from './runtime-ws-hub.js'
 import { registerAlertRoutes } from './alert-routes.js'
 import { registerPushRoutes, sendPushToUser } from './push-routes.js'
 import { registerShieldRoutes, loadShieldRules, evaluateShieldRules, logContainmentEvent } from './shield-routes.js'
+import { registerProxyRoutes } from './proxy-routes.js'
 import { AlertStore } from './alert-store.js'
 import { sendVerificationEmail, verifyToken } from './verify-email.js'
 import { loadPoliciesFromSupabase, detectAnomalies, heuristicRiskFloor, verifyActionToken, maybeSyncAuditToSupabase } from '@sanctum/runtime-engine'
@@ -82,7 +86,8 @@ if (isProduction()) {
   if (process.env.SUPABASE_URL?.trim() && !process.env.SUPABASE_SERVICE_ROLE_KEY?.trim())
     missing.push('SUPABASE_SERVICE_ROLE_KEY (required when SUPABASE_URL is set)')
   if (missing.length > 0) {
-    console.error('FATAL: Missing required environment variables:\n  ' + missing.join('\n  '))
+    // Use process.stderr directly here — the pino logger isn't initialised yet
+    process.stderr.write('FATAL: Missing required environment variables:\n  ' + missing.join('\n  ') + '\n')
     process.exit(1)
   }
 }
@@ -323,7 +328,7 @@ await runtime.init()
 if (supabaseAuth) initDedupCache()
 if (process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
   const count = Object.keys(runtime.getPolicyEngine().getPolicies()).length
-  console.log(`Supabase policy store active (${count} policies loaded/seeded)`)
+  bootLog.info({ policyCount: count }, 'Supabase policy store active')
 }
 
 // Realtime policy sync — keeps in-memory engine consistent across horizontal instances
@@ -337,7 +342,7 @@ if (supabaseAuth) {
       }).catch(() => {})
     })
     .subscribe()
-  console.log('[sanctum] Realtime policy sync active')
+  bootLog.info('Realtime policy sync active')
 }
 
 const publicApiUrl =
@@ -475,6 +480,7 @@ if (supabaseAuth) {
   await registerPushRoutes(app)
   registerShieldRoutes(app)
   await registerAgentTokenRoutes(app, supabaseAuth)
+  registerProxyRoutes(app)
 }
 
 const stopWebhookWorker = supabaseAuth ? startWebhookWorker(supabaseAuth) : null
@@ -782,6 +788,33 @@ app.post('/v1/policies/import.yaml', async (req, reply) => {
 
 app.get('/v1/webhooks/status', async () => runtime.getWebhookStatus())
 
+// Dead-letter: webhooks that exhausted all retries without delivery.
+// Requires an API key or Supabase JWT; returns at most 100 entries newest-first.
+app.get('/v1/webhooks/dead', async (req, reply) => {
+  if (!supabaseAuth) return reply.status(503).send({ error: 'supabase_not_configured' })
+  const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
+  if (!scope.orgIds?.length && !scope.superadmin) {
+    return reply.status(403).send({ error: 'org_required' })
+  }
+  const MAX_WEBHOOK_ATTEMPTS = 5 // must match webhook-queue.ts MAX_ATTEMPTS
+  const db = createSupabaseAdmin(supabaseAuth)
+  let q = db
+    .from('webhook_queue')
+    .select('id, org_id, event_type, url, attempts, last_error, next_retry_at, created_at')
+    .is('delivered_at', null)
+    .gte('attempts', MAX_WEBHOOK_ATTEMPTS)
+    .order('created_at', { ascending: false })
+    .limit(100)
+
+  if (!scope.superadmin && scope.orgIds?.length) {
+    q = q.in('org_id', scope.orgIds)
+  }
+
+  const { data, error } = await q
+  if (error) return reply.status(500).send({ error: 'db_error', detail: error.message })
+  return { dead: data ?? [], count: (data ?? []).length }
+})
+
 app.get('/v1/audit', async (req, reply) => {
   const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
   const q = req.query as { limit?: string; org_id?: string }
@@ -831,6 +864,26 @@ app.post('/v1/audit/:id/resolve', {
   const result = await runtime.resolveAuditEntry(id, body)
   if (!result) {
     return reply.status(404).send({ error: 'audit_entry_not_found' })
+  }
+
+  // Auto-close any open containment event linked to this audit entry.
+  // This keeps the Shield containment log consistent: once an operator
+  // explicitly resolves a held action, its containment row should close too.
+  if (supabaseAuth) {
+    const resolvedBy = body.resolvedBy ?? (req as SanctumReq).sanctumUser?.email ?? 'operator'
+    void createSupabaseAdmin(supabaseAuth)
+      .from('shield_containment_events')
+      .update({
+        resolved: true,
+        resolved_at: new Date().toISOString(),
+        resolved_by: resolvedBy,
+        resolution_note: body.note ?? `Auto-closed: audit entry ${body.decision.toLowerCase()} by ${resolvedBy}`,
+      })
+      .eq('audit_id', id)
+      .eq('resolved', false)
+      .then(({ error }) => {
+        if (error) app.log.warn({ err: error.message, auditId: id }, 'containment auto-resolve failed')
+      })
   }
 
   // Create a time-bounded grant so the agent isn't re-interrupted during the window
@@ -1570,20 +1623,22 @@ function logStartupSummary({ host, port }: { host: string; port: number }): void
     pad(`Workers       : webhook=${ok(!!stopWebhookWorker)}  email-queue=${ok(!!stopEmailQueueWorker)}`),
     `└${hr}┘`,
   ]
-  console.log(lines.join('\n'))
+  // In dev the ASCII banner goes to stdout directly; in production pino captures it
+  // as a single structured line. We write it at level 'info' so it lands in the log.
+  bootLog.info({ banner: lines.join('\n') }, 'Sanctum Runtime started')
 
   // Emit targeted warnings for missing production integrations
   if (isProduction()) {
     if (!hasResend)
-      console.warn('[startup] WARN: RESEND_API_KEY not set — alert emails will not be delivered')
+      bootLog.warn('RESEND_API_KEY not set — alert emails will not be delivered')
     if (!hasVapid)
-      console.warn('[startup] WARN: VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY not set — push notifications disabled')
+      bootLog.warn('VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY not set — push notifications disabled')
     if (!hasPaddle)
-      console.warn('[startup] WARN: PADDLE_WEBHOOK_SECRET not set — billing webhooks will be rejected')
+      bootLog.warn('PADDLE_WEBHOOK_SECRET not set — billing webhooks will be rejected')
     if (!hasOpenAI && riskProvider === 'openai' && !offlineMode)
-      console.warn('[startup] WARN: OPENAI_API_KEY not set but SANCTUM_RISK_PROVIDER=openai — will run offline')
+      bootLog.warn('OPENAI_API_KEY not set but SANCTUM_RISK_PROVIDER=openai — will run offline')
     if (!pepper || pepper.length < 16)
-      console.warn('[startup] WARN: SANCTUM_API_KEY_PEPPER not set — API key security degraded')
+      bootLog.warn('SANCTUM_API_KEY_PEPPER not set — API key security degraded')
   }
 }
 
@@ -1602,14 +1657,14 @@ let shuttingDown = false
 
 const shutdown = async (signal: string): Promise<void> => {
   if (shuttingDown) {
-    console.log(`[shutdown] ${signal} received during shutdown — ignoring`)
+    rootLogger.info({ signal }, 'shutdown signal received during shutdown — ignoring')
     return
   }
   shuttingDown = true
-  console.log(`[shutdown] ${signal} received — draining`)
+  rootLogger.info({ signal }, 'shutdown signal received — draining')
 
   const hardExit = setTimeout(() => {
-    console.error(`[shutdown] grace period (${SHUTDOWN_GRACE_MS}ms) exceeded — forcing exit`)
+    rootLogger.error({ gracePeriodMs: SHUTDOWN_GRACE_MS }, 'grace period exceeded — forcing exit')
     process.exit(1)
   }, SHUTDOWN_GRACE_MS)
   hardExit.unref()
@@ -1620,11 +1675,11 @@ const shutdown = async (signal: string): Promise<void> => {
     stopWebhookWorker?.()
     stopEmailQueueWorker?.()
     stopHeapWatchdog()
-    console.log('[shutdown] drained cleanly')
+    rootLogger.info('drained cleanly')
     clearTimeout(hardExit)
     process.exit(0)
   } catch (err) {
-    console.error('[shutdown] error during drain:', err)
+    rootLogger.error({ err }, 'error during drain')
     clearTimeout(hardExit)
     process.exit(1)
   }
@@ -1638,14 +1693,14 @@ process.on('SIGINT', () => { void shutdown('SIGINT') })
 // but requests hang. Log + exit-on-uncaught is the Node 20+ default; we add
 // structured logging so the line shows up correctly in Render's log stream.
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('[fatal] unhandledRejection', {
+  rootLogger.error({
     reason: reason instanceof Error ? { message: reason.message, stack: reason.stack } : reason,
     promise: String(promise),
-  })
+  }, 'unhandledRejection')
 })
 
 process.on('uncaughtException', (err) => {
-  console.error('[fatal] uncaughtException', { message: err.message, stack: err.stack })
+  rootLogger.error({ message: err.message, stack: err.stack }, 'uncaughtException')
   // Hand off to graceful shutdown so in-flight requests get a chance to finish
   // before the container is replaced. shutdown() owns the exit; the hard-exit
   // timer inside it guarantees we won't get stuck even if drain hangs.

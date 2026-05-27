@@ -33,6 +33,8 @@ const Marketplace = lazy(() => import('./pages/Marketplace').then((m) => ({ defa
 const AuditLogs = lazy(() => import('./pages/AuditLogs').then((m) => ({ default: m.AuditLogs })))
 const Billing = lazy(() => import('./pages/Billing').then((m) => ({ default: m.Billing })))
 const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })))
+const Connect = lazy(() => import('./pages/Connect').then((m) => ({ default: m.Connect })))
+const LiveFeed = lazy(() => import('./pages/LiveFeed').then((m) => ({ default: m.LiveFeed })))
 
 const PAGE_IDS: PageId[] = [
   'overview',
@@ -54,6 +56,8 @@ const PAGE_IDS: PageId[] = [
   'audit',
   'billing',
   'settings',
+  'connect',
+  'live-feed',
 ]
 
 function initialPage(): PageId {
@@ -257,6 +261,8 @@ export function App() {
           {page === 'audit' && <ErrorBoundary page="Audit Logs"><AuditLogs audit={audit} onSelect={onSelect} status={status} /></ErrorBoundary>}
           {page === 'billing' && <ErrorBoundary page="Billing"><Billing /></ErrorBoundary>}
           {page === 'settings' && <ErrorBoundary page="Settings"><Settings status={status} /></ErrorBoundary>}
+          {page === 'connect' && <ErrorBoundary page="Connect Agent"><Connect orgId={orgId} onPage={onPage} /></ErrorBoundary>}
+          {page === 'live-feed' && <ErrorBoundary page="Live Feed"><LiveFeed orgId={orgId} onPage={onPage} /></ErrorBoundary>}
         </Suspense>
       </MainCanvas>
 

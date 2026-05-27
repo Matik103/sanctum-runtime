@@ -6,6 +6,9 @@
 
 import type { SupabaseAuthConfig } from './auth.js'
 import { createSupabaseAdmin } from './auth.js'
+import { logger as rootLogger } from './logger.js'
+
+const log = rootLogger.child({ worker: 'email-queue' })
 
 const WORKER_INTERVAL_MS = 60_000
 const MAX_ATTEMPTS = 3
@@ -28,7 +31,7 @@ async function processEmailQueue(cfg: SupabaseAuthConfig): Promise<void> {
     .limit(BATCH_SIZE)
 
   if (error) {
-    console.error('[email-queue] fetch failed:', error.message)
+    log.error({ err: error.message }, 'email queue fetch failed')
     return
   }
   if (!rows || rows.length === 0) return
@@ -67,7 +70,7 @@ async function processEmailQueue(cfg: SupabaseAuthConfig): Promise<void> {
           attempt_count: attempt,
           last_error: null,
         }).eq('id', row.id)
-        console.log(`[email-queue] delivered to ${row.recipient as string} (attempt ${attempt})`)
+        log.info({ recipient: row.recipient, attempt }, 'email delivered')
       } else {
         const errText = await res.text().catch(() => String(res.status))
         throw new Error(`HTTP ${res.status}: ${errText}`)
@@ -83,19 +86,19 @@ async function processEmailQueue(cfg: SupabaseAuthConfig): Promise<void> {
         next_attempt_at: nextAttempt,
       }).eq('id', row.id)
 
-      console.warn(`[email-queue] attempt ${attempt}/${MAX_ATTEMPTS} failed for ${row.recipient as string}:`, errMsg)
+      log.warn({ recipient: row.recipient, attempt, maxAttempts: MAX_ATTEMPTS, err: errMsg }, 'email delivery attempt failed')
     }
   }
 }
 
 export function startEmailQueueWorker(cfg: SupabaseAuthConfig): () => void {
-  console.log('[email-queue] worker started (60s interval)')
+  log.info({ intervalMs: WORKER_INTERVAL_MS }, 'email queue worker started')
 
   // Run immediately on startup to clear any queue from previous crash
-  void processEmailQueue(cfg).catch((e) => console.error('[email-queue] startup run failed:', e))
+  void processEmailQueue(cfg).catch((e) => log.error({ err: e }, 'email queue startup run failed'))
 
   const interval: NodeJS.Timeout = setInterval(() => {
-    void processEmailQueue(cfg).catch((e) => console.error('[email-queue] tick failed:', e))
+    void processEmailQueue(cfg).catch((e) => log.error({ err: e }, 'email queue tick failed'))
   }, WORKER_INTERVAL_MS)
 
   interval.unref()

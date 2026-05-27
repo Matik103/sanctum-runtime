@@ -185,13 +185,17 @@ async function main() {
   }
 
   try {
+    // Use smoke_custom_action (REQUIRE_VERIFICATION policy set above) with a low-risk
+    // context so Shield doesn't elevate the score to BLOCK. Use a unique actor per run
+    // to avoid "Repeated Blocked Attempts" from earlier steps.
+    const resumeActor = `smoke-rv-${Date.now()}`
     const correlationId = `smoke-${Date.now()}`
     const pending = await fetchJson('/v1/actions/verify', {
       method: 'POST',
       body: JSON.stringify({
-        actor: 'smoke-test',
-        action: 'unlock_door',
-        context: { time: '02:13 AM', owner_sleeping: true },
+        actor: resumeActor,
+        action: 'smoke_custom_action',
+        context: { source: 'smoke-test', environment: 'ci' },
         offlineMode: true,
         correlationId,
       }),
@@ -216,8 +220,9 @@ async function main() {
 
   try {
     const runtime = new SanctumRuntime({ baseUrl: API })
+    // Use a unique actor so prior blocked attempts don't trigger Shield containment here.
     await protectAgent(runtime, {
-      actor: 'smoke-test',
+      actor: `smoke-pa-${Date.now()}`,
       action: AgentActions.SEND_EMAIL,
       context: { to: 'test@example.com' },
       offlineMode: true,

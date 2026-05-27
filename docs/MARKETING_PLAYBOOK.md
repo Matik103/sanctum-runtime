@@ -66,12 +66,29 @@ curl -s https://www.sanctumruntime.com/llms.txt | head -20
 
 ## Positioning (do not dilute)
 
-**Runtime trust infrastructure for autonomous systems** — gate execution, not chat. Twelve categories, one API.
+**Runtime trust infrastructure for autonomous agent fleets** — detect, contain, gate, and prove execution. Not chat moderation. Not a log. The decision layer.
+
+**One-liner (GitHub About, npm description, social):**
+> The runtime trust boundary for autonomous AI agents — behavioral detection, signed action tokens, fleet management, SOC2 evidence. MIT.
+
+**Key differentiators to lead with:**
+1. **Proactive** — Shield detects threats before execution, not after
+2. **Fleet-native** — per-agent threat intelligence, token lifecycle, time-bounded grants
+3. **Zero-install** — any agent connects via HTTP; mobile operators approve from their phone
+4. **MIT + self-hostable** — no vendor lock-in; runs in Docker or on Render in minutes
+5. **Physical world** — same API for robots, smart home, industrial as for software agents
+
+**What we are NOT** (don't let copy drift here):
+- Not a chat guardrail (we gate execution, not text)
+- Not a log aggregator (we gate *before* the side effect, not after)
+- Not agents-only (12 categories, same API)
+- Not cloud-only (self-host, local LLM, air-gap friendly)
 
 ## Blog cadence (recommended)
 
 - Week 1–2: 5 seed posts (shipped in repo).
-- Week 3+: 1 post/week targeting long-tail (MCP, ROS2, SOC2, fleet kill switch).
+- Week 3+: 1 post/week targeting long-tail (MCP, ROS2, SOC2, fleet kill switch, Shield behavioral detection, token rotation, zero-install agents).
 - Cross-link every post to docs + one other post.
+- New priority topics: **agent fleet security**, **token rotation for AI agents**, **behavioral detection without LLM**, **zero-install agent control plane**.
 
 See [BLOG.md](./BLOG.md).

@@ -158,6 +158,23 @@ Auth (when configured): `X-Sanctum-Key: …` or `Authorization: Bearer <Supabase
 | `POST` | `/v1/policies/import.yaml` | Import YAML `{ yaml, merge? }` |
 | `GET` | `/v1/orgs/:orgId/policies` | Org-scoped policy view |
 | `GET` | `/v1/webhooks/status` | Webhook config summary |
+| `GET` | `/v1/webhooks/dead` | Permanently-failed webhook deliveries (org-scoped) |
+| `GET` | `/v1/fleet/pause-status` | Org-wide fleet pause state |
+| `POST` | `/v1/fleet/pause` | Pause all agent actions for the org (kill switch) |
+| `POST` | `/v1/fleet/resume` | Resume after pause |
+| `GET` | `/v1/shield/rules` | List custom Shield containment rules |
+| `POST` | `/v1/shield/rules` | Create a Shield rule (BLOCK / REQUIRE_VERIFICATION / LOG_ONLY) |
+| `PATCH` | `/v1/shield/rules/:id` | Update a Shield rule |
+| `DELETE` | `/v1/shield/rules/:id` | Delete a Shield rule |
+| `GET` | `/v1/shield/containment` | List Shield containment events (threat log) |
+| `POST` | `/v1/orgs/:orgId/agents` | Register an agent for an org |
+| `GET` | `/v1/orgs/:orgId/agents` | List registered agents |
+| `DELETE` | `/v1/orgs/:orgId/agents/:agentId` | Revoke an agent registration |
+| `POST` | `/v1/orgs/:orgId/agents/:agentId/rotate` | Rotate agent token (invalidates previous token immediately) |
+| `GET` | `/v1/orgs/:orgId/agents/:agentId/audit` | Per-agent audit log (`?limit=`) |
+| `GET` | `/v1/orgs/:orgId/agents/:agentId/stats` | 24h threat summary: blocked, held, approved, worstShield, maxScore |
+| `GET` | `/v1/orgs/:orgId/agents/:agentId/grants` | Active time-bounded policy grants for an agent |
+| `POST` | `/v1/orgs/:orgId/agents/:agentId/grants` | Create a policy grant `{ action, durationMinutes }` |
 | `POST` | `/analyze-action` | Legacy analyze alias (same as verify) |
 
 ### Verify request body
@@ -324,6 +341,56 @@ Heuristic floors still apply (e.g. physical-access actions are not under-rated b
 
 ---
 
+## Sanctum Shield (early warning + containment)
+
+Shield is a deterministic behavioral detection layer that runs on every `verifyAction()` call alongside the policy engine.
+
+### Signal categories
+
+| Category | Signals detected |
+|----------|-----------------|
+| Identity | `admin_impersonation`, `actor_identity_mismatch`, `privilege_escalation_chain` |
+| Behavior | `unsafe_command_chain`, `rapid_repeat_action`, `anomalous_hour_access` |
+| Injection | `indirect_prompt_injection_attempt`, `prompt_injection_in_context` |
+| Financial | `high_value_transfer` (≥$1k), `critical_financial_exposure` (≥$10k) |
+| Physical | `physical_access_outside_hours`, `physical_world_action` |
+| Secrets | `credential_exfiltration_attempt`, `secrets_in_payload` |
+| Security control | `security_control_modification`, `audit_log_tampering` |
+| Blast radius | `high_blast_radius` (score ≥ 40) |
+
+### Containment levels and score floors
+
+| Level | Score threshold | Score floor overrides |
+|-------|-----------------|----------------------|
+| `clear` | < 20 | — |
+| `elevated` | 20–39 | — |
+| `high` | 40–69 | blast radius `high` → min 40 |
+| `critical` | ≥ 70 | blast radius `critical` → min 70; financial ≥$10k |
+
+### Custom Shield rules (operator-defined)
+
+Create org-specific containment rules via `POST /v1/shield/rules`:
+
+```json
+{
+  "actionPattern": "wire_transfer:*",
+  "label": "Large wire transfers",
+  "response": "REQUIRE_VERIFICATION",
+  "minAmount": 10000,
+  "enabled": true
+}
+```
+
+`response` values: `BLOCK` · `REQUIRE_VERIFICATION` · `LOG_ONLY`
+
+Rules are cached in-process for 30 seconds per org; invalidated immediately on create/update/delete.
+
+### Containment events
+
+Every `high`/`critical` Shield finding writes a row to `shield_containment_events`. When an operator resolves the linked audit entry (`POST /v1/audit/:id/resolve`), the containment event is automatically closed.
+
+---
+
 ## Webhooks
 
 ```bash
@@ -337,9 +404,12 @@ SANCTUM_WEBHOOK_EVENTS=verification.required,action.blocked,verification.resolve
 | `verification.required` | Decision `REQUIRE_VERIFICATION` |
 | `action.blocked` | Decision `BLOCKED` |
 | `verification.resolved` | After operator/API resolve |
+| `shield.containment` | Shield `high`/`critical` level triggered |
 
 Payload: `{ "event", "timestamp", "entry" }` where `entry` is the full audit record.  
 Optional header: `X-Sanctum-Signature: sha256=<hmac>` when `SANCTUM_WEBHOOK_SECRET` is set.
+
+**Dead-letter:** permanently-failed deliveries (5 retries exhausted) are queryable at `GET /v1/webhooks/dead`.
 
 ---
 
@@ -368,11 +438,38 @@ Each entry includes `humanRecord` (plain English) and optional `humanResolution`
 |------|-----------------|
 | Overview | Live status, policy count, model connection |
 | Policies | Add/remove actions, approve/verify/block, **Export/Import YAML** |
-| Activity / Audit | Browse and inspect entries |
+| Agents | Register agents, rotate tokens, download .env, per-agent threat summary, activity drill-down, policy grants |
+| Shield | Containment event log, custom rule editor (action pattern + financial threshold + response), kill switch |
+| Activity / Audit | Browse and inspect entries with Shield level badges |
 | Review queue | Approve/deny `REQUIRE_VERIFICATION` |
-| Settings | Runtime + risk model status |
+| Compliance | SOC2 / NIST AI RMF evidence export |
+| Fleet | Runtime map, active connections, deployment groups |
+| Settings | Runtime + risk model status, API keys, billing |
 
 Not required for SDK/API integration.
+
+## CLI (`sanctum`)
+
+```bash
+npm install -g @sanctum-runtime/cli
+export SANCTUM_API_URL=http://localhost:3001
+export SANCTUM_API_KEY=sk_sanctum_...   # optional
+```
+
+| Command | Description |
+|---------|-------------|
+| `sanctum status` | Runtime status + risk model |
+| `sanctum verify --actor <id> --action <name> [--context <json>]` | Gate an action (exit 2=BLOCKED, 3=REQUIRE_VERIFICATION) |
+| `sanctum audit [--limit N] [--org <id>]` | List recent audit entries |
+| `sanctum policies list` | Print all policies as JSON |
+| `sanctum policies export [--out file.yaml]` | Export YAML |
+| `sanctum policies import --file file.yaml [--no-merge]` | Import YAML |
+| `sanctum agents list --org <id>` | List registered agents |
+| `sanctum agents rotate --org <id> --agent <agentId>` | Rotate agent token |
+| `sanctum agents stats --org <id> --agent <agentId>` | 24h threat summary |
+| `sanctum shield rules [--org <id>]` | List Shield containment rules |
+| `sanctum shield events [--org <id>] [--limit N]` | List containment events |
+| `sanctum webhooks dead [--org <id>]` | List permanently-failed webhook deliveries |
 
 ---
 

@@ -63,8 +63,13 @@ Step-by-step OAuth client setup: [docs/SUPABASE_SSO_SETUP.md](./docs/SUPABASE_SS
 | `006_webhook_deliveries.sql` | Webhook delivery log |
 | `007_views_and_audit_fixes.sql` | Indexes + `pending_verifications` view |
 | `008_auth_portal.sql` | Operator/enterprise profiles, domain SSO join, org bootstrap |
+| `009` – `050` | Control plane, fleet, governance, billing, marketplace, compliance, push notifications, SSO, hardware attestation, marketplace trust boundary packs |
+| `051_shield_rules.sql` | `shield_rules` (operator-defined containment) + `shield_containment_events` |
+| `052_audit_shield_level.sql` | `shield_level` + `shield_score` columns on `audit_events`; partial indexes |
+| `053_agent_token_rotation.sql` | `token_iat_min bigint` on `agent_registrations` for immediate token invalidation |
+| `054_production_indexes.sql` | Performance indexes: `audit_events(actor)`, `audit_events(action)`, `shield_containment_events(audit_id)`, webhook dead-letter |
 
-See [supabase/README.md](./supabase/README.md).
+Run all migrations in order. See [supabase/README.md](./supabase/README.md) and the [SQL queries in PR #54](#) for copy-paste blocks.
 
 This creates `profiles` + RLS + a trigger on new users.
 
