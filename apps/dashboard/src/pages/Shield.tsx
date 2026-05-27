@@ -92,6 +92,7 @@ export function Shield({ audit, onPage }: Props) {
   const [pauseLoading, setPauseLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [resolving, setResolving] = useState<string | null>(null)
+  const [resolveError, setResolveError] = useState<string | null>(null)
 
   const loadStatus = useCallback(async () => {
     try {
@@ -133,15 +134,19 @@ export function Shield({ audit, onPage }: Props) {
 
   const resolveEvent = useCallback(async (id: string) => {
     setResolving(id)
+    setResolveError(null)
     try {
       const headers = await authHeaders()
-      await fetch(`${API_BASE}/v1/shield/containment/${id}/resolve`, {
+      const res = await fetch(`${API_BASE}/v1/shield/containment/${id}/resolve`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ note: 'Reviewed and resolved by operator' }),
       })
+      if (!res.ok) throw new Error('Resolve request failed')
       setEvents((prev) => prev.map((e) => e.id === id ? { ...e, resolved: true, resolved_at: new Date().toISOString() } : e))
       if (status) setStatus({ ...status, unresolvedIncidents: Math.max(0, status.unresolvedIncidents - 1) })
+    } catch {
+      setResolveError('Could not resolve incident. Try again.')
     } finally {
       setResolving(null)
     }
@@ -322,6 +327,9 @@ export function Shield({ audit, onPage }: Props) {
           </span>
         </div>
 
+        {resolveError && (
+          <p style={{ marginBottom: '0.5rem', fontSize: '0.8rem', color: 'var(--danger)' }}>{resolveError}</p>
+        )}
         <div className="table-wrap">
           <table className="data">
             <thead>

@@ -802,6 +802,7 @@ export { loadPoliciesFromSupabase } from './supabase-policies.js'
 export { heuristicRiskFloor } from './risk-heuristics.js'
 export { verifyActionToken } from './action-token.js'
 export { assessShield } from './shield.js'
+export { maybeSyncAuditToSupabase } from './supabase-audit.js'
 
 function riskFromBlastRadius(level: 'low' | 'medium' | 'high' | 'critical'): RiskLevel {
   if (level === 'critical' || level === 'high') return 'high'
