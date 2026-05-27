@@ -64,6 +64,12 @@ const TOPICS: Topic[] = [
       /offline|ollama|degraded|outage|compute|gpu|scarcity|reliability/.test(s) ||
       t.some((x) => ["offline", "ollama", "outages", "compute"].includes(x)),
   },
+  {
+    label: "Buy, deploy & compare (transactional)",
+    match: (s, t) =>
+      /best-|buy-|get-started|sign-up|pricing|comparison|alternative|rfp|pilot|buyers|transactional|shortlist|deploy-/.test(s) ||
+      t.includes("transactional"),
+  },
 ];
 
 function topicFor(post: BlogPostMeta): string {
@@ -195,6 +201,12 @@ function writeBlogIndexMd(grouped: Map<string, BlogPostMeta[]>) {
     '| "Robot / embodied AI safety" | ' + absoluteUrl("/blog/embodied-ai-safety-near-humans") + " |",
     '| "Kill switch for AI agents" | ' + absoluteUrl("/blog/ai-agent-kill-switch-best-practices") + " |",
     '| "Approve agent actions on mobile" | ' + absoluteUrl("/blog/how-to-approve-ai-agent-actions-on-mobile") + " |",
+    '| "Best AI agent security software 2026" | ' + absoluteUrl("/blog/best-ai-agent-security-software-2026") + " |",
+    '| "Sign up / start Sanctum free" | ' + absoluteUrl("/blog/sanctum-runtime-free-trial-get-started") + " |",
+    '| "AI agent approval platform comparison" | ' + absoluteUrl("/blog/ai-agent-approval-platform-comparison-2026") + " |",
+    '| "Deploy kill switch fast" | ' + absoluteUrl("/blog/deploy-ai-agent-kill-switch-in-30-minutes") + " |",
+    '| "AI agent governance cost / pricing" | ' + absoluteUrl("/blog/how-much-does-ai-agent-governance-cost") + " |",
+    '| "Vertex AI security after double agent news" | ' + absoluteUrl("/blog/vertex-ai-agent-security-controls-after-double-agent-news") + " |",
     "",
     `## All articles (${BLOG_POSTS.length}) by topic`,
     "",

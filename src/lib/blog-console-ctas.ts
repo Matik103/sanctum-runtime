@@ -44,6 +44,22 @@ function tagHas(tags: string[], ...parts: string[]) {
 
 const RULES: Rule[] = [
   {
+    test: (slug, tags) =>
+      tagHas(tags, 'transactional') ||
+      slugHas(slug, 'get-started', 'sign-up', 'free-trial', 'buyers', 'rfp', 'pilot', 'weekend', 'minutes', 'sign-up'),
+    cta: () => ({
+      headline: 'Start in the console now — connect an agent and gate your first action today.',
+      primaryPage: 'agents',
+      secondaryPage: 'shield-rules',
+      steps: steps('agents', 'shield-rules', [
+        'Sign in at **{primary}** and click **Create agent** — copy the SDK snippet into your repo.',
+        'In **{secondary}**, add your riskiest action (e.g. `send_email`) → **Verify**.',
+        'Trigger the action once from dev or staging.',
+        'Open **Overview** and approve or deny — you are live.',
+      ]),
+    }),
+  },
+  {
     test: (slug) => slug === 'how-to-stop-ai-agents-from-sending-emails-without-approval',
     cta: () => ({
       headline: 'Hold outbound email until an operator approves it.',

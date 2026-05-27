@@ -1,4 +1,5 @@
 import { BLOG_TRENDING_ANSWERS } from './blog-trending-posts'
+import { BLOG_TRANSACTIONAL_ANSWERS } from './blog-transactional-posts'
 export type BlogAnswer = {
   question: string
   answer: string
@@ -752,4 +753,5 @@ export const BLOG_ANSWER_POSTS: Record<string, BlogAnswerPost> = {
     related: ['ai-agent-policy-versioning-and-replay', 'ai-agent-security-checklist-for-production'],
   },
   ...BLOG_TRENDING_ANSWERS,
+  ...BLOG_TRANSACTIONAL_ANSWERS,
 }
