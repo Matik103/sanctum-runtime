@@ -11,7 +11,6 @@ import {
 import appCss from "../styles.css?url";
 import {
   defaultDescription,
-  homepageFaqJsonLd,
   organizationJsonLd,
   pageSeo,
   searchVerificationMeta,
@@ -124,10 +123,6 @@ function RootShell({ children }: { children: React.ReactNode }) {
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareApplicationJsonLd) }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(homepageFaqJsonLd) }}
         />
       </head>
       <body>

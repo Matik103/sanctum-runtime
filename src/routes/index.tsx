@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { pageSeo, siteName, defaultDescription } from "@/lib/seo";
+import { homepageFaqJsonLd, pageSeo, siteName, defaultDescription } from "@/lib/seo";
 import { Navbar } from "@/components/Navbar";
 import { Hero } from "@/components/Hero";
 import { Problem } from "@/components/Problem";
@@ -13,12 +13,19 @@ import { CtaFooter } from "@/components/CtaFooter";
 
 export const Route = createFileRoute("/")({
   component: Index,
-  head: () =>
-    pageSeo({
+  head: () => ({
+    ...pageSeo({
       title: `${siteName} — Runtime Trust for Autonomous AI`,
       description: defaultDescription,
       path: "/",
     }),
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify(homepageFaqJsonLd),
+      },
+    ],
+  }),
 });
 
 function Index() {
