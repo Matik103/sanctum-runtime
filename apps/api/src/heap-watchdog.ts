@@ -10,6 +10,9 @@
  * /metrics endpoint.
  */
 import { getHeapStatistics } from 'v8'
+import { logger as rootLogger } from './logger.js'
+
+const log = rootLogger.child({ worker: 'heap-watchdog' })
 
 const POLL_INTERVAL_MS = 30_000
 const WARN_RATIO = 0.85
@@ -39,11 +42,11 @@ function poll(): void {
   // when the heap is happily idle, but keeps a steady drip while pressured
   // so we can correlate against traffic.
   if (level === 'error') {
-    console.error('[heap] CRITICAL pressure', { usedMb, limitMb, pct: `${pct}%` })
+    log.error({ usedMb, limitMb, pct: `${pct}%` }, 'CRITICAL heap pressure')
   } else if (level === 'warn') {
-    console.warn('[heap] elevated pressure', { usedMb, limitMb, pct: `${pct}%` })
+    log.warn({ usedMb, limitMb, pct: `${pct}%` }, 'elevated heap pressure')
   } else if (lastLevel !== 'ok') {
-    console.log('[heap] pressure recovered', { usedMb, limitMb, pct: `${pct}%` })
+    log.info({ usedMb, limitMb, pct: `${pct}%` }, 'heap pressure recovered')
   }
   lastLevel = level
 }
