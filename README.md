@@ -1,10 +1,10 @@
 # Sanctum Runtime
 
-**The runtime trust boundary for autonomous systems.**
+**Runtime trust infrastructure for autonomous agent fleets.**
 
-Every meaningful agent — LLM, robot, MCP server, computer-use, workflow bot — eventually needs a *trusted place* where **proposed action becomes permitted action**. Sanctum is that place. We sign it, score its blast radius, classify its source trust, require human approval if the policy says so, and emit a short-lived token the executor must verify before the side effect runs.
+Autonomous agents don't just talk — they act. They send emails, move robots, transfer funds, delete records, call production. Every one of those actions needs a trusted answer to a single question: *should this happen right now, given who asked, what the risk is, and what the policies say?*
 
-Not a chat guardrail. Not an audit log. **The boundary.**
+Sanctum answers that question at runtime — before the side effect runs — with detection, containment, signed proof, human approval, and a full audit trail. Not a chat filter. Not a log aggregator. **The decision layer.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 [![npm @sanctum-runtime/sdk](https://img.shields.io/npm/v/@sanctum-runtime/sdk?label=npm%20sdk)](https://www.npmjs.com/package/@sanctum-runtime/sdk)
@@ -14,28 +14,49 @@ Not a chat guardrail. Not an audit log. **The boundary.**
   agent proposes action
         │
         ▼
-   ┌────────────┐    blast radius · source trust · policy · grants
-   │  Sanctum   │ ─────────────────────────────────────────────────►  audit + evidence
-   └────────────┘
-        │  signed action_token (HMAC, 5 min TTL)
+   ┌──────────────────────────────────────────────────┐
+   │  Sanctum Runtime                                  │
+   │  Shield detection · blast-radius · source trust   │
+   │  policy engine · risk model · anomaly detection   │
+   │  custom containment rules · time-bounded grants   │
+   └──────────────────────────────────────────────────┘
+        │  signed action_token (HMAC, 5 min TTL)        audit + evidence
         ▼
   executor verifies → side effect runs → result reported back
 ```
 
-**About this repo:** open-source runtime trust boundary for autonomous AI, robots, MCP tools, smart home, financial and healthcare agents. Sanctum Shield early warning and containment · signed action tokens · blast-radius scoring · source-trust classification (indirect-prompt-injection defense) · dual-approver workflows · auto-escalation · fleet kill switch · policy replay · SOC2 + NIST AI RMF evidence · 16 framework adapters. MIT · `npm install @sanctum-runtime/sdk`
+**About this repo:** open-source runtime trust infrastructure for autonomous AI agents, robots, MCP tools, smart home, financial and healthcare workflows. Sanctum Shield behavioral detection and containment · operator-defined containment rules · per-agent threat intelligence · token rotation and lifecycle management · zero-install agent connections · signed action tokens · blast-radius scoring · source-trust classification (indirect-prompt-injection defense) · dual-approver workflows · auto-escalation · fleet kill switch · policy replay · SOC2 + NIST AI RMF evidence · 16 framework adapters · Python SDK · Docker. MIT · `npm install @sanctum-runtime/sdk`
 
-## What's new in this release
+## What's in this release (v0.1.2)
 
-- **Sanctum Shield** — detects suspicious runtime behavior, blocks critical execution before side effects, revokes matching temporary approval windows in the hosted control plane, and raises emergency incidents for operator response.
-- **Signed action tokens** — HMAC-SHA256, scoped to actor + action + org + audit id, 5 min TTL. Executors must verify before running.
-- **Blast-radius scoring** — every action gets `{ level, score 0-100, factors, reversible, dataSensitivity, externalDestination, physicalWorld, estimatedValue }`.
-- **Source-trust classification** — 7 levels including `untrusted_content` and `tool_output` for deterministic indirect-prompt-injection defense.
-- **Dual approver + auto-escalate** — `requireSecondApprover` policies need two distinct approvers; stale verifications auto-escalate after policy-defined minutes.
-- **Fleet kill switch** — operator-triggered org-wide pause that returns BLOCKED on every verify until resumed.
-- **Policy replay** — *"if today's policies had existed yesterday, what would have changed?"*
-- **NIST AI RMF + SOC2 evidence exports** — 16 mapped controls (GOVERN / MAP / MEASURE / MANAGE) with implementation evidence.
-- **Easy Connect plus 16 framework adapters** — provider-neutral model-tool gating for OpenAI, Claude, Gemini, Grok, DeepSeek, NVIDIA NIM and compatible APIs, alongside LangChain, Vercel AI, OpenAI Agents, MCP, CrewAI, ROS2, Claude Desktop, n8n/Zapier, AutoGen, Pydantic AI, LlamaIndex, smolagents, Bedrock Agents, Browser-use and Home Assistant.
-- **Domain policy packs** — installable from the marketplace: healthcare PHI, finance transfers, ROS2 safety, MCP baseline, Claude Desktop.
+**Sanctum Shield — proactive behavioral detection and containment**
+- Deterministic signal engine across 8 categories: identity, behavior, injection, financial ($1k/$10k tiers), physical, secrets, security controls, blast radius
+- Score floors ensure high-blast and critical-blast actions are never under-rated
+- **Custom operator rules** — define your own containment patterns per org: action glob, financial threshold, JSONB conditions; choose BLOCK / REQUIRE_VERIFICATION / LOG_ONLY
+- Containment events auto-resolve when an operator resolves the linked audit entry
+- 30-second in-process rule cache with immediate invalidation on write
+
+**Agent fleet management — full lifecycle from the dashboard**
+- **Per-agent threat summary** — 24h blocked/held/approved counts, worst Shield level, max anomaly score
+- **Activity drill-down** — click any agent to see its filtered audit log and active policy grants
+- **Token rotation** — one click issues a new token and immediately invalidates all previous ones (`token_iat_min`)
+- **Download .env** — instantly export `SANCTUM_AGENT_TOKEN` + `SANCTUM_API_URL` for any agent
+- **Time-bounded policy grants** — approve an agent for a specific action for N minutes; no re-interruptions during the window
+- **Zero-install connections** — any agent connects via direct HTTP with `X-Agent-Token`; no SDK required. Mobile agents, browser agents, and scripts connect the same way
+
+**Production hardening**
+- Structured pino logging throughout — no more `console.log` escaping the log drain
+- Performance indexes: `audit_events(actor)`, `audit_events(action)`, containment auto-resolve index
+- Webhook dead-letter endpoint: `GET /v1/webhooks/dead`
+- `Dockerfile` — production multi-stage Docker image
+
+**CLI expanded** (`@sanctum-runtime/cli`): 3 → 11 commands including `audit`, `agents rotate`, `shield events`, `webhooks dead`
+
+**Earlier features still shipping:**
+- Signed action tokens · blast-radius scoring · source-trust / indirect-injection defense
+- Dual approver + auto-escalate · fleet kill switch · policy replay
+- NIST AI RMF + SOC2 evidence · 16 framework adapters · domain policy packs
+- Python SDK · Ollama / OpenAI-compatible / heuristics-only risk models
 
 | | |
 |---|---|
@@ -49,41 +70,50 @@ Not a chat guardrail. Not an audit log. **The boundary.**
 
 ## Who this is for
 
-You are building **AI agents**, **LLM apps**, **workflow automation**, or **robotics software** and you need a real answer to:
+You are building **AI agents**, **LLM apps**, **workflow automation**, or **robotics software** and need a real answer to:
 
-> *“What happens when the model tries to unlock a door, send email, charge a card, or call production?”*
+> *”What happens when the model tries to unlock a door, send a wire, charge a card, delete a record, or call production — and how do I know if it's trying to do something it shouldn't?”*
 
 Sanctum is for:
 
-- **Agent builders** — LangChain, CrewAI, custom Node/Python agents, MCP servers, “agentic” SaaS  
-- **Platform engineers** — gate **function calling / tool use** with approve · verify · block  
-- **Security-minded teams** — policy engine + audit trail without locking yourself into a black box  
-- **Local-first devs** — **Ollama**, GGUF, vLLM, or OpenAI-compatible APIs for risk scoring  
-- **Operators** — optional dashboard for human-in-the-loop (HITL) review  
+- **Agent builders** — LangChain, CrewAI, custom Node/Python agents, MCP servers, “agentic” SaaS
+- **Agent fleet operators** — manage dozens of agents, rotate credentials, see per-agent threat summaries, grant time-bounded approvals
+- **Platform engineers** — gate **function calling / tool use** across your product with approve · verify · block
+- **Security-minded teams** — behavioral detection, containment rules, and a full audit trail — without vendor lock-in
+- **Mobile-first operators** — approve or block actions from your phone; agents connect without installing anything
+- **Local-first devs** — **Ollama**, GGUF, vLLM, or OpenAI-compatible APIs for risk scoring
+- **Compliance teams** — SOC2, NIST AI RMF, HIPAA evidence exports; policy replay; dual-approver workflows
 
-If you only need chat guardrails, look at prompt filters. If you need **execution control**, you are in the right place.
+If you only need chat guardrails, look at prompt filters. If you need **execution control and fleet visibility**, you are in the right place.
 
 ---
 
 ## Sanctum vs other runtime-control tools
 
-|                              | Sanctum Runtime | Tracehold | GuardPlane | AgentID | Repello Argus / Guardion |
-|------------------------------|:---------------:|:---------:|:----------:|:-------:|:------------------------:|
-| **Open source (MIT)**        | ✅              | ❌        | ❌         | ❌      | ❌                       |
-| **Pre-execution action gate**| ✅              | ✅        | ✅         | ✅      | partial                  |
-| **Early warning + automatic containment** | ✅       | partial   | partial    | partial | partial                  |
-| **Signed action tokens**     | ✅              | partial   | ❌         | ❌      | ❌                       |
-| **Blast-radius scoring**     | ✅              | ❌        | ❌         | partial | ❌                       |
-| **Source-trust / indirect-injection** | ✅     | ❌        | ❌         | ❌      | partial                  |
-| **Dual approver + auto-escalate** | ✅         | ❌        | ❌         | ❌      | ❌                       |
-| **Policy replay against history** | ✅         | ❌        | ❌         | ❌      | ❌                       |
-| **Robotics / ROS2 / physical world** | ✅      | ❌        | ❌         | ❌      | ❌                       |
-| **Local LLM (Ollama) risk model** | ✅         | ❌        | ❌         | ❌      | ❌                       |
-| **SOC2 + NIST AI RMF evidence**   | ✅         | partial   | ❌         | partial | partial                  |
-| **Domain policy marketplace** | ✅            | ❌        | ❌         | ❌      | ❌                       |
-| **16 framework adapters**    | ✅              | ~4        | endpoint   | ~3      | ~2                       |
+|                                              | Sanctum Runtime | Tracehold | GuardPlane | AgentID | Repello Argus / Guardion |
+|----------------------------------------------|:---------------:|:---------:|:----------:|:-------:|:------------------------:|
+| **Open source (MIT)**                        | ✅              | ❌        | ❌         | ❌      | ❌                       |
+| **Pre-execution action gate**                | ✅              | ✅        | ✅         | ✅      | partial                  |
+| **Behavioral detection + containment**       | ✅              | partial   | partial    | partial | partial                  |
+| **Operator-defined containment rules**       | ✅              | ❌        | ❌         | ❌      | ❌                       |
+| **Per-agent threat intelligence**            | ✅              | ❌        | ❌         | partial | ❌                       |
+| **Token rotation + immediate invalidation**  | ✅              | ❌        | ❌         | ❌      | ❌                       |
+| **Time-bounded policy grants**               | ✅              | ❌        | ❌         | ❌      | ❌                       |
+| **Zero-install agent connections**           | ✅              | ❌        | ❌         | ❌      | ❌                       |
+| **Signed action tokens**                     | ✅              | partial   | ❌         | ❌      | ❌                       |
+| **Blast-radius scoring**                     | ✅              | ❌        | ❌         | partial | ❌                       |
+| **Source-trust / indirect-injection defense**| ✅              | ❌        | ❌         | ❌      | partial                  |
+| **Dual approver + auto-escalate**            | ✅              | ❌        | ❌         | ❌      | ❌                       |
+| **Policy replay against history**            | ✅              | ❌        | ❌         | ❌      | ❌                       |
+| **Robotics / ROS2 / physical world**         | ✅              | ❌        | ❌         | ❌      | ❌                       |
+| **Local LLM (Ollama) risk model**            | ✅              | ❌        | ❌         | ❌      | ❌                       |
+| **SOC2 + NIST AI RMF evidence**              | ✅              | partial   | ❌         | partial | partial                  |
+| **Domain policy marketplace**                | ✅              | ❌        | ❌         | ❌      | ❌                       |
+| **Python + TypeScript SDKs**                 | ✅              | partial   | ❌         | partial | ❌                       |
+| **16 framework adapters**                    | ✅              | ~4        | endpoint   | ~3      | ~2                       |
+| **Docker + self-host**                       | ✅              | ❌        | ❌         | ❌      | ❌                       |
 
-The wedge: **we are not "AI agent security"**. We are the trust boundary between *any* autonomous system and *any* real-world action — agents, robots, smart home, industrial, healthcare, financial, mobility, workflows. Everyone else clusters around chat / cloud-ops / endpoint. We sit on the decision point.
+The wedge: **we are not "AI agent security"**. We are the trust infrastructure between *any* autonomous system and *any* real-world action — agents, robots, smart home, industrial, healthcare, financial, mobility, workflows. Everyone else clusters around chat / cloud-ops / endpoint. We sit on the decision point, and we give operators real-time visibility into what every agent in their fleet is doing.
 
 ---
 
@@ -219,40 +249,65 @@ The **same** `verifyAction()` API gates software and physical actions. Category 
 
 | Area | What you can do |
 |------|-----------------|
-| **Action verification** | `POST /v1/actions/verify` — gate tool calls, APIs, robotics commands |
-| **Policies** | Unlimited actions; approve / verify / block; org keys (`acme:payroll`); `riskPrompt` per action |
+| **Action verification** | `POST /v1/actions/verify` — gate tool calls, APIs, robotics commands, MCP tools |
+| **Sanctum Shield** | Behavioral detection: 8 signal categories, custom operator rules (action glob · financial threshold · BLOCK/REQUIRE_VERIFICATION/LOG_ONLY), per-org 30s rule cache |
+| **Agent fleet management** | Register agents, rotate tokens (immediate invalidation), per-agent threat summary (24h blocked/held/approved, worst Shield level), activity drill-down, time-bounded grants, Download .env |
+| **Zero-install connections** | Agents connect via direct HTTP (`X-Agent-Token`); no SDK required. Mobile agents, browser agents, scripts — same API |
+| **Policies** | Unlimited actions; approve / verify / block; org keys (`acme:payroll`); `riskPrompt` per action; YAML import/export |
 | **Risk models** | **Ollama** (Qwen, Llama, Mistral, …), **OpenAI-compatible** APIs, or heuristics-only |
-| **Agent SDK** | `verifyAction`, `middleware()`, `protectAgent()`, `waitForVerification()` |
-| **Audit** | Local JSONL; narrative context (`heard`, `intent`); optional Postgres via Supabase |
-| **Webhooks** | `verification.required`, `action.blocked`, `verification.resolved` |
-| **Dashboard** | Policies, live activity, review queue (optional) |
-| **CI** | GitHub Actions runs build + smoke on every PR |
+| **Blast-radius scoring** | 0-100 score: reversibility, data sensitivity, physical-world, external destination, monetary value; score floors for critical/high-blast actions |
+| **Source-trust classification** | 7 levels including `untrusted_content` and `tool_output` — deterministic indirect-prompt-injection defense |
+| **Signed action tokens** | HMAC-SHA256, 5 min TTL, scoped to actor + action + org + audit id; executor-side verification |
+| **Dual approver + auto-escalate** | `requireSecondApprover`; stale verifications auto-escalate after policy-defined minutes; push re-notifications |
+| **Fleet kill switch** | One-click org-wide pause; mobile-accessible; resumes cleanly |
+| **Audit** | Local JSONL + optional Supabase mirror; narrative context (`heard`, `intent`); execution receipts |
+| **Webhooks** | `verification.required`, `action.blocked`, `verification.resolved`, `shield.containment`; dead-letter at `GET /v1/webhooks/dead` |
+| **Policy replay** | *"If today's policies had existed yesterday, what would have changed?"* |
+| **SOC2 + NIST AI RMF evidence** | 16 mapped controls; downloadable JSON for auditors |
+| **Domain marketplace** | Healthcare PHI, finance transfers, ROS2 safety, MCP baseline, Claude Desktop policy packs |
+| **SDKs** | TypeScript (`@sanctum-runtime/sdk`) · Python (`sanctum-runtime`) · 16 framework adapters · CLI (11 commands) |
+| **Deployment** | Self-host: `npm run dev:api`, Docker (`docker build -t sanctum/runtime .`), Render, Kubernetes (Helm in `deploy/`) |
+| **Dashboard** | Multi-org, agent drill-down, Shield rules editor, compliance export, fleet map, billing |
 
-## Runtime trust boundary
+## What makes Sanctum the trust infrastructure, not just a gate
 
-Sanctum is moving beyond advisory guardrails into enforceable action control:
+Most tools stop at "approve or block." Sanctum goes further:
 
-- **Signed action tokens** — approved actions can carry a short-lived `actionToken` that downstream executors verify before side effects.
-- **Action identity envelope** — every action can carry actor, tool, runtime, environment, permission, scope, expiry, and correlation chain metadata.
-- **Execution receipts** — executors can report succeeded / failed / skipped outcomes back onto the audit record after token-verified side effects.
-- **Source-trust classification** — actions record whether instructions came from trusted users, system flows, memory, tool output, or untrusted content.
-- **Blast-radius scoring** — every action can be scored for reversibility, data sensitivity, physical-world impact, external destination, and monetary value.
-- **Sanctum Shield** — deterministic threat signals score suspicious behavior; critical attempts are blocked before execution, alert operators, and cause hosted control-plane approval windows for the actor/action to be revoked.
-- **Policy replay** — replay recent audit events against current policies before rollout.
-- **Evidence summaries** — export control evidence for audit, incident review, and compliance workflows.
+- **Detection before the fact** — Shield scores behavioral signals before the policy engine runs. A critical-blast action from an untrusted source is flagged and contained even if policy says "approve."
+- **Operator-defined threat rules** — your team encodes your threat model in plain rules (action patterns, dollar thresholds, custom conditions). No model fine-tuning required.
+- **Fleet-level visibility** — per-agent threat summaries give operators a live picture of which agents are acting suspiciously, not just a firehose of action events.
+- **Token lifecycle** — rotation with immediate invalidation means a compromised agent credential is revoked in seconds, not at next deploy.
+- **Time-bounded approvals** — grant an agent permission for a specific action for 30 minutes. Stops the interrupt loop without permanently widening the policy.
+- **Signed proof of authorization** — the `actionToken` is a cryptographic receipt executors must verify. Side effects cannot run without it.
+- **Full execution loop** — agents report back succeeded/failed/skipped. The audit record covers the whole action lifecycle, not just the decision.
 
-These are the primitives for treating Sanctum as the runtime trust boundary for autonomous systems.
-
-**Full list:** [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md)
+**Full API + SDK reference:** [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md)
 
 ---
 
-## npm packages
+## Install
+
+**npm / TypeScript:**
 
 | Package | Install | Role |
 |---------|---------|------|
 | [`@sanctum-runtime/sdk`](./packages/sdk) | `npm i @sanctum-runtime/sdk` | Core client — verify, policies, audit |
-| [`@sanctum-runtime/adapter-agent-runtime`](./packages/adapters/agent-runtime) | `npm i @sanctum-runtime/adapter-agent-runtime` | `protectAgent()` helper |
+| [`@sanctum-runtime/adapters`](./packages/adapters) | `npm i @sanctum-runtime/adapters` | 16 framework adapters (LangChain, MCP, OpenAI Agents, …) |
+| [`@sanctum-runtime/adapter-agent-runtime`](./packages/adapters/agent-runtime) | `npm i @sanctum-runtime/adapter-agent-runtime` | `protectAgent()` one-line agent wrapper |
+| [`@sanctum-runtime/cli`](./packages/cli) | `npm i -g @sanctum-runtime/cli` | CLI: `sanctum verify`, `agents rotate`, `shield events`, … |
+
+**Python:**
+
+```bash
+pip install sanctum-runtime
+```
+
+**Docker:**
+
+```bash
+docker build -t sanctum/runtime .
+docker run -p 3001:3001 --env-file .env sanctum/runtime
+```
 
 ---
 
