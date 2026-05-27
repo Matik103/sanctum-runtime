@@ -5,6 +5,7 @@ import { Navbar } from '@/components/Navbar'
 import { CtaFooter } from '@/components/CtaFooter'
 import type { BlogPostMeta } from '@/lib/blog-posts'
 import { blogPostPath } from '@/lib/blog-posts'
+import { consoleUrl } from '@/lib/site-links'
 
 type Props = {
   post: BlogPostMeta
@@ -64,6 +65,10 @@ export function BlogLayout({ post, children }: Props) {
             <Link to={blogPostPath('runtime-trust-layer-for-ai-agents')} className="text-primary hover:underline">
               runtime trust layer
             </Link>
+            {' · '}
+            <a href={consoleUrl} className="text-primary hover:underline">
+              open Sanctum Console
+            </a>
           </p>
         </article>
       </main>
