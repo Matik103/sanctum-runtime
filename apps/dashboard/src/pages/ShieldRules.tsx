@@ -342,7 +342,9 @@ export function ShieldRules() {
       <section className="card" style={{ marginBottom: '1.25rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
           <h2 className="card-label">Built-in Shield rules</h2>
-          <Info size={14} color="var(--muted)" title="These rules are hardcoded in the Shield engine and cannot be disabled." />
+          <span title="These rules are hardcoded in the Shield engine and cannot be disabled.">
+            <Info size={14} color="var(--muted)" aria-hidden />
+          </span>
         </div>
         <p style={{ fontSize: '0.82rem', color: 'var(--muted)', marginBottom: '0.75rem' }}>
           These patterns are detected by the built-in Shield engine and are always active regardless of your custom rules.

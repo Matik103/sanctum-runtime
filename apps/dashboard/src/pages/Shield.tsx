@@ -82,7 +82,7 @@ function levelColor(level: string): string {
 
 type Props = {
   audit: ActionResult[]
-  onPage: (page: string) => void
+  onPage: (page: import('../layout/Sidebar').PageId) => void
 }
 
 export function Shield({ audit, onPage }: Props) {

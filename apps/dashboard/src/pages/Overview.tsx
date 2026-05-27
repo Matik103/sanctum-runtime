@@ -17,7 +17,7 @@ type Props = {
   pendingReviewCount?: number
   onOpenReview?: () => void
   orgId?: string | null
-  onPage?: (page: string) => void
+  onPage?: (page: import('../layout/Sidebar').PageId) => void
 }
 
 export function Overview({
