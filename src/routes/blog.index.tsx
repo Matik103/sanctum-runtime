@@ -3,7 +3,8 @@ import { ArrowRight, Calendar } from 'lucide-react'
 import { Navbar } from '@/components/Navbar'
 import { CtaFooter } from '@/components/CtaFooter'
 import { BLOG_POSTS, blogPostPath } from '@/lib/blog-posts'
-import { pageSeo } from '@/lib/seo'
+import { blogIndexJsonLd, pageSeo } from '@/lib/seo'
+import { llmsTxtUrl } from '@/lib/site-links'
 
 const path = '/blog'
 const title = 'Blog — Sanctum Runtime'
@@ -12,7 +13,15 @@ const description =
 
 export const Route = createFileRoute('/blog/')({
   component: BlogIndexPage,
-  head: () => pageSeo({ title, description, path }),
+  head: () => ({
+    ...pageSeo({ title, description, path }),
+    scripts: [
+      {
+        type: 'application/ld+json',
+        children: JSON.stringify(blogIndexJsonLd(BLOG_POSTS)),
+      },
+    ],
+  }),
 })
 
 function BlogIndexPage() {
@@ -31,6 +40,16 @@ function BlogIndexPage() {
           <p className="mt-6 text-lg text-muted-foreground max-w-2xl leading-relaxed">
             Deep dives on AI agents, embodied AI, robotics, policy engines, human-in-the-loop verification,
             and building production-grade trust infrastructure — written for engineers and operators.
+          </p>
+          <p className="mt-4 text-sm text-muted-foreground max-w-2xl">
+            For AI assistants and crawlers:{' '}
+            <a href={llmsTxtUrl} className="text-primary hover:underline">
+              llms.txt
+            </a>
+            {' · '}
+            <a href="/ai/blog-index.md" className="text-primary hover:underline">
+              blog index (markdown)
+            </a>
           </p>
 
           {featured.length > 0 && (

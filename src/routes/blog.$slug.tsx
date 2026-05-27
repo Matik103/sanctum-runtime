@@ -29,15 +29,20 @@ export const Route = createFileRoute('/blog/$slug')({
     const post = getBlogPost(params.slug)
     if (!post) return {}
     const faq = faqJsonLd(params.slug)
+    const seo = pageSeo({
+      title: `${post.title} — Sanctum`,
+      description: post.description,
+      path: blogPostPath(params.slug),
+      ogType: 'article',
+    })
     return {
-      ...pageSeo({
-        title: `${post.title} — Sanctum`,
-        description: post.description,
-        path: blogPostPath(params.slug),
-        ogType: 'article',
-      }),
+      ...seo,
+      meta: [...seo.meta, { name: 'keywords', content: post.tags.join(', ') }],
       scripts: [
-        { type: 'application/ld+json', children: JSON.stringify(articleJsonLd(post)) },
+        {
+          type: 'application/ld+json',
+          children: JSON.stringify(articleJsonLd({ ...post, tags: post.tags })),
+        },
         ...(faq ? [{ type: 'application/ld+json', children: JSON.stringify(faq) }] : []),
       ],
     }

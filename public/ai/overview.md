@@ -14,7 +14,10 @@ Sanctum Runtime is open-core infrastructure that sits between AI reasoning and r
 
 | Resource | URL |
 |----------|-----|
+| **Blog index (AI)** | https://www.sanctumruntime.com/ai/blog-index.md |
+| **llms.txt** | https://www.sanctumruntime.com/llms.txt |
 | Marketing | https://www.sanctumruntime.com/ |
+| Blog hub | https://www.sanctumruntime.com/blog |
 | Documentation | https://www.sanctumruntime.com/docs |
 | Architecture | https://www.sanctumruntime.com/architecture |
 | SDK | https://www.sanctumruntime.com/sdk |

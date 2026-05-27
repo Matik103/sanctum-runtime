@@ -89,6 +89,7 @@
     "publish:sdk": "npm publish -w @sanctum-runtime/sdk --access public",
     "publish:adapter": "npm publish -w @sanctum-runtime/adapter-agent-runtime --access public",
     "generate:sitemap": "tsx scripts/generate-sitemap.ts",
+    "generate:ai-discovery": "tsx scripts/generate-ai-discovery.ts",
     "build": "vite build",
     "build:vercel": "vite build --config vite.config.vercel.ts",
     "cf:build": "npm ci && npm run build",

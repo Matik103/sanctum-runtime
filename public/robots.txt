@@ -1,4 +1,7 @@
 # Sanctum Runtime marketing site — allow search + AI crawlers
+# LLM index: https://www.sanctumruntime.com/llms.txt
+# Blog catalog: https://www.sanctumruntime.com/ai/blog-index.md
+
 User-agent: *
 Allow: /
 
@@ -29,5 +32,12 @@ Allow: /
 User-agent: CCBot
 Allow: /
 
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
 Sitemap: https://www.sanctumruntime.com/sitemap-index.xml
 Sitemap: https://www.sanctumruntime.com/sitemap.xml
+Sitemap: https://www.sanctumruntime.com/sitemap-ai.xml

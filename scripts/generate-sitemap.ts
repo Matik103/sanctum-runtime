@@ -10,8 +10,10 @@ import {
   sitemapAiPaths,
   sitemapPages,
 } from "../src/lib/seo.ts";
+import { generateAiDiscovery } from "./generate-ai-discovery.ts";
 
 loadRepoEnv();
+generateAiDiscovery();
 
 const lastmod = new Date().toISOString().slice(0, 10);
 const publicDir = resolve(import.meta.dirname, "../public");
@@ -44,9 +46,13 @@ ${urls.join("\n")}
 }
 
 function writeAiSitemap() {
-  const urls = sitemapAiPaths.map((path) =>
-    urlEntry(absoluteUrl(path), "monthly", path === "/llms.txt" ? 0.7 : 0.65),
+  const staticAi = sitemapAiPaths.map((path) =>
+    urlEntry(absoluteUrl(path), "monthly", path === "/llms.txt" ? 0.85 : 0.7),
   );
+  const blogAi = BLOG_POSTS.map((p) =>
+    urlEntry(absoluteUrl(`/blog/${p.slug}`), "monthly", 0.72),
+  );
+  const urls = [...staticAi, ...blogAi];
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls.join("\n")}
@@ -76,4 +82,7 @@ function writeSitemapIndex() {
 writePagesSitemap();
 writeAiSitemap();
 writeSitemapIndex();
-console.log(`Sitemaps written (${lastmod}): sitemap.xml, sitemap-ai.xml, sitemap-index.xml`);
+const aiUrlCount = sitemapAiPaths.length + BLOG_POSTS.length;
+console.log(
+  `Sitemaps written (${lastmod}): sitemap.xml, sitemap-ai.xml (${aiUrlCount} URLs), sitemap-index.xml`,
+);

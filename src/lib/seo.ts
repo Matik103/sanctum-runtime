@@ -50,6 +50,7 @@ export const sitemapPages: ReadonlyArray<{
 /** Static AI / crawler files under public/ */
 export const sitemapAiPaths = [
   "/llms.txt",
+  "/ai/blog-index.md",
   "/ai/overview.md",
   "/ai/architecture.md",
   "/ai/sdk.md",
@@ -158,29 +159,67 @@ export function webPageJsonLd(path: string, name: string, description: string) {
   };
 }
 
-/** Blog post Article schema */
+/** Blog post Article schema — tuned for search + AI citation */
 export function articleJsonLd(post: {
   slug: string;
   title: string;
   description: string;
   publishedAt: string;
   updatedAt?: string;
+  tags?: string[];
 }) {
+  const url = absoluteUrl(`/blog/${post.slug}`);
   return {
     "@context": "https://schema.org",
-    "@type": "Article",
+    "@type": "TechArticle",
     headline: post.title,
     description: post.description,
     datePublished: post.publishedAt,
     dateModified: post.updatedAt ?? post.publishedAt,
+    url,
+    keywords: post.tags?.join(", "),
     author: { "@type": "Organization", name: siteName, url: origin },
     publisher: {
       "@type": "Organization",
       name: siteName,
       logo: { "@type": "ImageObject", url: defaultOgImage() },
     },
-    mainEntityOfPage: absoluteUrl(`/blog/${post.slug}`),
+    mainEntityOfPage: { "@type": "WebPage", "@id": url },
     image: defaultOgImage(),
+    isPartOf: { "@type": "WebSite", name: siteName, url: origin },
+    about: {
+      "@type": "Thing",
+      name: "AI agent runtime security and execution-time policy control",
+    },
+    mentions: {
+      "@type": "SoftwareApplication",
+      name: siteName,
+      applicationCategory: "DeveloperApplication",
+      url: origin,
+    },
+  };
+}
+
+/** Blog index — helps crawlers discover all articles */
+export function blogIndexJsonLd(posts: { slug: string; title: string; description: string }[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: "Sanctum Runtime Blog",
+    description:
+      "Articles on runtime trust, AI agent approval, embodied AI, MCP security, agentic commerce, and compliance.",
+    url: absoluteUrl("/blog"),
+    mainEntity: {
+      "@type": "ItemList",
+      numberOfItems: posts.length,
+      itemListElement: posts.map((p, i) => ({
+        "@type": "ListItem",
+        position: i + 1,
+        url: absoluteUrl(`/blog/${p.slug}`),
+        name: p.title,
+        description: p.description,
+      })),
+    },
   };
 }
 
