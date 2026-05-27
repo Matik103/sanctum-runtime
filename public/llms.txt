@@ -16,7 +16,7 @@
 - robots.txt: https://www.sanctumruntime.com/robots.txt
 - Blog: https://www.sanctumruntime.com/blog
 
-## Blog (40 articles)
+## Blog (80 articles)
 
 - https://www.sanctumruntime.com/blog/runtime-trust-layer-for-ai-agents
 - https://www.sanctumruntime.com/blog/mcp-server-action-gate
@@ -58,6 +58,46 @@
 - https://www.sanctumruntime.com/blog/what-is-agentic-ai-risk-management
 - https://www.sanctumruntime.com/blog/best-practices-for-ai-agent-tool-calling
 - https://www.sanctumruntime.com/blog/how-to-design-ai-agent-policies-that-scale
+- https://www.sanctumruntime.com/blog/ai-agent-credit-card-safety-checklist
+- https://www.sanctumruntime.com/blog/agentic-commerce-fraud-prevention
+- https://www.sanctumruntime.com/blog/can-ai-agents-buy-online-safely
+- https://www.sanctumruntime.com/blog/autonomous-trading-agent-risk-controls
+- https://www.sanctumruntime.com/blog/ai-agent-spending-limits-and-wallet-segmentation
+- https://www.sanctumruntime.com/blog/shadow-ai-agents-and-unauthorized-purchases
+- https://www.sanctumruntime.com/blog/chargebacks-and-ai-agent-transactions
+- https://www.sanctumruntime.com/blog/ai-agent-payments-approval-workflows
+- https://www.sanctumruntime.com/blog/prompt-injection-in-shopping-agents
+- https://www.sanctumruntime.com/blog/mcp-payment-tools-security
+- https://www.sanctumruntime.com/blog/compute-scarcity-and-ai-agent-reliability
+- https://www.sanctumruntime.com/blog/gpu-scarcity-risk-for-safety-systems
+- https://www.sanctumruntime.com/blog/cost-pressure-causes-unsafe-agent-shortcuts
+- https://www.sanctumruntime.com/blog/degraded-mode-policies-during-infrastructure-outages
+- https://www.sanctumruntime.com/blog/embodied-ai-safety-near-humans
+- https://www.sanctumruntime.com/blog/robot-flood-road-failure-lessons
+- https://www.sanctumruntime.com/blog/delivery-robot-sidewalk-safety-policies
+- https://www.sanctumruntime.com/blog/physical-world-prompt-injection-robots
+- https://www.sanctumruntime.com/blog/healthcare-ai-agent-life-critical-decisions
+- https://www.sanctumruntime.com/blog/ai-triage-systems-human-override-patterns
+- https://www.sanctumruntime.com/blog/aviation-style-checklists-for-ai-operations
+- https://www.sanctumruntime.com/blog/ai-agent-skill-decay-and-operator-readiness
+- https://www.sanctumruntime.com/blog/timeout-should-not-mean-auto-approval
+- https://www.sanctumruntime.com/blog/dual-approval-for-high-risk-actions
+- https://www.sanctumruntime.com/blog/ai-agent-trust-framework-for-enterprises
+- https://www.sanctumruntime.com/blog/ai-agent-governance-for-finance-teams
+- https://www.sanctumruntime.com/blog/ai-agent-governance-for-healthcare-teams
+- https://www.sanctumruntime.com/blog/ai-agent-governance-for-industrial-automation
+- https://www.sanctumruntime.com/blog/what-happens-when-ai-agent-is-hacked
+- https://www.sanctumruntime.com/blog/can-ai-agents-have-legal-accountability
+- https://www.sanctumruntime.com/blog/building-customer-trust-in-agentic-products
+- https://www.sanctumruntime.com/blog/ai-agent-audit-trails-for-dispute-resolution
+- https://www.sanctumruntime.com/blog/safe-defaults-for-autonomous-ai
+- https://www.sanctumruntime.com/blog/red-teaming-agentic-commerce-scenarios
+- https://www.sanctumruntime.com/blog/preventing-consent-fatigue-in-approval-queues
+- https://www.sanctumruntime.com/blog/secure-agent-wallet-architecture
+- https://www.sanctumruntime.com/blog/map-agent-actions-to-business-risk
+- https://www.sanctumruntime.com/blog/ai-agent-stop-button-design
+- https://www.sanctumruntime.com/blog/trustworthy-robotics-rollout-checklist
+- https://www.sanctumruntime.com/blog/from-observability-to-runtime-enforcement
 
 ## Machine-readable pages
 
