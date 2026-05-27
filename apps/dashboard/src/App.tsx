@@ -17,6 +17,8 @@ import { useOfflineQueue } from './hooks/useOfflineQueue'
 
 const RuntimeActivity = lazy(() => import('./pages/RuntimeActivity').then((m) => ({ default: m.RuntimeActivity })))
 const ThreatMonitor = lazy(() => import('./pages/ThreatMonitor').then((m) => ({ default: m.ThreatMonitor })))
+const ShieldPage = lazy(() => import('./pages/Shield').then((m) => ({ default: m.Shield })))
+const ShieldRulesPage = lazy(() => import('./pages/ShieldRules').then((m) => ({ default: m.ShieldRules })))
 const Agents = lazy(() => import('./pages/Agents').then((m) => ({ default: m.Agents })))
 const Alerts = lazy(() => import('./pages/Alerts').then((m) => ({ default: m.Alerts })))
 const Policies = lazy(() => import('./pages/Policies').then((m) => ({ default: m.Policies })))
@@ -36,6 +38,8 @@ const PAGE_IDS: PageId[] = [
   'overview',
   'activity',
   'threats',
+  'shield',
+  'shield-rules',
   'alerts',
   'policies',
   'policy-history',
@@ -220,12 +224,15 @@ export function App() {
               pendingReviewCount={pendingReviewCount}
               onOpenReview={openNextPendingReview}
               orgId={orgId}
+              onPage={onPage}
             />
           </ErrorBoundary>
         )}
         <Suspense fallback={<div className="page-loading" role="status">Loading view…</div>}>
           {page === 'activity' && <ErrorBoundary page="Runtime Activity"><RuntimeActivity audit={audit} onSelect={onSelect} /></ErrorBoundary>}
           {page === 'threats' && <ErrorBoundary page="Threat Monitor"><ThreatMonitor audit={audit} onSelect={onSelect} /></ErrorBoundary>}
+          {page === 'shield' && <ErrorBoundary page="Sanctum Shield"><ShieldPage audit={audit} onPage={onPage} /></ErrorBoundary>}
+          {page === 'shield-rules' && <ErrorBoundary page="Shield Rules"><ShieldRulesPage /></ErrorBoundary>}
           {page === 'agents' && <ErrorBoundary page="Agents"><Agents onOpenDevices={() => onPage('devices')} /></ErrorBoundary>}
           {page === 'alerts' && <ErrorBoundary page="Alerts"><Alerts /></ErrorBoundary>}
           {page === 'policies' && (

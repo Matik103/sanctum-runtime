@@ -5,6 +5,7 @@ import { actionLabel, decisionLabel } from '../lib/labels'
 import { auditRecordHeadline } from '../lib/narrative'
 import { riskModelMetaLine } from '../lib/risk-label'
 import { sparkBars } from '../lib/spark'
+import { OctagonX, ShieldCheck } from 'lucide-react'
 
 type Props = {
   audit: ActionResult[]
@@ -16,6 +17,7 @@ type Props = {
   pendingReviewCount?: number
   onOpenReview?: () => void
   orgId?: string | null
+  onPage?: (page: string) => void
 }
 
 export function Overview({
@@ -28,10 +30,13 @@ export function Overview({
   pendingReviewCount = 0,
   onOpenReview,
   orgId,
+  onPage,
 }: Props) {
   const approved = audit.filter((e) => e.decision === 'APPROVED').length
   const blocked = audit.filter((e) => e.decision === 'BLOCKED').length
   const verify = audit.filter((e) => e.decision === 'REQUIRE_VERIFICATION').length
+  const shieldCritical = audit.filter((e) => e.shield?.level === 'critical').length
+  const shieldActive = audit.some((e) => e.shield && e.shield.level !== 'clear')
   // Threats = blocked + held for review + approved-but-anomalous (flagged actions)
   const blockedOrHeld = audit.filter(
     (e) => e.decision === 'BLOCKED' || e.decision === 'REQUIRE_VERIFICATION',
@@ -137,6 +142,30 @@ export function Overview({
             {audit.length ? Math.round((approved / audit.length) * 100) : 100}%
           </div>
           <div className="card-meta">{audit.length ? `${audit.length} actions evaluated` : 'No actions yet'}</div>
+        </div>
+
+        {/* Shield status card */}
+        <div
+          className={`card ${shieldCritical > 0 ? 'glow-danger' : ''}`}
+          style={{ cursor: onPage ? 'pointer' : undefined }}
+          onClick={() => onPage?.('shield')}
+          role={onPage ? 'button' : undefined}
+          tabIndex={onPage ? 0 : undefined}
+          onKeyDown={(e) => { if (onPage && (e.key === 'Enter' || e.key === ' ')) onPage('shield') }}
+          title="Open Sanctum Shield"
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+            {shieldCritical > 0
+              ? <OctagonX size={16} color="var(--danger)" />
+              : <ShieldCheck size={16} color="var(--success, #10b981)" />}
+            <div className="card-label" style={{ margin: 0 }}>Shield</div>
+          </div>
+          <div className="card-value" style={{ fontSize: '1.1rem', color: shieldCritical > 0 ? 'var(--danger)' : undefined }}>
+            {shieldCritical > 0 ? `${shieldCritical} critical` : shieldActive ? 'Active' : 'Clear'}
+          </div>
+          <div className="card-meta">
+            {shieldActive ? 'Behavioral anomalies detected' : 'No threat signals detected'}
+          </div>
         </div>
       </div>
 

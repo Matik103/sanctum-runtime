@@ -35,6 +35,7 @@ import { registerRuntimeWsRoutes } from './runtime-ws-routes.js'
 import { runtimeWsHub } from './runtime-ws-hub.js'
 import { registerAlertRoutes } from './alert-routes.js'
 import { registerPushRoutes, sendPushToUser } from './push-routes.js'
+import { registerShieldRoutes, loadShieldRules, evaluateShieldRules, logContainmentEvent } from './shield-routes.js'
 import { AlertStore } from './alert-store.js'
 import { sendVerificationEmail, verifyToken } from './verify-email.js'
 import { loadPoliciesFromSupabase, detectAnomalies, heuristicRiskFloor, verifyActionToken } from '@sanctum/runtime-engine'
@@ -472,6 +473,7 @@ if (supabaseAuth) {
   await registerDelegationRoutes(app, supabaseAuth)
   await registerAlertRoutes(app)
   await registerPushRoutes(app)
+  registerShieldRoutes(app)
   await registerAgentTokenRoutes(app, supabaseAuth)
 }
 
@@ -995,6 +997,52 @@ app.post('/v1/actions/verify', {
     } catch { /* non-fatal — fall through to normal verification */ }
   }
 
+  // Custom Shield rules: operator-defined action containment rules evaluated
+  // deterministically before the AI risk model.  A matching BLOCK rule short-
+  // circuits verification immediately; REQUIRE_VERIFICATION is noted but the
+  // full risk assessment still runs so its reasoning is included.
+  let customRuleDecision: 'BLOCK' | 'REQUIRE_VERIFICATION' | 'LOG_ONLY' | null = null
+  let customRuleLabel: string | null = null
+  if (orgId && supabaseAuth) {
+    try {
+      const shieldRules = await loadShieldRules(orgId)
+      if (shieldRules.length > 0) {
+        const match = evaluateShieldRules(shieldRules, body.action, body.context ?? {})
+        if (match) {
+          customRuleDecision = match.response
+          customRuleLabel = match.matchedRule.label
+          if (match.response === 'BLOCK') {
+            const blockId = crypto.randomUUID()
+            void logContainmentEvent({
+              orgId,
+              actor: body.actor,
+              action: body.action,
+              shieldLevel: 'critical',
+              shieldScore: 100,
+              signals: [`custom_rule:${match.matchedRule.id}`],
+              automaticResponse: ['block_action'],
+            })
+            return reply.status(200).send({
+              id: blockId,
+              correlationId: body.correlationId ?? crypto.randomUUID(),
+              actor: body.actor,
+              action: body.action,
+              context: request.context,
+              decision: 'BLOCKED',
+              risk: 'high',
+              reasoning: `Blocked by Shield rule: "${customRuleLabel}". This action is not permitted under the operator's security policy.`,
+              policyPath: 'shield:custom_rule',
+              anomalyFlags: ['custom_shield_rule'],
+              modelInvoked: false,
+              modelConfidence: null,
+              timestamp: new Date().toISOString(),
+            })
+          }
+        }
+      }
+    } catch { /* non-fatal — custom rules are best-effort */ }
+  }
+
   let result = await traced(
     'action.verify',
     { actor: body.actor, action: body.action, org_id: orgId ?? '' },
@@ -1093,6 +1141,30 @@ app.post('/v1/actions/verify', {
     } catch {
       temporaryPermissionRevocation = 'failed'
     }
+  }
+
+  // Upgrade decision if a custom REQUIRE_VERIFICATION rule matched and the AI didn't block
+  if (customRuleDecision === 'REQUIRE_VERIFICATION' && result.decision === 'APPROVED' && customRuleLabel) {
+    const resolved = await runtime.resolveAuditEntry(result.id, {
+      decision: 'REQUIRE_VERIFICATION',
+      resolvedBy: 'shield:custom_rule',
+      note: `Held by Shield rule: "${customRuleLabel}"`,
+    }).catch(() => null)
+    if (resolved) result = resolved
+  }
+
+  // Log containment events for high/critical Shield findings
+  if (orgId && result.shield && (result.shield.level === 'high' || result.shield.level === 'critical')) {
+    void logContainmentEvent({
+      orgId,
+      auditId: result.id,
+      actor: body.actor,
+      action: body.action,
+      shieldLevel: result.shield.level,
+      shieldScore: result.shield.score,
+      signals: result.shield.signals.map((s) => s.id),
+      automaticResponse: result.shield.automaticResponse,
+    })
   }
 
   // Persist alert + notify on anomaly spikes and Shield containment.
