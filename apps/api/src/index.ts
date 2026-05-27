@@ -933,7 +933,7 @@ app.post('/v1/actions/verify', {
     const adminClient = createSupabaseAdmin(supabaseAuth)
     const revocationCheck = adminClient
       .from('agent_registrations')
-      .select('id')
+      .select('id,token_iat_min')
       .eq('id', agentClaims.id)
       .is('revoked_at', null)
       .maybeSingle()
@@ -942,6 +942,20 @@ app.post('/v1/actions/verify', {
       new Promise<{ data: null }>((res) => setTimeout(() => res({ data: null }), 2000)),
     ])
     if (!reg) return reply.status(401).send({ error: 'agent_token_revoked' })
+    if (reg.token_iat_min != null) {
+      // Extract iat from the token payload
+      const rest = agentTokenRaw.slice('sk_agent_'.length)
+      const dotIdx = rest.lastIndexOf('.')
+      const payloadStr = rest.slice(0, dotIdx)
+      try {
+        const tokenData = JSON.parse(Buffer.from(payloadStr, 'base64url').toString()) as { iat?: number }
+        if (!tokenData.iat || tokenData.iat < reg.token_iat_min) {
+          return reply.status(401).send({ error: 'agent_token_rotated' })
+        }
+      } catch {
+        return reply.status(401).send({ error: 'invalid_agent_token' })
+      }
+    }
     void adminClient
       .from('agent_registrations')
       .update({ last_seen_at: new Date().toISOString() })
