@@ -5,6 +5,7 @@ import {
   Bot,
   CheckSquare,
   CreditCard,
+  Eye,
   FileText,
   GitBranch,
   History,
@@ -13,6 +14,7 @@ import {
   Monitor,
   MoreHorizontal,
   Package,
+  Plug,
   Radio,
   ScrollText,
   Settings,
@@ -48,6 +50,8 @@ export type PageId =
   | 'audit'
   | 'billing'
   | 'settings'
+  | 'connect'
+  | 'live-feed'
 
 /** Reduced nav for mobile companion (installed PWA / narrow viewport). */
 export const COMPANION_NAV_IDS: PageId[] = [
@@ -78,6 +82,8 @@ const NAV: { id: PageId; label: string; shortLabel: string; icon: typeof LayoutD
   { id: 'audit',            label: 'Audit Logs',        shortLabel: 'Audit',     icon: ScrollText },
   { id: 'billing',          label: 'Billing',           shortLabel: 'Billing',   icon: CreditCard },
   { id: 'settings',         label: 'Settings',          shortLabel: 'Settings',  icon: Settings },
+  { id: 'connect',          label: 'Connect Agent',     shortLabel: 'Connect',   icon: Plug },
+  { id: 'live-feed',        label: 'Live Feed',         shortLabel: 'Live',      icon: Eye },
 ]
 
 type Props = {

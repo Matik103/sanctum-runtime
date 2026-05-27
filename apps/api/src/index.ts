@@ -39,6 +39,7 @@ import { runtimeWsHub } from './runtime-ws-hub.js'
 import { registerAlertRoutes } from './alert-routes.js'
 import { registerPushRoutes, sendPushToUser } from './push-routes.js'
 import { registerShieldRoutes, loadShieldRules, evaluateShieldRules, logContainmentEvent } from './shield-routes.js'
+import { registerProxyRoutes } from './proxy-routes.js'
 import { AlertStore } from './alert-store.js'
 import { sendVerificationEmail, verifyToken } from './verify-email.js'
 import { loadPoliciesFromSupabase, detectAnomalies, heuristicRiskFloor, verifyActionToken, maybeSyncAuditToSupabase } from '@sanctum/runtime-engine'
@@ -479,6 +480,7 @@ if (supabaseAuth) {
   await registerPushRoutes(app)
   registerShieldRoutes(app)
   await registerAgentTokenRoutes(app, supabaseAuth)
+  registerProxyRoutes(app)
 }
 
 const stopWebhookWorker = supabaseAuth ? startWebhookWorker(supabaseAuth) : null
