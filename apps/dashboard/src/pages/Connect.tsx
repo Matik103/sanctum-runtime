@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Copy, Check } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Copy, Check, Save } from 'lucide-react'
 import { apiBaseUrl } from '../lib/api-url'
 import type { PageId } from '../layout/Sidebar'
 
@@ -14,15 +14,35 @@ const PLATFORMS = [
 
 type Platform = typeof PLATFORMS[number]['id']
 
+const LS_TOKEN_KEY = 'sanctum_connect_token'
+
 type Props = { onPage: (p: PageId) => void }
 
 export function Connect({ onPage }: Props) {
   const [platform, setPlatform] = useState<Platform>('openai')
   const [token, setToken] = useState('')
+  const [platformApiKey, setPlatformApiKey] = useState('')
+  const [saved, setSaved] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
+
+  // Restore previously saved agent token
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(LS_TOKEN_KEY)
+      if (stored) setToken(stored)
+    } catch { /* ignore */ }
+  }, [])
+
+  function saveCredentials() {
+    try { localStorage.setItem(LS_TOKEN_KEY, token) } catch { /* ignore */ }
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
 
   const proxyUrl = `${apiBaseUrl}/v1/proxy/${platform}`
   const defaultModel = PLATFORMS.find((p) => p.id === platform)?.defaultModel ?? 'gpt-4o-mini'
+  const apiKeyPlaceholder = `<your-${platform}-api-key>`
+  const displayApiKey = platformApiKey.trim() || apiKeyPlaceholder
 
   function copy(text: string, key: string) {
     void navigator.clipboard.writeText(text).then(() => {
@@ -35,7 +55,7 @@ export function Connect({ onPage }: Props) {
 
 client = OpenAI(
     base_url="${proxyUrl}",
-    api_key="<your-${platform}-api-key>",
+    api_key="${displayApiKey}",
     default_headers={
         "X-Sanctum-Agent-Token": "${token || '<your-agent-token>'}",
     },
@@ -51,7 +71,7 @@ print(response.choices[0].message.content)`
 
 const client = new OpenAI({
   baseURL: '${proxyUrl}',
-  apiKey: '<your-${platform}-api-key>',
+  apiKey: '${displayApiKey}',
   defaultHeaders: {
     'X-Sanctum-Agent-Token': '${token || '<your-agent-token>'}',
   },
@@ -62,6 +82,19 @@ const response = await client.chat.completions.create({
   messages: [{ role: 'user', content: 'Hello' }],
 })
 console.log(response.choices[0].message.content)`
+
+  const inputBase: React.CSSProperties = {
+    width: '100%',
+    boxSizing: 'border-box',
+    fontFamily: 'monospace',
+    fontSize: '0.82rem',
+    background: 'rgba(255,255,255,0.04)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: 8,
+    padding: '0.55rem 0.75rem',
+    color: 'var(--text)',
+    outline: 'none',
+  }
 
   return (
     <>
@@ -102,31 +135,63 @@ console.log(response.choices[0].message.content)`
           ))}
         </div>
         <p style={{ margin: '0.65rem 0 0', fontSize: '0.75rem', color: 'var(--muted)' }}>
-          Anthropic / Claude uses a proprietary protocol and is not compatible with the OpenAI-compatible proxy.
-          Use the Sanctum SDK instead.
+          Anthropic / Claude uses a proprietary protocol — not compatible with this proxy. Use the Sanctum SDK instead.
         </p>
       </div>
 
-      {/* Step 2 — Token */}
+      {/* Step 2 — Credentials */}
       <div className="card" style={{ marginBottom: '1.25rem' }}>
-        <p style={{ margin: '0 0 0.75rem', fontWeight: 600, fontSize: '0.9rem' }}>
-          <span className="step-badge">2</span> Paste your agent token
+        <p style={{ margin: '0 0 1rem', fontWeight: 600, fontSize: '0.9rem' }}>
+          <span className="step-badge">2</span> Your credentials
         </p>
-        <p style={{ margin: '0 0 0.65rem', fontSize: '0.8rem', color: 'var(--muted)' }}>
+
+        {/* Agent token */}
+        <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 500 }}>
+          Agent token
+        </label>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.4rem' }}>
+          <input
+            type="text"
+            placeholder="sk_agent_..."
+            value={token}
+            autoComplete="off"
+            spellCheck={false}
+            onChange={(e) => { setToken(e.target.value); setSaved(false) }}
+            style={inputBase}
+          />
+          <button
+            type="button"
+            className="response-btn"
+            onClick={saveCredentials}
+            disabled={!token.trim()}
+            style={{ whiteSpace: 'nowrap', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 5, opacity: token.trim() ? 1 : 0.45 }}
+          >
+            {saved ? <><Check size={13} /> Saved</> : <><Save size={13} /> Save</>}
+          </button>
+        </div>
+        <p style={{ margin: '0 0 1.1rem', fontSize: '0.75rem', color: 'var(--muted)' }}>
           Get this from{' '}
           <button type="button" onClick={() => onPage('agents')} style={{ background: 'none', border: 'none', color: 'var(--accent, #6366f1)', cursor: 'pointer', padding: 0, fontSize: 'inherit', textDecoration: 'underline' }}>
             Agents
           </button>
-          {' '}→ Register agent → copy token.
+          {' '}→ Register agent → copy token. Saved locally in your browser.
         </p>
+
+        {/* Platform API key */}
+        <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 500 }}>
+          {PLATFORMS.find((p) => p.id === platform)?.label} API key <span style={{ fontWeight: 400, opacity: 0.6 }}>(optional — fills code snippets)</span>
+        </label>
         <input
-          className="input"
-          type="text"
-          placeholder="sk_agent_..."
-          value={token}
-          onChange={(e) => setToken(e.target.value)}
-          style={{ width: '100%', boxSizing: 'border-box', fontFamily: 'monospace', fontSize: '0.82rem' }}
+          type="password"
+          placeholder={apiKeyPlaceholder}
+          value={platformApiKey}
+          autoComplete="off"
+          onChange={(e) => setPlatformApiKey(e.target.value)}
+          style={inputBase}
         />
+        <p style={{ margin: '0.4rem 0 0', fontSize: '0.75rem', color: 'var(--muted)' }}>
+          Never sent to Sanctum — used only to populate the code examples below.
+        </p>
       </div>
 
       {/* Step 3 — Proxy URL */}
@@ -142,12 +207,9 @@ console.log(response.choices[0].message.content)`
             {copied === 'url' ? <><Check size={13} /> Copied</> : <><Copy size={13} /> Copy</>}
           </button>
         </div>
-        <p style={{ margin: '0.6rem 0 0', fontSize: '0.75rem', color: 'var(--muted)' }}>
-          Your platform API key goes in the <code>Authorization: Bearer …</code> header as usual — Sanctum never stores it.
-        </p>
       </div>
 
-      {/* Code snippets */}
+      {/* Step 4 — Code snippets */}
       <div className="card" style={{ marginBottom: '1.25rem' }}>
         <p style={{ margin: '0 0 0.75rem', fontWeight: 600, fontSize: '0.9rem' }}>
           <span className="step-badge">4</span> Update your code
