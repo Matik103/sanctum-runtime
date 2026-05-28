@@ -1,90 +1,108 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Copy, Check, Save, Trash2 } from 'lucide-react'
 import { apiBaseUrl } from '../lib/api-url'
 import { getConnectSettings, saveConnectSettings, clearConnectSettings } from '../lib/connect-settings'
 import type { PageId } from '../layout/Sidebar'
 
 const PLATFORMS = [
-  { id: 'openai',   label: 'OpenAI',    flag: '🟢', defaultModel: 'gpt-4o-mini' },
-  { id: 'deepseek', label: 'DeepSeek',  flag: '🔵', defaultModel: 'deepseek-chat' },
-  { id: 'qwen',     label: 'Qwen',      flag: '🟠', defaultModel: 'qwen-plus' },
-  { id: 'kimi',     label: 'Kimi',      flag: '🌙', defaultModel: 'moonshot-v1-8k' },
-  { id: 'doubao',   label: 'Doubao',    flag: '🟣', defaultModel: 'doubao-pro-4k' },
-  { id: 'gemini',   label: 'Gemini',    flag: '⭐', defaultModel: 'gemini-1.5-flash' },
+  { id: 'openai',   label: 'OpenAI',    flag: '🟢', defaultModel: 'gpt-4o-mini',       placeholder: 'sk-...' },
+  { id: 'deepseek', label: 'DeepSeek',  flag: '🔵', defaultModel: 'deepseek-chat',      placeholder: 'sk-...' },
+  { id: 'qwen',     label: 'Qwen',      flag: '🟠', defaultModel: 'qwen-plus',          placeholder: 'sk-...' },
+  { id: 'kimi',     label: 'Kimi',      flag: '🌙', defaultModel: 'moonshot-v1-8k',     placeholder: 'sk-...' },
+  { id: 'doubao',   label: 'Doubao',    flag: '🟣', defaultModel: 'doubao-pro-4k',      placeholder: 'sk-...' },
+  { id: 'gemini',   label: 'Gemini',    flag: '⭐', defaultModel: 'gemini-1.5-flash',   placeholder: 'AIza...' },
 ] as const
 
 type Platform = typeof PLATFORMS[number]['id']
+
+const PLATFORM_IDS = PLATFORMS.map((p) => p.id) as Platform[]
+
+type ApiKeys = Record<Platform, string>
+
+function emptyKeys(): ApiKeys {
+  return Object.fromEntries(PLATFORM_IDS.map((id) => [id, ''])) as ApiKeys
+}
 
 type Props = { orgId: string | null; onPage: (p: PageId) => void }
 
 export function Connect({ orgId, onPage }: Props) {
   const [platform, setPlatform] = useState<Platform>('openai')
   const [token, setToken] = useState('')
-  const [platformApiKey, setPlatformApiKey] = useState('')
+  const [apiKeys, setApiKeys] = useState<ApiKeys>(emptyKeys)
 
   const [loadingSettings, setLoadingSettings] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveError, setSaveError] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Load saved credentials whenever org or platform changes
+  // Load saved credentials for all platforms at once on mount / org change
   const loadSettings = useCallback(async () => {
     if (!orgId) return
     setLoadingSettings(true)
     try {
-      const s = await getConnectSettings(orgId, platform)
-      if (s?.exists) {
-        setToken(s.agent_token ?? '')
-        setPlatformApiKey(s.platform_api_key ?? '')
-        if (s.decryption_failed) {
-          setSaveError('Saved credentials could not be decrypted — please re-enter and save again.')
-        }
-      } else {
-        setToken('')
-        setPlatformApiKey('')
-      }
+      const results = await Promise.all(
+        PLATFORM_IDS.map((id) => getConnectSettings(orgId, id).catch(() => null))
+      )
+      const keys = emptyKeys()
+      let savedToken = ''
+      let hasDecryptionFailure = false
+      results.forEach((s, i) => {
+        if (!s?.exists) return
+        const id = PLATFORM_IDS[i]
+        if (s.agent_token && !savedToken) savedToken = s.agent_token
+        if (s.platform_api_key) keys[id] = s.platform_api_key
+        if (s.decryption_failed) hasDecryptionFailure = true
+      })
+      setToken(savedToken)
+      setApiKeys(keys)
+      if (hasDecryptionFailure) setSaveError('Some saved credentials could not be decrypted — please re-enter and save again.')
     } catch {
-      // unauthenticated or network error — start with empty fields
       setToken('')
-      setPlatformApiKey('')
+      setApiKeys(emptyKeys())
     } finally {
       setLoadingSettings(false)
     }
-  }, [orgId, platform])
+  }, [orgId])
 
   useEffect(() => { void loadSettings() }, [loadSettings])
 
   async function handleSave() {
     if (!orgId) return
-    setSaving(true)
+    if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+    setSaveStatus('saving')
     setSaveError(null)
     try {
-      await saveConnectSettings(orgId, platform, {
-        agent_token: token.trim() || null,
-        platform_api_key: platformApiKey.trim() || null,
-      })
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2500)
+      await Promise.all(
+        PLATFORM_IDS.map((id) =>
+          saveConnectSettings(orgId, id, {
+            agent_token: token.trim() || null,
+            platform_api_key: apiKeys[id].trim() || null,
+          })
+        )
+      )
+      setSaveStatus('saved')
+      savedTimerRef.current = setTimeout(() => setSaveStatus('idle'), 2500)
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : 'Failed to save')
-    } finally {
-      setSaving(false)
+      setSaveStatus('error')
     }
   }
 
-  async function handleClear() {
+  async function handleClearAll() {
     if (!orgId) return
     try {
-      await clearConnectSettings(orgId, platform)
+      await Promise.all(PLATFORM_IDS.map((id) => clearConnectSettings(orgId, id).catch(() => {})))
       setToken('')
-      setPlatformApiKey('')
+      setApiKeys(emptyKeys())
+      setSaveStatus('idle')
+      setSaveError(null)
     } catch { /* ignore */ }
   }
 
   const proxyUrl = `${apiBaseUrl}/v1/proxy/${platform}`
   const defaultModel = PLATFORMS.find((p) => p.id === platform)?.defaultModel ?? 'gpt-4o-mini'
-  const displayApiKey = platformApiKey.trim() || `<your-${platform}-api-key>`
+  const displayApiKey = apiKeys[platform].trim() || `<your-${platform}-api-key>`
 
   function copy(text: string, key: string) {
     void navigator.clipboard.writeText(text).then(() => {
@@ -125,20 +143,19 @@ const response = await client.chat.completions.create({
 })
 console.log(response.choices[0].message.content)`
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
+  const inputBase: React.CSSProperties = {
     boxSizing: 'border-box',
     fontFamily: 'monospace',
     fontSize: '0.82rem',
     background: 'rgba(255,255,255,0.04)',
     border: '1px solid rgba(255,255,255,0.1)',
     borderRadius: 8,
-    padding: '0.55rem 0.75rem',
+    padding: '0.5rem 0.75rem',
     color: 'var(--text)',
     outline: 'none',
   }
 
-  const hasCredentials = !!(token.trim() || platformApiKey.trim())
+  const hasAnyCredential = !!token.trim() || PLATFORM_IDS.some((id) => apiKeys[id].trim())
 
   return (
     <>
@@ -175,6 +192,9 @@ console.log(response.choices[0].message.content)`
               }}
             >
               {p.flag} {p.label}
+              {apiKeys[p.id].trim() && (
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--success)', display: 'inline-block', marginLeft: 2 }} />
+              )}
             </button>
           ))}
         </div>
@@ -189,20 +209,20 @@ console.log(response.choices[0].message.content)`
           <p style={{ margin: 0, fontWeight: 600, fontSize: '0.9rem' }}>
             <span className="step-badge">2</span> Your credentials
           </p>
-          {hasCredentials && (
+          {hasAnyCredential && (
             <button
               type="button"
-              onClick={() => void handleClear()}
+              onClick={() => void handleClearAll()}
               style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 4, padding: 0 }}
             >
-              <Trash2 size={12} /> Clear saved
+              <Trash2 size={12} /> Clear all
             </button>
           )}
         </div>
 
-        {/* Agent token */}
+        {/* Agent token — shared across all platforms */}
         <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 500 }}>
-          Agent token
+          Agent token <span style={{ fontWeight: 400, opacity: 0.6 }}>(shared across all platforms)</span>
         </label>
         <input
           type="text"
@@ -211,9 +231,9 @@ console.log(response.choices[0].message.content)`
           autoComplete="off"
           spellCheck={false}
           onChange={(e) => setToken(e.target.value)}
-          style={{ ...inputStyle, marginBottom: '0.35rem' }}
+          style={{ ...inputBase, width: '100%', marginBottom: '0.35rem' }}
         />
-        <p style={{ margin: '0 0 1rem', fontSize: '0.75rem', color: 'var(--muted)' }}>
+        <p style={{ margin: '0 0 1.25rem', fontSize: '0.75rem', color: 'var(--muted)' }}>
           Get this from{' '}
           <button type="button" onClick={() => onPage('agents')} style={{ background: 'none', border: 'none', color: 'var(--accent, #6366f1)', cursor: 'pointer', padding: 0, fontSize: 'inherit', textDecoration: 'underline' }}>
             Agents
@@ -221,22 +241,33 @@ console.log(response.choices[0].message.content)`
           {' '}→ Register agent → copy token.
         </p>
 
-        {/* Platform API key */}
-        <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 500 }}>
-          {PLATFORMS.find((p) => p.id === platform)?.label} API key{' '}
-          <span style={{ fontWeight: 400, opacity: 0.6 }}>(fills code snippets)</span>
-        </label>
-        <input
-          type="password"
-          placeholder={`Your ${platform} API key`}
-          value={platformApiKey}
-          autoComplete="off"
-          onChange={(e) => setPlatformApiKey(e.target.value)}
-          style={{ ...inputStyle, marginBottom: '0.35rem' }}
-        />
-        <p style={{ margin: '0 0 1rem', fontSize: '0.75rem', color: 'var(--muted)' }}>
-          Stored encrypted in Sanctum — never shared, never logged.
+        {/* Platform API keys — all platforms at once */}
+        <p style={{ margin: '0 0 0.6rem', fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 500 }}>
+          Platform API keys <span style={{ fontWeight: 400, opacity: 0.6 }}>(fill code snippets — stored encrypted)</span>
         </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.5rem 0.75rem', alignItems: 'center', marginBottom: '1rem' }}>
+          {PLATFORMS.map((p) => (
+            <>
+              <label
+                key={`lbl-${p.id}`}
+                htmlFor={`key-${p.id}`}
+                style={{ fontSize: '0.8rem', fontWeight: 500, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 5 }}
+              >
+                {p.flag} {p.label}
+              </label>
+              <input
+                key={`inp-${p.id}`}
+                id={`key-${p.id}`}
+                type="password"
+                placeholder={p.placeholder}
+                value={apiKeys[p.id]}
+                autoComplete="off"
+                onChange={(e) => setApiKeys((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                style={inputBase}
+              />
+            </>
+          ))}
+        </div>
 
         {/* Save row */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -244,14 +275,14 @@ console.log(response.choices[0].message.content)`
             type="button"
             className="response-btn"
             onClick={() => void handleSave()}
-            disabled={saving || !orgId}
-            style={{ fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 6, opacity: (!orgId || saving) ? 0.5 : 1 }}
+            disabled={saveStatus === 'saving' || !orgId}
+            style={{ fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 6, opacity: (!orgId || saveStatus === 'saving') ? 0.5 : 1 }}
           >
-            {saved
+            {saveStatus === 'saved'
               ? <><Check size={13} /> Saved</>
-              : saving
+              : saveStatus === 'saving'
                 ? 'Saving…'
-                : <><Save size={13} /> Save credentials</>}
+                : <><Save size={13} /> Save all</>}
           </button>
           {saveError && <span style={{ fontSize: '0.75rem', color: 'var(--error, #ef4444)' }}>{saveError}</span>}
           {!orgId && <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>Sign in to save credentials</span>}
