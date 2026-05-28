@@ -24,13 +24,15 @@ let _channelSeq = 0
 export function useLiveFeed(orgId: string | null) {
   const [events, setEvents] = useState<ProxyEvent[]>([])
   const [connected, setConnected] = useState(false)
-  // Start loading=true so the empty-state never flashes before the first fetch completes
+  // null = Realtime not yet available; true = connected; false = timed out / error
+  const [realtimeStatus, setRealtimeStatus] = useState<'connecting' | 'connected' | 'unavailable'>('connecting')
+  // Keep loading=true while orgId is null so we never flash the empty state before org resolves
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState<string | null>(null)
 
   // Initial load — scoped to the current org, aborted if orgId changes
   useEffect(() => {
-    if (!orgId) { setLoading(false); return }
+    if (!orgId) return   // stay loading=true until orgId is known
     setLoading(true)
     setFetchError(null)
 
@@ -62,12 +64,24 @@ export function useLiveFeed(orgId: string | null) {
     return () => controller.abort()
   }, [orgId])
 
-  // Realtime subscription — unique channel name per mount prevents StrictMode double-fire
+  // Realtime subscription — unique channel name per mount prevents StrictMode double-fire.
+  // Falls back gracefully if Supabase Realtime is unavailable (migration not run, etc.)
   const seqRef = useRef(0)
   useEffect(() => {
     if (!orgId) return
     const sb = getSupabase()
-    if (!sb) return
+    if (!sb) {
+      setRealtimeStatus('unavailable')
+      return
+    }
+
+    setRealtimeStatus('connecting')
+
+    // Time out after 10 s — if Supabase Realtime is not enabled (migration 051
+    // not run), the subscription never fires SUBSCRIBED.
+    const connectTimeout = setTimeout(() => {
+      setRealtimeStatus('unavailable')
+    }, 10_000)
 
     seqRef.current = ++_channelSeq
     const channel = sb
@@ -87,14 +101,27 @@ export function useLiveFeed(orgId: string | null) {
         },
       )
       .subscribe((status) => {
-        setConnected(status === 'SUBSCRIBED')
+        if (status === 'SUBSCRIBED') {
+          clearTimeout(connectTimeout)
+          setRealtimeStatus('connected')
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          clearTimeout(connectTimeout)
+          setRealtimeStatus('unavailable')
+        }
       })
 
     return () => {
+      clearTimeout(connectTimeout)
       void sb.removeChannel(channel)
-      setConnected(false)
+      setRealtimeStatus('connecting')
     }
   }, [orgId])
 
-  return { events, connected, loading, fetchError }
+  return {
+    events,
+    connected: realtimeStatus === 'connected',
+    realtimeStatus,
+    loading,
+    fetchError,
+  }
 }

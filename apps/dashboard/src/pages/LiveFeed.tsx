@@ -1,4 +1,4 @@
-import { Wifi, WifiOff } from 'lucide-react'
+import { Wifi, WifiOff, AlertCircle } from 'lucide-react'
 import { useLiveFeed } from '../hooks/useLiveFeed'
 import { timeAgo } from '../lib/format'
 import type { PageId } from '../layout/Sidebar'
@@ -6,7 +6,13 @@ import type { PageId } from '../layout/Sidebar'
 type Props = { orgId: string | null; onPage: (p: PageId) => void }
 
 export function LiveFeed({ orgId, onPage }: Props) {
-  const { events, connected, loading, fetchError } = useLiveFeed(orgId)
+  const { events, connected, realtimeStatus, loading, fetchError } = useLiveFeed(orgId)
+
+  const statusIndicator = connected
+    ? { icon: <Wifi size={14} />, label: 'Live', color: 'var(--success)' }
+    : realtimeStatus === 'unavailable'
+      ? { icon: <AlertCircle size={14} />, label: 'Real-time unavailable', color: '#f59e0b' }
+      : { icon: <WifiOff size={14} />, label: 'Connecting…', color: 'var(--muted)' }
 
   return (
     <>
@@ -15,11 +21,19 @@ export function LiveFeed({ orgId, onPage }: Props) {
           <h1>Live Feed</h1>
           <p>Real-time tool calls from agents routed through the Sanctum proxy.</p>
         </div>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '0.8rem', color: connected ? 'var(--success)' : 'var(--muted)' }}>
-          {connected ? <Wifi size={14} /> : <WifiOff size={14} />}
-          {connected ? 'Live' : 'Connecting…'}
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '0.8rem', color: statusIndicator.color }}>
+          {statusIndicator.icon} {statusIndicator.label}
         </span>
       </header>
+
+      {realtimeStatus === 'unavailable' && (
+        <div className="alert alert--warn" role="alert" style={{ marginBottom: '1rem' }}>
+          <div className="alert__body">
+            Real-time updates are unavailable — run the Supabase migration to enable them.
+            New events will appear on page refresh.
+          </div>
+        </div>
+      )}
 
       {loading && <p style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>Loading…</p>}
 

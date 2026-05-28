@@ -4,12 +4,12 @@ import { apiBaseUrl } from '../lib/api-url'
 import type { PageId } from '../layout/Sidebar'
 
 const PLATFORMS = [
-  { id: 'openai',   label: 'OpenAI',    flag: '🟢' },
-  { id: 'deepseek', label: 'DeepSeek',  flag: '🔵' },
-  { id: 'qwen',     label: 'Qwen',      flag: '🟠' },
-  { id: 'kimi',     label: 'Kimi',      flag: '🌙' },
-  { id: 'doubao',   label: 'Doubao',    flag: '🟣' },
-  { id: 'gemini',   label: 'Gemini',    flag: '⭐' },
+  { id: 'openai',   label: 'OpenAI',    flag: '🟢', defaultModel: 'gpt-4o-mini' },
+  { id: 'deepseek', label: 'DeepSeek',  flag: '🔵', defaultModel: 'deepseek-chat' },
+  { id: 'qwen',     label: 'Qwen',      flag: '🟠', defaultModel: 'qwen-plus' },
+  { id: 'kimi',     label: 'Kimi',      flag: '🌙', defaultModel: 'moonshot-v1-8k' },
+  { id: 'doubao',   label: 'Doubao',    flag: '🟣', defaultModel: 'doubao-pro-4k' },
+  { id: 'gemini',   label: 'Gemini',    flag: '⭐', defaultModel: 'gemini-1.5-flash' },
 ] as const
 
 type Platform = typeof PLATFORMS[number]['id']
@@ -22,6 +22,7 @@ export function Connect({ onPage }: Props) {
   const [copied, setCopied] = useState<string | null>(null)
 
   const proxyUrl = `${apiBaseUrl}/v1/proxy/${platform}`
+  const defaultModel = PLATFORMS.find((p) => p.id === platform)?.defaultModel ?? 'gpt-4o-mini'
 
   function copy(text: string, key: string) {
     void navigator.clipboard.writeText(text).then(() => {
@@ -41,7 +42,7 @@ client = OpenAI(
 )
 
 response = client.chat.completions.create(
-    model="gpt-4o-mini",
+    model="${defaultModel}",
     messages=[{"role": "user", "content": "Hello"}],
 )
 print(response.choices[0].message.content)`
@@ -57,7 +58,7 @@ const client = new OpenAI({
 })
 
 const response = await client.chat.completions.create({
-  model: 'gpt-4o-mini',
+  model: '${defaultModel}',
   messages: [{ role: 'user', content: 'Hello' }],
 })
 console.log(response.choices[0].message.content)`
@@ -100,6 +101,10 @@ console.log(response.choices[0].message.content)`
             </button>
           ))}
         </div>
+        <p style={{ margin: '0.65rem 0 0', fontSize: '0.75rem', color: 'var(--muted)' }}>
+          Anthropic / Claude uses a proprietary protocol and is not compatible with the OpenAI-compatible proxy.
+          Use the Sanctum SDK instead.
+        </p>
       </div>
 
       {/* Step 2 — Token */}

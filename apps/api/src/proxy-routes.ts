@@ -14,7 +14,7 @@
  * The platform API key travels in the Authorization header and is NEVER stored.
  */
 
-import type { FastifyInstance, FastifyRequest } from 'fastify'
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { logger } from './logger.js'
 import { createSupabaseAdmin, getSupabaseAuthConfig } from './auth.js'
 import { verifyAgentToken } from './agent-tokens.js'
@@ -31,8 +31,21 @@ export const PROXY_PLATFORMS: Record<string, string> = {
   gemini:   'https://generativelanguage.googleapis.com/v1beta/openai',
 }
 
-const UPSTREAM_TIMEOUT_MS = 25_000
+// Tunable via UPSTREAM_TIMEOUT_MS env var (default 25 s).
+// Keep below Render's 30 s hard timeout so we can send a clean error before it fires.
+const UPSTREAM_TIMEOUT_MS = Number(process.env.UPSTREAM_TIMEOUT_MS ?? 25_000)
+
+// Per-route body limit: 4 MB covers 128K-token GPT-4 context windows.
+// Fastify's global 512 KB default is too small for long agent conversations.
+const PROXY_BODY_LIMIT = 4 * 1024 * 1024
+
 const SKIP_HEADERS = new Set(['transfer-encoding', 'connection', 'keep-alive', 'content-length'])
+
+// Headers safe to forward from the inbound request to the upstream platform.
+// Allows x-goog-api-key (Gemini), x-ms-* (Azure OpenAI), and other platform
+// custom headers while blocking internal/infrastructure headers.
+const SAFE_FORWARD_PREFIXES = ['x-goog-', 'x-ms-', 'x-amz-'] as const
+const EXPLICIT_FORWARD = new Set(['x-request-id', 'x-stainless-lang', 'x-stainless-runtime'])
 
 type ToolCall = { id: string; name: string; arguments: string }
 
@@ -166,11 +179,15 @@ export function registerProxyRoutes(app: FastifyInstance): void {
   })
 
   // All HTTP methods for /v1/proxy/:platform/<upstream-path>
-  // Note: Fastify auto-registers HEAD for every GET, so 'head' is not listed explicitly.
-  for (const method of ['get', 'post', 'put', 'patch', 'delete'] as const) {
-    app[method]<{ Params: { platform: string; '*': string } }>(
-      '/v1/proxy/:platform/*',
-      async (req: FastifyRequest<{ Params: { platform: string; '*': string } }>, reply) => {
+  // app.route() with a method array is the type-safe way to share one handler across methods.
+  // Per-route overrides: larger body for LLM context windows; no request timeout for SSE streams.
+  app.route<{ Params: { platform: string; '*': string } }>({
+    method: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    url: '/v1/proxy/:platform/*',
+    bodyLimit: PROXY_BODY_LIMIT,
+    // requestTimeout is server-level only in Fastify; SSE streams bypass the lifecycle
+    // via reply.raw, and the upstream AbortController (UPSTREAM_TIMEOUT_MS) is the bound.
+    handler: async (req: FastifyRequest<{ Params: { platform: string; '*': string } }>, reply: FastifyReply) => {
         const { platform } = req.params
         const subpath = req.params['*'] ?? ''
 
@@ -194,6 +211,18 @@ export function registerProxyRoutes(app: FastifyInstance): void {
           })
         }
         const { orgId, id: agentId } = claims
+
+        // ── Revocation check (2 s timeout — must not block the stream) ───────
+        if (cfg) {
+          const admin = createSupabaseAdmin(cfg)
+          const { data: reg } = await Promise.race([
+            admin.from('agent_registrations').select('id').eq('id', agentId).is('revoked_at', null).maybeSingle(),
+            new Promise<{ data: null }>((res) => setTimeout(() => res({ data: null }), 2000)),
+          ])
+          if (!reg) {
+            return reply.code(401).send({ error: 'agent_token_revoked' })
+          }
+        }
 
         // ── Platform routing ─────────────────────────────────────────────────
         const baseUrl = PROXY_PLATFORMS[platform]
@@ -223,6 +252,18 @@ export function registerProxyRoutes(app: FastifyInstance): void {
           'content-type': (req.headers['content-type'] as string | undefined) ?? 'application/json',
           authorization: platformAuth,
           'user-agent': 'sanctum-proxy/1.0',
+        }
+
+        // Forward safe platform-specific headers (Gemini x-goog-api-key, Azure x-ms-*, etc.)
+        for (const [k, v] of Object.entries(req.headers)) {
+          if (!v || k in forwardHeaders) continue
+          const lk = k.toLowerCase()
+          if (
+            EXPLICIT_FORWARD.has(lk) ||
+            SAFE_FORWARD_PREFIXES.some((p) => lk.startsWith(p))
+          ) {
+            forwardHeaders[lk] = Array.isArray(v) ? v[0] : v
+          }
         }
 
         // Abort upstream fetch if it exceeds the timeout (leaves 5s buffer before Fastify kills the request)
@@ -351,13 +392,18 @@ export function registerProxyRoutes(app: FastifyInstance): void {
         }
 
         // ── Non-streaming response ───────────────────────────────────────────
-        const body = await upstream.json().catch(() => null)
+        const body = await upstream.json().catch(async () => {
+          // Platform returned a non-JSON response (HTML error page, Cloudflare block, etc.)
+          // Wrap the raw text so the caller receives the real status and a readable message
+          // rather than a 204 No Content from reply.send(null).
+          const text = await upstream.text().catch(() => '')
+          return { error: 'upstream_non_json_response', status: upstream.status, raw: text.slice(0, 500) }
+        })
         logToolCalls(toolsFromBody(body))
 
         void reply.code(upstream.status)
         for (const [k, v] of Object.entries(replyHeaders)) void reply.header(k, v)
         return reply.send(body)
-      },
-    )
-  }
+    },
+  })
 }

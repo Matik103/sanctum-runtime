@@ -67,6 +67,12 @@ services:
         value: https://console.sanctumruntime.com
       - key: SANCTUM_PUBLIC_API_URL
         value: https://api.sanctumruntime.com
+      # Proxy tuning — override if your upstream platforms are consistently slower
+      - key: UPSTREAM_TIMEOUT_MS
+        value: "25000"
+      # Agent token rate limit (req/min per token); anonymous IP limit stays at 200
+      - key: SANCTUM_RATE_LIMIT_AGENT_TOKEN
+        value: "600"
 
   - type: web
     name: sanctum-dashboard

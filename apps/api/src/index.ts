@@ -178,11 +178,18 @@ await app.register(helmet, {
 // Now: presence of an API key promotes the request to its own per-key bucket
 // (keyed by SHA-256 hash, not the raw key) with a much higher budget,
 // isolating each customer from each other and from anonymous traffic.
-const ANON_RATE_LIMIT    = Number(process.env.SANCTUM_RATE_LIMIT_ANON    ?? 200)
-const API_KEY_RATE_LIMIT = Number(process.env.SANCTUM_RATE_LIMIT_API_KEY ?? 1000)
+const ANON_RATE_LIMIT        = Number(process.env.SANCTUM_RATE_LIMIT_ANON       ?? 200)
+const API_KEY_RATE_LIMIT     = Number(process.env.SANCTUM_RATE_LIMIT_API_KEY    ?? 1000)
+const AGENT_TOKEN_RATE_LIMIT = Number(process.env.SANCTUM_RATE_LIMIT_AGENT_TOKEN ?? 600)
 
 function requestApiKey(req: import('fastify').FastifyRequest): string | undefined {
   const raw = req.headers['x-sanctum-key']
+  const v = Array.isArray(raw) ? raw[0] : raw
+  return v?.trim() || undefined
+}
+
+function requestAgentToken(req: import('fastify').FastifyRequest): string | undefined {
+  const raw = req.headers['x-sanctum-agent-token'] ?? req.headers['x-agent-token']
   const v = Array.isArray(raw) ? raw[0] : raw
   return v?.trim() || undefined
 }
@@ -195,13 +202,21 @@ function rateLimitKey(req: import('fastify').FastifyRequest): string {
     // bucket separation and renders accidental disclosure useless.
     return 'k:' + createHash('sha256').update(key).digest('hex').slice(0, 16)
   }
+  const agentToken = requestAgentToken(req)
+  if (agentToken) {
+    // Proxy requests: bucket per agent token so one compromised token cannot
+    // exhaust quota for other agents sharing the same egress IP.
+    return 'a:' + createHash('sha256').update(agentToken).digest('hex').slice(0, 16)
+  }
   const fwd = req.headers['x-forwarded-for']
   const ip = Array.isArray(fwd) ? fwd[0] : (typeof fwd === 'string' ? fwd.split(',')[0].trim() : req.ip)
   return 'ip:' + (ip ?? req.ip)
 }
 
 function rateLimitMax(req: import('fastify').FastifyRequest): number {
-  return requestApiKey(req) ? API_KEY_RATE_LIMIT : ANON_RATE_LIMIT
+  if (requestApiKey(req)) return API_KEY_RATE_LIMIT
+  if (requestAgentToken(req)) return AGENT_TOKEN_RATE_LIMIT
+  return ANON_RATE_LIMIT
 }
 
 await app.register(rateLimit, {
@@ -465,8 +480,11 @@ if (supabaseAuth) {
   await registerAlertRoutes(app)
   await registerPushRoutes(app)
   await registerAgentTokenRoutes(app, supabaseAuth)
-  registerProxyRoutes(app)
 }
+
+// Proxy routes work with or without Supabase — tool call logging is skipped
+// when Supabase is not configured, but forwarding always works.
+registerProxyRoutes(app)
 
 const stopWebhookWorker = supabaseAuth ? startWebhookWorker(supabaseAuth) : null
 
