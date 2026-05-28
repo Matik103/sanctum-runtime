@@ -2222,3 +2222,10 @@ tr.key-row--pending td {
   border-top: 1px solid var(--border);
   padding-top: 0.5rem;
 }
+
+/* Connect Agent two-zone grid — collapses to single column on narrow screens */
+@media (max-width: 860px) {
+  .connect-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
