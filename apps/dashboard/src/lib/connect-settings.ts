@@ -5,6 +5,7 @@ export type ConnectSettings = {
   exists: boolean
   agent_token: string | null
   platform_api_key: string | null
+  decryption_failed?: boolean
   updated_at: string | null
 }
 

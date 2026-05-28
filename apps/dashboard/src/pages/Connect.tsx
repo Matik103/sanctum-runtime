@@ -37,6 +37,9 @@ export function Connect({ orgId, onPage }: Props) {
       if (s?.exists) {
         setToken(s.agent_token ?? '')
         setPlatformApiKey(s.platform_api_key ?? '')
+        if (s.decryption_failed) {
+          setSaveError('Saved credentials could not be decrypted — please re-enter and save again.')
+        }
       } else {
         setToken('')
         setPlatformApiKey('')

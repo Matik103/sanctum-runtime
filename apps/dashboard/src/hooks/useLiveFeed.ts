@@ -113,7 +113,9 @@ export function useLiveFeed(orgId: string | null) {
     return () => {
       clearTimeout(connectTimeout)
       void sb.removeChannel(channel)
-      setRealtimeStatus('connecting')
+      // No status reset on unmount — the new subscription's .subscribe() callback
+      // sets status correctly, and resetting here causes a spurious "Connecting…"
+      // flash on re-mount (visible in StrictMode).
     }
   }, [orgId])
 

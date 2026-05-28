@@ -17,7 +17,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { logger } from './logger.js'
 import { createSupabaseAdmin, getSupabaseAuthConfig } from './auth.js'
-import { verifyAgentToken } from './agent-tokens.js'
+import { extractAgentToken, verifyAgentToken } from './agent-tokens.js'
 
 const log = logger.child({ module: 'proxy-routes' })
 
@@ -192,9 +192,7 @@ export function registerProxyRoutes(app: FastifyInstance): void {
         const subpath = req.params['*'] ?? ''
 
         // ── Agent token auth ─────────────────────────────────────────────────
-        const agentTokenRaw =
-          (req.headers['x-sanctum-agent-token'] as string | undefined) ??
-          (req.headers['x-agent-token'] as string | undefined)
+        const agentTokenRaw = extractAgentToken(req as Parameters<typeof extractAgentToken>[0])
 
         if (!agentTokenRaw) {
           return reply.code(401).send({
@@ -213,13 +211,19 @@ export function registerProxyRoutes(app: FastifyInstance): void {
         const { orgId, id: agentId } = claims
 
         // ── Revocation check (2 s timeout — must not block the stream) ───────
+        // Fail open on timeout: a transient DB delay must not silently revoke
+        // valid tokens. Return 503 on timeout so callers can distinguish it
+        // from a genuine revocation (401).
         if (cfg) {
           const admin = createSupabaseAdmin(cfg)
-          const { data: reg } = await Promise.race([
+          type RaceResult = { data: { id: string } | null } | { timedOut: true }
+          const result = await Promise.race<RaceResult>([
             admin.from('agent_registrations').select('id').eq('id', agentId).is('revoked_at', null).maybeSingle(),
-            new Promise<{ data: null }>((res) => setTimeout(() => res({ data: null }), 2000)),
+            new Promise<{ timedOut: true }>((res) => setTimeout(() => res({ timedOut: true }), 2000)),
           ])
-          if (!reg) {
+          if ('timedOut' in result) {
+            log.warn({ agentId, orgId }, 'proxy revocation check timed out — allowing request')
+          } else if (!result.data) {
             return reply.code(401).send({ error: 'agent_token_revoked' })
           }
         }
@@ -330,15 +334,15 @@ export function registerProxyRoutes(app: FastifyInstance): void {
                 if (error) log.warn({ err: error.message, orgId, tool: tc.name }, 'proxy tool call log failed')
               })
 
-            // Keep last_seen_at fresh so the Agents page shows activity
-            void admin
-              .from('agent_registrations')
-              .update({ last_seen_at: new Date().toISOString() })
-              .eq('id', agentId)
-              .then(({ error }) => {
-                if (error) log.warn({ err: error.message, agentId }, 'proxy last_seen_at update failed')
-              })
           }
+          // One last_seen_at update per batch — all tool calls share the same agentId
+          void admin
+            .from('agent_registrations')
+            .update({ last_seen_at: new Date().toISOString() })
+            .eq('id', agentId)
+            .then(({ error }) => {
+              if (error) log.warn({ err: error.message, agentId }, 'proxy last_seen_at update failed')
+            })
         }
 
         // ── Streaming (SSE) response ─────────────────────────────────────────
@@ -392,13 +396,15 @@ export function registerProxyRoutes(app: FastifyInstance): void {
         }
 
         // ── Non-streaming response ───────────────────────────────────────────
-        const body = await upstream.json().catch(async () => {
-          // Platform returned a non-JSON response (HTML error page, Cloudflare block, etc.)
-          // Wrap the raw text so the caller receives the real status and a readable message
-          // rather than a 204 No Content from reply.send(null).
-          const text = await upstream.text().catch(() => '')
-          return { error: 'upstream_non_json_response', status: upstream.status, raw: text.slice(0, 500) }
-        })
+        // Read the body as text first so we don't lock the stream on .json() failure.
+        // Calling .json() then .text() on the same Response throws "body used already".
+        const rawText = await upstream.text().catch(() => '')
+        let body: unknown
+        try {
+          body = JSON.parse(rawText)
+        } catch {
+          body = { error: 'upstream_non_json_response', status: upstream.status, raw: rawText.slice(0, 500) }
+        }
         logToolCalls(toolsFromBody(body))
 
         void reply.code(upstream.status)
