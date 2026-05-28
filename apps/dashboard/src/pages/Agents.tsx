@@ -252,10 +252,6 @@ export function Agents({ onPage }: Props) {
         {error && <p style={{ color: '#fca5a5', fontSize: '0.82rem', margin: 0 }}>{error}</p>}
         <p style={{ margin: '0.5rem 0 0', fontSize: '0.78rem', color: 'var(--muted)', lineHeight: 1.5 }}>
           Each registered agent gets a signed token. The API extracts the org ID from the token — the agent never self-reports it, eliminating org impersonation risk.
-          Already have an agent app (OpenAI, DeepSeek, Qwen, etc.)?{' '}
-          <button type="button" onClick={() => onPage('connect')} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--accent, #6366f1)', fontSize: 'inherit', cursor: 'pointer', textDecoration: 'underline' }}>
-            Connect it without installing anything →
-          </button>
         </p>
       </div>
 
