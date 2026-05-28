@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Copy, Check, Save, RefreshCw } from 'lucide-react'
+import { Copy, Check, Save, RefreshCw, AlertTriangle } from 'lucide-react'
 import { apiBaseUrl } from '../lib/api-url'
 import { getConnectSettings, saveConnectSettings, clearConnectSettings } from '../lib/connect-settings'
 import { sanitizeInput } from '../lib/sanitize'
@@ -62,23 +62,34 @@ export function Connect({ orgId, onPage }: Props) {
 
   useEffect(() => { void loadSettings() }, [loadSettings])
 
+  const tokenClean = sanitizeInput(token)
+  const tokenInvalid = tokenClean.length > 0 && !tokenClean.startsWith('sk_agent_')
+
   async function saveToken() {
     if (!orgId) return
+    if (tokenInvalid) { setSaveError('Agent token must start with sk_agent_ — get one from the Agents page.'); return }
     if (tokenTimerRef.current) clearTimeout(tokenTimerRef.current)
     setTokenSaveStatus('saving')
     setSaveError(null)
-    const clean = sanitizeInput(token)
     try {
       await Promise.all(
-        PLATFORM_IDS.map((id) => saveConnectSettings(orgId, id, { agent_token: clean || null }))
+        PLATFORM_IDS.map((id) => saveConnectSettings(orgId, id, { agent_token: tokenClean || null }))
       )
-      setToken(clean)
+      setToken(tokenClean)
       setTokenSaveStatus('saved')
       tokenTimerRef.current = setTimeout(() => setTokenSaveStatus('idle'), 2500)
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : 'Failed to save token')
       setTokenSaveStatus('error')
     }
+  }
+
+  async function clearToken() {
+    if (!orgId) return
+    await Promise.all(PLATFORM_IDS.map((id) => saveConnectSettings(orgId, id, { agent_token: null }).catch(() => {}))).catch(() => {})
+    setToken('')
+    setTokenSaveStatus('idle')
+    setSaveError(null)
   }
 
   async function savePlatformKey() {
@@ -111,7 +122,8 @@ export function Connect({ orgId, onPage }: Props) {
   const active = PLATFORMS.find((p) => p.id === platform)!
   const proxyUrl = `${apiBaseUrl}/v1/proxy/${platform}`
   const displayKey   = sanitizeInput(apiKeys[platform]) || `<your-${platform}-api-key>`
-  const displayToken = sanitizeInput(token) || '<your-agent-token>'
+  // Only embed the token in the snippet if it looks valid — prevents leaking garbage values
+  const displayToken = (!tokenInvalid && tokenClean) ? tokenClean : '<your-agent-token>'
 
   function copy(text: string, key: string) {
     void navigator.clipboard.writeText(text).then(() => {
@@ -197,21 +209,35 @@ console.log(response.choices[0].message.content)`
               value={token}
               autoComplete="off"
               spellCheck={false}
-              onChange={(e) => { setToken(e.target.value); setTokenSaveStatus('idle') }}
-              style={field}
+              onChange={(e) => { setToken(e.target.value); setTokenSaveStatus('idle'); setSaveError(null) }}
+              style={{ ...field, borderColor: tokenInvalid ? 'var(--error, #ef4444)' : 'rgba(255,255,255,0.1)' }}
             />
+            {tokenInvalid && (
+              <p style={{ margin: '0.3rem 0 0', fontSize: '0.72rem', color: 'var(--error, #ef4444)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <AlertTriangle size={11} /> This doesn't look like an agent token — it should start with <code style={{ fontSize: '0.72rem' }}>sk_agent_</code>
+              </p>
+            )}
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', paddingBottom: 1 }}>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', paddingBottom: tokenInvalid ? 22 : 1 }}>
             <button
               type="button" className="response-btn"
               onClick={() => void saveToken()}
-              disabled={tokenSaveStatus === 'saving' || !orgId}
-              style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 5, opacity: (!orgId || tokenSaveStatus === 'saving') ? 0.5 : 1, whiteSpace: 'nowrap' }}
+              disabled={tokenSaveStatus === 'saving' || !orgId || tokenInvalid}
+              style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 5, opacity: (!orgId || tokenSaveStatus === 'saving' || tokenInvalid) ? 0.5 : 1, whiteSpace: 'nowrap' }}
             >
               {tokenSaveStatus === 'saving' ? 'Saving…'
                 : tokenSaveStatus === 'saved' ? <><Check size={13} /> Saved</>
                 : <><Save size={13} /> Save token</>}
             </button>
+            {token.trim() && (
+              <button
+                type="button"
+                onClick={() => void clearToken()}
+                style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 3, padding: 0, whiteSpace: 'nowrap' }}
+              >
+                <RefreshCw size={11} /> Clear
+              </button>
+            )}
             <button
               type="button" onClick={() => onPage('agents')}
               style={{ background: 'none', border: 'none', color: 'var(--accent, #6366f1)', cursor: 'pointer', fontSize: '0.75rem', padding: 0, whiteSpace: 'nowrap' }}
