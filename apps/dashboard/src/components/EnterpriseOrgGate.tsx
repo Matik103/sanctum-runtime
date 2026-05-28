@@ -31,11 +31,13 @@ export function EnterpriseOrgGate({ children }: Props) {
       return
     }
 
+    // Capture stable values so the async closure doesn't close over a stale user reference
+    const currentUser = user
     let cancelled = false
     void (async () => {
       try {
         const state = await Promise.race([
-          completeEnterpriseSignIn(sb, user),
+          completeEnterpriseSignIn(sb, currentUser),
           new Promise<never>((_, reject) => {
             window.setTimeout(() => reject(new Error('workspace_bootstrap_timeout')), 12_000)
           }),
@@ -43,7 +45,7 @@ export function EnterpriseOrgGate({ children }: Props) {
         if (cancelled) return
         setPortalType(state.portalType)
         setOrgCount(state.orgs.length)
-        setEmail(user.email ?? null)
+        setEmail(currentUser.email ?? null)
       } catch {
         if (!cancelled) {
           setCheckError('Workspace access could not be verified. Check your connection and retry.')
@@ -56,7 +58,11 @@ export function EnterpriseOrgGate({ children }: Props) {
     return () => {
       cancelled = true
     }
-  }, [user, retryAttempt])
+    // Depend on user.id only — token refreshes create a new user object reference
+    // but the user hasn't changed; re-running the workspace check would flash a
+    // full-page spinner on every navigation that triggers a token refresh.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, retryAttempt])
 
   if (checking) {
     return (
