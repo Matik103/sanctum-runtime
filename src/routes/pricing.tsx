@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { DiscoverPageLayout } from "@/components/DiscoverPageLayout";
+import { trackCta } from "@/lib/analytics";
 import { pageSeo, webPageJsonLd } from "@/lib/seo";
 import { consoleUrl } from "@/lib/site-links";
 
@@ -92,13 +93,37 @@ function PricingPage() {
         <h2>Subscribe</h2>
         <p>
           Sign in to the{" "}
-          <a href={consoleUrl} className="text-primary hover:underline">
+          <a
+            href={consoleUrl}
+            className="text-primary hover:underline"
+            onClick={() => trackCta({ location: "pricing", cta: "subscribe_console", destination: "console" })}
+          >
             cloud console
           </a>{" "}
           to upgrade, view usage, and manage billing. See also our{" "}
           <Link to="/billing/">Billing policy</Link> and{" "}
           <Link to="/refund/">Refund and Dispute Policy</Link>.
         </p>
+      </section>
+
+      <section>
+        <h2>Common buying questions</h2>
+        <ul>
+          <li><strong>Can we start without a sales call?</strong> Yes. Start on Developer, connect an agent, and run one verified action.</li>
+          <li><strong>What changes when we upgrade?</strong> Higher runtime/action limits, team workflows, and stronger governance controls.</li>
+          <li><strong>Do we need to migrate code between plans?</strong> No. Keep the same runtime integration and scale limits in console.</li>
+          <li><strong>Can we self-host first?</strong> Yes. The runtime is open-core (MIT), and teams add cloud console as operations mature.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Who each plan is for</h2>
+        <ul>
+          <li><strong>Developer</strong> — solo builders, pilots, and proof-of-value projects.</li>
+          <li><strong>Operator</strong> — production teams that need consistent approval and audit flow.</li>
+          <li><strong>Team</strong> — orgs with multiple runtimes, compliance reporting, and policy ownership.</li>
+          <li><strong>Enterprise</strong> — regulated/large orgs needing contractual controls and custom scale.</li>
+        </ul>
       </section>
 
       <script

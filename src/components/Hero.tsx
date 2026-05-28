@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
+import { trackCta } from "@/lib/analytics";
 import { consoleUrl, enterpriseAccessUrl, quickstartPath } from "@/lib/site-links";
 import { ArrowRight, BookOpen, ShieldCheck } from "lucide-react";
 
@@ -30,19 +31,36 @@ export function Hero() {
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
             <Button asChild size="lg" className="bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90 h-12 px-6">
-              <a href={consoleUrl}>
+              <a
+                href={consoleUrl}
+                onClick={() =>
+                  trackCta({ location: "hero", cta: "start_with_runtime", destination: "console" })
+                }
+              >
                 Start with Runtime
                 <ArrowRight className="ml-1 h-4 w-4" />
               </a>
             </Button>
             <Button asChild size="lg" variant="outline" className="glass h-12 px-6 hover:bg-surface">
-              <Link to={quickstartPath}>
+              <Link
+                to={quickstartPath}
+                onClick={() =>
+                  trackCta({ location: "hero", cta: "quick_start_docs", destination: "docs" })
+                }
+              >
                 <BookOpen className="mr-2 h-4 w-4" />
                 Quick Start
               </Link>
             </Button>
             <Button asChild size="lg" variant="ghost" className="h-12 px-4 text-muted-foreground hover:text-foreground">
-              <a href={enterpriseAccessUrl}>Enterprise</a>
+              <a
+                href={enterpriseAccessUrl}
+                onClick={() =>
+                  trackCta({ location: "hero", cta: "enterprise", destination: "enterprise" })
+                }
+              >
+                Enterprise
+              </a>
             </Button>
           </div>
 

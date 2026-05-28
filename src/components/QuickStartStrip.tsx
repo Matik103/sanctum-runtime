@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { trackCta } from "@/lib/analytics";
 import { consoleUrl, docsPath } from "@/lib/site-links";
 
 const steps = [
@@ -23,11 +24,23 @@ export function QuickStartStrip() {
             ))}
           </ol>
           <p className="mt-5 text-sm">
-            <a href={consoleUrl} className="text-primary hover:underline">
+            <a
+              href={consoleUrl}
+              className="text-primary hover:underline"
+              onClick={() =>
+                trackCta({ location: "quick_start_strip", cta: "open_console", destination: "console" })
+              }
+            >
               Open console
             </a>
             {" · "}
-            <Link to={docsPath} className="text-primary hover:underline">
+            <Link
+              to={docsPath}
+              className="text-primary hover:underline"
+              onClick={() =>
+                trackCta({ location: "quick_start_strip", cta: "read_docs", destination: "docs" })
+              }
+            >
               Read quickstart docs
             </Link>
           </p>

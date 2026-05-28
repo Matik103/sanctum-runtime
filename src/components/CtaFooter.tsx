@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { SiteFooter } from "@/components/SiteFooter";
+import { trackCta } from "@/lib/analytics";
 import { consoleUrl, enterpriseAccessUrl } from "@/lib/site-links";
 import { ArrowRight } from "lucide-react";
 
@@ -31,18 +32,37 @@ export function CtaFooter() {
               size="lg"
               className="bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90 h-12 px-8"
             >
-              <a href={consoleUrl}>
+              <a
+                href={consoleUrl}
+                onClick={() =>
+                  trackCta({ location: "cta_footer", cta: "start_with_runtime", destination: "console" })
+                }
+              >
                 Start with Runtime
                 <ArrowRight className="ml-1 h-4 w-4" />
               </a>
             </Button>
             {enterpriseIsInternal ? (
               <Button asChild size="lg" variant="outline" className="glass h-12 px-8">
-                <Link to={enterpriseAccessUrl}>Enterprise</Link>
+                <Link
+                  to={enterpriseAccessUrl}
+                  onClick={() =>
+                    trackCta({ location: "cta_footer", cta: "enterprise", destination: "enterprise" })
+                  }
+                >
+                  Enterprise
+                </Link>
               </Button>
             ) : (
               <Button asChild size="lg" variant="outline" className="glass h-12 px-8">
-                <a href={enterpriseAccessUrl}>Enterprise</a>
+                <a
+                  href={enterpriseAccessUrl}
+                  onClick={() =>
+                    trackCta({ location: "cta_footer", cta: "enterprise", destination: "enterprise" })
+                  }
+                >
+                  Enterprise
+                </a>
               </Button>
             )}
           </div>
