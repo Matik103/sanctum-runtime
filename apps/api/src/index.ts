@@ -25,6 +25,7 @@ import { registerComplianceRoutes } from './compliance.js'
 import { registerPolicyVersionRoutes } from './policy-versions.js'
 import { registerDelegationRoutes } from './delegation.js'
 import { startWebhookWorker } from './webhook-queue.js'
+import { registerProxyRoutes } from './proxy-routes.js'
 import { startEmailQueueWorker } from './email-queue-worker.js'
 import { riskModelBreaker } from './circuit-breaker.js'
 import { traced } from './telemetry.js'
@@ -157,7 +158,7 @@ await app.register(cors, {
     cb(null, isAllowedCorsOrigin(origin))
   },
   methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Sanctum-Key', 'X-Request-Id'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Sanctum-Key', 'X-Request-Id', 'X-Sanctum-Agent-Token', 'X-Agent-Token'],
   exposedHeaders: ['X-Request-Id', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
 })
 
@@ -264,6 +265,8 @@ function isPublicPath(path: string): boolean {
     path === '/v1/client-errors'
   ) return true
   if (path.startsWith('/v1/sso/')) return true
+  if (path === '/v1/proxy/platforms') return true
+  if (path.startsWith('/v1/proxy/')) return true   // agent-token validated inside handler
   if (!isProduction()) {
     if (path === '/' || path === '/metrics' || path === '/v1/status') return true
   }
@@ -462,6 +465,7 @@ if (supabaseAuth) {
   await registerAlertRoutes(app)
   await registerPushRoutes(app)
   await registerAgentTokenRoutes(app, supabaseAuth)
+  registerProxyRoutes(app)
 }
 
 const stopWebhookWorker = supabaseAuth ? startWebhookWorker(supabaseAuth) : null

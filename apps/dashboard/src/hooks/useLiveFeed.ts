@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { getSupabase } from '../lib/supabase'
 import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
@@ -20,26 +20,42 @@ export type ProxyEvent = {
 export function useLiveFeed(orgId: string | null) {
   const [events, setEvents] = useState<ProxyEvent[]>([])
   const [connected, setConnected] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const channelRef = useRef<ReturnType<NonNullable<ReturnType<typeof getSupabase>>['channel']> | null>(null)
+  // Start loading=true so the empty-state never flashes before the first fetch completes
+  const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState<string | null>(null)
 
-  // Initial load
+  // Initial load — scoped to the current org, aborted if orgId changes
   useEffect(() => {
-    if (!orgId) return
+    if (!orgId) { setLoading(false); return }
     setLoading(true)
+    setFetchError(null)
+
+    const controller = new AbortController()
+
     getAccessToken()
       .then((token) => {
         const headers: Record<string, string> = {}
         if (token) headers['Authorization'] = `Bearer ${token}`
-        return fetch(`${apiBaseUrl}/v1/audit?limit=50`, { headers })
+        return fetch(`${apiBaseUrl}/v1/audit?limit=50&org_id=${encodeURIComponent(orgId)}`, {
+          headers,
+          signal: controller.signal,
+        })
       })
       .then(async (res) => {
-        if (!res.ok) return
+        if (!res.ok) {
+          setFetchError(res.status === 401 ? 'Session expired — please log in again.' : `Failed to load events (${res.status})`)
+          return
+        }
         const data = await res.json() as ProxyEvent[]
         setEvents(data.filter((e) => e.context?.proxy === true).slice(0, 50))
       })
-      .catch(() => {})
+      .catch((err) => {
+        if (err instanceof Error && err.name === 'AbortError') return
+        setFetchError('Failed to load events.')
+      })
       .finally(() => setLoading(false))
+
+    return () => controller.abort()
   }, [orgId])
 
   // Realtime subscription
@@ -68,13 +84,11 @@ export function useLiveFeed(orgId: string | null) {
         setConnected(status === 'SUBSCRIBED')
       })
 
-    channelRef.current = channel
-
     return () => {
       void sb.removeChannel(channel)
       setConnected(false)
     }
   }, [orgId])
 
-  return { events, connected, loading }
+  return { events, connected, loading, fetchError }
 }

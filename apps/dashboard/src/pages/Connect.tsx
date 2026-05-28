@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Copy, Check } from 'lucide-react'
+import { apiBaseUrl } from '../lib/api-url'
 import type { PageId } from '../layout/Sidebar'
 
 const PLATFORMS = [
@@ -13,16 +14,14 @@ const PLATFORMS = [
 
 type Platform = typeof PLATFORMS[number]['id']
 
-const API_BASE = 'https://api.sanctumruntime.com'
-
-type Props = { orgId: string | null; onPage: (p: PageId) => void }
+type Props = { onPage: (p: PageId) => void }
 
 export function Connect({ onPage }: Props) {
   const [platform, setPlatform] = useState<Platform>('openai')
   const [token, setToken] = useState('')
   const [copied, setCopied] = useState<string | null>(null)
 
-  const proxyUrl = `${API_BASE}/v1/proxy/${platform}`
+  const proxyUrl = `${apiBaseUrl}/v1/proxy/${platform}`
 
   function copy(text: string, key: string) {
     void navigator.clipboard.writeText(text).then(() => {
@@ -117,7 +116,7 @@ console.log(response.choices[0].message.content)`
         </p>
         <input
           className="input"
-          type="password"
+          type="text"
           placeholder="sk_agent_..."
           value={token}
           onChange={(e) => setToken(e.target.value)}

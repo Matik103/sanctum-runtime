@@ -6,7 +6,7 @@ import type { PageId } from '../layout/Sidebar'
 type Props = { orgId: string | null; onPage: (p: PageId) => void }
 
 export function LiveFeed({ orgId, onPage }: Props) {
-  const { events, connected, loading } = useLiveFeed(orgId)
+  const { events, connected, loading, fetchError } = useLiveFeed(orgId)
 
   return (
     <>
@@ -23,7 +23,13 @@ export function LiveFeed({ orgId, onPage }: Props) {
 
       {loading && <p style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>Loading…</p>}
 
-      {!loading && events.length === 0 && (
+      {fetchError && (
+        <div className="alert alert--error" role="alert" style={{ marginBottom: '1rem' }}>
+          <div className="alert__body">{fetchError}</div>
+        </div>
+      )}
+
+      {!loading && !fetchError && events.length === 0 && (
         <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--muted)' }}>
           <p style={{ fontSize: '1rem', marginBottom: '0.4rem' }}>No proxy events yet</p>
           <p style={{ fontSize: '0.82rem', marginBottom: '1.25rem' }}>

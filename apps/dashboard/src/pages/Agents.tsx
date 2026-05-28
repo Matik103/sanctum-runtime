@@ -91,7 +91,7 @@ export function Agents({ onPage }: Props) {
     fetchMyOrgs().then((orgs) => { if (orgs[0]) setOrgId(orgs[0].org_id) }).catch(() => {})
   }, [])
 
-  const load = useCallback(async (oid: string) => {
+  const load = useCallback(async (oid: string, withStats = false) => {
     if (!oid) return
     setLoading(true)
     try {
@@ -99,26 +99,28 @@ export function Agents({ onPage }: Props) {
       if (!res.ok) { setError(`Failed to load agents: ${res.status}`); return }
       const data = await res.json() as AgentReg[]
       setAgents(data)
-      const statsResults = await Promise.allSettled(
-        data.map(async (a) => {
-          const r = await fetch(`${apiBaseUrl}/v1/orgs/${oid}/agents/${a.id}/stats`, { headers: await authHeaders() })
-          if (!r.ok) return null
-          return { id: a.id, stats: await r.json() as AgentStats }
-        })
-      )
-      const map: Record<string, AgentStats> = {}
-      for (const result of statsResults) {
-        if (result.status === 'fulfilled' && result.value) {
-          map[result.value.id] = result.value.stats
+      if (withStats) {
+        const statsResults = await Promise.allSettled(
+          data.map(async (a) => {
+            const r = await fetch(`${apiBaseUrl}/v1/orgs/${oid}/agents/${a.id}/stats`, { headers: await authHeaders() })
+            if (!r.ok) return null
+            return { id: a.id, stats: await r.json() as AgentStats }
+          })
+        )
+        const map: Record<string, AgentStats> = {}
+        for (const result of statsResults) {
+          if (result.status === 'fulfilled' && result.value) {
+            map[result.value.id] = result.value.stats
+          }
         }
+        setStatsMap(map)
       }
-      setStatsMap(map)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load agents')
     } finally { setLoading(false) }
   }, [])
 
-  useEffect(() => { void load(orgId) }, [load, orgId])
+  useEffect(() => { void load(orgId, true) }, [load, orgId])
 
   const create = async () => {
     if (!name.trim() || !orgId) { setError('Enter an agent name'); return }
@@ -221,7 +223,7 @@ export function Agents({ onPage }: Props) {
           <h1>Agents</h1>
           <p>Register agents to get signed tokens — policies enforce automatically without self-reported org IDs</p>
         </div>
-        <button type="button" className="response-btn" onClick={() => void load(orgId)} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem' }}>
+        <button type="button" className="response-btn" onClick={() => void load(orgId, true)} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem' }}>
           <RefreshCw size={13} className={loading ? 'spin' : ''} /> Refresh
         </button>
       </header>
