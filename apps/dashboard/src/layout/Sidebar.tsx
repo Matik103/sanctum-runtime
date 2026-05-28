@@ -5,6 +5,7 @@ import {
   Bot,
   CheckSquare,
   CreditCard,
+  Eye,
   FileText,
   GitBranch,
   History,
@@ -13,6 +14,7 @@ import {
   Monitor,
   MoreHorizontal,
   Package,
+  Plug,
   Radio,
   ScrollText,
   Settings,
@@ -40,6 +42,8 @@ export type PageId =
   | 'governance'
   | 'compliance'
   | 'agents'
+  | 'connect'
+  | 'live-feed'
   | 'devices'
   | 'fleet'
   | 'marketplace'
@@ -68,6 +72,8 @@ const NAV: { id: PageId; label: string; shortLabel: string; icon: typeof LayoutD
   { id: 'governance',       label: 'Governance',        shortLabel: 'Govern',    icon: CheckSquare },
   { id: 'compliance',       label: 'Compliance',        shortLabel: 'Comply',    icon: FileText },
   { id: 'agents',           label: 'Agents',            shortLabel: 'Agents',    icon: Bot },
+  { id: 'connect',          label: 'Connect Agent',     shortLabel: 'Connect',   icon: Plug },
+  { id: 'live-feed',        label: 'Live Feed',         shortLabel: 'Live',      icon: Eye },
   { id: 'devices',          label: 'Devices',           shortLabel: 'Devices',   icon: Monitor },
   { id: 'fleet',            label: 'Runtime Fleet',     shortLabel: 'Fleet',     icon: Radio },
   { id: 'marketplace',      label: 'Marketplace',       shortLabel: 'Market',    icon: Package },

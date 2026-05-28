@@ -31,6 +31,8 @@ const Marketplace = lazy(() => import('./pages/Marketplace').then((m) => ({ defa
 const AuditLogs = lazy(() => import('./pages/AuditLogs').then((m) => ({ default: m.AuditLogs })))
 const Billing = lazy(() => import('./pages/Billing').then((m) => ({ default: m.Billing })))
 const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })))
+const Connect = lazy(() => import('./pages/Connect').then((m) => ({ default: m.Connect })))
+const LiveFeed = lazy(() => import('./pages/LiveFeed').then((m) => ({ default: m.LiveFeed })))
 
 const PAGE_IDS: PageId[] = [
   'overview',
@@ -44,6 +46,8 @@ const PAGE_IDS: PageId[] = [
   'governance',
   'compliance',
   'agents',
+  'connect',
+  'live-feed',
   'devices',
   'fleet',
   'marketplace',
@@ -226,7 +230,9 @@ export function App() {
         <Suspense fallback={<div className="page-loading" role="status">Loading view…</div>}>
           {page === 'activity' && <ErrorBoundary page="Runtime Activity"><RuntimeActivity audit={audit} onSelect={onSelect} /></ErrorBoundary>}
           {page === 'threats' && <ErrorBoundary page="Threat Monitor"><ThreatMonitor audit={audit} onSelect={onSelect} /></ErrorBoundary>}
-          {page === 'agents' && <ErrorBoundary page="Agents"><Agents /></ErrorBoundary>}
+          {page === 'agents' && <ErrorBoundary page="Agents"><Agents onPage={onPage} /></ErrorBoundary>}
+          {page === 'connect' && <ErrorBoundary page="Connect Agent"><Connect orgId={orgId} onPage={onPage} /></ErrorBoundary>}
+          {page === 'live-feed' && <ErrorBoundary page="Live Feed"><LiveFeed orgId={orgId} onPage={onPage} /></ErrorBoundary>}
           {page === 'alerts' && <ErrorBoundary page="Alerts"><Alerts /></ErrorBoundary>}
           {page === 'policies' && (
             <ErrorBoundary page="Policies">
