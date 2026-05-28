@@ -9,6 +9,7 @@ const origin = marketingUrl.replace(/\/$/, "");
 
 export const publicRoutes = [
   "/",
+  "/ai",
   "/blog",
   "/docs",
   "/what-is-sanctum-runtime",
@@ -33,6 +34,7 @@ export const sitemapPages: ReadonlyArray<{
   priority: number;
 }> = [
   { path: "/", changefreq: "weekly", priority: 1.0 },
+  { path: "/ai", changefreq: "weekly", priority: 0.92 },
   { path: "/blog", changefreq: "weekly", priority: 0.88 },
   { path: "/docs", changefreq: "weekly", priority: 0.9 },
   { path: "/enterprise", changefreq: "monthly", priority: 0.82 },
@@ -107,6 +109,14 @@ export function pageSeo({ title, description, path, ogImage, ogType = "website" 
       { title },
       { name: "description", content: description },
       { name: "author", content: "Sanctum" },
+      {
+        name: "robots",
+        content: "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
+      },
+      {
+        name: "googlebot",
+        content: "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
+      },
       { property: "og:site_name", content: siteName },
       { property: "og:title", content: title },
       { property: "og:description", content: description },
@@ -130,6 +140,28 @@ export const organizationJsonLd = {
   logo: absoluteUrl("/favicon-512.png"),
   description: defaultDescription,
   sameAs: [githubUrl],
+  knowsAbout: [
+    "AI agent security",
+    "Runtime authorization",
+    "Human-in-the-loop verification",
+    "MCP tool security",
+    "Embodied AI and robotics policy control",
+    "Auditability and compliance for autonomous systems",
+  ],
+};
+
+export const webSiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: siteName,
+  description: defaultDescription,
+  url: origin,
+  publisher: {
+    "@type": "Organization",
+    name: siteName,
+    url: origin,
+  },
+  inLanguage: "en-US",
 };
 
 export const softwareApplicationJsonLd = {

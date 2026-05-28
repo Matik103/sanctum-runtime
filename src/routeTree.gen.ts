@@ -25,6 +25,7 @@ import { Route as BillingRouteImport } from './routes/billing'
 import { Route as ArchitectureRouteImport } from './routes/architecture'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
+import { Route as AiIndexRouteImport } from './routes/ai.index'
 import { Route as BlogWorkflowAutomationAiGovernanceRouteImport } from './routes/blog/workflow-automation-ai-governance'
 import { Route as BlogSoc2NistAiRmfRuntimeEvidenceRouteImport } from './routes/blog/soc2-nist-ai-rmf-runtime-evidence'
 import { Route as BlogSmartHomeAiUnlockDoorPolicyRouteImport } from './routes/blog/smart-home-ai-unlock-door-policy'
@@ -122,6 +123,11 @@ const IndexRoute = IndexRouteImport.update({
 const BlogIndexRoute = BlogIndexRouteImport.update({
   id: '/blog/',
   path: '/blog/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AiIndexRoute = AiIndexRouteImport.update({
+  id: '/ai/',
+  path: '/ai/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BlogWorkflowAutomationAiGovernanceRoute =
@@ -264,6 +270,7 @@ export interface FileRoutesByFullPath {
   '/blog/smart-home-ai-unlock-door-policy': typeof BlogSmartHomeAiUnlockDoorPolicyRoute
   '/blog/soc2-nist-ai-rmf-runtime-evidence': typeof BlogSoc2NistAiRmfRuntimeEvidenceRoute
   '/blog/workflow-automation-ai-governance': typeof BlogWorkflowAutomationAiGovernanceRoute
+  '/ai/': typeof AiIndexRoute
   '/blog/': typeof BlogIndexRoute
 }
 export interface FileRoutesByTo {
@@ -300,6 +307,7 @@ export interface FileRoutesByTo {
   '/blog/smart-home-ai-unlock-door-policy': typeof BlogSmartHomeAiUnlockDoorPolicyRoute
   '/blog/soc2-nist-ai-rmf-runtime-evidence': typeof BlogSoc2NistAiRmfRuntimeEvidenceRoute
   '/blog/workflow-automation-ai-governance': typeof BlogWorkflowAutomationAiGovernanceRoute
+  '/ai': typeof AiIndexRoute
   '/blog': typeof BlogIndexRoute
 }
 export interface FileRoutesById {
@@ -337,6 +345,7 @@ export interface FileRoutesById {
   '/blog/smart-home-ai-unlock-door-policy': typeof BlogSmartHomeAiUnlockDoorPolicyRoute
   '/blog/soc2-nist-ai-rmf-runtime-evidence': typeof BlogSoc2NistAiRmfRuntimeEvidenceRoute
   '/blog/workflow-automation-ai-governance': typeof BlogWorkflowAutomationAiGovernanceRoute
+  '/ai/': typeof AiIndexRoute
   '/blog/': typeof BlogIndexRoute
 }
 export interface FileRouteTypes {
@@ -375,6 +384,7 @@ export interface FileRouteTypes {
     | '/blog/smart-home-ai-unlock-door-policy'
     | '/blog/soc2-nist-ai-rmf-runtime-evidence'
     | '/blog/workflow-automation-ai-governance'
+    | '/ai/'
     | '/blog/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -411,6 +421,7 @@ export interface FileRouteTypes {
     | '/blog/smart-home-ai-unlock-door-policy'
     | '/blog/soc2-nist-ai-rmf-runtime-evidence'
     | '/blog/workflow-automation-ai-governance'
+    | '/ai'
     | '/blog'
   id:
     | '__root__'
@@ -447,6 +458,7 @@ export interface FileRouteTypes {
     | '/blog/smart-home-ai-unlock-door-policy'
     | '/blog/soc2-nist-ai-rmf-runtime-evidence'
     | '/blog/workflow-automation-ai-governance'
+    | '/ai/'
     | '/blog/'
   fileRoutesById: FileRoutesById
 }
@@ -484,6 +496,7 @@ export interface RootRouteChildren {
   BlogSmartHomeAiUnlockDoorPolicyRoute: typeof BlogSmartHomeAiUnlockDoorPolicyRoute
   BlogSoc2NistAiRmfRuntimeEvidenceRoute: typeof BlogSoc2NistAiRmfRuntimeEvidenceRoute
   BlogWorkflowAutomationAiGovernanceRoute: typeof BlogWorkflowAutomationAiGovernanceRoute
+  AiIndexRoute: typeof AiIndexRoute
   BlogIndexRoute: typeof BlogIndexRoute
 }
 
@@ -599,6 +612,13 @@ declare module '@tanstack/react-router' {
       path: '/blog'
       fullPath: '/blog/'
       preLoaderRoute: typeof BlogIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai/': {
+      id: '/ai/'
+      path: '/ai'
+      fullPath: '/ai/'
+      preLoaderRoute: typeof AiIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/blog/workflow-automation-ai-governance': {
@@ -773,6 +793,7 @@ const rootRouteChildren: RootRouteChildren = {
   BlogSoc2NistAiRmfRuntimeEvidenceRoute: BlogSoc2NistAiRmfRuntimeEvidenceRoute,
   BlogWorkflowAutomationAiGovernanceRoute:
     BlogWorkflowAutomationAiGovernanceRoute,
+  AiIndexRoute: AiIndexRoute,
   BlogIndexRoute: BlogIndexRoute,
 }
 export const routeTree = rootRouteImport

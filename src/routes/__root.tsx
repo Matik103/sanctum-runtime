@@ -17,6 +17,7 @@ import {
   searchVerificationMeta,
   siteName,
   softwareApplicationJsonLd,
+  webSiteJsonLd,
 } from "@/lib/seo";
 
 function NotFoundComponent() {
@@ -91,7 +92,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       ...searchVerificationMeta(),
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
-      { name: "robots", content: "index, follow" },
     ],
     links: [
       { rel: "icon", href: "/favicon.png", type: "image/png", sizes: "32x32" },
@@ -108,6 +108,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         type: "text/plain",
         href: "/llms.txt",
         title: "LLM site index (llms.txt)",
+      },
+      {
+        rel: "alternate",
+        type: "text/markdown",
+        href: "/ai/blog-index.md",
+        title: "AI blog index (markdown)",
       },
       ...defaultHead.links,
     ],
@@ -131,6 +137,10 @@ function RootShell({ children }: { children: React.ReactNode }) {
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareApplicationJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(webSiteJsonLd) }}
         />
       </head>
       <body>
