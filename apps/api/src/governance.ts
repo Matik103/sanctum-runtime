@@ -353,9 +353,9 @@ const approvalStepSchema = z.object({
 })
 
 const workflowCreateSchema = z.object({
-  name: z.string().min(1).max(256),
-  description: z.string().max(1000).optional(),
-  action_pattern: z.string().min(1).max(256),
+  name: z.string().trim().min(1).max(256),
+  description: z.string().trim().max(1000).optional(),
+  action_pattern: z.string().trim().min(1).max(256),
   steps: z.array(approvalStepSchema).min(1),
   expiry_minutes: z.number().int().min(1).max(10080).default(60), // max 1 week
   escalation_after_minutes: z.number().int().min(1).optional(),
@@ -367,7 +367,7 @@ const workflowPatchSchema = workflowCreateSchema.partial()
 
 const decideSchema = z.object({
   decision: z.enum(['approve', 'reject']),
-  note: z.string().max(1000).optional(),
+  note: z.string().trim().max(1000).optional(),
 })
 
 // ─── Fastify routes ───────────────────────────────────────────────────────────

@@ -106,10 +106,10 @@ export async function registerConnectSettingsRoutes(
     if (!sanctumReq.sanctumUser) return reply.code(401).send({ error: 'unauthenticated' })
 
     const body = z.object({
-      org_id:           z.string().min(1).max(128),
-      platform:         z.string().min(1).max(64),
-      agent_token:      z.string().max(512).optional().nullable(),
-      platform_api_key: z.string().max(512).optional().nullable(),
+      org_id:           z.string().trim().min(1).max(128),
+      platform:         z.string().trim().min(1).max(64),
+      agent_token:      z.string().trim().max(512).optional().nullable(),
+      platform_api_key: z.string().trim().max(512).optional().nullable(),
     }).parse(req.body)
 
     const scope = await resolveOrgScope(sanctumReq, store)

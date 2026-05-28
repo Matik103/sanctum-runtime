@@ -132,8 +132,8 @@ export async function registerAgentTokenRoutes(
     if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
 
     const body = z.object({
-      name: z.string().min(1).max(128),
-      description: z.string().max(512).optional(),
+      name: z.string().trim().min(1).max(128),
+      description: z.string().trim().max(512).optional(),
     }).parse(req.body)
 
     // Insert registration row to get an ID

@@ -119,8 +119,8 @@ export async function registerAlertRoutes(app: FastifyInstance): Promise<void> {
 
     const body = z
       .object({
-        name: z.string().min(1).max(120),
-        event_type: z.string().min(1).max(64),
+        name: z.string().trim().min(1).max(120),
+        event_type: z.string().trim().min(1).max(64),
         threshold: z.number().int().min(1).max(1000).default(1),
         window_minutes: z.number().int().min(1).max(10080).default(60),
         severity: severityEnum,
@@ -143,7 +143,7 @@ export async function registerAlertRoutes(app: FastifyInstance): Promise<void> {
 
     const body = z
       .object({
-        name: z.string().min(1).max(120).optional(),
+        name: z.string().trim().min(1).max(120).optional(),
         threshold: z.number().int().min(1).max(1000).optional(),
         window_minutes: z.number().int().min(1).max(10080).optional(),
         severity: severityEnum.optional(),

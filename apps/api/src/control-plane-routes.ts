@@ -77,14 +77,14 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
   app.post('/v1/runtimes/connect', async (req, reply) => {
     const body = z
       .object({
-        runtimeName: z.string().min(1).max(120),
-        organizationId: z.string().min(1).max(64),
+        runtimeName: z.string().trim().min(1).max(120),
+        organizationId: z.string().trim().min(1).max(64),
         mode: modeSchema.optional().default('cloud'),
-        fingerprint: z.string().min(8).max(128).optional(),
+        fingerprint: z.string().trim().min(8).max(128).optional(),
         metadata: z.record(z.string(), z.unknown()).optional(),
         telemetry: z.record(z.string(), z.unknown()).optional(),
-        activeModel: z.string().optional(),
-        currentTask: z.string().optional(),
+        activeModel: z.string().trim().optional(),
+        currentTask: z.string().trim().optional(),
         attestation: attestationSchema,
         deploymentGroupId: z.string().uuid().optional(),
         region: z.string().max(64).optional(),
