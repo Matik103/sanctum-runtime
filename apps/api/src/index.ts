@@ -40,6 +40,7 @@ import { AlertStore } from './alert-store.js'
 import { sendVerificationEmail, verifyToken } from './verify-email.js'
 import { loadPoliciesFromSupabase, detectAnomalies, heuristicRiskFloor, verifyActionToken } from '@sanctum/runtime-engine'
 import { verifyAgentToken, extractAgentToken, registerAgentTokenRoutes } from './agent-tokens.js'
+import { registerConnectSettingsRoutes } from './connect-settings-routes.js'
 import { checkActiveGrant, createGrant } from './policy-grants.js'
 import {
   authenticateRequest,
@@ -480,6 +481,7 @@ if (supabaseAuth) {
   await registerAlertRoutes(app)
   await registerPushRoutes(app)
   await registerAgentTokenRoutes(app, supabaseAuth)
+  await registerConnectSettingsRoutes(app, supabaseAuth)
 }
 
 // Proxy routes work with or without Supabase — tool call logging is skipped

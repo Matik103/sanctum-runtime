@@ -231,7 +231,7 @@ export function App() {
           {page === 'activity' && <ErrorBoundary page="Runtime Activity"><RuntimeActivity audit={audit} onSelect={onSelect} /></ErrorBoundary>}
           {page === 'threats' && <ErrorBoundary page="Threat Monitor"><ThreatMonitor audit={audit} onSelect={onSelect} /></ErrorBoundary>}
           {page === 'agents' && <ErrorBoundary page="Agents"><Agents onPage={onPage} /></ErrorBoundary>}
-          {page === 'connect' && <ErrorBoundary page="Connect Agent"><Connect onPage={onPage} /></ErrorBoundary>}
+          {page === 'connect' && <ErrorBoundary page="Connect Agent"><Connect orgId={orgId} onPage={onPage} /></ErrorBoundary>}
           {page === 'live-feed' && <ErrorBoundary page="Live Feed"><LiveFeed orgId={orgId} onPage={onPage} /></ErrorBoundary>}
           {page === 'alerts' && <ErrorBoundary page="Alerts"><Alerts /></ErrorBoundary>}
           {page === 'policies' && (

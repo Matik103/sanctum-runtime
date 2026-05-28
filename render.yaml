@@ -31,6 +31,8 @@ services:
         generateValue: true
       - key: SANCTUM_API_KEY_PEPPER
         generateValue: true
+      - key: SANCTUM_SECRETS_KEY
+        generateValue: true
       - key: SANCTUM_ACTION_TOKEN_SECRET
         generateValue: true
       - key: SUPABASE_URL

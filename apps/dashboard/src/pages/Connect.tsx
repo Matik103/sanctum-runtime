@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
-import { Copy, Check, Save } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { Copy, Check, Save, Trash2 } from 'lucide-react'
 import { apiBaseUrl } from '../lib/api-url'
+import { getConnectSettings, saveConnectSettings, clearConnectSettings } from '../lib/connect-settings'
 import type { PageId } from '../layout/Sidebar'
 
 const PLATFORMS = [
@@ -14,35 +15,73 @@ const PLATFORMS = [
 
 type Platform = typeof PLATFORMS[number]['id']
 
-const LS_TOKEN_KEY = 'sanctum_connect_token'
+type Props = { orgId: string | null; onPage: (p: PageId) => void }
 
-type Props = { onPage: (p: PageId) => void }
-
-export function Connect({ onPage }: Props) {
+export function Connect({ orgId, onPage }: Props) {
   const [platform, setPlatform] = useState<Platform>('openai')
   const [token, setToken] = useState('')
   const [platformApiKey, setPlatformApiKey] = useState('')
+
+  const [loadingSettings, setLoadingSettings] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
 
-  // Restore previously saved agent token
-  useEffect(() => {
+  // Load saved credentials whenever org or platform changes
+  const loadSettings = useCallback(async () => {
+    if (!orgId) return
+    setLoadingSettings(true)
     try {
-      const stored = localStorage.getItem(LS_TOKEN_KEY)
-      if (stored) setToken(stored)
-    } catch { /* ignore */ }
-  }, [])
+      const s = await getConnectSettings(orgId, platform)
+      if (s?.exists) {
+        setToken(s.agent_token ?? '')
+        setPlatformApiKey(s.platform_api_key ?? '')
+      } else {
+        setToken('')
+        setPlatformApiKey('')
+      }
+    } catch {
+      // unauthenticated or network error — start with empty fields
+      setToken('')
+      setPlatformApiKey('')
+    } finally {
+      setLoadingSettings(false)
+    }
+  }, [orgId, platform])
 
-  function saveCredentials() {
-    try { localStorage.setItem(LS_TOKEN_KEY, token) } catch { /* ignore */ }
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+  useEffect(() => { void loadSettings() }, [loadSettings])
+
+  async function handleSave() {
+    if (!orgId) return
+    setSaving(true)
+    setSaveError(null)
+    try {
+      await saveConnectSettings(orgId, platform, {
+        agent_token: token.trim() || null,
+        platform_api_key: platformApiKey.trim() || null,
+      })
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2500)
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'Failed to save')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleClear() {
+    if (!orgId) return
+    try {
+      await clearConnectSettings(orgId, platform)
+      setToken('')
+      setPlatformApiKey('')
+    } catch { /* ignore */ }
   }
 
   const proxyUrl = `${apiBaseUrl}/v1/proxy/${platform}`
   const defaultModel = PLATFORMS.find((p) => p.id === platform)?.defaultModel ?? 'gpt-4o-mini'
-  const apiKeyPlaceholder = `<your-${platform}-api-key>`
-  const displayApiKey = platformApiKey.trim() || apiKeyPlaceholder
+  const displayApiKey = platformApiKey.trim() || `<your-${platform}-api-key>`
 
   function copy(text: string, key: string) {
     void navigator.clipboard.writeText(text).then(() => {
@@ -83,7 +122,7 @@ const response = await client.chat.completions.create({
 })
 console.log(response.choices[0].message.content)`
 
-  const inputBase: React.CSSProperties = {
+  const inputStyle: React.CSSProperties = {
     width: '100%',
     boxSizing: 'border-box',
     fontFamily: 'monospace',
@@ -95,6 +134,8 @@ console.log(response.choices[0].message.content)`
     color: 'var(--text)',
     outline: 'none',
   }
+
+  const hasCredentials = !!(token.trim() || platformApiKey.trim())
 
   return (
     <>
@@ -140,58 +181,78 @@ console.log(response.choices[0].message.content)`
       </div>
 
       {/* Step 2 — Credentials */}
-      <div className="card" style={{ marginBottom: '1.25rem' }}>
-        <p style={{ margin: '0 0 1rem', fontWeight: 600, fontSize: '0.9rem' }}>
-          <span className="step-badge">2</span> Your credentials
-        </p>
+      <div className="card" style={{ marginBottom: '1.25rem', opacity: loadingSettings ? 0.6 : 1, transition: 'opacity 0.15s' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+          <p style={{ margin: 0, fontWeight: 600, fontSize: '0.9rem' }}>
+            <span className="step-badge">2</span> Your credentials
+          </p>
+          {hasCredentials && (
+            <button
+              type="button"
+              onClick={() => void handleClear()}
+              style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 4, padding: 0 }}
+            >
+              <Trash2 size={12} /> Clear saved
+            </button>
+          )}
+        </div>
 
         {/* Agent token */}
         <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 500 }}>
           Agent token
         </label>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.4rem' }}>
-          <input
-            type="text"
-            placeholder="sk_agent_..."
-            value={token}
-            autoComplete="off"
-            spellCheck={false}
-            onChange={(e) => { setToken(e.target.value); setSaved(false) }}
-            style={inputBase}
-          />
-          <button
-            type="button"
-            className="response-btn"
-            onClick={saveCredentials}
-            disabled={!token.trim()}
-            style={{ whiteSpace: 'nowrap', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 5, opacity: token.trim() ? 1 : 0.45 }}
-          >
-            {saved ? <><Check size={13} /> Saved</> : <><Save size={13} /> Save</>}
-          </button>
-        </div>
-        <p style={{ margin: '0 0 1.1rem', fontSize: '0.75rem', color: 'var(--muted)' }}>
+        <input
+          type="text"
+          placeholder="sk_agent_..."
+          value={token}
+          autoComplete="off"
+          spellCheck={false}
+          onChange={(e) => setToken(e.target.value)}
+          style={{ ...inputStyle, marginBottom: '0.35rem' }}
+        />
+        <p style={{ margin: '0 0 1rem', fontSize: '0.75rem', color: 'var(--muted)' }}>
           Get this from{' '}
           <button type="button" onClick={() => onPage('agents')} style={{ background: 'none', border: 'none', color: 'var(--accent, #6366f1)', cursor: 'pointer', padding: 0, fontSize: 'inherit', textDecoration: 'underline' }}>
             Agents
           </button>
-          {' '}→ Register agent → copy token. Saved locally in your browser.
+          {' '}→ Register agent → copy token.
         </p>
 
         {/* Platform API key */}
         <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 500 }}>
-          {PLATFORMS.find((p) => p.id === platform)?.label} API key <span style={{ fontWeight: 400, opacity: 0.6 }}>(optional — fills code snippets)</span>
+          {PLATFORMS.find((p) => p.id === platform)?.label} API key{' '}
+          <span style={{ fontWeight: 400, opacity: 0.6 }}>(fills code snippets)</span>
         </label>
         <input
           type="password"
-          placeholder={apiKeyPlaceholder}
+          placeholder={`Your ${platform} API key`}
           value={platformApiKey}
           autoComplete="off"
           onChange={(e) => setPlatformApiKey(e.target.value)}
-          style={inputBase}
+          style={{ ...inputStyle, marginBottom: '0.35rem' }}
         />
-        <p style={{ margin: '0.4rem 0 0', fontSize: '0.75rem', color: 'var(--muted)' }}>
-          Never sent to Sanctum — used only to populate the code examples below.
+        <p style={{ margin: '0 0 1rem', fontSize: '0.75rem', color: 'var(--muted)' }}>
+          Stored encrypted in Sanctum — never shared, never logged.
         </p>
+
+        {/* Save row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <button
+            type="button"
+            className="response-btn"
+            onClick={() => void handleSave()}
+            disabled={saving || !orgId}
+            style={{ fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 6, opacity: (!orgId || saving) ? 0.5 : 1 }}
+          >
+            {saved
+              ? <><Check size={13} /> Saved</>
+              : saving
+                ? 'Saving…'
+                : <><Save size={13} /> Save credentials</>}
+          </button>
+          {saveError && <span style={{ fontSize: '0.75rem', color: 'var(--error, #ef4444)' }}>{saveError}</span>}
+          {!orgId && <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>Sign in to save credentials</span>}
+        </div>
       </div>
 
       {/* Step 3 — Proxy URL */}
