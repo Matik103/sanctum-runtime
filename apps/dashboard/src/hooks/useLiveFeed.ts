@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getSupabase } from '../lib/supabase'
 import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
@@ -16,6 +16,10 @@ export type ProxyEvent = {
     arguments?: unknown
   }
 }
+
+// Monotonic counter gives each subscription a unique channel name, preventing
+// duplicate events when React StrictMode double-mounts effects.
+let _channelSeq = 0
 
 export function useLiveFeed(orgId: string | null) {
   const [events, setEvents] = useState<ProxyEvent[]>([])
@@ -58,14 +62,16 @@ export function useLiveFeed(orgId: string | null) {
     return () => controller.abort()
   }, [orgId])
 
-  // Realtime subscription
+  // Realtime subscription — unique channel name per mount prevents StrictMode double-fire
+  const seqRef = useRef(0)
   useEffect(() => {
     if (!orgId) return
     const sb = getSupabase()
     if (!sb) return
 
+    seqRef.current = ++_channelSeq
     const channel = sb
-      .channel(`live-feed-${orgId}`)
+      .channel(`live-feed-${orgId}-${seqRef.current}`)
       .on(
         'postgres_changes',
         {

@@ -269,10 +269,14 @@ export function registerProxyRoutes(app: FastifyInstance): void {
             void admin
               .from('audit_events')
               .insert({
+                id: crypto.randomUUID(),
+                correlation_id: tc.id,
                 org_id: orgId,
                 action: tc.name,
                 actor: agentId,
                 decision: 'APPROVED',
+                risk: 'low',
+                reasoning: `proxy tool call via ${platform}`,
                 context: {
                   proxy: true,
                   platform,
@@ -283,6 +287,15 @@ export function registerProxyRoutes(app: FastifyInstance): void {
               })
               .then(({ error }) => {
                 if (error) log.warn({ err: error.message, orgId, tool: tc.name }, 'proxy tool call log failed')
+              })
+
+            // Keep last_seen_at fresh so the Agents page shows activity
+            void admin
+              .from('agent_registrations')
+              .update({ last_seen_at: new Date().toISOString() })
+              .eq('id', agentId)
+              .then(({ error }) => {
+                if (error) log.warn({ err: error.message, agentId }, 'proxy last_seen_at update failed')
               })
           }
         }

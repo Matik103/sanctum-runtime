@@ -63,10 +63,14 @@ export function verifyAgentToken(token: string): { id: string; orgId: string } |
   }
 }
 
-/** Extract agent token from request headers (X-Agent-Token or Authorization: Agent ...). */
+/** Extract agent token from request headers.
+ *  Accepts X-Sanctum-Agent-Token (canonical), X-Agent-Token (legacy), or Authorization: Agent <token>.
+ */
 export function extractAgentToken(req: { headers: Record<string, string | string[] | undefined> }): string | null {
-  const header = req.headers['x-agent-token']
-  if (header) return Array.isArray(header) ? header[0] : header
+  const canonical = req.headers['x-sanctum-agent-token']
+  if (canonical) return Array.isArray(canonical) ? canonical[0] : canonical
+  const legacy = req.headers['x-agent-token']
+  if (legacy) return Array.isArray(legacy) ? legacy[0] : legacy
   const auth = req.headers['authorization']
   const authStr = Array.isArray(auth) ? auth[0] : auth
   if (authStr?.startsWith('Agent ')) return authStr.slice(6)
@@ -153,7 +157,7 @@ export async function registerAgentTokenRoutes(
       name: body.name,
       token,  // shown once — agent must store this immediately
       token_hint: hint,
-      note: 'Store this token now — it cannot be retrieved again. Pass it as X-Agent-Token header or Authorization: Agent <token>.',
+      note: 'Store this token now — it cannot be retrieved again. Pass it as X-Sanctum-Agent-Token header or Authorization: Agent <token>.',
     })
   })
 

@@ -21,14 +21,16 @@ export function RuntimeActivity({ audit, onSelect }: Props) {
         !q ||
         e.action.includes(q) ||
         e.actor.includes(q) ||
-        e.reasoning.toLowerCase().includes(q) ||
+        (e.reasoning ?? '').toLowerCase().includes(q) ||
         auditRecordText(e).toLowerCase().includes(q)
+      const isProxy = (e.context as Record<string, unknown> | undefined)?.proxy === true
       const matchFilter =
         filter === 'all' ||
         (filter === 'approved' && e.decision === 'APPROVED') ||
         (filter === 'blocked' && e.decision === 'BLOCKED') ||
         (filter === 'verify' && e.decision === 'REQUIRE_VERIFICATION') ||
-        (filter === 'high' && e.risk === 'high')
+        (filter === 'high' && e.risk === 'high') ||
+        (filter === 'proxy' && isProxy)
       return matchSearch && matchFilter
     })
   }, [audit, search, filter])
@@ -84,6 +86,7 @@ export function RuntimeActivity({ audit, onSelect }: Props) {
           ['blocked', 'Blocked'],
           ['verify', 'Verification'],
           ['high', 'High risk'],
+          ['proxy', 'Proxy'],
         ].map(([id, label]) => (
           <button
             key={id}
@@ -120,7 +123,14 @@ export function RuntimeActivity({ audit, onSelect }: Props) {
                   <td className="audit-record-cell">
                     <AuditRecord entry={e} compact />
                   </td>
-                  <td>{actionLabel(e.action)}</td>
+                  <td>
+                    {actionLabel(e.action)}
+                    {(e.context as Record<string, unknown> | undefined)?.proxy === true && (
+                      <span style={{ marginLeft: 6, fontSize: '0.68rem', padding: '0.1rem 0.4rem', borderRadius: 4, background: 'rgba(99,102,241,0.15)', color: 'var(--accent,#6366f1)', fontWeight: 500 }}>
+                        {String((e.context as Record<string, unknown>).platform ?? 'proxy')}
+                      </span>
+                    )}
+                  </td>
                   <td>
                     <span className={`badge ${e.risk === 'high' ? 'danger' : e.risk === 'medium' ? 'warning' : 'neutral'}`}>
                       {riskLabel(e.risk)}

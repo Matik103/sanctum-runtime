@@ -15,6 +15,7 @@ type AuditRow = {
   anomaly_flags: string[] | null
   resolved_by: string | null
   payload: Record<string, unknown>
+  context?: Record<string, unknown>
   created_at: string
   resolved_at: string | null
 }
