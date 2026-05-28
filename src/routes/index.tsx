@@ -6,6 +6,7 @@ import { Problem } from "@/components/Problem";
 import { Solution } from "@/components/Solution";
 import { Architecture } from "@/components/Architecture";
 import { SdkSection } from "@/components/SdkSection";
+import { QuickStartStrip } from "@/components/QuickStartStrip";
 import { UseCases } from "@/components/UseCases";
 import { Trust } from "@/components/Trust";
 import { FaqSection } from "@/components/FaqSection";
@@ -36,6 +37,7 @@ function Index() {
         <Hero />
         <Problem />
         <Solution />
+        <QuickStartStrip />
         <Architecture />
         <SdkSection />
         <UseCases />

@@ -16,6 +16,7 @@ export function Navbar() {
         <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
           <a href="#problem" className="hover:text-foreground transition-colors">Problem</a>
           <a href="#solution" className="hover:text-foreground transition-colors">Runtime</a>
+          <a href="#quick-start" className="hover:text-foreground transition-colors">Quick start</a>
           <a href="#sdk" className="hover:text-foreground transition-colors">SDK</a>
           <a href="#use-cases" className="hover:text-foreground transition-colors">Use cases</a>
           <Link to="/blog/" className="hover:text-foreground transition-colors">Blog</Link>
