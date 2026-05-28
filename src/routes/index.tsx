@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { homepageFaqJsonLd, pageSeo, siteName, defaultDescription } from "@/lib/seo";
 import { Navbar } from "@/components/Navbar";
 import { Hero } from "@/components/Hero";
+import { ProofLinksStrip } from "@/components/ProofLinksStrip";
 import { Problem } from "@/components/Problem";
 import { Solution } from "@/components/Solution";
 import { Architecture } from "@/components/Architecture";
@@ -36,6 +37,7 @@ function Index() {
       <Navbar />
       <main>
         <Hero />
+        <ProofLinksStrip />
         <Problem />
         <Solution />
         <QuickStartStrip />
