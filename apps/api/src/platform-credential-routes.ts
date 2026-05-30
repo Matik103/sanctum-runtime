@@ -43,10 +43,11 @@ export async function registerPlatformCredentialRoutes(
     if (!user) return reply.status(403).send({ error: 'dashboard_auth_required' })
 
     const { orgId } = req.params as { orgId: string }
+    const { environment } = z.object({ environment: z.string().optional() }).parse(req.query ?? {})
     if (!(await requireRole(cfg, orgId, user.id, 'viewer', reply))) return
 
     try {
-      const credentials = await listPlatformCredentials(cfg, orgId)
+      const credentials = await listPlatformCredentials(cfg, orgId, environment)
       return { credentials }
     } catch (err) {
       req.log.error({ err }, 'platform_credentials_list_failed')
@@ -68,6 +69,7 @@ export async function registerPlatformCredentialRoutes(
       .object({
         secret: z.string().min(8).max(512),
         default_agent_id: z.string().uuid().nullable().optional(),
+        environment: z.enum(['development', 'staging', 'production']).optional(),
       })
       .parse(req.body)
 
@@ -78,6 +80,7 @@ export async function registerPlatformCredentialRoutes(
         secret: body.secret,
         userId: user.id,
         defaultAgentId: body.default_agent_id,
+        environment: body.environment,
       })
     } catch (err) {
       req.log.error({ err, orgId, platform }, 'platform_credentials_save_failed')
@@ -91,10 +94,11 @@ export async function registerPlatformCredentialRoutes(
 
     const { orgId, platform } = req.params as { orgId: string; platform: string }
     platformParam.parse(platform)
+    const { environment } = z.object({ environment: z.string().optional() }).parse(req.query ?? {})
     if (!(await requireRole(cfg, orgId, user.id, 'member', reply))) return
 
     try {
-      await deletePlatformCredential(cfg, orgId, platform)
+      await deletePlatformCredential(cfg, orgId, platform, environment ?? 'production')
       return { ok: true }
     } catch (err) {
       req.log.error({ err, orgId, platform }, 'platform_credentials_delete_failed')
@@ -111,12 +115,16 @@ export async function registerPlatformCredentialRoutes(
     if (!(await requireRole(cfg, orgId, user.id, 'member', reply))) return
 
     const body = z
-      .object({ secret: z.string().min(8).max(512).optional() })
+      .object({
+        secret: z.string().min(8).max(512).optional(),
+        environment: z.enum(['development', 'staging', 'production']).optional(),
+      })
       .parse(req.body ?? {})
 
+    const environment = body.environment ?? 'production'
     let secret = body.secret?.trim()
     if (!secret) {
-      secret = (await getPlatformSecret(cfg, orgId, platform)) ?? undefined
+      secret = (await getPlatformSecret(cfg, orgId, platform, environment)) ?? undefined
     }
     if (!secret) {
       return reply.status(400).send({
@@ -127,7 +135,7 @@ export async function registerPlatformCredentialRoutes(
 
     const result = await testPlatformSecret(platform, secret)
     if (!body.secret) {
-      await recordPlatformTestResult(cfg, orgId, platform, result).catch(() => {})
+      await recordPlatformTestResult(cfg, orgId, platform, result, environment).catch(() => {})
     }
 
     return {

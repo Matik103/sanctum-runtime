@@ -8,6 +8,7 @@ export type PlatformCredentialRow = {
   id: string
   org_id: string
   platform: string
+  environment: string
   key_suffix: string
   default_agent_id: string | null
   created_at: string
@@ -32,15 +33,17 @@ export function isSupportedPlatform(platform: string): platform is keyof typeof 
 export async function listPlatformCredentials(
   cfg: SupabaseAuthConfig,
   orgId: string,
+  environment?: string,
 ): Promise<PlatformCredentialPublic[]> {
   const admin = createSupabaseAdmin(cfg)
-  const { data, error } = await admin
+  let query = admin
     .from('platform_credentials')
     .select(
-      'id, org_id, platform, key_suffix, default_agent_id, created_at, updated_at, last_tested_at, last_test_ok, last_test_error',
+      'id, org_id, platform, environment, key_suffix, default_agent_id, created_at, updated_at, last_tested_at, last_test_ok, last_test_error',
     )
     .eq('org_id', orgId)
-    .order('platform')
+  if (environment) query = query.eq('environment', environment)
+  const { data, error } = await query.order('platform')
 
   if (error) throw new Error(error.message)
   return (data ?? []).map((row) => ({ ...row, configured: true as const }))
@@ -54,6 +57,7 @@ export async function upsertPlatformCredential(
     secret: string
     userId: string
     defaultAgentId?: string | null
+    environment?: string
   },
 ): Promise<PlatformCredentialPublic> {
   if (!isSupportedPlatform(input.platform)) {
@@ -70,16 +74,17 @@ export async function upsertPlatformCredential(
       {
         org_id: input.orgId,
         platform: input.platform,
+        environment: input.environment ?? 'production',
         key_suffix: keySuffix(input.secret.trim()),
         secret_enc: secretEnc,
         default_agent_id: input.defaultAgentId ?? null,
         created_by: input.userId,
         updated_at: now,
       },
-      { onConflict: 'org_id,platform' },
+      { onConflict: 'org_id,platform,environment' },
     )
     .select(
-      'id, org_id, platform, key_suffix, default_agent_id, created_at, updated_at, last_tested_at, last_test_ok, last_test_error',
+      'id, org_id, platform, key_suffix, default_agent_id, created_at, updated_at, last_tested_at, last_test_ok, last_test_error, environment',
     )
     .single()
 
@@ -91,6 +96,7 @@ export async function deletePlatformCredential(
   cfg: SupabaseAuthConfig,
   orgId: string,
   platform: string,
+  environment = 'production',
 ): Promise<void> {
   const admin = createSupabaseAdmin(cfg)
   const { error } = await admin
@@ -98,6 +104,7 @@ export async function deletePlatformCredential(
     .delete()
     .eq('org_id', orgId)
     .eq('platform', platform)
+    .eq('environment', environment)
   if (error) throw new Error(error.message)
 }
 
@@ -105,6 +112,7 @@ export async function getPlatformSecret(
   cfg: SupabaseAuthConfig,
   orgId: string,
   platform: string,
+  environment = 'production',
 ): Promise<string | null> {
   const admin = createSupabaseAdmin(cfg)
   const { data, error } = await admin
@@ -112,9 +120,15 @@ export async function getPlatformSecret(
     .select('secret_enc')
     .eq('org_id', orgId)
     .eq('platform', platform)
+    .eq('environment', environment)
     .maybeSingle()
 
-  if (error || !data?.secret_enc) return null
+  if (error || !data?.secret_enc) {
+    if (environment !== 'production') {
+      return getPlatformSecret(cfg, orgId, platform, 'production')
+    }
+    return null
+  }
   return decryptSecret(data.secret_enc, getEncryptionKey())
 }
 
@@ -156,6 +170,7 @@ export async function recordPlatformTestResult(
   orgId: string,
   platform: string,
   result: { ok: boolean; detail?: string },
+  environment = 'production',
 ): Promise<void> {
   const admin = createSupabaseAdmin(cfg)
   await admin
@@ -168,4 +183,5 @@ export async function recordPlatformTestResult(
     })
     .eq('org_id', orgId)
     .eq('platform', platform)
+    .eq('environment', environment)
 }

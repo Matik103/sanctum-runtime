@@ -1,0 +1,26 @@
+{
+  "name": "@sanctum-runtime/connect",
+  "version": "0.1.0",
+  "description": "Connect Agent helpers — gate tool execution without the full SDK (verify-execution + LangChain/OpenAI wrappers).",
+  "type": "module",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./langchain": "./dist/langchain.js",
+    "./openai": "./dist/openai.js",
+    "./mcp": "./dist/mcp.js"
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": { "node": ">=18" },
+  "publishConfig": { "access": "public", "registry": "https://registry.npmjs.org" }
+}

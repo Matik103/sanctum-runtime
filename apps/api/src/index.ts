@@ -41,6 +41,9 @@ import { registerPushRoutes, sendPushToUser } from './push-routes.js'
 import { registerShieldRoutes, loadShieldRules, evaluateShieldRules, logContainmentEvent } from './shield-routes.js'
 import { registerPlatformCredentialRoutes } from './platform-credential-routes.js'
 import { registerConnectRoutes } from './connect-routes.js'
+import { maybeCreateConnectWorkflowApproval } from './connect-governance-hook.js'
+import { emitConnectWebhook } from './connect-notify.js'
+import { getConnectSettings } from './connect-settings.js'
 import { registerProxyRoutes } from './proxy-routes.js'
 import { AlertStore } from './alert-store.js'
 import { sendVerificationEmail, verifyToken } from './verify-email.js'
@@ -302,6 +305,7 @@ app.addHook('onRequest', async (req, reply) => {
   if (path.startsWith('/v1/proxy/')) return
   // Connect execution verify: agent token only (same as proxy).
   if (path === '/v1/connect/verify-execution') return
+  if (path.startsWith('/v1/connect/verifications/')) return
 
   const auth = await authenticateRequest(req.headers, {
     supabase: supabaseAuth,
@@ -1341,16 +1345,22 @@ app.post('/v1/actions/verify', {
 
   // Persist alert + notify on anomaly spikes and Shield containment.
   if (supabaseAuth && orgId && (result.decision === 'BLOCKED' || result.anomalyFlags.length > 0)) {
+    const isConnectBlocked = body.context?.proxy === true
+    const connectPlatform = typeof body.context?.platform === 'string' ? body.context.platform : 'connect'
     const shieldCritical = result.shield?.level === 'critical'
     const severity = shieldCritical ? 'emergency' : result.decision === 'BLOCKED' ? 'critical' : 'warning'
     const eventType = shieldCritical ? 'shield.containment' : result.decision === 'BLOCKED' ? 'agent.blocked_action' : 'anomaly.spike'
     const title = shieldCritical
       ? `Shield containment: ${body.action} blocked`
+      : isConnectBlocked && result.decision === 'BLOCKED'
+        ? `Connect: blocked tool "${body.action}" (${connectPlatform})`
       : result.decision === 'BLOCKED'
         ? `Action blocked: ${body.action}`
       : `Anomaly detected: ${body.action}`
     const message = shieldCritical
       ? `Sanctum Shield blocked "${body.action}" from "${body.actor}" before execution. Threat score: ${result.shield?.score ?? 100}/100.${temporaryPermissionRevocation === 'failed' ? ' Temporary permission revocation failed and requires manual action.' : ''} Review containment actions immediately.`
+      : isConnectBlocked && result.decision === 'BLOCKED'
+        ? `Connect blocked tool "${body.action}" from agent "${body.actor}" on ${connectPlatform}. Review Live Feed for details.`
       : `Actor "${body.actor}" triggered ${result.anomalyFlags.join(', ') || 'a block'} on action "${body.action}". Decision: ${result.decision}. Risk: ${riskPercent}%.`
     const metadata = {
       action: body.action,
@@ -1368,12 +1378,30 @@ app.post('/v1/actions/verify', {
     void alertStore.createAlert({
       org_id: orgId,
       severity,
-      type: eventType,
+      type: isConnectBlocked && result.decision === 'BLOCKED' ? 'connect.blocked_action' : eventType,
       title,
       message,
       channels: ['email', 'slack', 'webhook'],
-      metadata,
+      metadata: {
+        ...metadata,
+        connect: isConnectBlocked,
+        platform: isConnectBlocked ? connectPlatform : undefined,
+      },
     }).catch(() => { /* best-effort */ })
+
+    if (isConnectBlocked && result.decision === 'BLOCKED') {
+      void getConnectSettings(supabaseAuth, orgId).then((settings) => {
+        emitConnectWebhook(settings.connect_webhook_url, {
+          event: 'connect.tool_blocked',
+          org_id: orgId,
+          action: body.action,
+          actor: body.actor,
+          platform: connectPlatform,
+          entry_id: result.id,
+          reasoning: result.reasoning,
+        })
+      }).catch(() => {})
+    }
 
     // Send outbound notification (deduplicated per org, 5-min cooldown)
     const entEngine = getEntitlementEngine(supabaseAuth)
@@ -1389,15 +1417,47 @@ app.post('/v1/actions/verify', {
 
   // Alert + email when agent requires human verification
   if (result.decision === 'REQUIRE_VERIFICATION' && supabaseAuth && orgId) {
+    const isConnect = body.context?.proxy === true
+    const platform = typeof body.context?.platform === 'string' ? body.context.platform : 'connect'
+    const alertTitle = isConnect
+      ? `Connect: held tool "${body.action}" (${platform})`
+      : `Verification required: ${body.action}`
+    const alertMessage = isConnect
+      ? `Agent "${body.actor}" proposed tool "${body.action}" via Connect — approve in Live Feed to release waiting requests.`
+      : `${body.actor} wants to perform "${body.action}" and is waiting for your approval.`
+
+    void maybeCreateConnectWorkflowApproval(supabaseAuth, {
+      orgId,
+      action: body.action,
+      actor: body.actor,
+      context: body.context ?? {},
+      auditEntry: result,
+    }).catch(() => { /* best-effort */ })
+
+    void getConnectSettings(supabaseAuth, orgId).then((settings) => {
+      if (isConnect && settings.notify_on_hold) {
+        emitConnectWebhook(settings.connect_webhook_url, {
+          event: 'connect.tool_held',
+          org_id: orgId,
+          action: body.action,
+          actor: body.actor,
+          platform,
+          entry_id: result.id,
+          correlation_id: result.correlationId,
+          approve_url: `${publicApiUrl ?? `http://localhost:${port}`}/v1/verify-action?token=held`,
+        })
+      }
+    }).catch(() => {})
+
     const alertStore = new AlertStore(supabaseAuth)
     void alertStore.createAlert({
       org_id: orgId,
       severity: 'warning',
-      type: 'agent.require_verification',
-      title: `Verification required: ${body.action}`,
-      message: `${body.actor} wants to perform "${body.action}" and is waiting for your approval.`,
+      type: isConnect ? 'connect.require_verification' : 'agent.require_verification',
+      title: alertTitle,
+      message: alertMessage,
       channels: ['in_app', 'email'],
-      metadata: { action: body.action, actor: body.actor, risk: result.risk, entryId: result.id },
+      metadata: { action: body.action, actor: body.actor, risk: result.risk, entryId: result.id, connect: isConnect, platform: isConnect ? platform : undefined },
     }).catch(() => {})
 
     const entEngine = getEntitlementEngine(supabaseAuth)
@@ -1407,7 +1467,7 @@ app.post('/v1/actions/verify', {
           to: prefs.email,
           actionId: result.id,
           actor: body.actor,
-          action: body.action,
+          action: isConnect ? `[Connect/${platform}] ${body.action}` : body.action,
           context: body.context,
           risk: result.risk,
           publicApiUrl: publicApiUrl ?? `http://localhost:${port}`,
@@ -1426,11 +1486,13 @@ app.post('/v1/actions/verify', {
         if (!members?.length) return
         await Promise.allSettled(
           members.map((m) => sendPushToUser(m.user_id as string, {
-            title: `Verification required: ${body.action}`,
-            body: `${body.actor} is waiting on your approval (risk ${riskPercent}%).`,
+            title: isConnect ? `Connect held: ${body.action}` : `Verification required: ${body.action}`,
+            body: isConnect
+              ? `${body.actor} via ${platform} — approve in Live Feed.`
+              : `${body.actor} is waiting on your approval (risk ${riskPercent}%).`,
             tag: `verify:${result.id}`,
             requireInteraction: true,
-            url: `/?page=activity&verify=${encodeURIComponent(result.id)}`,
+            url: isConnect ? `/?page=live-feed&verify=${encodeURIComponent(result.id)}` : `/?page=activity&verify=${encodeURIComponent(result.id)}`,
             data: { entryId: result.id, type: 'agent.require_verification', orgId },
           })),
         )

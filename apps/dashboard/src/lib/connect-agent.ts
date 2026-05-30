@@ -10,6 +10,9 @@ export type ConnectOrgSettings = {
   redact_tool_arguments: boolean
   notify_on_hold: boolean
   applied_policy_preset: string | null
+  enforce_action_token: boolean
+  connect_webhook_url: string | null
+  credential_environment: 'development' | 'staging' | 'production'
   updated_at: string
 }
 
@@ -46,7 +49,7 @@ export type ConnectPreset = {
 export type PolicySuggestion = {
   action: string
   count: number
-  recommendation: 'verify'
+  recommendation: 'verify' | 'block'
   reason: string
 }
 
@@ -126,6 +129,68 @@ export async function runConnectTest(
   })
   if (!res.ok) throw new Error(`connect_test_failed:${res.status}`)
   return res.json() as Promise<{ ok: boolean; decision?: string; reasoning?: string }>
+}
+
+export async function applyToolPolicy(
+  orgId: string,
+  action: string,
+  mode: 'verify' | 'block' | 'approve',
+): Promise<void> {
+  const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/connect/tools/${encodeURIComponent(action)}/policy`, {
+    method: 'POST',
+    headers: await authHeaders(),
+    body: JSON.stringify({ mode }),
+  })
+  if (!res.ok) throw new Error(`connect_tool_policy_failed:${res.status}`)
+}
+
+export type ConnectShieldPreset = {
+  id: string
+  name: string
+  description: string
+  policy_preset_id: string
+  shield_rules: unknown[]
+}
+
+export async function fetchConnectShieldPresets(orgId: string): Promise<ConnectShieldPreset[]> {
+  const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/connect/shield-presets`, { headers: await authHeaders() })
+  if (!res.ok) throw new Error(`connect_shield_presets_failed:${res.status}`)
+  const data = (await res.json()) as { presets: ConnectShieldPreset[] }
+  return data.presets
+}
+
+export async function applyConnectShieldPreset(orgId: string, presetId: string): Promise<void> {
+  const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/connect/shield-presets/${presetId}/apply`, {
+    method: 'POST',
+    headers: await authHeaders(),
+  })
+  if (!res.ok) throw new Error(`connect_shield_preset_apply_failed:${res.status}`)
+}
+
+export async function promoteConnectToGate(orgId: string): Promise<ConnectOrgSettings> {
+  const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/connect/promote-to-gate`, {
+    method: 'POST',
+    headers: await authHeaders(),
+  })
+  if (!res.ok) throw new Error(`connect_promote_failed:${res.status}`)
+  return res.json() as Promise<ConnectOrgSettings>
+}
+
+export function connectPackageSnippet(platform: string): string {
+  return `import { ConnectClient, runGatedToolCalls } from '@sanctum-runtime/connect'
+
+const connect = new ConnectClient({
+  apiUrl: '${apiBaseUrl}',
+  agentToken: process.env.SANCTUM_AGENT_TOKEN!,
+  platform: '${platform}',
+})
+
+// After proxy returns tool_calls, gate local execution:
+await runGatedToolCalls(toolCalls, executors, {
+  apiUrl: '${apiBaseUrl}',
+  agentToken: process.env.SANCTUM_AGENT_TOKEN!,
+  platform: '${platform}',
+})`
 }
 
 export function executionSnippet(platform: string, lang: 'python' | 'typescript'): string {

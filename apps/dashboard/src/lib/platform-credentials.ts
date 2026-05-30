@@ -7,6 +7,7 @@ export type PlatformCredential = {
   id: string
   org_id: string
   platform: PlatformId
+  environment?: string
   key_suffix: string
   default_agent_id: string | null
   configured: true
@@ -25,8 +26,12 @@ async function authHeaders(json = false): Promise<Record<string, string>> {
   return h
 }
 
-export async function listPlatformCredentials(orgId: string): Promise<PlatformCredential[]> {
-  const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/platform-credentials`, {
+export async function listPlatformCredentials(
+  orgId: string,
+  environment?: string,
+): Promise<PlatformCredential[]> {
+  const qs = environment ? `?environment=${encodeURIComponent(environment)}` : ''
+  const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/platform-credentials${qs}`, {
     headers: await authHeaders(),
   })
   if (!res.ok) throw new Error(`list_platform_credentials_${res.status}`)
@@ -39,11 +44,16 @@ export async function savePlatformCredential(
   platform: PlatformId,
   secret: string,
   defaultAgentId?: string | null,
+  environment?: 'development' | 'staging' | 'production',
 ): Promise<PlatformCredential> {
   const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/platform-credentials/${platform}`, {
     method: 'PUT',
     headers: await authHeaders(true),
-    body: JSON.stringify({ secret, default_agent_id: defaultAgentId ?? null }),
+    body: JSON.stringify({
+      secret,
+      default_agent_id: defaultAgentId ?? null,
+      environment,
+    }),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({})) as { error?: string }
@@ -52,8 +62,13 @@ export async function savePlatformCredential(
   return res.json() as Promise<PlatformCredential>
 }
 
-export async function deletePlatformCredential(orgId: string, platform: PlatformId): Promise<void> {
-  const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/platform-credentials/${platform}`, {
+export async function deletePlatformCredential(
+  orgId: string,
+  platform: PlatformId,
+  environment?: string,
+): Promise<void> {
+  const qs = environment ? `?environment=${encodeURIComponent(environment)}` : ''
+  const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/platform-credentials/${platform}${qs}`, {
     method: 'DELETE',
     headers: await authHeaders(),
   })
@@ -64,11 +79,12 @@ export async function testPlatformCredential(
   orgId: string,
   platform: PlatformId,
   secret?: string,
+  environment?: 'development' | 'staging' | 'production',
 ): Promise<{ ok: boolean; detail?: string; status?: number }> {
   const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/platform-credentials/${platform}/test`, {
     method: 'POST',
     headers: await authHeaders(true),
-    body: JSON.stringify(secret ? { secret } : {}),
+    body: JSON.stringify(secret ? { secret, environment } : { environment }),
   })
   const data = await res.json().catch(() => ({})) as { ok?: boolean; detail?: string; status?: number; error?: string }
   if (!res.ok && !data.ok) throw new Error(data.error ?? `test_platform_credential_${res.status}`)

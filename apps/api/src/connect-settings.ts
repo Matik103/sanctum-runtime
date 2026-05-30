@@ -9,6 +9,9 @@ export type ConnectOrgSettings = {
   redact_tool_arguments: boolean
   notify_on_hold: boolean
   applied_policy_preset: string | null
+  enforce_action_token: boolean
+  connect_webhook_url: string | null
+  credential_environment: 'development' | 'staging' | 'production'
   updated_at: string
 }
 
@@ -20,6 +23,9 @@ const DEFAULTS: Omit<ConnectOrgSettings, 'org_id' | 'updated_at'> = {
   redact_tool_arguments: false,
   notify_on_hold: true,
   applied_policy_preset: null,
+  enforce_action_token: false,
+  connect_webhook_url: null,
+  credential_environment: 'production',
 }
 
 export async function getConnectSettings(
@@ -56,6 +62,9 @@ export async function upsertConnectSettings(
     redact_tool_arguments: patch.redact_tool_arguments ?? current.redact_tool_arguments,
     notify_on_hold: patch.notify_on_hold ?? current.notify_on_hold,
     applied_policy_preset: patch.applied_policy_preset ?? current.applied_policy_preset,
+    enforce_action_token: patch.enforce_action_token ?? current.enforce_action_token,
+    connect_webhook_url: patch.connect_webhook_url ?? current.connect_webhook_url,
+    credential_environment: patch.credential_environment ?? current.credential_environment,
     updated_at: new Date().toISOString(),
   }
   const { data, error } = await admin

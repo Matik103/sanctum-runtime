@@ -123,6 +123,7 @@ export async function createPendingApproval(
     params: Record<string, unknown>
     actor?: string
     context: Record<string, unknown>
+    auditEventId?: string
   },
 ): Promise<PendingApproval> {
   const admin = createSupabaseAdmin(cfg)
@@ -143,6 +144,7 @@ export async function createPendingApproval(
   const insert = {
     org_id: params.orgId,
     workflow_id: params.workflowId ?? null,
+    audit_event_id: params.auditEventId ?? null,
     action: params.action,
     params: params.params,
     actor: params.actor ?? null,

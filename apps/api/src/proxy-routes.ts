@@ -12,6 +12,7 @@ import { createSupabaseAdmin, getSupabaseAuthConfig } from './auth.js'
 import { verifyAgentToken } from './agent-tokens.js'
 import { getPlatformSecret } from './platform-credentials.js'
 import { getConnectSettings } from './connect-settings.js'
+import { extractToolsFromChatBody, upsertConnectTool } from './connect-tool-registry.js'
 import { recordUsage, UsageMetrics } from './usage-store.js'
 import type { RuntimeEngine } from '@sanctum/runtime-engine'
 import {
@@ -186,6 +187,10 @@ export function registerProxyRoutes(app: FastifyInstance, runtime: RuntimeEngine
         const waitTimeoutMs = connectSettings.wait_timeout_ms
         const gateToolResults = connectSettings.gate_tool_results
         const redactArguments = connectSettings.redact_tool_arguments
+        const credEnvironment = connectSettings.credential_environment
+
+        const socketTimeout = waitVerification ? waitTimeoutMs + 60_000 : 45_000
+        if (req.raw.socket) req.raw.socket.setTimeout(socketTimeout)
 
         const baseUrl = PROXY_PLATFORMS[platform]
         if (!baseUrl) {
@@ -197,7 +202,7 @@ export function registerProxyRoutes(app: FastifyInstance, runtime: RuntimeEngine
 
         let platformAuth = req.headers['authorization'] as string | undefined
         if (!platformAuth) {
-          const stored = await getPlatformSecret(cfg, orgId, platform)
+          const stored = await getPlatformSecret(cfg, orgId, platform, credEnvironment)
           if (stored) platformAuth = `Bearer ${stored}`
         }
         if (!platformAuth) {
@@ -216,6 +221,20 @@ export function registerProxyRoutes(app: FastifyInstance, runtime: RuntimeEngine
         }
 
         let requestBody = req.body
+
+        if (req.method === 'POST' && requestBody && typeof requestBody === 'object') {
+          for (const tool of extractToolsFromChatBody(requestBody)) {
+            void upsertConnectTool(cfg, {
+              orgId,
+              action: tool.name,
+              agentId,
+              platform,
+              description: tool.description ?? null,
+              parametersSchema: tool.parameters ?? null,
+            })
+          }
+        }
+
         const gateOpts = {
           agentToken: agentTokenRaw,
           agentId,

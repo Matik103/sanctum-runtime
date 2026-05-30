@@ -8,6 +8,9 @@ import { assertOrgRole } from './rbac.js'
 import type { RuntimeEngine } from '@sanctum/runtime-engine'
 import { getConnectSettings, upsertConnectSettings } from './connect-settings.js'
 import { CONNECT_POLICY_PRESETS, getConnectPreset } from './connect-presets.js'
+import { CONNECT_SHIELD_PRESETS, getConnectShieldPreset } from './connect-shield-presets.js'
+import { listConnectTools } from './connect-tool-registry.js'
+import { invalidateShieldRulesCache } from './shield-routes.js'
 import { verifyAgentToken } from './agent-tokens.js'
 import { gateProxyToolCall } from './proxy-gate.js'
 import { listPlatformCredentials } from './platform-credentials.js'
@@ -129,6 +132,9 @@ export async function registerConnectRoutes(
         gate_tool_results: z.boolean().optional(),
         redact_tool_arguments: z.boolean().optional(),
         notify_on_hold: z.boolean().optional(),
+        enforce_action_token: z.boolean().optional(),
+        connect_webhook_url: z.string().url().nullable().optional(),
+        credential_environment: z.enum(['development', 'staging', 'production']).optional(),
       })
       .parse(req.body)
 
@@ -186,6 +192,20 @@ export async function registerConnectRoutes(
     const { orgId } = req.params as { orgId: string }
     if (!(await requireRole(cfg, orgId, user.id, 'viewer', reply))) return
 
+    const tools = await listConnectTools(cfg, orgId, 50)
+    const fromRegistry = tools
+      .filter((t) => t.suggestion.recommendation !== 'approve')
+      .map((t) => ({
+        action: t.action,
+        count: t.seen_count,
+        recommendation: t.suggestion.recommendation === 'block' ? ('block' as const) : ('verify' as const),
+        reason: t.suggestion.reason,
+      }))
+
+    if (fromRegistry.length > 0) {
+      return { suggestions: fromRegistry.slice(0, 15) }
+    }
+
     const admin = (await import('./auth.js')).createSupabaseAdmin(cfg)
     const since = new Date(Date.now() - 30 * 86_400_000).toISOString()
     const { data } = await admin
@@ -214,6 +234,110 @@ export async function registerConnectRoutes(
       }))
 
     return { suggestions }
+  })
+
+  app.get('/v1/orgs/:orgId/connect/tools', async (req, reply) => {
+    const user = (req as SanctumReq).sanctumUser
+    if (!user) return reply.status(403).send({ error: 'dashboard_auth_required' })
+    const { orgId } = req.params as { orgId: string }
+    if (!(await requireRole(cfg, orgId, user.id, 'viewer', reply))) return
+    const tools = await listConnectTools(cfg, orgId, 100)
+    return { tools }
+  })
+
+  app.post('/v1/orgs/:orgId/connect/tools/:action/policy', async (req, reply) => {
+    const user = (req as SanctumReq).sanctumUser
+    if (!user) return reply.status(403).send({ error: 'dashboard_auth_required' })
+    const { orgId, action } = req.params as { orgId: string; action: string }
+    if (!(await requireRole(cfg, orgId, user.id, 'member', reply))) return
+
+    const body = z.object({ mode: z.enum(['verify', 'block', 'approve']) }).parse(req.body)
+    const key = policyStorageKey(action, orgId, [orgId])
+    const patch =
+      body.mode === 'block'
+        ? { autoBlock: true, requiresVerification: false, reasoning: `Connect: blocked via Live Feed policy.` }
+        : body.mode === 'verify'
+          ? { autoBlock: false, requiresVerification: true, reasoning: `Connect: requires verification.` }
+          : { autoBlock: false, requiresVerification: false, reasoning: `Connect: auto-approved.` }
+
+    await runtime.getPolicyEngine().updatePolicy(key, patch)
+    return { ok: true, action, mode: body.mode }
+  })
+
+  app.get('/v1/orgs/:orgId/connect/shield-presets', async (req, reply) => {
+    const user = (req as SanctumReq).sanctumUser
+    if (!user) return reply.status(403).send({ error: 'dashboard_auth_required' })
+    const { orgId } = req.params as { orgId: string }
+    if (!(await requireRole(cfg, orgId, user.id, 'viewer', reply))) return
+    return { presets: CONNECT_SHIELD_PRESETS }
+  })
+
+  app.post('/v1/orgs/:orgId/connect/shield-presets/:presetId/apply', async (req, reply) => {
+    const user = (req as SanctumReq).sanctumUser
+    if (!user) return reply.status(403).send({ error: 'dashboard_auth_required' })
+    const { orgId, presetId } = req.params as { orgId: string; presetId: string }
+    if (!(await requireRole(cfg, orgId, user.id, 'member', reply))) return
+
+    const bundle = getConnectShieldPreset(presetId)
+    if (!bundle) return reply.status(404).send({ error: 'shield_preset_not_found' })
+
+    const policyPreset = getConnectPreset(bundle.policy_preset_id)
+    if (policyPreset) {
+      const engine = runtime.getPolicyEngine()
+      for (const [action, policy] of Object.entries(policyPreset.policies)) {
+        const key = policyStorageKey(action, orgId, [orgId])
+        await engine.updatePolicy(key, {
+          requiresVerification: policy.requiresVerification,
+          autoBlock: policy.autoBlock,
+          reasoning: policy.reasoning,
+        })
+      }
+      await upsertConnectSettings(cfg, orgId, {
+        proxy_mode: policyPreset.proxy_mode,
+        applied_policy_preset: bundle.policy_preset_id,
+      })
+    }
+
+    const admin = (await import('./auth.js')).createSupabaseAdmin(cfg)
+    let rulesCreated = 0
+    for (const rule of bundle.shield_rules) {
+      const { error } = await admin.from('shield_rules').insert({
+        org_id: orgId,
+        action_pattern: rule.actionPattern,
+        label: rule.label,
+        response: rule.response,
+        category: rule.category ?? null,
+        enabled: true,
+        created_by: user.email ?? user.id,
+      })
+      if (!error) rulesCreated++
+    }
+    invalidateShieldRulesCache(orgId)
+    return { ok: true, preset: presetId, policies_applied: policyPreset ? Object.keys(policyPreset.policies).length : 0, shield_rules_created: rulesCreated }
+  })
+
+  app.post('/v1/orgs/:orgId/connect/promote-to-gate', async (req, reply) => {
+    const user = (req as SanctumReq).sanctumUser
+    if (!user) return reply.status(403).send({ error: 'dashboard_auth_required' })
+    const { orgId } = req.params as { orgId: string }
+    if (!(await requireRole(cfg, orgId, user.id, 'member', reply))) return
+    return upsertConnectSettings(cfg, orgId, { proxy_mode: 'gate', wait_verification: true })
+  })
+
+  app.get('/v1/connect/verifications/:correlationId', async (req, reply) => {
+    const agentTokenRaw =
+      (req.headers['x-sanctum-agent-token'] as string | undefined) ??
+      (req.headers['x-agent-token'] as string | undefined)
+    if (!agentTokenRaw) return reply.status(401).send({ error: 'X-Sanctum-Agent-Token required' })
+    const claims = verifyAgentToken(agentTokenRaw)
+    if (!claims) return reply.status(401).send({ error: 'invalid_agent_token' })
+
+    const { correlationId } = req.params as { correlationId: string }
+    const status = runtime.getVerificationStatus(correlationId)
+    if (status.status === 'unknown') {
+      return reply.status(404).send({ error: 'verification_not_found' })
+    }
+    return status
   })
 
   /** Verify before executing a tool locally (returns actionToken when approved). */
@@ -270,6 +394,14 @@ export async function registerConnectRoutes(
         decision: result.entry.decision,
         reasoning: result.reason,
         entry: result.entry,
+      })
+    }
+
+    if (settings.enforce_action_token && !result.entry.actionToken) {
+      return reply.status(403).send({
+        error: 'action_token_required',
+        decision: result.entry.decision,
+        reasoning: 'Org requires a signed action token before local execution.',
       })
     }
 

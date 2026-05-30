@@ -348,24 +348,29 @@ Enterprises require **observability**; this is non-negotiable for MVP credibilit
 
 | Surface | Route / API | Role |
 |---------|-------------|------|
-| Connect wizard | Dashboard → Connect | Save platform API keys (encrypted), pick agent, copy proxy URL + snippets |
-| Live Feed | Dashboard → Live Feed | Real-time proxy audit; inline approve/deny held tool calls |
+| Connect wizard | Dashboard → Connect | Save platform API keys (encrypted), pick agent, copy proxy URL + snippets; shield bundles, webhooks, observe→gate |
+| Live Feed | Dashboard → Live Feed | Real-time proxy audit; inline approve/deny; one-click per-tool policy (hold/block/auto-approve) |
 | OpenAI-compatible proxy | `POST /v1/proxy/:platform/*` | Agent token auth; gates model `tool_calls` in responses |
 | Execution verify | `POST /v1/connect/verify-execution` | Gate local tool execution before run; returns action token when approved |
-| Org settings | `GET/PUT /v1/orgs/:orgId/connect/settings` | Proxy mode (gate/observe), wait-for-approval, tool-result gating, redaction |
-| Health & presets | `/v1/orgs/:orgId/connect/health`, policy presets | 7-day stats, Strict/Balanced/Observe presets, policy suggestions from Live Feed |
+| Verification poll | `GET /v1/connect/verifications/:id` | Agent-token auth; poll held verification status |
+| Org settings | `GET/PUT /v1/orgs/:orgId/connect/settings` | Proxy mode, wait-for-approval, tool-result gating, redaction, action-token enforce, webhooks, credential environment |
+| Health & presets | `/connect/health`, policy + shield presets, `/connect/tools` | 7-day stats, Strict/Balanced/Observe presets, Shield bundles, tool registry, policy suggestions |
+| Thin client package | `@sanctum-runtime/connect` | verify-execution wrappers for OpenAI, LangChain, MCP (no full SDK) |
 
 **MVP behavior (shipped):**
 
 - **Proposal gating** — Each model `tool_call` in chat completion responses verified before the client receives it; optional wait up to 120s for operator approval (same as SDK `waitForVerification`).
 - **Tool-result gating** — Optional verify on `role: tool` messages before forwarding upstream (exfiltration control).
-- **Execution gating** — Agents call `verify-execution` before running tools locally.
-- **Platform credentials** — Org-scoped encrypted keys in Supabase; proxy injects `Authorization` when saved.
-- **Observe mode** — Log-only for onboarding; no blocking.
+- **Execution gating** — Agents call `verify-execution` before running tools locally; optional org-level `enforce_action_token`.
+- **Platform credentials** — Org-scoped encrypted keys in Supabase; per-environment keys; proxy injects `Authorization` when saved.
+- **Observe mode** — Log-only for onboarding; promote to gate from Connect UI or API.
+- **Tool registry** — Proxy upserts seen tools; schema-aware policy suggestions; Live Feed one-click policies.
+- **Shield bundles** — Connect-tuned policy + Shield preset apply endpoint.
+- **Governance workflows** — Proxy holds can create pending approvals; Connect-branded notifications and optional webhooks.
 
 **Out of scope (Connect vs SDK):** Connect does not replace in-process SDK middleware for arbitrary action types; it targets OpenAI-compatible LLM proxy paths. Full action-token enforcement on client-side execution requires agents to call `verify-execution` or adopt the SDK.
 
-**Data:** `platform_credentials`, `connect_org_settings` (Supabase **§7**); proxy events in `audit_events` with `context.proxy = true`.
+**Data:** `platform_credentials`, `connect_org_settings`, `connect_tools` (Supabase **§7**); proxy events in `audit_events` with `context.proxy = true`. Public guide: `docs/CONNECT_AGENT.md`.
 
 ### 6.3 Public documentation (`/docs`)
 

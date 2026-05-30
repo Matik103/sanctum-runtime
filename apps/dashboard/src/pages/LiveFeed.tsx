@@ -3,6 +3,7 @@ import { Check, Eye, Radio, Wifi, WifiOff, X } from 'lucide-react'
 import { useLiveFeed, type ProxyEvent } from '../hooks/useLiveFeed'
 import { apiBaseUrl } from '../lib/api-url'
 import { resolveVerification } from '../lib/api'
+import { applyToolPolicy } from '../lib/connect-agent'
 import { getAccessToken } from '../lib/supabase'
 import { timeAgo } from '../lib/format'
 import type { PageId } from '../layout/Sidebar'
@@ -68,15 +69,21 @@ function ArgView({ value }: { value: unknown }) {
 function EventRow({
   event,
   agentNames,
+  orgId,
   onSelect,
   onResolve,
+  onPolicy,
   resolving,
+  policySaving,
 }: {
   event: ProxyEvent
   agentNames: Record<string, string>
+  orgId?: string | null
   onSelect: (e: ProxyEvent) => void
   onResolve: (e: ProxyEvent, decision: 'APPROVED' | 'BLOCKED') => void
+  onPolicy: (e: ProxyEvent, mode: 'verify' | 'block' | 'approve') => void
   resolving: string | null
+  policySaving: string | null
 }) {
   const ctx = event.context
   const platform = ctx.platform ?? 'unknown'
@@ -118,26 +125,25 @@ function EventRow({
         </div>
         <ArgView value={ctx.arguments} />
       </div>
-      {held && (
-        <div style={{ display: 'flex', gap: '0.25rem' }} onClick={(e) => e.stopPropagation()}>
-          <button
-            type="button"
-            className="btn btn-primary btn-sm"
-            disabled={resolving === event.id}
-            title="Approve"
-            onClick={() => onResolve(event, 'APPROVED')}
-          >
-            <Check size={14} />
-          </button>
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            disabled={resolving === event.id}
-            title="Deny"
-            onClick={() => onResolve(event, 'BLOCKED')}
-          >
-            <X size={14} />
-          </button>
+      {(held || orgId) && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }} onClick={(e) => e.stopPropagation()}>
+          {held && (
+            <div style={{ display: 'flex', gap: '0.25rem' }}>
+              <button type="button" className="btn btn-primary btn-sm" disabled={resolving === event.id} title="Approve" onClick={() => onResolve(event, 'APPROVED')}>
+                <Check size={14} />
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" disabled={resolving === event.id} title="Deny" onClick={() => onResolve(event, 'BLOCKED')}>
+                <X size={14} />
+              </button>
+            </div>
+          )}
+          {orgId && (
+            <div style={{ display: 'flex', gap: '0.2rem', flexWrap: 'wrap' }}>
+              <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }} disabled={policySaving === event.id} onClick={() => onPolicy(event, 'verify')}>Hold tool</button>
+              <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }} disabled={policySaving === event.id} onClick={() => onPolicy(event, 'block')}>Block</button>
+              <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }} disabled={policySaving === event.id} onClick={() => onPolicy(event, 'approve')}>Auto-approve</button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -209,7 +215,23 @@ export function LiveFeed({ orgId, onPage }: Props) {
   const [agentNames, setAgentNames] = useState<Record<string, string>>({})
   const [selected, setSelected] = useState<ProxyEvent | null>(null)
   const [resolving, setResolving] = useState<string | null>(null)
+  const [policySaving, setPolicySaving] = useState<string | null>(null)
   const [resolveError, setResolveError] = useState<string | null>(null)
+  const [policyMsg, setPolicyMsg] = useState<string | null>(null)
+
+  async function handlePolicy(event: ProxyEvent, mode: 'verify' | 'block' | 'approve') {
+    if (!orgId) return
+    setPolicySaving(event.id)
+    setPolicyMsg(null)
+    try {
+      await applyToolPolicy(orgId, event.action, mode)
+      setPolicyMsg(`Policy for ${event.action}: ${mode}`)
+    } catch (e) {
+      setResolveError(e instanceof Error ? e.message : 'Policy save failed')
+    } finally {
+      setPolicySaving(null)
+    }
+  }
 
   async function handleResolve(event: ProxyEvent, decision: 'APPROVED' | 'BLOCKED') {
     setResolving(event.id)
@@ -267,6 +289,12 @@ export function LiveFeed({ orgId, onPage }: Props) {
         </button>
       </div>
 
+      {policyMsg && (
+        <div className="alert alert--info" style={{ marginBottom: '0.75rem' }}>
+          <div className="alert__body">{policyMsg}</div>
+        </div>
+      )}
+
       {resolveError && (
         <div className="alert alert--error" style={{ marginBottom: '0.75rem' }}>
           <div className="alert__body">{resolveError}</div>
@@ -320,9 +348,12 @@ export function LiveFeed({ orgId, onPage }: Props) {
             key={e.id}
             event={e}
             agentNames={agentNames}
+            orgId={orgId}
             onSelect={setSelected}
             onResolve={(ev, d) => void handleResolve(ev, d)}
+            onPolicy={(ev, m) => void handlePolicy(ev, m)}
             resolving={resolving}
+            policySaving={policySaving}
           />
         ))}
       </div>
