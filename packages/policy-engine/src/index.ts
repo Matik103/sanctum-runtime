@@ -9,6 +9,14 @@ export type PolicyEvaluation = {
   policy: ActionPolicy
   policyPath: string
   violations: string[]
+  /**
+   * True when an explicit policy (a built-in default or an org/custom override)
+   * was found for this action. False when evaluation fell back to the permissive
+   * DEFAULT_POLICY because the action name is unconfigured. Callers use this to
+   * fail safe: a blind APPROVED on an unconfigured action that the risk model
+   * never assessed must not be auto-approved.
+   */
+  matched: boolean
 }
 
 export class PolicyEngine {
@@ -156,6 +164,7 @@ export class PolicyEngine {
 
   evaluate(request: ActionRequest, offlineMode: boolean): PolicyEvaluation {
     const { key, path } = this.resolvePolicyKey(request)
+    const matched = key in this.policies
     const policy = this.policies[key] ?? DEFAULT_POLICY
     const policyPath = path
     const violations: string[] = []
@@ -175,6 +184,7 @@ export class PolicyEngine {
             },
             policyPath: `${path}.condition[${cond.field} ${cond.op} ${cond.value}]`,
             violations: condViolations,
+            matched,
           }
         }
       }
@@ -192,7 +202,7 @@ export class PolicyEngine {
       violations.push('policy_actor_not_allowed')
     }
 
-    return { policy, policyPath, violations }
+    return { policy, policyPath, violations, matched }
   }
 }
 

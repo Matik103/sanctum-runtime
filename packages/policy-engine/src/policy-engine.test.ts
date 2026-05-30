@@ -14,6 +14,20 @@ describe('PolicyEngine.evaluate', () => {
     expect(r.policyPath).toBe('policy.totally_new_action')
   })
 
+  it('marks matched=false for unconfigured actions and matched=true for known ones', () => {
+    const e = new PolicyEngine({})
+    expect(e.evaluate(req('totally_new_action'), false).matched).toBe(false)
+    // send_email is a built-in default policy seeded by the engine
+    expect(e.evaluate(req('send_email'), false).matched).toBe(true)
+  })
+
+  it('marks matched=true when an org-scoped override exists', () => {
+    const e = new PolicyEngine({ 'org-7:custom_action': { requiresVerification: true } })
+    expect(e.evaluate(req('custom_action', 'a', { org_id: 'org-7' }), false).matched).toBe(true)
+    // same action without the org context falls back to the unconfigured default
+    expect(e.evaluate(req('custom_action'), false).matched).toBe(false)
+  })
+
   it('flags policy_auto_block when policy has autoBlock', () => {
     const e = new PolicyEngine({
       'dangerous.op': { autoBlock: true, requiresVerification: false, blockWhenOffline: false },

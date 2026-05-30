@@ -513,6 +513,24 @@ export class RuntimeEngine {
       decision = 'REQUIRE_VERIFICATION'
     }
 
+    // Fail-safe for unconfigured actions: if we are about to APPROVE an action
+    // that has no explicit policy (fell back to the permissive DEFAULT_POLICY)
+    // AND the risk model never actually produced an assessment (offline, timed
+    // out, or errored), then this approval is "blind" — nothing intelligent
+    // evaluated it. A runtime-trust product must not silently approve in that
+    // case. Hold it for human verification and flag why.
+    let blindApproveHeld = false
+    if (decision === 'APPROVED' && !policyEval.matched && !modelInvoked) {
+      decision = 'REQUIRE_VERIFICATION'
+      blindApproveHeld = true
+      if (!anomalyFlags.includes('unconfigured_action_unassessed')) {
+        anomalyFlags.push('unconfigured_action_unassessed')
+      }
+      console.warn(
+        `[sanctum] Held "${request.action}" for verification: no policy configured for this action and the risk model was unavailable (fail-safe, not auto-approved).`,
+      )
+    }
+
     const policyReasoning = buildPolicyReasoning({
       request,
       policy: policyEval.policy,
@@ -523,8 +541,11 @@ export class RuntimeEngine {
       risk,
       modelReason,
     })
-    const reasoning =
+    let reasoning =
       shield.level === 'clear' ? policyReasoning : `${policyReasoning} ${shield.summary}`
+    if (blindApproveHeld) {
+      reasoning = `${reasoning} No policy is configured for "${request.action}" and the risk model was unavailable, so Sanctum held this action for human verification instead of auto-approving an unassessed action (fail-safe).`
+    }
 
     const partial = {
       actor: request.actor,
@@ -648,6 +669,15 @@ export class RuntimeEngine {
     if (shield.requiredDecision === 'BLOCKED') decision = 'BLOCKED'
     else if (shield.requiredDecision === 'REQUIRE_VERIFICATION' && decision === 'APPROVED') {
       decision = 'REQUIRE_VERIFICATION'
+    }
+    // Mirror the live fail-safe: simulation runs heuristics-only (no risk model),
+    // so an unconfigured action that would otherwise be approved is held for
+    // verification — exactly what the runtime would do when the model is offline.
+    if (decision === 'APPROVED' && !policyEval.matched) {
+      decision = 'REQUIRE_VERIFICATION'
+      if (!anomalyFlags.includes('unconfigured_action_unassessed')) {
+        anomalyFlags.push('unconfigured_action_unassessed')
+      }
     }
 
     return {
