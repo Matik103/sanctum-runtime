@@ -29,10 +29,45 @@ const THREAT_TYPES = [
   { id: 'high_value_transfer', label: 'High-value transfer', severity: 'high' },
 ] as const
 
+type Severity = 'critical' | 'high' | 'medium'
+
+// Per-anomaly-flag severity, derived from the THREAT_TYPES catalog above.
+const FLAG_SEVERITY: Record<string, Severity> = Object.fromEntries(
+  THREAT_TYPES.map((t) => [t.id, t.severity as Severity]),
+)
+
+const SEVERITY_RANK: Record<Severity, number> = { medium: 1, high: 2, critical: 3 }
+
+/**
+ * Highest severity for an event, considering BOTH the Shield assessment level
+ * and any anomaly flags. Returns null when the event carries no threat signal.
+ * Keeps the severity filter and the per-type counts consistent (previously the
+ * "Critical" filter only looked at shield.level and silently dropped
+ * critical-severity anomaly flags like repeated_blocked_attempts).
+ */
+function eventSeverity(e: ActionResult): Severity | null {
+  let rank = 0
+  const bump = (s: Severity) => { if (SEVERITY_RANK[s] > rank) rank = SEVERITY_RANK[s] }
+
+  if (e.shield?.level === 'critical') bump('critical')
+  else if (e.shield?.level === 'high') bump('high')
+  else if (e.shield?.level === 'elevated') bump('medium')
+
+  for (const f of e.anomalyFlags) {
+    const s = FLAG_SEVERITY[f]
+    if (s) bump(s)
+  }
+
+  if (rank === 3) return 'critical'
+  if (rank === 2) return 'high'
+  if (rank === 1) return 'medium'
+  return null
+}
+
 type Props = { audit: ActionResult[]; onSelect: (e: ActionResult) => void }
 
 export function ThreatMonitor({ audit, onSelect }: Props) {
-  const [severityFilter, setSeverityFilter] = useState<'all' | 'critical' | 'high' | 'medium'>('all')
+  const [severityFilter, setSeverityFilter] = useState<'all' | Severity>('all')
 
   const withAnomalies = audit.filter((e) => e.anomalyFlags.length > 0)
   const blocked = audit.filter((e) => e.decision === 'BLOCKED')
@@ -45,16 +80,25 @@ export function ThreatMonitor({ audit, onSelect }: Props) {
     (e) => e.decision !== 'APPROVED' || e.anomalyFlags.length > 0,
   )
 
-  const filtered = threats.filter((e) => {
-    if (severityFilter === 'all') return true
-    if (severityFilter === 'critical') return e.shield?.level === 'critical'
-    if (severityFilter === 'high') return e.shield?.level === 'high' || e.anomalyFlags.some(
-      (f) => THREAT_TYPES.find((t) => t.id === f)?.severity === 'high',
-    )
-    return e.anomalyFlags.some(
-      (f) => THREAT_TYPES.find((t) => t.id === f)?.severity === 'medium',
-    )
+  const filtered = threats.filter((e) =>
+    severityFilter === 'all' ? true : eventSeverity(e) === severityFilter,
+  )
+
+  // Real trailing-24h histogram: 24 one-hour buckets ending at the current hour.
+  // (Previously this grouped events by hour-of-day across the entire log and
+  // labelled it "24h", and added a phantom +4 baseline to empty hours.)
+  const hourMs = 3_600_000
+  const nowMs = Date.now()
+  const hourlyCounts = Array.from({ length: 24 }, (_, i) => {
+    const bucketEnd = nowMs - (23 - i) * hourMs
+    const bucketStart = bucketEnd - hourMs
+    return threats.filter((e) => {
+      const t = new Date(e.timestamp).getTime()
+      return Number.isFinite(t) && t > bucketStart && t <= bucketEnd
+    }).length
   })
+  const maxHourly = Math.max(1, ...hourlyCounts)
+  const threats24h = hourlyCounts.reduce((sum, n) => sum + n, 0)
 
   return (
     <>
@@ -126,14 +170,22 @@ export function ThreatMonitor({ audit, onSelect }: Props) {
       </div>
 
       <div className="card" style={{ marginBottom: '1rem' }}>
-        <div className="card-label">Threats over time (24h)</div>
+        <div className="card-label">
+          Threats over time (last 24h) · {threats24h} event{threats24h !== 1 ? 's' : ''}
+        </div>
         <div className="spark" style={{ height: 56 }}>
-          {Array.from({ length: 24 }, (_, i) => {
-            const h = Math.min(
-              40,
-              threats.filter((e) => new Date(e.timestamp).getUTCHours() === i).length * 12 + 4,
+          {hourlyCounts.map((count, i) => {
+            // Proportional bar height; empty hours render a 2px baseline so the
+            // axis stays visible without implying activity.
+            const h = count === 0 ? 2 : Math.round((count / maxHourly) * 40) + 4
+            const hoursAgo = 23 - i
+            return (
+              <span
+                key={i}
+                style={{ height: `${h}px` }}
+                title={`${count} threat${count !== 1 ? 's' : ''} · ${hoursAgo === 0 ? 'this hour' : `${hoursAgo}h ago`}`}
+              />
             )
-            return <span key={i} style={{ height: `${h}px` }} />
           })}
         </div>
       </div>

@@ -20,8 +20,12 @@ import {
 import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 import { timeAgo } from '../lib/format'
 import { getAccessToken } from '../lib/supabase'
+import { apiBaseUrl } from '../lib/api-url'
 
-const API_BASE = import.meta.env.VITE_SANCTUM_API_URL ?? ''
+// Use the shared resolver (env var with a production fallback to
+// api.sanctumruntime.com). A bare `?? ''` would fetch from the console origin
+// when VITE_SANCTUM_API_URL is unset, silently breaking every Shield call.
+const API_BASE = apiBaseUrl
 
 type ShieldStatus = {
   fleetPaused: boolean

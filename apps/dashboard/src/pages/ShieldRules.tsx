@@ -23,8 +23,11 @@ import {
   UserCheck,
 } from 'lucide-react'
 import { getAccessToken } from '../lib/supabase'
+import { apiBaseUrl } from '../lib/api-url'
 
-const API_BASE = import.meta.env.VITE_SANCTUM_API_URL ?? ''
+// Shared resolver (env var + production fallback). A bare `?? ''` would target
+// the console origin when VITE_SANCTUM_API_URL is unset, breaking rule CRUD.
+const API_BASE = apiBaseUrl
 
 type ShieldRule = {
   id: string

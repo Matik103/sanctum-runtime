@@ -60,6 +60,7 @@ function statusBadge(status: ApprovalStatus) {
 export function Governance() {
   const [orgId, setOrgId] = useState('')
   const [approvals, setApprovals] = useState<PendingApproval[]>([])
+  const [pendingCount, setPendingCount] = useState(0)
   const [workflows, setWorkflows] = useState<Workflow[]>([])
   const [tab, setTab] = useState<'approvals' | 'workflows'>('approvals')
   const [statusFilter, setStatusFilter] = useState<ApprovalStatus | 'all'>('pending')
@@ -81,8 +82,23 @@ export function Governance() {
       fetch(`${apiBaseUrl}/v1/orgs/${orgId}/approvals${q}`, { headers: h }),
       fetch(`${apiBaseUrl}/v1/orgs/${orgId}/workflows`, { headers: h }),
     ])
-    if (aRes.ok) setApprovals(await aRes.json() as PendingApproval[])
+    if (aRes.ok) {
+      const list = await aRes.json() as PendingApproval[]
+      setApprovals(list)
+      // When the current view already includes pending rows, the true pending
+      // count is derivable here without a second request.
+      if (statusFilter === 'pending' || statusFilter === 'all') {
+        setPendingCount(list.filter((a) => a.status === 'pending').length)
+      }
+    }
     if (wRes.ok) setWorkflows(await wRes.json() as Workflow[])
+
+    // Otherwise the filtered list can't tell us how many are pending — fetch the
+    // pending count explicitly so the tab badge is always accurate.
+    if (statusFilter !== 'pending' && statusFilter !== 'all') {
+      const pRes = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/approvals?status=pending`, { headers: h })
+      if (pRes.ok) setPendingCount((await pRes.json() as PendingApproval[]).length)
+    }
   }, [orgId, statusFilter])
 
   useEffect(() => { void load() }, [load])
@@ -151,7 +167,7 @@ export function Governance() {
 
       <TabBar
         tabs={[
-          { id: 'approvals' as const, label: 'Pending Approvals', count: approvals.filter(a => a.status === 'pending').length },
+          { id: 'approvals' as const, label: 'Pending Approvals', count: pendingCount },
           { id: 'workflows' as const, label: 'Workflows', count: workflows.length },
         ]}
         active={tab}

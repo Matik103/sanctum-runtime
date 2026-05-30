@@ -139,9 +139,9 @@ export function Overview({
         <div className="card">
           <div className="card-label">Approval rate</div>
           <div className="card-value" style={{ fontSize: '1.25rem' }}>
-            {audit.length ? Math.round((approved / audit.length) * 100) : 100}%
+            {audit.length ? `${Math.round((approved / audit.length) * 100)}%` : '—'}
           </div>
-          <div className="card-meta">{audit.length ? `${audit.length} actions evaluated` : 'No actions yet'}</div>
+          <div className="card-meta">{audit.length ? `across last ${audit.length} events` : 'No actions yet'}</div>
         </div>
 
         {/* Shield status card */}
