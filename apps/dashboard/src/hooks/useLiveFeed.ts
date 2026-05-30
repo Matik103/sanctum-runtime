@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken, getSupabase } from '../lib/supabase'
 
@@ -8,6 +8,8 @@ export type ProxyEvent = {
   action: string
   actor: string
   decision: string
+  reasoning?: string
+  correlation_id?: string
   context: {
     proxy: true
     platform: string
@@ -15,6 +17,7 @@ export type ProxyEvent = {
     agent_name?: string
     tool_call_id: string
     arguments: unknown
+    phase?: string
   }
   created_at: string
 }
@@ -32,6 +35,13 @@ function normalizeProxyEvent(raw: Record<string, unknown>): ProxyEvent | null {
     action: String(raw.action ?? ''),
     actor: String(raw.actor ?? ''),
     decision: String(raw.decision ?? 'APPROVED'),
+    reasoning: typeof raw.reasoning === 'string' ? raw.reasoning : undefined,
+    correlation_id:
+      typeof raw.correlation_id === 'string'
+        ? raw.correlation_id
+        : typeof raw.correlationId === 'string'
+          ? raw.correlationId
+          : undefined,
     context: {
       proxy: true,
       platform: String(ctx.platform ?? 'unknown'),
@@ -39,6 +49,7 @@ function normalizeProxyEvent(raw: Record<string, unknown>): ProxyEvent | null {
       agent_name: ctx.agent_name != null ? String(ctx.agent_name) : undefined,
       tool_call_id: String(ctx.tool_call_id ?? ''),
       arguments: ctx.arguments,
+      phase: ctx.phase != null ? String(ctx.phase) : undefined,
     },
     created_at: created,
   }
@@ -109,5 +120,9 @@ export function useLiveFeed(orgId: string | null | undefined) {
     }
   }, [orgId])
 
-  return { events, connected, loading }
+  const patchEvent = useCallback((id: string, patch: Partial<Pick<ProxyEvent, 'decision' | 'reasoning'>>) => {
+    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)))
+  }, [])
+
+  return { events, connected, loading, patchEvent }
 }

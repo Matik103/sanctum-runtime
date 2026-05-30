@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Eye, Radio, Wifi, WifiOff } from 'lucide-react'
+import { Check, Eye, Radio, Wifi, WifiOff, X } from 'lucide-react'
 import { useLiveFeed, type ProxyEvent } from '../hooks/useLiveFeed'
 import { apiBaseUrl } from '../lib/api-url'
+import { resolveVerification } from '../lib/api'
 import { getAccessToken } from '../lib/supabase'
 import { timeAgo } from '../lib/format'
 import type { PageId } from '../layout/Sidebar'
@@ -67,24 +68,37 @@ function ArgView({ value }: { value: unknown }) {
 function EventRow({
   event,
   agentNames,
+  onSelect,
+  onResolve,
+  resolving,
 }: {
   event: ProxyEvent
   agentNames: Record<string, string>
+  onSelect: (e: ProxyEvent) => void
+  onResolve: (e: ProxyEvent, decision: 'APPROVED' | 'BLOCKED') => void
+  resolving: string | null
 }) {
   const ctx = event.context
   const platform = ctx.platform ?? 'unknown'
   const agentId = ctx.agent_id ?? event.actor
   const agentLabel = ctx.agent_name ?? agentNames[agentId] ?? `${String(agentId).slice(0, 8)}…`
+  const held = event.decision === 'REQUIRE_VERIFICATION'
 
   return (
-    <div style={{
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onSelect(event)}
+      onKeyDown={(e) => { if (e.key === 'Enter') onSelect(event) }}
+      style={{
       display: 'grid',
-      gridTemplateColumns: '90px 140px 140px 1fr',
+      gridTemplateColumns: '90px 140px 140px 1fr auto',
       gap: '0.75rem',
       alignItems: 'start',
       padding: '0.75rem 1rem',
       borderBottom: '1px solid var(--border, #2a2a3e)',
       fontSize: '0.82rem',
+      cursor: 'pointer',
     }}>
       <div style={{ opacity: 0.55, fontSize: '0.75rem', paddingTop: '0.1rem' }}>
         {timeAgo(event.created_at)}
@@ -98,8 +112,88 @@ function EventRow({
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
           <code style={{ fontWeight: 600, fontSize: '0.82rem' }}>{event.action}</code>
           <DecisionBadge decision={event.decision} />
+          {ctx.phase && (
+            <span style={{ fontSize: '0.62rem', opacity: 0.45 }}>{ctx.phase}</span>
+          )}
         </div>
         <ArgView value={ctx.arguments} />
+      </div>
+      {held && (
+        <div style={{ display: 'flex', gap: '0.25rem' }} onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            disabled={resolving === event.id}
+            title="Approve"
+            onClick={() => onResolve(event, 'APPROVED')}
+          >
+            <Check size={14} />
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            disabled={resolving === event.id}
+            title="Deny"
+            onClick={() => onResolve(event, 'BLOCKED')}
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DetailDrawer({
+  event,
+  onClose,
+}: {
+  event: ProxyEvent
+  onClose: () => void
+}) {
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 100,
+        display: 'flex',
+        justifyContent: 'flex-end',
+        background: 'rgba(0,0,0,0.45)',
+      }}
+      onClick={onClose}
+    >
+      <div
+        className="card"
+        style={{
+          width: 'min(420px, 100%)',
+          height: '100%',
+          borderRadius: 0,
+          padding: '1.25rem',
+          overflowY: 'auto',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h2 style={{ margin: 0, fontSize: '1rem' }}>Audit detail</h2>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
+            <X size={16} />
+          </button>
+        </div>
+        <dl style={{ fontSize: '0.82rem', display: 'grid', gap: '0.65rem' }}>
+          <div><dt style={{ opacity: 0.55 }}>Action</dt><dd><code>{event.action}</code></dd></div>
+          <div><dt style={{ opacity: 0.55 }}>Decision</dt><dd><DecisionBadge decision={event.decision} /></dd></div>
+          <div><dt style={{ opacity: 0.55 }}>Platform</dt><dd>{event.context.platform}</dd></div>
+          <div><dt style={{ opacity: 0.55 }}>Agent</dt><dd>{event.context.agent_name ?? event.actor}</dd></div>
+          {event.correlation_id && (
+            <div><dt style={{ opacity: 0.55 }}>Correlation</dt><dd style={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{event.correlation_id}</dd></div>
+          )}
+          {event.reasoning && (
+            <div><dt style={{ opacity: 0.55 }}>Reasoning</dt><dd>{event.reasoning}</dd></div>
+          )}
+          <div><dt style={{ opacity: 0.55 }}>Arguments</dt><dd><ArgView value={event.context.arguments} /></dd></div>
+          <div><dt style={{ opacity: 0.55 }}>When</dt><dd>{new Date(event.created_at).toLocaleString()}</dd></div>
+        </dl>
       </div>
     </div>
   )
@@ -111,8 +205,24 @@ type Props = {
 }
 
 export function LiveFeed({ orgId, onPage }: Props) {
-  const { events, connected, loading } = useLiveFeed(orgId)
+  const { events, connected, loading, patchEvent } = useLiveFeed(orgId)
   const [agentNames, setAgentNames] = useState<Record<string, string>>({})
+  const [selected, setSelected] = useState<ProxyEvent | null>(null)
+  const [resolving, setResolving] = useState<string | null>(null)
+  const [resolveError, setResolveError] = useState<string | null>(null)
+
+  async function handleResolve(event: ProxyEvent, decision: 'APPROVED' | 'BLOCKED') {
+    setResolving(event.id)
+    setResolveError(null)
+    try {
+      await resolveVerification(event.id, decision)
+      patchEvent(event.id, { decision, reasoning: decision === 'APPROVED' ? 'Approved from Live Feed.' : 'Blocked from Live Feed.' })
+    } catch (e) {
+      setResolveError(e instanceof Error ? e.message : 'Resolve failed')
+    } finally {
+      setResolving(null)
+    }
+  }
 
   useEffect(() => {
     if (!orgId) return
@@ -143,7 +253,7 @@ export function LiveFeed({ orgId, onPage }: Props) {
             </span>
           </div>
           <p className="page-subtitle" style={{ marginTop: '0.25rem' }}>
-            Connect Agent gates each tool call through Sanctum verify (same as the SDK). Held items appear here and in pending review on Overview.
+            Connect Agent gates each tool call through Sanctum verify (same as the SDK). Approve or deny held items inline — the proxy releases waiting requests automatically.
           </p>
         </div>
         <button
@@ -157,10 +267,16 @@ export function LiveFeed({ orgId, onPage }: Props) {
         </button>
       </div>
 
+      {resolveError && (
+        <div className="alert alert--error" style={{ marginBottom: '0.75rem' }}>
+          <div className="alert__body">{resolveError}</div>
+        </div>
+      )}
+
       <div className="card" style={{ overflow: 'hidden', padding: 0 }}>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '90px 140px 140px 1fr',
+          gridTemplateColumns: '90px 140px 140px 1fr auto',
           gap: '0.75rem',
           padding: '0.6rem 1rem',
           borderBottom: '1px solid var(--border, #2a2a3e)',
@@ -200,9 +316,20 @@ export function LiveFeed({ orgId, onPage }: Props) {
         )}
 
         {!loading && events.map((e) => (
-          <EventRow key={e.id} event={e} agentNames={agentNames} />
+          <EventRow
+            key={e.id}
+            event={e}
+            agentNames={agentNames}
+            onSelect={setSelected}
+            onResolve={(ev, d) => void handleResolve(ev, d)}
+            resolving={resolving}
+          />
         ))}
       </div>
+
+      {selected && (
+        <DetailDrawer event={selected} onClose={() => setSelected(null)} />
+      )}
 
       {events.length > 0 && (
         <p style={{ fontSize: '0.75rem', opacity: 0.4, marginTop: '0.5rem', textAlign: 'right' }}>

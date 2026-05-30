@@ -40,6 +40,7 @@ import { registerAlertRoutes } from './alert-routes.js'
 import { registerPushRoutes, sendPushToUser } from './push-routes.js'
 import { registerShieldRoutes, loadShieldRules, evaluateShieldRules, logContainmentEvent } from './shield-routes.js'
 import { registerPlatformCredentialRoutes } from './platform-credential-routes.js'
+import { registerConnectRoutes } from './connect-routes.js'
 import { registerProxyRoutes } from './proxy-routes.js'
 import { AlertStore } from './alert-store.js'
 import { sendVerificationEmail, verifyToken } from './verify-email.js'
@@ -299,6 +300,8 @@ app.addHook('onRequest', async (req, reply) => {
   // Connect Agent proxy: auth is the Sanctum agent token + upstream platform key,
   // validated inside proxy-routes (never store platform keys).
   if (path.startsWith('/v1/proxy/')) return
+  // Connect execution verify: agent token only (same as proxy).
+  if (path === '/v1/connect/verify-execution') return
 
   const auth = await authenticateRequest(req.headers, {
     supabase: supabaseAuth,
@@ -485,6 +488,7 @@ if (supabaseAuth) {
   registerShieldRoutes(app)
   await registerAgentTokenRoutes(app, supabaseAuth)
   await registerPlatformCredentialRoutes(app, supabaseAuth)
+  await registerConnectRoutes(app, supabaseAuth, runtime)
   registerProxyRoutes(app, runtime)
 }
 

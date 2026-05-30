@@ -11,13 +11,17 @@ import { logger } from './logger.js'
 import { createSupabaseAdmin, getSupabaseAuthConfig } from './auth.js'
 import { verifyAgentToken } from './agent-tokens.js'
 import { getPlatformSecret } from './platform-credentials.js'
+import { getConnectSettings } from './connect-settings.js'
+import { recordUsage, UsageMetrics } from './usage-store.js'
 import type { RuntimeEngine } from '@sanctum/runtime-engine'
 import {
   filterBlockedToolCallsFromBody,
   filterBlockedToolCallsFromSse,
   gateToolCalls,
-  proxyGateEnabled,
+  gateToolResultsInBody,
+  proxyGateEnabledFromMode,
   proxyWaitVerification,
+  resolveProxyMode,
   type ProxyToolCall,
 } from './proxy-gate.js'
 import { randomUUID } from 'node:crypto'
@@ -169,6 +173,14 @@ export function registerProxyRoutes(app: FastifyInstance, runtime: RuntimeEngine
           .maybeSingle()
         const agentName = agentRow?.name ?? agentId.slice(0, 8)
 
+        const connectSettings = await getConnectSettings(cfg, orgId)
+        const proxyMode = resolveProxyMode(req, connectSettings)
+        const gateEnabled = proxyGateEnabledFromMode(proxyMode)
+        const waitVerification = proxyWaitVerification(req, connectSettings)
+        const waitTimeoutMs = connectSettings.wait_timeout_ms
+        const gateToolResults = connectSettings.gate_tool_results
+        const redactArguments = connectSettings.redact_tool_arguments
+
         const baseUrl = PROXY_PLATFORMS[platform]
         if (!baseUrl) {
           return reply.code(400).send({
@@ -197,6 +209,39 @@ export function registerProxyRoutes(app: FastifyInstance, runtime: RuntimeEngine
           authorization: platformAuth,
         }
 
+        let requestBody = req.body
+        const gateOpts = {
+          agentToken: agentTokenRaw,
+          agentId,
+          agentName,
+          orgId,
+          platform,
+          waitVerification,
+          waitTimeoutMs,
+          redactArguments,
+        }
+
+        if (
+          gateEnabled &&
+          gateToolResults &&
+          req.method === 'POST' &&
+          requestBody &&
+          typeof requestBody === 'object'
+        ) {
+          const gated = await gateToolResultsInBody(app, runtime, {
+            ...gateOpts,
+            body: requestBody,
+          })
+          requestBody = gated.body
+          if (gated.blocked.size > 0) {
+            recordUsage(cfg, orgId, UsageMetrics.ACTION_VERIFY, gated.blocked.size, {
+              proxy: true,
+              phase: 'tool_result',
+              platform,
+            })
+          }
+        }
+
         let upstream: Response
         try {
           upstream = await fetch(upstreamUrl, {
@@ -204,7 +249,7 @@ export function registerProxyRoutes(app: FastifyInstance, runtime: RuntimeEngine
             headers: forwardHeaders,
             body:
               req.method !== 'GET' && req.method !== 'HEAD'
-                ? JSON.stringify(req.body)
+                ? JSON.stringify(requestBody)
                 : undefined,
           })
         } catch (err) {
@@ -215,17 +260,6 @@ export function registerProxyRoutes(app: FastifyInstance, runtime: RuntimeEngine
         const replyHeaders: Record<string, string> = {}
         for (const [k, v] of upstream.headers.entries()) {
           if (!SKIP_HEADERS.has(k.toLowerCase())) replyHeaders[k] = v
-        }
-
-        const gateEnabled = proxyGateEnabled(req)
-        const waitVerification = proxyWaitVerification(req)
-        const gateOpts = {
-          agentToken: agentTokenRaw,
-          agentId,
-          agentName,
-          orgId,
-          platform,
-          waitVerification,
         }
 
         function logObservedToolCalls(toolCalls: ProxyToolCall[]): void {
@@ -270,6 +304,12 @@ export function registerProxyRoutes(app: FastifyInstance, runtime: RuntimeEngine
             const toolCalls = uniqueToolCalls(toolsFromChunk(sseText))
             if (toolCalls.length > 0) {
               const { blocked } = await gateToolCalls(app, runtime, { ...gateOpts, toolCalls })
+              recordUsage(cfg, orgId, UsageMetrics.ACTION_VERIFY, toolCalls.length, {
+                proxy: true,
+                phase: 'proposal',
+                platform,
+                blocked: blocked.size,
+              })
               if (blocked.size > 0) {
                 outSse = filterBlockedToolCallsFromSse(sseText, blocked)
               }
@@ -295,6 +335,12 @@ export function registerProxyRoutes(app: FastifyInstance, runtime: RuntimeEngine
           const toolCalls = uniqueToolCalls(toolsFromBody(body))
           if (toolCalls.length > 0) {
             const { blocked } = await gateToolCalls(app, runtime, { ...gateOpts, toolCalls })
+            recordUsage(cfg, orgId, UsageMetrics.ACTION_VERIFY, toolCalls.length, {
+              proxy: true,
+              phase: 'proposal',
+              platform,
+              blocked: blocked.size,
+            })
             const filtered = filterBlockedToolCallsFromBody(body, blocked)
             void reply.code(upstream.status)
             for (const [k, v] of Object.entries(replyHeaders)) void reply.header(k, v)

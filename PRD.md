@@ -340,6 +340,33 @@ Enterprises require **observability**; this is non-negotiable for MVP credibilit
 
 **Open-core boundary:** MVP dashboard in this repo is the **community/basic** tier (**§4.3.1**). Enterprise fleet, org views, advanced analytics, and compliance UX stay **private** (**§4.3.2**).
 
+#### 6.2.1 Connect Agent (no-SDK path)
+
+**Purpose:** Let teams connect existing OpenAI-compatible agents (LangChain, custom Python/TS clients) to Sanctum **without embedding the SDK** — gate tool proposals, tool results, and local execution through the same `/v1/actions/verify` pipeline.
+
+**Surfaces:**
+
+| Surface | Route / API | Role |
+|---------|-------------|------|
+| Connect wizard | Dashboard → Connect | Save platform API keys (encrypted), pick agent, copy proxy URL + snippets |
+| Live Feed | Dashboard → Live Feed | Real-time proxy audit; inline approve/deny held tool calls |
+| OpenAI-compatible proxy | `POST /v1/proxy/:platform/*` | Agent token auth; gates model `tool_calls` in responses |
+| Execution verify | `POST /v1/connect/verify-execution` | Gate local tool execution before run; returns action token when approved |
+| Org settings | `GET/PUT /v1/orgs/:orgId/connect/settings` | Proxy mode (gate/observe), wait-for-approval, tool-result gating, redaction |
+| Health & presets | `/v1/orgs/:orgId/connect/health`, policy presets | 7-day stats, Strict/Balanced/Observe presets, policy suggestions from Live Feed |
+
+**MVP behavior (shipped):**
+
+- **Proposal gating** — Each model `tool_call` in chat completion responses verified before the client receives it; optional wait up to 120s for operator approval (same as SDK `waitForVerification`).
+- **Tool-result gating** — Optional verify on `role: tool` messages before forwarding upstream (exfiltration control).
+- **Execution gating** — Agents call `verify-execution` before running tools locally.
+- **Platform credentials** — Org-scoped encrypted keys in Supabase; proxy injects `Authorization` when saved.
+- **Observe mode** — Log-only for onboarding; no blocking.
+
+**Out of scope (Connect vs SDK):** Connect does not replace in-process SDK middleware for arbitrary action types; it targets OpenAI-compatible LLM proxy paths. Full action-token enforcement on client-side execution requires agents to call `verify-execution` or adopt the SDK.
+
+**Data:** `platform_credentials`, `connect_org_settings` (Supabase **§7**); proxy events in `audit_events` with `context.proxy = true`.
+
 ### 6.3 Public documentation (`/docs`)
 
 **Purpose:** Developer onboarding + trust + ecosystem (**§4.3.3**). Same narrative as marketing site; deeper technical depth.
