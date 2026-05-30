@@ -151,6 +151,13 @@ export function registerProxyRoutes(app: FastifyInstance): void {
           return reply.code(401).send({ error: 'Invalid or tampered agent token' })
         }
         const { orgId, id: agentId } = claims
+        const admin = createSupabaseAdmin(cfg)
+        const { data: agentRow } = await admin
+          .from('agent_registrations')
+          .select('name')
+          .eq('id', agentId)
+          .maybeSingle()
+        const agentName = agentRow?.name ?? agentId.slice(0, 8)
 
         // ── Platform routing ─────────────────────────────────────────────────
         const baseUrl = PROXY_PLATFORMS[platform]
@@ -205,7 +212,6 @@ export function registerProxyRoutes(app: FastifyInstance): void {
         }
 
         // ── Tool call logger (fire-and-forget) ───────────────────────────────
-        const admin = createSupabaseAdmin(cfg)
         function logToolCall(tc: ToolCall): void {
           const correlationId = `proxy-${platform}-${tc.id}`
           void admin
@@ -222,6 +228,8 @@ export function registerProxyRoutes(app: FastifyInstance): void {
               context: {
                 proxy: true,
                 platform,
+                agent_id: agentId,
+                agent_name: agentName,
                 tool_call_id: tc.id,
                 arguments: parseArgs(tc.arguments),
                 org_id: orgId,

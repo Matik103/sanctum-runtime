@@ -1,5 +1,8 @@
+import { useEffect, useState } from 'react'
 import { Eye, Radio, Wifi, WifiOff } from 'lucide-react'
 import { useLiveFeed, type ProxyEvent } from '../hooks/useLiveFeed'
+import { apiBaseUrl } from '../lib/api-url'
+import { getAccessToken } from '../lib/supabase'
 import { timeAgo } from '../lib/format'
 import type { PageId } from '../layout/Sidebar'
 
@@ -21,6 +24,8 @@ const PLATFORM_FLAGS: Record<string, string> = {
   gemini:   '✨',
 }
 
+type AgentOption = { id: string; name: string }
+
 function ArgView({ value }: { value: unknown }) {
   if (value === null || value === undefined) return <span style={{ opacity: 0.4 }}>—</span>
   if (typeof value === 'string') {
@@ -34,13 +39,22 @@ function ArgView({ value }: { value: unknown }) {
   )
 }
 
-function EventRow({ event }: { event: ProxyEvent }) {
+function EventRow({
+  event,
+  agentNames,
+}: {
+  event: ProxyEvent
+  agentNames: Record<string, string>
+}) {
   const ctx = event.context
   const platform = ctx.platform ?? 'unknown'
+  const agentId = ctx.agent_id ?? event.actor
+  const agentLabel = ctx.agent_name ?? agentNames[agentId] ?? `${String(agentId).slice(0, 8)}…`
+
   return (
     <div style={{
       display: 'grid',
-      gridTemplateColumns: '90px 110px 1fr',
+      gridTemplateColumns: '90px 140px 140px 1fr',
       gap: '0.75rem',
       alignItems: 'start',
       padding: '0.75rem 1rem',
@@ -50,14 +64,10 @@ function EventRow({ event }: { event: ProxyEvent }) {
       <div style={{ opacity: 0.55, fontSize: '0.75rem', paddingTop: '0.1rem' }}>
         {timeAgo(event.created_at)}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-        <span>
-          <span style={{ marginRight: '0.3rem' }}>{PLATFORM_FLAGS[platform] ?? '🔌'}</span>
-          <span style={{ opacity: 0.8 }}>{PLATFORM_LABELS[platform] ?? platform}</span>
-        </span>
-        <span style={{ fontFamily: 'monospace', fontSize: '0.72rem', opacity: 0.5 }}>
-          {String(event.actor).slice(0, 12)}…
-        </span>
+      <div style={{ fontWeight: 500 }}>{agentLabel}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', opacity: 0.85 }}>
+        <span>{PLATFORM_FLAGS[platform] ?? '🔌'}</span>
+        <span>{PLATFORM_LABELS[platform] ?? platform}</span>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
         <code style={{ fontWeight: 600, fontSize: '0.82rem' }}>{event.action}</code>
@@ -74,6 +84,20 @@ type Props = {
 
 export function LiveFeed({ orgId, onPage }: Props) {
   const { events, connected, loading } = useLiveFeed(orgId)
+  const [agentNames, setAgentNames] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    if (!orgId) return
+    void (async () => {
+      const token = await getAccessToken()
+      const headers: Record<string, string> = {}
+      if (token) headers['Authorization'] = `Bearer ${token}`
+      const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/agents`, { headers })
+      if (!res.ok) return
+      const list = (await res.json()) as AgentOption[]
+      setAgentNames(Object.fromEntries(list.map((a) => [a.id, a.name])))
+    })()
+  }, [orgId])
 
   return (
     <div className="page">
@@ -91,7 +115,7 @@ export function LiveFeed({ orgId, onPage }: Props) {
             </span>
           </div>
           <p className="page-subtitle" style={{ marginTop: '0.25rem' }}>
-            Tool calls your agents make — via the Sanctum proxy — appear here in real time.
+            Each row is a tool call from a Sanctum agent (via its token) through a platform proxy (OpenAI, DeepSeek, etc.).
           </p>
         </div>
         <button
@@ -106,10 +130,9 @@ export function LiveFeed({ orgId, onPage }: Props) {
       </div>
 
       <div className="card" style={{ overflow: 'hidden', padding: 0 }}>
-        {/* Table header */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '90px 110px 1fr',
+          gridTemplateColumns: '90px 140px 140px 1fr',
           gap: '0.75rem',
           padding: '0.6rem 1rem',
           borderBottom: '1px solid var(--border, #2a2a3e)',
@@ -120,6 +143,7 @@ export function LiveFeed({ orgId, onPage }: Props) {
           opacity: 0.5,
         }}>
           <span>When</span>
+          <span>Sanctum agent</span>
           <span>Platform</span>
           <span>Tool call</span>
         </div>
@@ -147,7 +171,9 @@ export function LiveFeed({ orgId, onPage }: Props) {
           </div>
         )}
 
-        {!loading && events.map((e) => <EventRow key={e.id} event={e} />)}
+        {!loading && events.map((e) => (
+          <EventRow key={e.id} event={e} agentNames={agentNames} />
+        ))}
       </div>
 
       {events.length > 0 && (

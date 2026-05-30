@@ -67,11 +67,11 @@ function CodeBlock({ code, lang = 'python' }: { code: string; lang?: string }) {
 
 function snippet(
   platform: string,
-  token: string,
   savedKey: boolean,
   python = true,
 ): string {
   const proxyUrl = `${apiBaseUrl}/v1/proxy/${platform}`
+  const tokenPlaceholder = 'sk_agent_...'
   const authLine = savedKey
     ? '    # Authorization optional — platform key saved in Sanctum Connect'
     : `    api_key="your-${platform}-api-key",`
@@ -82,7 +82,7 @@ function snippet(
 client = OpenAI(
     base_url="${proxyUrl}",
     default_headers={
-        "X-Sanctum-Agent-Token": "${token || 'sk_agent_...'}"
+        "X-Sanctum-Agent-Token": "${tokenPlaceholder}"
     }
 )
 
@@ -98,7 +98,7 @@ client = OpenAI(
     base_url="${proxyUrl}",
     ${authLine}
     default_headers={
-        "X-Sanctum-Agent-Token": "${token || 'sk_agent_...'}"
+        "X-Sanctum-Agent-Token": "${tokenPlaceholder}"
     }
 )
 
@@ -114,7 +114,7 @@ response = client.chat.completions.create(
 const client = new OpenAI({
   baseURL: '${proxyUrl}',
   defaultHeaders: {
-    'X-Sanctum-Agent-Token': '${token || 'sk_agent_...'}',
+    'X-Sanctum-Agent-Token': '${tokenPlaceholder}',
   },
 })
 
@@ -129,7 +129,7 @@ const client = new OpenAI({
   baseURL: '${proxyUrl}',
   apiKey: 'your-${platform}-api-key',
   defaultHeaders: {
-    'X-Sanctum-Agent-Token': '${token || 'sk_agent_...'}',
+    'X-Sanctum-Agent-Token': '${tokenPlaceholder}',
   },
 })
 
@@ -147,7 +147,6 @@ type Props = {
 
 export function Connect({ orgId, onPage }: Props) {
   const [platform, setPlatform] = useState<PlatformId>('deepseek')
-  const [agentToken, setAgentToken] = useState('')
   const [selectedAgentId, setSelectedAgentId] = useState('')
   const [agents, setAgents] = useState<AgentOption[]>([])
   const [credentials, setCredentials] = useState<PlatformCredential[]>([])
@@ -160,6 +159,10 @@ export function Connect({ orgId, onPage }: Props) {
   const [error, setError] = useState<string | null>(null)
 
   const savedCred = credentials.find((c) => c.platform === platform)
+  const selectedAgent = agents.find((a) => a.id === selectedAgentId)
+  const linkedAgent = savedCred?.default_agent_id
+    ? agents.find((a) => a.id === savedCred.default_agent_id)
+    : null
   const proxyUrl = `${apiBaseUrl}/v1/proxy/${platform}`
 
   const load = useCallback(async () => {
@@ -179,18 +182,23 @@ export function Connect({ orgId, onPage }: Props) {
       if (agentRes.ok) {
         const list = (await agentRes.json()) as AgentOption[]
         setAgents(list)
-        if (!selectedAgentId && list.length === 1) setSelectedAgentId(list[0].id)
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load connection settings')
     } finally {
       setLoading(false)
     }
-  }, [orgId, selectedAgentId])
+  }, [orgId])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    if (agents.length === 1 && !selectedAgentId) {
+      setSelectedAgentId(agents[0].id)
+    }
+  }, [agents, selectedAgentId])
 
   useEffect(() => {
     setPlatformKeyInput('')
@@ -281,15 +289,24 @@ export function Connect({ orgId, onPage }: Props) {
             <span className="step-badge">1</span> Sanctum agent
           </h2>
           <p style={{ fontSize: '0.85rem', marginBottom: '0.75rem', opacity: 0.75 }}>
-            Each agent gets a token that identifies it to Sanctum. Create one on{' '}
+            Choose which Sanctum agent will send traffic through the proxy. Create one on{' '}
             <button type="button" className="btn btn-ghost" style={{ padding: 0, fontSize: 'inherit', textDecoration: 'underline' }} onClick={() => onPage('agents')}>
               Agents
             </button>
-            , then paste the token here (shown once at creation).
+            {' '}if you do not have one yet — copy its token when shown (once) for your client code.
           </p>
-          {agents.length > 0 && (
-            <label style={{ display: 'block', marginBottom: '0.75rem', fontSize: '0.82rem' }}>
-              Link to agent (optional)
+          {agents.length === 0 ? (
+            <div className="alert alert--info" style={{ margin: 0 }}>
+              <div className="alert__body" style={{ fontSize: '0.82rem' }}>
+                No agents yet. Create one on the Agents page, then return here to connect it.
+              </div>
+              <button type="button" className="btn btn-primary btn-sm" style={{ marginTop: '0.5rem' }} onClick={() => onPage('agents')}>
+                Go to Agents
+              </button>
+            </div>
+          ) : (
+            <label style={{ display: 'block', fontSize: '0.82rem' }}>
+              Select agent
               <select
                 className="input"
                 value={selectedAgentId}
@@ -305,15 +322,11 @@ export function Connect({ orgId, onPage }: Props) {
               </select>
             </label>
           )}
-          <input
-            type="password"
-            className="input"
-            placeholder="sk_agent_…"
-            value={agentToken}
-            onChange={(e) => setAgentToken(e.target.value)}
-            autoComplete="off"
-            style={{ fontFamily: 'monospace', fontSize: '0.85rem', width: '100%' }}
-          />
+          {selectedAgent && (
+            <p style={{ fontSize: '0.78rem', marginTop: '0.65rem', opacity: 0.6 }}>
+              Live Feed labels rows by this agent&apos;s token at request time — not by what you pick on Connect alone.
+            </p>
+          )}
         </section>
 
         {/* Step 2 — Platform */}
@@ -321,8 +334,16 @@ export function Connect({ orgId, onPage }: Props) {
           <h2 className="card-title" style={{ marginBottom: '0.75rem' }}>
             <span className="step-badge">2</span> Pick your platform
           </h2>
+          <p style={{ fontSize: '0.82rem', marginBottom: '0.75rem', opacity: 0.65 }}>
+            The platform you select here sets the proxy URL and which API key you save. Live Feed shows the platform from each actual proxy request.
+          </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '0.5rem' }}>
-            {PLATFORMS.map((p) => (
+            {PLATFORMS.map((p) => {
+              const cred = credentials.find((c) => c.platform === p.id)
+              const credAgent = cred?.default_agent_id
+                ? agents.find((a) => a.id === cred.default_agent_id)
+                : null
+              return (
               <button
                 key={p.id}
                 type="button"
@@ -344,11 +365,14 @@ export function Connect({ orgId, onPage }: Props) {
               >
                 <span style={{ fontSize: '1.4rem' }}>{p.flag}</span>
                 <span>{p.name}</span>
-                {credentials.some((c) => c.platform === p.id) && (
+                {cred && (
                   <span style={{ fontSize: '0.65rem', color: 'var(--success, #22c55e)' }}>key saved</span>
                 )}
+                {credAgent && (
+                  <span style={{ fontSize: '0.62rem', opacity: 0.55, textAlign: 'center' }}>{credAgent.name}</span>
+                )}
               </button>
-            ))}
+            )})}
           </div>
         </section>
 
@@ -370,6 +394,9 @@ export function Connect({ orgId, onPage }: Props) {
             }}>
               <div style={{ fontSize: '0.82rem' }}>
                 <strong>Saved</strong> · ••••{savedCred.key_suffix}
+                {linkedAgent && (
+                  <span style={{ marginLeft: '0.5rem', opacity: 0.65 }}>· agent: {linkedAgent.name}</span>
+                )}
                 {savedCred.last_tested_at && (
                   <span style={{ marginLeft: '0.5rem', opacity: 0.65 }}>
                     · tested {savedCred.last_test_ok ? '✓' : '✗'}
@@ -452,7 +479,11 @@ export function Connect({ orgId, onPage }: Props) {
               ))}
             </div>
           </div>
-          <CodeBlock code={snippet(platform, agentToken, Boolean(savedCred), lang === 'python')} lang={lang} />
+          <CodeBlock code={snippet(platform, Boolean(savedCred), lang === 'python')} lang={lang} />
+          <p style={{ fontSize: '0.78rem', marginTop: '0.65rem', opacity: 0.6 }}>
+            Replace <code>sk_agent_...</code> with the token from Agents (shown once at creation).
+            {selectedAgent ? ` Selected agent: ${selectedAgent.name}.` : ''}
+          </p>
         </section>
 
         <div className="alert alert--info">
@@ -461,7 +492,7 @@ export function Connect({ orgId, onPage }: Props) {
             <button type="button" className="btn btn-ghost" style={{ padding: 0, fontSize: 'inherit', textDecoration: 'underline' }} onClick={() => onPage('live-feed')}>
               Live Feed
             </button>
-            . Save both the agent token and platform key here for the simplest setup.
+            . Save your platform API key above and use your agent token in client code — Live Feed shows both columns per call.
           </div>
           <button type="button" className="btn btn-primary" style={{ marginTop: '0.75rem' }} onClick={() => onPage('live-feed')}>
             <ExternalLink size={14} />

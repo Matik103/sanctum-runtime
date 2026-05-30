@@ -11,6 +11,8 @@ export type ProxyEvent = {
   context: {
     proxy: true
     platform: string
+    agent_id?: string
+    agent_name?: string
     tool_call_id: string
     arguments: unknown
   }
@@ -33,6 +35,8 @@ function normalizeProxyEvent(raw: Record<string, unknown>): ProxyEvent | null {
     context: {
       proxy: true,
       platform: String(ctx.platform ?? 'unknown'),
+      agent_id: ctx.agent_id != null ? String(ctx.agent_id) : undefined,
+      agent_name: ctx.agent_name != null ? String(ctx.agent_name) : undefined,
       tool_call_id: String(ctx.tool_call_id ?? ''),
       arguments: ctx.arguments,
     },
