@@ -39,6 +39,7 @@ import { runtimeWsHub } from './runtime-ws-hub.js'
 import { registerAlertRoutes } from './alert-routes.js'
 import { registerPushRoutes, sendPushToUser } from './push-routes.js'
 import { registerShieldRoutes, loadShieldRules, evaluateShieldRules, logContainmentEvent } from './shield-routes.js'
+import { registerPlatformCredentialRoutes } from './platform-credential-routes.js'
 import { registerProxyRoutes } from './proxy-routes.js'
 import { AlertStore } from './alert-store.js'
 import { sendVerificationEmail, verifyToken } from './verify-email.js'
@@ -483,6 +484,7 @@ if (supabaseAuth) {
   await registerPushRoutes(app)
   registerShieldRoutes(app)
   await registerAgentTokenRoutes(app, supabaseAuth)
+  await registerPlatformCredentialRoutes(app, supabaseAuth)
   registerProxyRoutes(app)
 }
 

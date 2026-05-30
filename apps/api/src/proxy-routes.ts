@@ -11,7 +11,8 @@
  * back unchanged, and logs all tool calls to audit_events so they appear in
  * the live feed and shield dashboard.
  *
- * The platform API key travels in the Authorization header and is NEVER stored.
+ * Platform API keys may be sent per-request (Authorization header) or stored
+ * encrypted per org via Connect Agent (platform_credentials table).
  */
 
 import { randomUUID } from 'node:crypto'
@@ -19,6 +20,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { logger } from './logger.js'
 import { createSupabaseAdmin, getSupabaseAuthConfig } from './auth.js'
 import { verifyAgentToken } from './agent-tokens.js'
+import { getPlatformSecret } from './platform-credentials.js'
 
 function publicApiBase(): string {
   return (
@@ -159,12 +161,16 @@ export function registerProxyRoutes(app: FastifyInstance): void {
           })
         }
 
-        // Platform API key is forwarded as-is and never stored
-        const platformAuth = req.headers['authorization'] as string | undefined
+        // Platform API key: per-request header, or org-stored credential from Connect
+        let platformAuth = req.headers['authorization'] as string | undefined
+        if (!platformAuth) {
+          const stored = await getPlatformSecret(cfg, orgId, platform)
+          if (stored) platformAuth = `Bearer ${stored}`
+        }
         if (!platformAuth) {
           return reply.code(400).send({
             error: 'Authorization header with platform API key required',
-            hint: 'Set Authorization: Bearer <your-platform-api-key>',
+            hint: 'Set Authorization: Bearer <your-platform-api-key>, or save the key in Connect Agent.',
           })
         }
 

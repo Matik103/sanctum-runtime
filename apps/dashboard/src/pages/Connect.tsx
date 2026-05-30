@@ -1,16 +1,31 @@
-import { useState } from 'react'
-import { Check, Copy, ExternalLink, Plug } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { Check, Copy, ExternalLink, Loader2, Plug, Trash2, Zap } from 'lucide-react'
 import { apiBaseUrl } from '../lib/api-url'
+import { getAccessToken } from '../lib/supabase'
+import {
+  deletePlatformCredential,
+  listPlatformCredentials,
+  savePlatformCredential,
+  testPlatformCredential,
+  type PlatformCredential,
+  type PlatformId,
+} from '../lib/platform-credentials'
 import type { PageId } from '../layout/Sidebar'
 
-const PLATFORMS = [
-  { id: 'openai',    name: 'OpenAI',              flag: '🤖' },
-  { id: 'deepseek',  name: 'DeepSeek',             flag: '🐋' },
-  { id: 'qwen',      name: 'Qwen / Alibaba',        flag: '☁️' },
-  { id: 'kimi',      name: 'Kimi / Moonshot',       flag: '🌙' },
-  { id: 'doubao',    name: 'Doubao / ByteDance',    flag: '🎵' },
-  { id: 'gemini',    name: 'Gemini',                flag: '✨' },
+const PLATFORMS: { id: PlatformId; name: string; flag: string }[] = [
+  { id: 'openai', name: 'OpenAI', flag: '🤖' },
+  { id: 'deepseek', name: 'DeepSeek', flag: '🐋' },
+  { id: 'qwen', name: 'Qwen / Alibaba', flag: '☁️' },
+  { id: 'kimi', name: 'Kimi / Moonshot', flag: '🌙' },
+  { id: 'doubao', name: 'Doubao / ByteDance', flag: '🎵' },
+  { id: 'gemini', name: 'Gemini', flag: '✨' },
 ]
+
+type AgentOption = {
+  id: string
+  name: string
+  token_hint: string
+}
 
 function CopyButton({ value }: { value: string }) {
   const [copied, setCopied] = useState(false)
@@ -37,7 +52,7 @@ function CodeBlock({ code, lang = 'python' }: { code: string; lang?: string }) {
       <pre style={{
         background: 'var(--surface-2, #1a1a2e)',
         borderRadius: '0.5rem',
-        padding: '1rem 1rem 1rem 1rem',
+        padding: '1rem',
         fontSize: '0.8rem',
         overflowX: 'auto',
         margin: 0,
@@ -50,27 +65,65 @@ function CodeBlock({ code, lang = 'python' }: { code: string; lang?: string }) {
   )
 }
 
-function snippet(platform: string, token: string, python = true): string {
+function snippet(
+  platform: string,
+  token: string,
+  savedKey: boolean,
+  python = true,
+): string {
   const proxyUrl = `${apiBaseUrl}/v1/proxy/${platform}`
+  const authLine = savedKey
+    ? '    # Authorization optional — platform key saved in Sanctum Connect'
+    : `    api_key="your-${platform}-api-key",`
   if (python) {
-    return `from openai import OpenAI
+    return savedKey
+      ? `from openai import OpenAI
 
 client = OpenAI(
     base_url="${proxyUrl}",
-    api_key="your-${platform}-api-key",
     default_headers={
         "X-Sanctum-Agent-Token": "${token || 'sk_agent_...'}"
     }
 )
 
-# All tool calls are now visible in the Sanctum Live Feed
+# Tool calls appear in Live Feed automatically
+response = client.chat.completions.create(
+    model="your-model",
+    messages=[{"role": "user", "content": "..."}],
+    tools=[...],
+)`
+      : `from openai import OpenAI
+
+client = OpenAI(
+    base_url="${proxyUrl}",
+    ${authLine}
+    default_headers={
+        "X-Sanctum-Agent-Token": "${token || 'sk_agent_...'}"
+    }
+)
+
 response = client.chat.completions.create(
     model="your-model",
     messages=[{"role": "user", "content": "..."}],
     tools=[...],
 )`
   }
-  return `import OpenAI from 'openai'
+  return savedKey
+    ? `import OpenAI from 'openai'
+
+const client = new OpenAI({
+  baseURL: '${proxyUrl}',
+  defaultHeaders: {
+    'X-Sanctum-Agent-Token': '${token || 'sk_agent_...'}',
+  },
+})
+
+const response = await client.chat.completions.create({
+  model: 'your-model',
+  messages: [{ role: 'user', content: '...' }],
+  tools: [...],
+})`
+    : `import OpenAI from 'openai'
 
 const client = new OpenAI({
   baseURL: '${proxyUrl}',
@@ -80,7 +133,6 @@ const client = new OpenAI({
   },
 })
 
-// All tool calls are now visible in the Sanctum Live Feed
 const response = await client.chat.completions.create({
   model: 'your-model',
   messages: [{ role: 'user', content: '...' }],
@@ -93,12 +145,117 @@ type Props = {
   onPage: (p: PageId) => void
 }
 
-export function Connect({ orgId: _orgId, onPage }: Props) {
-  const [platform, setPlatform] = useState('deepseek')
+export function Connect({ orgId, onPage }: Props) {
+  const [platform, setPlatform] = useState<PlatformId>('deepseek')
   const [agentToken, setAgentToken] = useState('')
+  const [selectedAgentId, setSelectedAgentId] = useState('')
+  const [agents, setAgents] = useState<AgentOption[]>([])
+  const [credentials, setCredentials] = useState<PlatformCredential[]>([])
+  const [platformKeyInput, setPlatformKeyInput] = useState('')
   const [lang, setLang] = useState<'python' | 'typescript'>('python')
+  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [testing, setTesting] = useState(false)
+  const [testMsg, setTestMsg] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
+  const savedCred = credentials.find((c) => c.platform === platform)
   const proxyUrl = `${apiBaseUrl}/v1/proxy/${platform}`
+
+  const load = useCallback(async () => {
+    if (!orgId) return
+    setLoading(true)
+    setError(null)
+    try {
+      const token = await getAccessToken()
+      const headers: Record<string, string> = {}
+      if (token) headers['Authorization'] = `Bearer ${token}`
+
+      const [credRes, agentRes] = await Promise.all([
+        listPlatformCredentials(orgId),
+        fetch(`${apiBaseUrl}/v1/orgs/${orgId}/agents`, { headers }),
+      ])
+      setCredentials(credRes)
+      if (agentRes.ok) {
+        const list = (await agentRes.json()) as AgentOption[]
+        setAgents(list)
+        if (!selectedAgentId && list.length === 1) setSelectedAgentId(list[0].id)
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not load connection settings')
+    } finally {
+      setLoading(false)
+    }
+  }, [orgId, selectedAgentId])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  useEffect(() => {
+    setPlatformKeyInput('')
+    setTestMsg(null)
+  }, [platform])
+
+  async function handleSaveKey() {
+    if (!orgId || !platformKeyInput.trim()) return
+    setSaving(true)
+    setError(null)
+    setTestMsg(null)
+    try {
+      const saved = await savePlatformCredential(
+        orgId,
+        platform,
+        platformKeyInput.trim(),
+        selectedAgentId || null,
+      )
+      setCredentials((prev) => {
+        const rest = prev.filter((c) => c.platform !== platform)
+        return [...rest, saved]
+      })
+      setPlatformKeyInput('')
+      setTestMsg('Platform API key saved securely.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Save failed')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleTestKey(useSaved = false) {
+    if (!orgId) return
+    const secret = useSaved ? undefined : platformKeyInput.trim()
+    if (!useSaved && !secret) {
+      setTestMsg('Enter an API key to test.')
+      return
+    }
+    setTesting(true)
+    setTestMsg(null)
+    setError(null)
+    try {
+      const result = await testPlatformCredential(orgId, platform, secret)
+      setTestMsg(result.ok ? 'Connection successful.' : `Test failed: ${result.detail ?? 'unknown error'}`)
+      if (useSaved) void load()
+    } catch (e) {
+      setTestMsg(e instanceof Error ? e.message : 'Test failed')
+    } finally {
+      setTesting(false)
+    }
+  }
+
+  async function handleRemoveKey() {
+    if (!orgId || !savedCred) return
+    setSaving(true)
+    try {
+      await deletePlatformCredential(orgId, platform)
+      setCredentials((prev) => prev.filter((c) => c.platform !== platform))
+      setTestMsg('Platform key removed.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Delete failed')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <div className="page">
@@ -106,35 +263,60 @@ export function Connect({ orgId: _orgId, onPage }: Props) {
         <Plug size={22} strokeWidth={1.75} />
         <h1 className="page-title">Connect your agent</h1>
         <p className="page-subtitle">
-          Let Sanctum observe what your AI agent is doing — no SDK required. Change one URL, add one header.
+          Register a Sanctum agent, save your platform API key, and route traffic through the proxy — tool calls appear in Live Feed.
         </p>
       </div>
 
+      {error && (
+        <div className="alert alert--error" style={{ marginBottom: '1rem' }}>
+          <div className="alert__body">{error}</div>
+        </div>
+      )}
+
       <div style={{ maxWidth: 720, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
-        {/* Step 1 — Agent token */}
+        {/* Step 1 — Agent */}
         <section className="card" style={{ padding: '1.25rem' }}>
           <h2 className="card-title" style={{ marginBottom: '0.75rem' }}>
-            <span className="step-badge">1</span> Your Sanctum agent token
+            <span className="step-badge">1</span> Sanctum agent
           </h2>
           <p style={{ fontSize: '0.85rem', marginBottom: '0.75rem', opacity: 0.75 }}>
-            This identifies your agent to Sanctum. Get one from the{' '}
-            <button type="button" className="btn btn-ghost" style={{ padding: 0, fontSize: 'inherit', display: 'inline', textDecoration: 'underline' }} onClick={() => onPage('agents')}>
-              Agents page
+            Each agent gets a token that identifies it to Sanctum. Create one on{' '}
+            <button type="button" className="btn btn-ghost" style={{ padding: 0, fontSize: 'inherit', textDecoration: 'underline' }} onClick={() => onPage('agents')}>
+              Agents
             </button>
-            {' '}→ create an agent → copy the token.
+            , then paste the token here (shown once at creation).
           </p>
+          {agents.length > 0 && (
+            <label style={{ display: 'block', marginBottom: '0.75rem', fontSize: '0.82rem' }}>
+              Link to agent (optional)
+              <select
+                className="input"
+                value={selectedAgentId}
+                onChange={(e) => setSelectedAgentId(e.target.value)}
+                style={{ width: '100%', marginTop: '0.35rem' }}
+              >
+                <option value="">— Select agent —</option>
+                {agents.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name} · …{a.token_hint}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <input
-            type="text"
+            type="password"
             className="input"
-            placeholder="sk_agent_..."
+            placeholder="sk_agent_…"
             value={agentToken}
             onChange={(e) => setAgentToken(e.target.value)}
+            autoComplete="off"
             style={{ fontFamily: 'monospace', fontSize: '0.85rem', width: '100%' }}
           />
         </section>
 
-        {/* Step 2 — Pick platform */}
+        {/* Step 2 — Platform */}
         <section className="card" style={{ padding: '1.25rem' }}>
           <h2 className="card-title" style={{ marginBottom: '0.75rem' }}>
             <span className="step-badge">2</span> Pick your platform
@@ -158,38 +340,103 @@ export function Connect({ orgId: _orgId, onPage }: Props) {
                   fontSize: '0.8rem',
                   fontWeight: platform === p.id ? 600 : 400,
                   color: 'inherit',
-                  transition: 'border-color 0.15s, background 0.15s',
                 }}
               >
                 <span style={{ fontSize: '1.4rem' }}>{p.flag}</span>
                 <span>{p.name}</span>
+                {credentials.some((c) => c.platform === p.id) && (
+                  <span style={{ fontSize: '0.65rem', color: 'var(--success, #22c55e)' }}>key saved</span>
+                )}
               </button>
             ))}
           </div>
         </section>
 
-        {/* Step 3 — Proxy URL */}
+        {/* Step 3 — Platform API key (NEW) */}
         <section className="card" style={{ padding: '1.25rem' }}>
           <h2 className="card-title" style={{ marginBottom: '0.75rem' }}>
-            <span className="step-badge">3</span> Your proxy URL
+            <span className="step-badge">3</span> Platform API key
           </h2>
           <p style={{ fontSize: '0.85rem', marginBottom: '0.75rem', opacity: 0.75 }}>
-            Paste this as your agent's <code>base_url</code> or API endpoint instead of the platform's default URL.
+            Save your {PLATFORMS.find((p) => p.id === platform)?.name} key once — encrypted in Supabase, never shown again.
+            The proxy can use it so your agent code only needs the Sanctum agent token.
+          </p>
+
+          {savedCred && (
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem',
+              padding: '0.6rem 0.75rem', marginBottom: '0.75rem', borderRadius: '0.4rem',
+              background: 'var(--surface-2, #1a1a2e)', border: '1px solid var(--border, #2a2a3e)',
+            }}>
+              <div style={{ fontSize: '0.82rem' }}>
+                <strong>Saved</strong> · ••••{savedCred.key_suffix}
+                {savedCred.last_tested_at && (
+                  <span style={{ marginLeft: '0.5rem', opacity: 0.65 }}>
+                    · tested {savedCred.last_test_ok ? '✓' : '✗'}
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '0.35rem' }}>
+                <button type="button" className="btn btn-ghost btn-sm" disabled={testing} onClick={() => void handleTestKey(true)}>
+                  {testing ? <Loader2 size={14} className="spin" /> : <Zap size={14} />} Test
+                </button>
+                <button type="button" className="btn btn-ghost btn-sm" disabled={saving} onClick={() => void handleRemoveKey()}>
+                  <Trash2 size={14} /> Remove
+                </button>
+              </div>
+            </div>
+          )}
+
+          <input
+            type="password"
+            className="input"
+            placeholder={savedCred ? 'Paste new key to replace saved key' : 'sk-… or platform API key'}
+            value={platformKeyInput}
+            onChange={(e) => setPlatformKeyInput(e.target.value)}
+            autoComplete="off"
+            style={{ fontFamily: 'monospace', fontSize: '0.85rem', width: '100%', marginBottom: '0.75rem' }}
+          />
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <button type="button" className="btn btn-primary btn-sm" disabled={saving || !platformKeyInput.trim()} onClick={() => void handleSaveKey()}>
+              {saving ? <Loader2 size={14} className="spin" /> : null}
+              {savedCred ? 'Update saved key' : 'Save platform key'}
+            </button>
+            <button type="button" className="btn btn-ghost btn-sm" disabled={testing || !platformKeyInput.trim()} onClick={() => void handleTestKey(false)}>
+              {testing ? <Loader2 size={14} className="spin" /> : <Zap size={14} />}
+              Test key
+            </button>
+          </div>
+
+          {testMsg && (
+            <p style={{ fontSize: '0.8rem', marginTop: '0.65rem', color: testMsg.includes('fail') || testMsg.includes('Fail') ? '#f87171' : 'var(--success, #22c55e)' }}>
+              {testMsg}
+            </p>
+          )}
+
+          {loading && <p style={{ fontSize: '0.78rem', opacity: 0.5, marginTop: '0.5rem' }}>Loading saved keys…</p>}
+        </section>
+
+        {/* Step 4 — Proxy URL */}
+        <section className="card" style={{ padding: '1.25rem' }}>
+          <h2 className="card-title" style={{ marginBottom: '0.75rem' }}>
+            <span className="step-badge">4</span> Your proxy URL
+          </h2>
+          <p style={{ fontSize: '0.85rem', marginBottom: '0.75rem', opacity: 0.75 }}>
+            Set this as your agent&apos;s <code>base_url</code>.
+            {savedCred ? ' Platform key is stored — omit Authorization in your client.' : ' Pass your platform key in Authorization: Bearer …'}
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--surface-2, #1a1a2e)', borderRadius: '0.4rem', padding: '0.6rem 0.75rem', border: '1px solid var(--border, #2a2a3e)' }}>
             <code style={{ flex: 1, fontSize: '0.85rem', wordBreak: 'break-all' }}>{proxyUrl}</code>
             <CopyButton value={proxyUrl} />
           </div>
-          <p style={{ fontSize: '0.78rem', marginTop: '0.5rem', opacity: 0.6 }}>
-            Your {PLATFORMS.find((p) => p.id === platform)?.name} API key goes in <code>Authorization: Bearer &lt;key&gt;</code> — it is forwarded directly and never stored by Sanctum.
-          </p>
         </section>
 
-        {/* Code snippets */}
+        {/* Step 5 — Quick start */}
         <section className="card" style={{ padding: '1.25rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
             <h2 className="card-title">
-              <span className="step-badge">4</span> Quick start
+              <span className="step-badge">5</span> Quick start
             </h2>
             <div style={{ display: 'flex', gap: '0.25rem' }}>
               {(['python', 'typescript'] as const).map((l) => (
@@ -205,34 +452,22 @@ export function Connect({ orgId: _orgId, onPage }: Props) {
               ))}
             </div>
           </div>
-          <CodeBlock code={snippet(platform, agentToken, lang === 'python')} lang={lang} />
+          <CodeBlock code={snippet(platform, agentToken, Boolean(savedCred), lang === 'python')} lang={lang} />
         </section>
 
-        {/* Next step */}
         <div className="alert alert--info">
           <div className="alert__body">
-            <strong>That's it.</strong> Once your agent makes a call with tools, the tool calls appear in real time in the{' '}
-            <button
-              type="button"
-              className="btn btn-ghost"
-              style={{ padding: 0, fontSize: 'inherit', display: 'inline', textDecoration: 'underline' }}
-              onClick={() => onPage('live-feed')}
-            >
+            <strong>That&apos;s it.</strong> Tool calls appear in real time in{' '}
+            <button type="button" className="btn btn-ghost" style={{ padding: 0, fontSize: 'inherit', textDecoration: 'underline' }} onClick={() => onPage('live-feed')}>
               Live Feed
             </button>
-            {' '}— no polling, no install, no code changes beyond the URL.
+            . Save both the agent token and platform key here for the simplest setup.
           </div>
-          <button
-            type="button"
-            className="btn btn-primary"
-            style={{ marginTop: '0.75rem' }}
-            onClick={() => onPage('live-feed')}
-          >
+          <button type="button" className="btn btn-primary" style={{ marginTop: '0.75rem' }} onClick={() => onPage('live-feed')}>
             <ExternalLink size={14} />
             Open Live Feed
           </button>
         </div>
-
       </div>
     </div>
   )
