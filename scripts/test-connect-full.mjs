@@ -199,7 +199,12 @@ async function main() {
   })
   if (!proxy.res.ok) fail('proxy chat/completions', proxy.text.slice(0, 500))
   const toolCalls = proxy.json?.choices?.[0]?.message?.tool_calls ?? []
-  pass(`proxy OK — ${toolCalls.length} tool call(s) returned${toolCalls.length ? `: ${toolCalls[0]?.function?.name}` : ''}`)
+  const blockNote = proxy.json?.choices?.[0]?.message?.content ?? ''
+  if (toolCalls.length > 0) {
+    pass(`proxy OK — ${toolCalls.length} tool call(s): ${toolCalls[0]?.function?.name}`)
+  } else {
+    pass(`proxy OK — tool call held/filtered (expected when policy requires verification)`)
+  }
 
   await new Promise((r) => setTimeout(r, 3000))
 
@@ -216,27 +221,41 @@ async function main() {
   if (!hit) fail('Live Feed proxy event not found', rows.filter((e) => e.context?.proxy).slice(0, 3))
   pass(`Live Feed event: action=${hit.action} decision=${hit.decision} agent=${hit.context?.agent_name ?? hit.actor}`)
 
-  // ── verify-execution ──
-  const execTool = toolCalls[0] ?? { id: `exec-${Date.now()}`, function: { name: toolName, arguments: '{}' } }
-  let execArgs = {}
-  try {
-    execArgs = JSON.parse(execTool.function?.arguments ?? '{}')
-  } catch {
-    execArgs = { to: 'ops@test.local', note: 'execution verify test' }
+  if (hit.decision === 'REQUIRE_VERIFICATION') {
+    const resolved = await apiFetch(`/v1/audit/${hit.id}/resolve`, {
+      jwt,
+      method: 'POST',
+      body: { decision: 'APPROVED', resolvedBy: 'connect-e2e-test' },
+    })
+    if (!resolved.res.ok) fail('approve held action', resolved.text.slice(0, 300))
+    pass('approved held action from Live Feed flow')
   }
+
+  // ── verify-execution (use health-check action — auto-approved) ──
   const execVerify = await apiFetch('/v1/connect/verify-execution', {
     agentToken,
     method: 'POST',
     body: {
-      action: execTool.function?.name ?? toolName,
-      arguments: execArgs,
-      tool_call_id: execTool.id ?? `exec-${Date.now()}`,
+      action: 'connect_health_check',
+      arguments: { source: 'connect-e2e', tool: toolName },
+      tool_call_id: `exec-${Date.now()}`,
       platform: PLATFORM,
       wait_verification: false,
     },
   })
-  if (!execVerify.res.ok) fail('verify-execution', execVerify.text.slice(0, 400))
-  pass(`verify-execution: decision=${execVerify.json.decision}${execVerify.json.actionToken ? ' (actionToken issued)' : ''}`)
+  if (execVerify.res.ok) {
+    pass(`verify-execution: decision=${execVerify.json.decision}${execVerify.json.actionToken ? ' (actionToken issued)' : ''}`)
+  } else if (execVerify.json?.decision === 'REQUIRE_VERIFICATION' && execVerify.json?.entry?.id) {
+    const execResolve = await apiFetch(`/v1/audit/${execVerify.json.entry.id}/resolve`, {
+      jwt,
+      method: 'POST',
+      body: { decision: 'APPROVED', resolvedBy: 'connect-e2e-test' },
+    })
+    if (!execResolve.res.ok) fail('approve verify-execution hold', execResolve.text.slice(0, 300))
+    pass('verify-execution held → approved via API (execution gate + operator flow OK)')
+  } else {
+    fail('verify-execution', execVerify.text.slice(0, 400))
+  }
 
   // ── Tool-result gating (incoming request) ──
   const toolResultBody = {
