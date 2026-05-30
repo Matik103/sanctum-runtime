@@ -95,6 +95,8 @@ Click **Deploy**. Wait for build + start. Copy your URL, e.g.:
 
 `https://sanctum-api.onrender.com`
 
+**Auto-deploy from GitHub:** If the service was created manually (Auto-Deploy off in Render), add a **Deploy Hook** (Settings → Deploy Hook) and store the URL as GitHub secret `RENDER_DEPLOY_HOOK_API`. Pushes to `main` then deploy automatically after CI passes — see [PRODUCTION_RUNBOOK.md §2](./PRODUCTION_RUNBOOK.md#2-deploy-from-main).
+
 ### Step 6: Smoke test from your laptop
 
 ```bash

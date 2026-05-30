@@ -3,6 +3,11 @@
 #
 # Deploy: Render Dashboard → New → Blueprint → connect repo
 # Or add services manually using PRODUCTION_OPS.md
+#
+# Auto-deploy: services created manually often have Auto-Deploy = Off in the
+# Render dashboard (render.yaml autoDeployTrigger is ignored). Production uses
+# GitHub Actions deploy hooks — see PRODUCTION_RUNBOOK.md §2 and
+# .github/workflows/deploy-render.yml (secrets RENDER_DEPLOY_HOOK_*).
 
 services:
   - type: web

@@ -1,0 +1,115 @@
+# Deploy sanctum-api and sanctum-dashboard on Render after CI passes on main.
+# Requires GitHub secrets (Render → service → Settings → Deploy Hook):
+#   RENDER_DEPLOY_HOOK_API        — sanctum-api web service
+#   RENDER_DEPLOY_HOOK_DASHBOARD  — sanctum-dashboard static site
+#
+# Manual-only Render services ignore render.yaml autoDeployTrigger; this
+# workflow is the reliable auto-deploy path. See PRODUCTION_RUNBOOK.md §2.
+
+name: Deploy Render
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Service to deploy
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - api
+          - dashboard
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-render-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Trigger Render deploy
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            api:
+              - 'apps/api/**'
+              - 'packages/runtime-engine/**'
+              - 'packages/policy-engine/**'
+              - 'packages/adapters/**'
+              - 'packages/sdk/**'
+              - 'render.yaml'
+              - 'package.json'
+              - 'package-lock.json'
+              - '.github/workflows/ci.yml'
+              - '.github/workflows/deploy-render.yml'
+            dashboard:
+              - 'apps/dashboard/**'
+              - 'packages/sdk/**'
+              - 'render.yaml'
+              - 'package.json'
+              - 'package-lock.json'
+              - '.github/workflows/ci.yml'
+              - '.github/workflows/deploy-render.yml'
+
+      - name: Deploy sanctum-api
+        id: api
+        if: >
+          (github.event_name == 'workflow_dispatch' && (inputs.target == 'all' || inputs.target == 'api')) ||
+          (github.event_name != 'workflow_dispatch' && steps.changes.outputs.api == 'true')
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_API }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::warning::RENDER_DEPLOY_HOOK_API not set — skipping sanctum-api deploy."
+            echo "Create Render → sanctum-api → Settings → Deploy Hook, add URL as GitHub secret."
+            exit 0
+          fi
+          echo "Triggering sanctum-api deploy…"
+          code=$(curl -fsS -o /tmp/render-api.out -w "%{http_code}" -X POST "$HOOK")
+          echo "HTTP $code"
+          cat /tmp/render-api.out
+          case "$code" in 200|201|202) echo "sanctum-api deploy triggered" ;; *) exit 1 ;; esac
+
+      - name: Deploy sanctum-dashboard
+        id: dashboard
+        if: >
+          (github.event_name == 'workflow_dispatch' && (inputs.target == 'all' || inputs.target == 'dashboard')) ||
+          (github.event_name != 'workflow_dispatch' && steps.changes.outputs.dashboard == 'true')
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_DASHBOARD }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::warning::RENDER_DEPLOY_HOOK_DASHBOARD not set — skipping sanctum-dashboard deploy."
+            echo "Create Render → sanctum-dashboard → Settings → Deploy Hook, add URL as GitHub secret."
+            exit 0
+          fi
+          echo "Triggering sanctum-dashboard deploy…"
+          code=$(curl -fsS -o /tmp/render-dash.out -w "%{http_code}" -X POST "$HOOK")
+          echo "HTTP $code"
+          cat /tmp/render-dash.out
+          case "$code" in 200|201|202) echo "sanctum-dashboard deploy triggered" ;; *) exit 1 ;; esac
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "CI gate: ${{ github.event_name == 'workflow_dispatch' && 'manual' || github.event.workflow_run.conclusion }}"
+          echo "API paths changed: ${{ steps.changes.outputs.api }}"
+          echo "Dashboard paths changed: ${{ steps.changes.outputs.dashboard }}"

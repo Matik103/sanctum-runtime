@@ -8,7 +8,7 @@ Single checklist for **Sanctum control plane** in production (Render + Supabase)
 |---------|-----|
 | API | `https://sanctum-api-6zgy.onrender.com` |
 | Dashboard | `https://sanctum-dashboard.onrender.com` |
-| Repo | `main` on GitHub → auto-deploy on Render |
+| Repo | `main` on GitHub → CI gate → Deploy Render workflow → Render |
 
 ```text
 Operators ──► Dashboard (Supabase JWT)
@@ -120,11 +120,30 @@ Publish: `apps/dashboard/dist`
 
 ## 2. Deploy from `main`
 
-1. Push to `main` → Render redeploys API + dashboard (if connected).
-2. Wait for green deploy (~3–5 min).
-3. Run smoke suite (below).
+**CI gate:** Every push/PR runs [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — production package build, dashboard typecheck, full unit suite, API smoke test. Both jobs must pass.
 
-Manual: Render dashboard → **Manual Deploy** → **Deploy latest commit**.
+**Auto-deploy (Render):** [`.github/workflows/deploy-render.yml`](../.github/workflows/deploy-render.yml) runs after CI succeeds on a **push to `main`**, then POSTs Render Deploy Hooks for changed services. Manual-only Render services (dashboard shows “Manually triggered…”) do **not** pick up `render.yaml` `autoDeployTrigger`; use this workflow instead.
+
+### One-time: Render Deploy Hooks → GitHub secrets
+
+1. **sanctum-api** → Render → **Settings** → **Deploy Hook** → copy URL  
+   → GitHub repo → **Settings** → **Secrets and variables** → **Actions** → `RENDER_DEPLOY_HOOK_API`
+
+2. **sanctum-dashboard** → same → `RENDER_DEPLOY_HOOK_DASHBOARD`
+
+3. **Branch protection** (recommended): GitHub → **Settings** → **Branches** → rule on `main` → require status checks:
+   - `Typecheck and unit tests`
+   - `Build and smoke test`
+
+4. Push to `main` → CI green → Deploy Render workflow triggers → Render builds latest commit (~5–15 min).
+
+Manual deploy: Render dashboard → **Manual Deploy** → **Deploy latest commit**, or GitHub → **Actions** → **Deploy Render** → **Run workflow**.
+
+Verify live commit:
+
+```bash
+curl -s https://api.sanctumruntime.com/health | jq .version.commit
+```
 
 ---
 
