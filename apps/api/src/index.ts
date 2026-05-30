@@ -485,7 +485,7 @@ if (supabaseAuth) {
   registerShieldRoutes(app)
   await registerAgentTokenRoutes(app, supabaseAuth)
   await registerPlatformCredentialRoutes(app, supabaseAuth)
-  registerProxyRoutes(app)
+  registerProxyRoutes(app, runtime)
 }
 
 const stopWebhookWorker = supabaseAuth ? startWebhookWorker(supabaseAuth) : null

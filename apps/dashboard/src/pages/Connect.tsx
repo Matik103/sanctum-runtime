@@ -473,6 +473,7 @@ export function Connect({ orgId, onPage }: Props) {
           <p style={{ fontSize: '0.85rem', marginBottom: '0.75rem', opacity: 0.75 }}>
             Set this as your agent&apos;s <code>base_url</code>.
             {savedCred ? ' Platform key is stored — omit Authorization in your client.' : ' Pass your platform key in Authorization: Bearer …'}
+            {' '}Each tool call is verified through Sanctum before your agent receives it — approve or deny held actions from Overview or the verification modal.
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--surface-2, #1a1a2e)', borderRadius: '0.4rem', padding: '0.6rem 0.75rem', border: '1px solid var(--border, #2a2a3e)' }}>
             <code style={{ flex: 1, fontSize: '0.85rem', wordBreak: 'break-all' }}>{proxyUrl}</code>
@@ -513,7 +514,7 @@ export function Connect({ orgId, onPage }: Props) {
             <button type="button" className="btn btn-ghost" style={{ padding: 0, fontSize: 'inherit', textDecoration: 'underline' }} onClick={() => onPage('live-feed')}>
               Live Feed
             </button>
-            . Save your platform API key above and use your agent token in client code — Live Feed shows both columns per call.
+            . Tool calls are gated like the SDK — held actions show in Overview for approve/deny.
           </div>
           <button type="button" className="btn btn-primary" style={{ marginTop: '0.75rem' }} onClick={() => onPage('live-feed')}>
             <ExternalLink size={14} />

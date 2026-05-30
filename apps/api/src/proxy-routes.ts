@@ -1,26 +1,26 @@
 /**
- * Proxy routes — let any third-party agent (OpenAI, DeepSeek, Qwen, Kimi, etc.)
- * flow through Sanctum with zero SDK installation.
+ * Proxy routes — third-party agents (OpenAI, DeepSeek, etc.) through Sanctum.
  *
- * The user sets their agent's base_url to:
- *   https://<sanctum-api>/v1/proxy/<platform>
- * and adds a single header:
- *   X-Sanctum-Agent-Token: sk_agent_...
- *
- * Sanctum forwards every request to the real platform, streams the response
- * back unchanged, and logs all tool calls to audit_events so they appear in
- * the live feed and shield dashboard.
- *
- * Platform API keys may be sent per-request (Authorization header) or stored
- * encrypted per org via Connect Agent (platform_credentials table).
+ * Default mode (`gate`): each tool call in the model response is verified via
+ * POST /v1/actions/verify (same path as the SDK) before the client receives it.
+ * Set header X-Sanctum-Proxy-Mode: observe for legacy log-only behavior.
  */
 
-import { randomUUID } from 'node:crypto'
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { logger } from './logger.js'
 import { createSupabaseAdmin, getSupabaseAuthConfig } from './auth.js'
 import { verifyAgentToken } from './agent-tokens.js'
 import { getPlatformSecret } from './platform-credentials.js'
+import type { RuntimeEngine } from '@sanctum/runtime-engine'
+import {
+  filterBlockedToolCallsFromBody,
+  filterBlockedToolCallsFromSse,
+  gateToolCalls,
+  proxyGateEnabled,
+  proxyWaitVerification,
+  type ProxyToolCall,
+} from './proxy-gate.js'
+import { randomUUID } from 'node:crypto'
 
 function publicApiBase(): string {
   return (
@@ -33,7 +33,6 @@ function publicApiBase(): string {
 
 const log = logger.child({ module: 'proxy-routes' })
 
-// Platform → upstream base URL (includes /v1 so the SDK path is appended correctly)
 export const PROXY_PLATFORMS: Record<string, string> = {
   openai:   'https://api.openai.com/v1',
   deepseek: 'https://api.deepseek.com/v1',
@@ -43,15 +42,8 @@ export const PROXY_PLATFORMS: Record<string, string> = {
   gemini:   'https://generativelanguage.googleapis.com/v1beta/openai',
 }
 
-type ToolCall = { id: string; name: string; arguments: string }
-
-function parseArgs(raw: string): unknown {
-  try { return JSON.parse(raw) } catch { return raw }
-}
-
-// Extract tool calls from one or more SSE chunks (streaming response)
-function toolsFromChunk(chunk: string): ToolCall[] {
-  const out: ToolCall[] = []
+function toolsFromChunk(chunk: string): ProxyToolCall[] {
+  const out: ProxyToolCall[] = []
   for (const line of chunk.split('\n')) {
     if (!line.startsWith('data: ')) continue
     const data = line.slice(6).trim()
@@ -75,15 +67,14 @@ function toolsFromChunk(chunk: string): ToolCall[] {
         }
       }
     } catch {
-      // not valid JSON — skip
+      // skip
     }
   }
   return out
 }
 
-// Extract tool calls from a complete non-streaming response body
-function toolsFromBody(body: unknown): ToolCall[] {
-  const out: ToolCall[] = []
+function toolsFromBody(body: unknown): ProxyToolCall[] {
+  const out: ProxyToolCall[] = []
   try {
     const parsed = body as {
       choices?: Array<{
@@ -108,25 +99,45 @@ function toolsFromBody(body: unknown): ToolCall[] {
   return out
 }
 
+function uniqueToolCalls(calls: ProxyToolCall[]): ProxyToolCall[] {
+  const seen = new Set<string>()
+  return calls.filter((tc) => {
+    if (seen.has(tc.id)) return false
+    seen.add(tc.id)
+    return true
+  })
+}
+
+async function readStreamText(body: ReadableStream<Uint8Array>): Promise<string> {
+  const reader = body.getReader()
+  const dec = new TextDecoder()
+  let acc = ''
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    acc += dec.decode(value, { stream: true })
+  }
+  return acc
+}
+
 const SKIP_HEADERS = new Set(['transfer-encoding', 'connection', 'keep-alive', 'content-length'])
 
-export function registerProxyRoutes(app: FastifyInstance): void {
+export function registerProxyRoutes(app: FastifyInstance, runtime: RuntimeEngine): void {
   const cfg = getSupabaseAuthConfig()
   if (!cfg) return
 
-  // GET /v1/proxy/platforms — list supported platforms + their proxy URLs
   app.get('/v1/proxy/platforms', async (_req, reply) => {
     const base = publicApiBase()
     return reply.send({
       platforms: Object.entries(PROXY_PLATFORMS).map(([id]) => ({
         id,
         proxyUrl: base ? `${base}/v1/proxy/${id}` : `/v1/proxy/${id}`,
-        instructions: `Set base_url = <proxyUrl> and add header X-Sanctum-Agent-Token: <your-agent-token>`,
+        instructions:
+          'Set base_url = <proxyUrl>, X-Sanctum-Agent-Token, and optionally save platform key in Connect. Tool calls are gated via /v1/actions/verify by default.',
       })),
     })
   })
 
-  // Handle all methods for all paths under /v1/proxy/:platform/
   for (const method of ['get', 'post', 'put', 'delete', 'patch'] as const) {
     app[method]<{ Params: { platform: string; '*': string } }>(
       '/v1/proxy/:platform/*',
@@ -134,7 +145,6 @@ export function registerProxyRoutes(app: FastifyInstance): void {
         const { platform } = req.params
         const subpath = req.params['*'] ?? ''
 
-        // ── Auth via Sanctum agent token ─────────────────────────────────────
         const agentTokenRaw =
           (req.headers['x-sanctum-agent-token'] as string | undefined) ??
           (req.headers['x-agent-token'] as string | undefined)
@@ -159,7 +169,6 @@ export function registerProxyRoutes(app: FastifyInstance): void {
           .maybeSingle()
         const agentName = agentRow?.name ?? agentId.slice(0, 8)
 
-        // ── Platform routing ─────────────────────────────────────────────────
         const baseUrl = PROXY_PLATFORMS[platform]
         if (!baseUrl) {
           return reply.code(400).send({
@@ -168,7 +177,6 @@ export function registerProxyRoutes(app: FastifyInstance): void {
           })
         }
 
-        // Platform API key: per-request header, or org-stored credential from Connect
         let platformAuth = req.headers['authorization'] as string | undefined
         if (!platformAuth) {
           const stored = await getPlatformSecret(cfg, orgId, platform)
@@ -181,7 +189,6 @@ export function registerProxyRoutes(app: FastifyInstance): void {
           })
         }
 
-        // ── Build + send upstream request ────────────────────────────────────
         const qs = new URLSearchParams(req.query as Record<string, string>).toString()
         const upstreamUrl = `${baseUrl}/${subpath}${qs ? `?${qs}` : ''}`
 
@@ -205,81 +212,97 @@ export function registerProxyRoutes(app: FastifyInstance): void {
           return reply.code(502).send({ error: 'Upstream platform unreachable', platform })
         }
 
-        // ── Mirror response headers ──────────────────────────────────────────
         const replyHeaders: Record<string, string> = {}
         for (const [k, v] of upstream.headers.entries()) {
           if (!SKIP_HEADERS.has(k.toLowerCase())) replyHeaders[k] = v
         }
 
-        // ── Tool call logger (fire-and-forget) ───────────────────────────────
-        function logToolCall(tc: ToolCall): void {
-          const correlationId = `proxy-${platform}-${tc.id}`
-          void admin
-            .from('audit_events')
-            .insert({
-              id: randomUUID(),
-              correlation_id: correlationId,
-              org_id: orgId,
-              action: tc.name,
-              actor: agentId,
-              decision: 'APPROVED',
-              risk: 'low',
-              reasoning: `Observed tool call via ${platform} proxy (Connect Agent).`,
-              context: {
-                proxy: true,
-                platform,
-                agent_id: agentId,
-                agent_name: agentName,
-                tool_call_id: tc.id,
-                arguments: parseArgs(tc.arguments),
-                org_id: orgId,
-              },
-              payload: {},
-            })
-            .then(({ error }) => {
-              if (error) log.warn({ err: error.message, orgId, tool: tc.name }, 'proxy tool call log failed')
-            })
+        const gateEnabled = proxyGateEnabled(req)
+        const waitVerification = proxyWaitVerification(req)
+        const gateOpts = {
+          agentToken: agentTokenRaw,
+          agentId,
+          agentName,
+          orgId,
+          platform,
+          waitVerification,
         }
 
-        // ── Streaming (SSE) response ─────────────────────────────────────────
+        function logObservedToolCalls(toolCalls: ProxyToolCall[]): void {
+          for (const tc of toolCalls) {
+            void admin
+              .from('audit_events')
+              .insert({
+                id: randomUUID(),
+                correlation_id: `proxy-${platform}-${tc.id}`,
+                org_id: orgId,
+                action: tc.name,
+                actor: agentId,
+                decision: 'APPROVED',
+                risk: 'low',
+                reasoning: 'Observed tool call via Connect proxy (observe mode).',
+                context: {
+                  proxy: true,
+                  platform,
+                  agent_id: agentId,
+                  agent_name: agentName,
+                  tool_call_id: tc.id,
+                  arguments: (() => {
+                    try { return JSON.parse(tc.arguments) } catch { return tc.arguments }
+                  })(),
+                  org_id: orgId,
+                },
+                payload: {},
+              })
+              .then(({ error }) => {
+                if (error) log.warn({ err: error.message, orgId, tool: tc.name }, 'proxy observe log failed')
+              })
+          }
+        }
+
         const isSSE = upstream.headers.get('content-type')?.includes('text/event-stream')
+
         if (isSSE && upstream.body) {
+          const sseText = await readStreamText(upstream.body)
+          let outSse = sseText
+
+          if (gateEnabled) {
+            const toolCalls = uniqueToolCalls(toolsFromChunk(sseText))
+            if (toolCalls.length > 0) {
+              const { blocked } = await gateToolCalls(app, runtime, { ...gateOpts, toolCalls })
+              if (blocked.size > 0) {
+                outSse = filterBlockedToolCallsFromSse(sseText, blocked)
+              }
+            }
+          } else {
+            logObservedToolCalls(uniqueToolCalls(toolsFromChunk(sseText)))
+          }
+
           reply.raw.writeHead(upstream.status, {
             ...replyHeaders,
             'content-type': 'text/event-stream',
             'cache-control': 'no-cache',
             'x-accel-buffering': 'no',
           })
-
-          const reader = upstream.body.getReader()
-          const dec = new TextDecoder()
-          const seenIds = new Set<string>()
-
-          try {
-            while (true) {
-              const { done, value } = await reader.read()
-              if (done) break
-              const chunk = dec.decode(value, { stream: true })
-              reply.raw.write(chunk)
-
-              for (const tc of toolsFromChunk(chunk)) {
-                if (!seenIds.has(tc.id)) {
-                  seenIds.add(tc.id)
-                  logToolCall(tc)
-                }
-              }
-            }
-          } catch (err) {
-            log.warn({ err, orgId, platform }, 'proxy stream interrupted')
-          } finally {
-            reply.raw.end()
-          }
+          reply.raw.write(outSse)
+          reply.raw.end()
           return reply
         }
 
-        // ── Non-streaming response ───────────────────────────────────────────
         const body = await upstream.json().catch(() => null)
-        for (const tc of toolsFromBody(body)) logToolCall(tc)
+
+        if (gateEnabled && body) {
+          const toolCalls = uniqueToolCalls(toolsFromBody(body))
+          if (toolCalls.length > 0) {
+            const { blocked } = await gateToolCalls(app, runtime, { ...gateOpts, toolCalls })
+            const filtered = filterBlockedToolCallsFromBody(body, blocked)
+            void reply.code(upstream.status)
+            for (const [k, v] of Object.entries(replyHeaders)) void reply.header(k, v)
+            return reply.send(filtered)
+          }
+        } else if (!gateEnabled && body) {
+          logObservedToolCalls(uniqueToolCalls(toolsFromBody(body)))
+        }
 
         void reply.code(upstream.status)
         for (const [k, v] of Object.entries(replyHeaders)) void reply.header(k, v)

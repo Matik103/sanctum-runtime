@@ -26,6 +26,31 @@ const PLATFORM_FLAGS: Record<string, string> = {
 
 type AgentOption = { id: string; name: string }
 
+function DecisionBadge({ decision }: { decision: string }) {
+  const tone =
+    decision === 'APPROVED'
+      ? { bg: 'rgba(34,197,94,0.15)', color: '#22c55e', label: 'Approved' }
+      : decision === 'BLOCKED'
+        ? { bg: 'rgba(248,113,113,0.15)', color: '#f87171', label: 'Blocked' }
+        : decision === 'REQUIRE_VERIFICATION'
+          ? { bg: 'rgba(251,191,36,0.15)', color: '#fbbf24', label: 'Held' }
+          : { bg: 'var(--surface-2, #1a1a2e)', color: 'inherit', label: decision }
+  return (
+    <span style={{
+      fontSize: '0.65rem',
+      fontWeight: 600,
+      padding: '0.12rem 0.4rem',
+      borderRadius: '0.25rem',
+      background: tone.bg,
+      color: tone.color,
+      textTransform: 'uppercase',
+      letterSpacing: '0.04em',
+    }}>
+      {tone.label}
+    </span>
+  )
+}
+
 function ArgView({ value }: { value: unknown }) {
   if (value === null || value === undefined) return <span style={{ opacity: 0.4 }}>—</span>
   if (typeof value === 'string') {
@@ -70,7 +95,10 @@ function EventRow({
         <span>{PLATFORM_LABELS[platform] ?? platform}</span>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-        <code style={{ fontWeight: 600, fontSize: '0.82rem' }}>{event.action}</code>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+          <code style={{ fontWeight: 600, fontSize: '0.82rem' }}>{event.action}</code>
+          <DecisionBadge decision={event.decision} />
+        </div>
         <ArgView value={ctx.arguments} />
       </div>
     </div>
@@ -115,7 +143,7 @@ export function LiveFeed({ orgId, onPage }: Props) {
             </span>
           </div>
           <p className="page-subtitle" style={{ marginTop: '0.25rem' }}>
-            Each row is a tool call from a Sanctum agent (via its token) through a platform proxy (OpenAI, DeepSeek, etc.).
+            Connect Agent gates each tool call through Sanctum verify (same as the SDK). Held items appear here and in pending review on Overview.
           </p>
         </div>
         <button
