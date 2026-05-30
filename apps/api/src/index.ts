@@ -1137,21 +1137,64 @@ app.post('/v1/actions/verify', {
     } catch { /* non-fatal — custom rules are best-effort */ }
   }
 
-  let result = await traced(
-    'action.verify',
-    { actor: body.actor, action: body.action, org_id: orgId ?? '' },
-    async (span) => {
-      const r = await riskModelBreaker.call(() =>
-        runtime.verifyAction(request, {
-          offlineMode: body.offlineMode,
-          correlationId: body.correlationId,
-        })
+  // Verification must NEVER hard-fail with a 500. If the risk-model path throws
+  // — a cold-start upstream error, a transient network fault, or the circuit
+  // breaker being OPEN — degrade to a deterministic offline heuristic
+  // evaluation (runs entirely in-process, no external model, no breaker). If
+  // even that fails, return a fail-safe REQUIRE_VERIFICATION decision so the
+  // action is held for a human rather than erroring the agent.
+  let result: ActionResult
+  try {
+    result = await traced(
+      'action.verify',
+      { actor: body.actor, action: body.action, org_id: orgId ?? '' },
+      async (span) => {
+        const r = await riskModelBreaker.call(() =>
+          runtime.verifyAction(request, {
+            offlineMode: body.offlineMode,
+            correlationId: body.correlationId,
+          })
+        )
+        span.end({ decision: r.decision, risk: r.risk, anomaly_flags: r.anomalyFlags.join(',') })
+        return r
+      },
+      req.id,
+    )
+  } catch (verifyErr) {
+    req.log.warn(
+      { err: verifyErr instanceof Error ? verifyErr.message : String(verifyErr), action: body.action },
+      'verify: risk-model path failed — falling back to offline heuristics',
+    )
+    try {
+      result = await runtime.verifyAction(request, {
+        offlineMode: true,
+        correlationId: body.correlationId,
+      })
+    } catch (fallbackErr) {
+      req.log.error(
+        { err: fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr), action: body.action },
+        'verify: offline fallback failed — returning fail-safe REQUIRE_VERIFICATION',
       )
-      span.end({ decision: r.decision, risk: r.risk, anomaly_flags: r.anomalyFlags.join(',') })
-      return r
-    },
-    req.id,
-  )
+      result = {
+        id: crypto.randomUUID(),
+        correlationId: body.correlationId ?? crypto.randomUUID(),
+        actor: body.actor,
+        action: body.action,
+        context: body.context ?? {},
+        decision: 'REQUIRE_VERIFICATION',
+        risk: 'high',
+        reasoning:
+          'Verification engine is temporarily degraded. Holding this action for human approval as a fail-safe (the action was neither evaluated nor approved automatically).',
+        policyPath: 'system:degraded',
+        anomalyFlags: ['verification_engine_degraded'],
+        modelInvoked: false,
+        timestamp: new Date().toISOString(),
+        offlineMode: true,
+        evaluationMode: 'offline_forced',
+        ollamaConnected: false,
+      }
+    }
+  }
 
   // Time-bounded grant: if a previous approval granted this action for a window,
   // auto-approve without interrupting the agent again

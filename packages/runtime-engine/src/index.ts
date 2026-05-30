@@ -587,7 +587,15 @@ export class RuntimeEngine {
       if (token) result.actionToken = token
     }
 
-    await this.auditStore.append(result)
+    // Persistence is best-effort: the verification decision above is final and
+    // must be returned even if the audit store or Supabase sync fails (e.g. a
+    // cold connection right after a deploy). Never let persistence turn a
+    // successful verification into a 500.
+    try {
+      await this.auditStore.append(result)
+    } catch (err) {
+      console.error('[sanctum] audit store append failed (best-effort, ignored):', err instanceof Error ? err.message : String(err))
+    }
     await maybeSyncAuditToSupabase(result)
 
     // Warn when verification is required but the system is degraded — operator

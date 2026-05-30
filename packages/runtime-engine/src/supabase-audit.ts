@@ -84,31 +84,41 @@ export async function maybeSyncAuditToSupabase(entry: ActionResult): Promise<voi
     shieldExtras['shield_score'] = entry.shield.score ?? null
   }
 
-  const { error } = await sb.from('audit_events').upsert(
-    {
-      id: entry.id,
-      correlation_id: entry.correlationId,
-      org_id: orgIdFromContext(entry.context),
-      actor: entry.actor,
-      action: entry.action,
-      decision: entry.decision,
-      risk: entry.risk,
-      reasoning: entry.reasoning,
-      human_record: entry.humanRecord ?? null,
-      human_resolution: entry.humanResolution ?? null,
-      anomaly_flags: entry.anomalyFlags ?? [],
-      context: entry.context ?? {},
-      resolved_by: (entry as unknown as { resolvedBy?: string }).resolvedBy ?? null,
-      payload: entry,
-      created_at: entry.timestamp,
-      resolved_at: entry.resolvedAt ?? null,
-      ...shieldExtras,
-    },
-    { onConflict: 'id' },
-  )
+  // Best-effort persistence: this must NEVER throw. A cold Supabase connection
+  // (DNS/TLS not yet warm right after a deploy) can make the underlying fetch
+  // *reject* rather than return `{ error }`. Letting that propagate would crash
+  // an otherwise-successful verifyAction with a 500. Swallow all failures —
+  // verification correctness does not depend on the audit row being written.
+  try {
+    const { error } = await sb.from('audit_events').upsert(
+      {
+        id: entry.id,
+        correlation_id: entry.correlationId,
+        org_id: orgIdFromContext(entry.context),
+        actor: entry.actor,
+        action: entry.action,
+        decision: entry.decision,
+        risk: entry.risk,
+        reasoning: entry.reasoning,
+        human_record: entry.humanRecord ?? null,
+        human_resolution: entry.humanResolution ?? null,
+        anomaly_flags: entry.anomalyFlags ?? [],
+        context: entry.context ?? {},
+        resolved_by: (entry as unknown as { resolvedBy?: string }).resolvedBy ?? null,
+        payload: entry,
+        created_at: entry.timestamp,
+        resolved_at: entry.resolvedAt ?? null,
+        ...shieldExtras,
+      },
+      { onConflict: 'id' },
+    )
 
-  if (error) {
-    console.error('[sanctum] audit sync to Supabase failed:', error.message)
+    if (error) {
+      console.error('[sanctum] audit sync to Supabase failed:', error.message)
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[sanctum] audit sync to Supabase threw (best-effort, ignored):', msg)
   }
 }
 
