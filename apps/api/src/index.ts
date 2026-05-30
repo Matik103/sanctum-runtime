@@ -564,6 +564,25 @@ app.get('/health', async (_req, reply) => {
         offline: forceOffline || !prodStatus.riskModelConnected,
         connected: prodStatus.riskModelConnected,
       },
+      // Deploy observability: surface the live commit + whether the
+      // feature route groups actually registered. Lets us detect deploy
+      // drift (running build != main) without scraping Render logs.
+      version: {
+        commit:
+          process.env.RENDER_GIT_COMMIT?.slice(0, 7) ??
+          process.env.GIT_COMMIT?.slice(0, 7) ??
+          null,
+        node: process.version,
+        uptimeSec: Math.round(process.uptime()),
+      },
+      routes: {
+        shield: app.hasRoute({ method: 'GET', url: '/v1/shield/status' }),
+        agentRotate: app.hasRoute({
+          method: 'POST',
+          url: '/v1/orgs/:orgId/agents/:agentId/rotate',
+        }),
+        proxyPlatforms: app.hasRoute({ method: 'GET', url: '/v1/proxy/platforms' }),
+      },
     }
   }
 
