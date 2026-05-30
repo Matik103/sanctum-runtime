@@ -115,7 +115,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: "/ai/blog-index.md",
         title: "AI blog index (markdown)",
       },
-      ...defaultHead.links,
     ],
   }),
   shellComponent: RootShell,
