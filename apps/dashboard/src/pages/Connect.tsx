@@ -151,6 +151,7 @@ export function Connect({ orgId, onPage }: Props) {
   const [agents, setAgents] = useState<AgentOption[]>([])
   const [credentials, setCredentials] = useState<PlatformCredential[]>([])
   const [platformKeyInput, setPlatformKeyInput] = useState('')
+  const [keyEntryOpen, setKeyEntryOpen] = useState(false)
   const [lang, setLang] = useState<'python' | 'typescript'>('python')
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -202,6 +203,7 @@ export function Connect({ orgId, onPage }: Props) {
 
   useEffect(() => {
     setPlatformKeyInput('')
+    setKeyEntryOpen(false)
     setTestMsg(null)
   }, [platform])
 
@@ -222,6 +224,7 @@ export function Connect({ orgId, onPage }: Props) {
         return [...rest, saved]
       })
       setPlatformKeyInput('')
+      setKeyEntryOpen(false)
       setTestMsg('Platform API key saved securely.')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Save failed')
@@ -407,6 +410,9 @@ export function Connect({ orgId, onPage }: Props) {
                 <button type="button" className="btn btn-ghost btn-sm" disabled={testing} onClick={() => void handleTestKey(true)}>
                   {testing ? <Loader2 size={14} className="spin" /> : <Zap size={14} />} Test
                 </button>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setKeyEntryOpen(true); setPlatformKeyInput('') }}>
+                  Replace
+                </button>
                 <button type="button" className="btn btn-ghost btn-sm" disabled={saving} onClick={() => void handleRemoveKey()}>
                   <Trash2 size={14} /> Remove
                 </button>
@@ -414,26 +420,41 @@ export function Connect({ orgId, onPage }: Props) {
             </div>
           )}
 
-          <input
-            type="password"
-            className="input"
-            placeholder={savedCred ? 'Paste new key to replace saved key' : 'sk-… or platform API key'}
-            value={platformKeyInput}
-            onChange={(e) => setPlatformKeyInput(e.target.value)}
-            autoComplete="off"
-            style={{ fontFamily: 'monospace', fontSize: '0.85rem', width: '100%', marginBottom: '0.75rem' }}
-          />
+          {!savedCred && !keyEntryOpen && (
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => setKeyEntryOpen(true)}>
+              Add platform API key
+            </button>
+          )}
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-            <button type="button" className="btn btn-primary btn-sm" disabled={saving || !platformKeyInput.trim()} onClick={() => void handleSaveKey()}>
-              {saving ? <Loader2 size={14} className="spin" /> : null}
-              {savedCred ? 'Update saved key' : 'Save platform key'}
-            </button>
-            <button type="button" className="btn btn-ghost btn-sm" disabled={testing || !platformKeyInput.trim()} onClick={() => void handleTestKey(false)}>
-              {testing ? <Loader2 size={14} className="spin" /> : <Zap size={14} />}
-              Test key
-            </button>
-          </div>
+          {keyEntryOpen && (
+            <>
+              <input
+                type="text"
+                className="input"
+                placeholder="Paste your platform API key"
+                value={platformKeyInput}
+                onChange={(e) => setPlatformKeyInput(e.target.value)}
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                style={{ fontFamily: 'monospace', fontSize: '0.85rem', width: '100%', marginBottom: '0.75rem' }}
+              />
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <button type="button" className="btn btn-primary btn-sm" disabled={saving || !platformKeyInput.trim()} onClick={() => void handleSaveKey()}>
+                  {saving ? <Loader2 size={14} className="spin" /> : null}
+                  {savedCred ? 'Update saved key' : 'Save platform key'}
+                </button>
+                <button type="button" className="btn btn-ghost btn-sm" disabled={testing || !platformKeyInput.trim()} onClick={() => void handleTestKey(false)}>
+                  {testing ? <Loader2 size={14} className="spin" /> : <Zap size={14} />}
+                  Test key
+                </button>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setKeyEntryOpen(false); setPlatformKeyInput('') }}>
+                  Cancel
+                </button>
+              </div>
+            </>
+          )}
 
           {testMsg && (
             <p style={{ fontSize: '0.8rem', marginTop: '0.65rem', color: testMsg.includes('fail') || testMsg.includes('Fail') ? '#f87171' : 'var(--success, #22c55e)' }}>
