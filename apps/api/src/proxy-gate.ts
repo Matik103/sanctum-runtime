@@ -338,7 +338,7 @@ export async function gateToolCalls(
   const allowed: ProxyToolCall[] = []
   const blocked = new Map<string, string>()
 
-  for (const tc of toolCalls) {
+  for (const tc of opts.toolCalls) {
     const result = await gateProxyToolCall(app, runtime, {
       ...opts,
       toolCall: tc,

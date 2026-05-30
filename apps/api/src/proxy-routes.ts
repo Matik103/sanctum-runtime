@@ -124,7 +124,13 @@ async function readStreamText(body: ReadableStream<Uint8Array>): Promise<string>
   return acc
 }
 
-const SKIP_HEADERS = new Set(['transfer-encoding', 'connection', 'keep-alive', 'content-length'])
+const SKIP_HEADERS = new Set([
+  'transfer-encoding',
+  'connection',
+  'keep-alive',
+  'content-length',
+  'content-encoding',
+])
 
 export function registerProxyRoutes(app: FastifyInstance, runtime: RuntimeEngine): void {
   const cfg = getSupabaseAuthConfig()

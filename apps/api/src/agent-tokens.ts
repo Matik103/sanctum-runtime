@@ -63,8 +63,10 @@ export function verifyAgentToken(token: string): { id: string; orgId: string } |
   }
 }
 
-/** Extract agent token from request headers (X-Agent-Token or Authorization: Agent ...). */
+/** Extract agent token from request headers (X-Sanctum-Agent-Token, X-Agent-Token, or Authorization: Agent ...). */
 export function extractAgentToken(req: { headers: Record<string, string | string[] | undefined> }): string | null {
+  const sanctum = req.headers['x-sanctum-agent-token']
+  if (sanctum) return Array.isArray(sanctum) ? sanctum[0] : sanctum
   const header = req.headers['x-agent-token']
   if (header) return Array.isArray(header) ? header[0] : header
   const auth = req.headers['authorization']
