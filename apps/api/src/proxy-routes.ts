@@ -14,10 +14,20 @@
  * The platform API key travels in the Authorization header and is NEVER stored.
  */
 
+import { randomUUID } from 'node:crypto'
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { logger } from './logger.js'
 import { createSupabaseAdmin, getSupabaseAuthConfig } from './auth.js'
 import { verifyAgentToken } from './agent-tokens.js'
+
+function publicApiBase(): string {
+  return (
+    process.env.SANCTUM_PUBLIC_API_URL?.trim() ||
+    process.env.SANCTUM_API_URL?.trim() ||
+    process.env.RENDER_EXTERNAL_URL?.trim() ||
+    ''
+  ).replace(/\/$/, '')
+}
 
 const log = logger.child({ module: 'proxy-routes' })
 
@@ -104,7 +114,7 @@ export function registerProxyRoutes(app: FastifyInstance): void {
 
   // GET /v1/proxy/platforms — list supported platforms + their proxy URLs
   app.get('/v1/proxy/platforms', async (_req, reply) => {
-    const base = (process.env.API_URL ?? '').replace(/\/$/, '')
+    const base = publicApiBase()
     return reply.send({
       platforms: Object.entries(PROXY_PLATFORMS).map(([id]) => ({
         id,
@@ -191,19 +201,26 @@ export function registerProxyRoutes(app: FastifyInstance): void {
         // ── Tool call logger (fire-and-forget) ───────────────────────────────
         const admin = createSupabaseAdmin(cfg)
         function logToolCall(tc: ToolCall): void {
+          const correlationId = `proxy-${platform}-${tc.id}`
           void admin
             .from('audit_events')
             .insert({
+              id: randomUUID(),
+              correlation_id: correlationId,
               org_id: orgId,
               action: tc.name,
               actor: agentId,
               decision: 'APPROVED',
+              risk: 'low',
+              reasoning: `Observed tool call via ${platform} proxy (Connect Agent).`,
               context: {
                 proxy: true,
                 platform,
                 tool_call_id: tc.id,
                 arguments: parseArgs(tc.arguments),
+                org_id: orgId,
               },
+              payload: {},
             })
             .then(({ error }) => {
               if (error) log.warn({ err: error.message, orgId, tool: tc.name }, 'proxy tool call log failed')

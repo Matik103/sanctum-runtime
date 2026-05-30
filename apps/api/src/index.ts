@@ -295,6 +295,9 @@ app.addHook('onRequest', async (req, reply) => {
     path === '/v1/actions/verify' &&
     extractAgentToken(req as { headers: Record<string, string | string[] | undefined> })
   ) return
+  // Connect Agent proxy: auth is the Sanctum agent token + upstream platform key,
+  // validated inside proxy-routes (never store platform keys).
+  if (path.startsWith('/v1/proxy/')) return
 
   const auth = await authenticateRequest(req.headers, {
     supabase: supabaseAuth,

@@ -17,6 +17,29 @@ export type ProxyEvent = {
   created_at: string
 }
 
+function normalizeProxyEvent(raw: Record<string, unknown>): ProxyEvent | null {
+  const ctx = (raw.context as Record<string, unknown> | undefined) ?? {}
+  if (ctx.proxy !== true) return null
+  const created =
+    (typeof raw.created_at === 'string' && raw.created_at) ||
+    (typeof raw.timestamp === 'string' && raw.timestamp) ||
+    new Date().toISOString()
+  return {
+    id: String(raw.id ?? crypto.randomUUID()),
+    org_id: String(raw.org_id ?? ctx.org_id ?? ''),
+    action: String(raw.action ?? ''),
+    actor: String(raw.actor ?? ''),
+    decision: String(raw.decision ?? 'APPROVED'),
+    context: {
+      proxy: true,
+      platform: String(ctx.platform ?? 'unknown'),
+      tool_call_id: String(ctx.tool_call_id ?? ''),
+      arguments: ctx.arguments,
+    },
+    created_at: created,
+  }
+}
+
 async function fetchRecentProxyEvents(limit = 50): Promise<ProxyEvent[]> {
   const token = await getAccessToken()
   const headers: Record<string, string> = {}
@@ -24,10 +47,11 @@ async function fetchRecentProxyEvents(limit = 50): Promise<ProxyEvent[]> {
 
   const res = await fetch(`${apiBaseUrl}/v1/audit?limit=${limit}`, { headers })
   if (!res.ok) return []
-  const data = (await res.json()) as { entries?: ProxyEvent[] }
-  return (data.entries ?? []).filter(
-    (e) => (e.context as Record<string, unknown>)?.proxy === true,
-  )
+  const data = (await res.json()) as ProxyEvent[] | { entries?: ProxyEvent[] }
+  const rows = Array.isArray(data) ? data : (data.entries ?? [])
+  return rows
+    .map((e) => normalizeProxyEvent(e as unknown as Record<string, unknown>))
+    .filter((e): e is ProxyEvent => e != null)
 }
 
 export function useLiveFeed(orgId: string | null | undefined) {
@@ -63,8 +87,8 @@ export function useLiveFeed(orgId: string | null | undefined) {
           filter: `org_id=eq.${orgId}`,
         },
         (payload) => {
-          const entry = payload.new as ProxyEvent
-          if ((entry.context as Record<string, unknown>)?.proxy !== true) return
+          const entry = normalizeProxyEvent(payload.new as Record<string, unknown>)
+          if (!entry) return
           setEvents((prev) => [entry, ...prev].slice(0, 200))
         },
       )
