@@ -21,7 +21,9 @@
     "policy-engine",
     "open-source"
   ],
-  "sideEffects": false,
+  "sideEffects": [
+    "src/lib/error-capture.ts"
+  ],
   "type": "module",
   "workspaces": [
     "apps/*",
