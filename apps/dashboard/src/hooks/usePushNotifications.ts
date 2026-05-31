@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { apiBaseUrl } from '../lib/api-url'
-import { urlBase64ToUint8Array } from '../lib/push'
+import { ensurePushServiceWorker, urlBase64ToUint8Array } from '../lib/push'
 import { getAccessToken } from '../lib/supabase'
 
 async function authHeaders(json = false): Promise<HeadersInit> {
@@ -100,26 +100,8 @@ function gatingState(env: Environment): PushState | null {
   return null
 }
 
-const SERVICE_WORKER_TIMEOUT_MS = 8_000
-
 async function readyServiceWorker(): Promise<ServiceWorkerRegistration> {
-  const current = await navigator.serviceWorker.getRegistration()
-  if (current?.active) return current
-
-  let timeoutId: number | undefined
-  try {
-    return await Promise.race([
-      navigator.serviceWorker.ready,
-      new Promise<never>((_, reject) => {
-        timeoutId = window.setTimeout(
-          () => reject(new Error('The app is still preparing notifications. Close and reopen Sanctum, then try again.')),
-          SERVICE_WORKER_TIMEOUT_MS,
-        )
-      }),
-    ])
-  } finally {
-    if (timeoutId !== undefined) window.clearTimeout(timeoutId)
-  }
+  return ensurePushServiceWorker()
 }
 
 async function storeSubscription(sub: PushSubscription): Promise<void> {
@@ -135,8 +117,11 @@ async function storeSubscription(sub: PushSubscription): Promise<void> {
 }
 
 function subscriptionUsesKey(sub: PushSubscription, publicKey: string): boolean {
-  const subscriptionKey = sub.options.applicationServerKey
-  if (!subscriptionKey) return false
+  const subscriptionKey = (sub as PushSubscription & { options?: PushSubscriptionOptions }).options
+    ?.applicationServerKey
+  // Browsers often omit applicationServerKey on getSubscription() — do not force
+  // resubscribe (iOS requires a user gesture for subscribe()).
+  if (!subscriptionKey) return true
 
   const current = new Uint8Array(subscriptionKey)
   const expected = urlBase64ToUint8Array(publicKey)
@@ -158,14 +143,19 @@ async function removeSubscription(sub: PushSubscription): Promise<void> {
 async function currentSubscription(
   reg: ServiceWorkerRegistration,
   publicKey: string,
+  opts: { resubscribe?: boolean } = {},
 ): Promise<PushSubscription | null> {
   const sub = await reg.pushManager.getSubscription()
-  if (!sub || subscriptionUsesKey(sub, publicKey)) return sub
+  if (!sub) return null
+  if (subscriptionUsesKey(sub, publicKey)) return sub
 
+  // VAPID key rotated — clear stale subscription; resubscribe only from Enable (user gesture).
   await removeSubscription(sub)
+  if (!opts.resubscribe) return null
+
   return reg.pushManager.subscribe({
     userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(publicKey) as unknown as ArrayBuffer,
+    applicationServerKey: urlBase64ToUint8Array(publicKey),
   })
 }
 
@@ -287,6 +277,7 @@ export function usePushNotifications() {
 
     setState('subscribing')
     try {
+      // User-gesture permission first (required on iOS), then register/wait for SW.
       const permission = await Notification.requestPermission()
       if (permission !== 'granted') {
         setState(permission === 'denied' ? 'denied' : 'idle')
@@ -295,11 +286,11 @@ export function usePushNotifications() {
       }
 
       const reg = await readyServiceWorker()
-      let sub = await currentSubscription(reg, vapidKey)
+      let sub = await currentSubscription(reg, vapidKey, { resubscribe: true })
       if (!sub) {
         sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(vapidKey) as unknown as ArrayBuffer,
+          applicationServerKey: urlBase64ToUint8Array(vapidKey),
         })
       }
 

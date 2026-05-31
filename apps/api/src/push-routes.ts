@@ -13,12 +13,10 @@ type SanctumReq = FastifyRequest & {
 const subscribeBody = z.object({
   subscription: z.object({
     endpoint: z.string().url(),
-    keys: z
-      .object({
-        p256dh: z.string(),
-        auth: z.string(),
-      })
-      .optional(),
+    keys: z.object({
+      p256dh: z.string().min(1),
+      auth: z.string().min(1),
+    }),
     expirationTime: z.number().nullable().optional(),
   }),
   userAgent: z.string().max(512).optional(),
@@ -160,6 +158,26 @@ type PushDeliveryResult = {
   failed: number
 }
 
+function normalizePushSubscription(raw: unknown): PushSubscription | null {
+  if (!raw || typeof raw !== 'object') return null
+  const sub = raw as Record<string, unknown>
+  const endpoint = typeof sub.endpoint === 'string' ? sub.endpoint : null
+  const keysRaw = sub.keys
+  if (!endpoint || !keysRaw || typeof keysRaw !== 'object') return null
+  const keys = keysRaw as Record<string, unknown>
+  const p256dh = typeof keys.p256dh === 'string' ? keys.p256dh : null
+  const auth = typeof keys.auth === 'string' ? keys.auth : null
+  if (!p256dh || !auth) return null
+  return {
+    endpoint,
+    keys: { p256dh, auth },
+    expirationTime:
+      typeof sub.expirationTime === 'number' || sub.expirationTime === null
+        ? (sub.expirationTime as number | null)
+        : null,
+  }
+}
+
 /** Send web push to all devices for a user (no-op if VAPID is not configured). */
 export async function sendPushToUser(
   userId: string,
@@ -197,8 +215,12 @@ export async function sendPushToUser(
     })
     const results = await Promise.allSettled(
       rows.map((row) => {
-        const sub = row.subscription as PushSubscription
-        return webpush.sendNotification(sub, body)
+        const sub = normalizePushSubscription(row.subscription)
+        if (!sub) {
+          log.warn({ endpoint: row.endpoint }, 'push subscription missing keys — skipping')
+          return Promise.reject(Object.assign(new Error('invalid_subscription'), { statusCode: 410 }))
+        }
+        return webpush.sendNotification(sub, body, { TTL: 86_400, urgency: 'high' })
       }),
     )
     const expiredEndpoints = results.flatMap((result, index) => {
@@ -207,7 +229,16 @@ export async function sendPushToUser(
         typeof result.reason === 'object' && result.reason !== null && 'statusCode' in result.reason
           ? Number((result.reason as { statusCode?: unknown }).statusCode)
           : null
-      return statusCode === 404 || statusCode === 410 ? [rows[index].endpoint as string] : []
+      if (statusCode === 404 || statusCode === 410) {
+        return [rows[index].endpoint as string]
+      }
+      if (statusCode) {
+        log.warn(
+          { statusCode, endpoint: rows[index].endpoint, err: result.reason },
+          'push delivery rejected',
+        )
+      }
+      return []
     })
     if (expiredEndpoints.length > 0) {
       await admin

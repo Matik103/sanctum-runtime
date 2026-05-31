@@ -12,7 +12,7 @@ declare const self: ServiceWorkerGlobalScope & {
 
 // Bump this whenever the caching strategy or app shell changes.
 // Old caches whose name doesn't match are deleted on activate.
-const SW_VERSION = '6'
+const SW_VERSION = '7'
 
 const CACHE_NAMES = {
   shell:      `sanctum-shell-v${SW_VERSION}`,
@@ -97,23 +97,39 @@ registerRoute(
 )
 
 // ── VAPID web-push (server uses webpush.sendNotification) ──────────────────
+type PushPayload = {
+  title?: string
+  message?: string
+  body?: string
+  tag?: string
+  icon?: string
+  badge?: string
+  url?: string
+  data?: Record<string, unknown>
+  requireInteraction?: boolean
+}
+
+function parsePushPayload(event: PushEvent): PushPayload {
+  if (!event.data) return {}
+  try {
+    return event.data.json() as PushPayload
+  } catch {
+    try {
+      return JSON.parse(event.data.text()) as PushPayload
+    } catch {
+      return { body: event.data.text() }
+    }
+  }
+}
+
 self.addEventListener('push', (event) => {
-  if (!event.data) return
-  let payload: {
-    title?: string
-    body?: string
-    tag?: string
-    icon?: string
-    badge?: string
-    url?: string
-    data?: Record<string, unknown>
-    requireInteraction?: boolean
-  } = {}
-  try { payload = event.data.json() } catch { payload = { body: event.data.text() } }
+  const payload = parsePushPayload(event)
+  const title = payload.title ?? payload.message ?? 'Sanctum Alert'
+  const body = payload.body ?? ''
 
   event.waitUntil(
-    self.registration.showNotification(payload.title ?? 'Sanctum Alert', {
-      body: payload.body ?? '',
+    self.registration.showNotification(title, {
+      body,
       icon: payload.icon ?? '/icon-192.png',
       badge: payload.badge ?? '/favicon.png',
       tag: payload.tag ?? 'sanctum-alert',
