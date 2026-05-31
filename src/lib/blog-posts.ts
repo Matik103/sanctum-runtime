@@ -1,3 +1,4 @@
+import { BLOG_ACQUISITION_POSTS } from './blog-acquisition-posts'
 import { BLOG_TRENDING_POSTS } from './blog-trending-posts'
 import { BLOG_TRANSACTIONAL_POSTS } from './blog-transactional-posts'
 /** Blog registry — add posts here + a matching route under src/routes/blog/ */
@@ -382,6 +383,7 @@ export const BLOG_POSTS: BlogPostMeta[] = [
   },
   ...BLOG_TRENDING_POSTS,
   ...BLOG_TRANSACTIONAL_POSTS,
+  ...BLOG_ACQUISITION_POSTS,
 ]
 
 export function getBlogPost(slug: string): BlogPostMeta | undefined {

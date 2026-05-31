@@ -1,3 +1,4 @@
+import { BLOG_ACQUISITION_ANSWERS } from './blog-acquisition-posts'
 import { BLOG_TRENDING_ANSWERS } from './blog-trending-posts'
 import { BLOG_TRANSACTIONAL_ANSWERS } from './blog-transactional-posts'
 export type BlogAnswer = {
@@ -754,4 +755,5 @@ export const BLOG_ANSWER_POSTS: Record<string, BlogAnswerPost> = {
   },
   ...BLOG_TRENDING_ANSWERS,
   ...BLOG_TRANSACTIONAL_ANSWERS,
+  ...BLOG_ACQUISITION_ANSWERS,
 }

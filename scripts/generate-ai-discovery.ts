@@ -70,6 +70,12 @@ const TOPICS: Topic[] = [
       /best-|buy-|get-started|sign-up|pricing|comparison|alternative|rfp|pilot|buyers|transactional|shortlist|deploy-/.test(s) ||
       t.includes("transactional"),
   },
+  {
+    label: "Platform & social discovery (acquisition)",
+    match: (s, t) =>
+      /linkedin|twitter|tiktok|instagram|facebook|youtube|discord|slack|reddit|threads|bluesky|whatsapp|copilot|cursor|devin|perplexity|gemini|bing|yahoo|hackernews|product-hunt|first-100|people-also-ask|agent-gateway|a2a|connect-agent/.test(s) ||
+      t.includes("acquisition"),
+  },
 ];
 
 function topicFor(post: BlogPostMeta): string {
