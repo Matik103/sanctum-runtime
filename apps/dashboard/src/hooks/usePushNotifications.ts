@@ -150,7 +150,33 @@ export function usePushNotifications() {
   const [deviceCount, setDeviceCount] = useState<number | null>(null)
   const [testBusy, setTestBusy] = useState(false)
   const [testMessage, setTestMessage] = useState<string | null>(null)
-  const [environment] = useState<Environment>(detectEnvironment)
+  const [environment, setEnvironment] = useState<Environment>(detectEnvironment)
+
+  const refreshEnvironment = useCallback(() => {
+    setEnvironment(detectEnvironment())
+  }, [])
+
+  useEffect(() => {
+    refreshEnvironment()
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') refreshEnvironment()
+    }
+    const mq = window.matchMedia?.('(display-mode: standalone)')
+    const onDisplayModeChange = () => refreshEnvironment()
+
+    window.addEventListener('focus', refreshEnvironment)
+    window.addEventListener('pageshow', refreshEnvironment)
+    document.addEventListener('visibilitychange', onVisibility)
+    mq?.addEventListener?.('change', onDisplayModeChange)
+
+    return () => {
+      window.removeEventListener('focus', refreshEnvironment)
+      window.removeEventListener('pageshow', refreshEnvironment)
+      document.removeEventListener('visibilitychange', onVisibility)
+      mq?.removeEventListener?.('change', onDisplayModeChange)
+    }
+  }, [refreshEnvironment])
 
   const gating = gatingState(environment)
   const supported = gating === null
@@ -215,8 +241,11 @@ export function usePushNotifications() {
   }, [gating, refreshStatus])
 
   const subscribe = useCallback(async () => {
-    if (gating) {
-      setState(gating)
+    const freshEnvironment = detectEnvironment()
+    setEnvironment(freshEnvironment)
+    const freshGating = gatingState(freshEnvironment)
+    if (freshGating) {
+      setState(freshGating)
       return
     }
     if (!vapidKey) {
@@ -255,7 +284,7 @@ export function usePushNotifications() {
       setError(e instanceof Error ? e.message : 'Could not enable push notifications.')
       setState('idle')
     }
-  }, [gating, vapidKey, refreshStatus])
+  }, [vapidKey, refreshStatus])
 
   const unsubscribe = useCallback(async () => {
     if (!supported) return
@@ -307,5 +336,17 @@ export function usePushNotifications() {
     }
   }, [refreshStatus])
 
-  return { supported, state, error, environment, deviceCount, testBusy, testMessage, subscribe, unsubscribe, sendTest }
+  return {
+    supported,
+    state,
+    error,
+    environment,
+    deviceCount,
+    testBusy,
+    testMessage,
+    refreshEnvironment,
+    subscribe,
+    unsubscribe,
+    sendTest,
+  }
 }

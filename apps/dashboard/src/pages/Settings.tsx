@@ -181,6 +181,7 @@ export function Settings({ status }: Props) {
     deviceCount: pushDeviceCount,
     testBusy: pushTestBusy,
     testMessage: pushTestMessage,
+    refreshEnvironment: refreshPushEnvironment,
     subscribe: enablePush,
     unsubscribe: disablePush,
     sendTest: sendPushTest,
@@ -417,6 +418,15 @@ export function Settings({ status }: Props) {
                 >
                   {pushBusy || pushState === 'subscribing' ? 'Updating...' : pushState === 'subscribed' ? 'Disable' : 'Enable'}
                 </button>
+                {(pushState === 'ios_install_required' || pushState === 'ios_upgrade_required' || pushState === 'unsupported') && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    onClick={refreshPushEnvironment}
+                  >
+                    Check again
+                  </button>
+                )}
                 {pushState === 'subscribed' && (
                   <button
                     type="button"
