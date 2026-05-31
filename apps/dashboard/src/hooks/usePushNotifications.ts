@@ -3,6 +3,7 @@ import { apiBaseUrl } from '../lib/api-url'
 import {
   ensurePushServiceWorker,
   existingPushServiceWorker,
+  fetchVapidPublicKey,
   urlBase64ToUint8Array,
 } from '../lib/push'
 import { getAccessToken } from '../lib/supabase'
@@ -100,22 +101,6 @@ function gatingState(env: Environment): PushState | null {
     return 'unsupported'
   }
   return null
-}
-
-async function fetchVapidPublicKey(): Promise<string> {
-  const res = await fetch(`${apiBaseUrl}/v1/push/vapid-key`)
-  if (!res.ok) {
-    throw new Error(`Could not load push configuration (HTTP ${res.status}). Check your network and try again.`)
-  }
-  const data = (await res.json()) as { publicKey?: string | null; vapidConfigured?: boolean }
-  if (!data.publicKey) {
-    throw new Error(
-      data.vapidConfigured === false
-        ? 'Push is not configured on the API (VAPID keys missing).'
-        : 'Push configuration is unavailable on the runtime API.',
-    )
-  }
-  return data.publicKey
 }
 
 async function storeSubscription(sub: PushSubscription): Promise<void> {
@@ -224,7 +209,7 @@ export function usePushNotifications() {
   }, [])
 
   const loadVapidKey = useCallback(async (): Promise<string> => {
-    const key = await fetchVapidPublicKey()
+    const key = await fetchVapidPublicKey(apiBaseUrl)
     setVapidKey(key)
     return key
   }, [])

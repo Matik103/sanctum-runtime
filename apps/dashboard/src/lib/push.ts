@@ -17,12 +17,42 @@ export function pushSupported(): boolean {
   )
 }
 
+/** Build-time fallback — must match API `VAPID_PUBLIC_KEY` (daily-quest uses this pattern). */
+export function bundledVapidPublicKey(): string | null {
+  const key = (import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined)?.trim()
+  return key || null
+}
+
+/** Prefer live API key; fall back to bundled public key if the fetch fails. */
+export async function fetchVapidPublicKey(apiBase: string): Promise<string> {
+  try {
+    const res = await fetch(`${apiBase}/v1/push/vapid-key`)
+    if (res.ok) {
+      const data = (await res.json()) as { publicKey?: string | null; vapidConfigured?: boolean }
+      if (data.publicKey) return data.publicKey
+      if (data.vapidConfigured === false) {
+        throw new Error('Push is not configured on the API (VAPID keys missing).')
+      }
+    }
+  } catch (e) {
+    if (e instanceof Error && e.message.includes('VAPID keys missing')) throw e
+    // Network/CORS blip — try bundled key below.
+  }
+
+  const bundled = bundledVapidPublicKey()
+  if (bundled) return bundled
+
+  throw new Error(
+    'Push configuration is unavailable. Check your network or set VITE_VAPID_PUBLIC_KEY to match the API.',
+  )
+}
+
 const SW_SCRIPT_URL = '/sw.js'
-const SW_READY_TIMEOUT_MS = 20_000
+const SW_READY_TIMEOUT_MS = 15_000
 
 /**
- * Ensure a push-capable service worker is registered and active.
- * Call from user gestures (Enable push) — not on passive page load.
+ * Register /sw.js if needed, then wait for `navigator.serviceWorker.ready`.
+ * Same shape as daily-quest — call from user gestures (Enable push), not passive load.
  */
 export async function ensurePushServiceWorker(): Promise<ServiceWorkerRegistration> {
   if (!('serviceWorker' in navigator)) {
@@ -39,49 +69,21 @@ export async function ensurePushServiceWorker(): Promise<ServiceWorkerRegistrati
     void registration.update().catch(() => {})
   }
 
-  if (registration.active) return registration
-
-  await new Promise<void>((resolve, reject) => {
-    const timeoutId = window.setTimeout(
-      () =>
-        reject(
-          new Error(
-            'Notifications are still loading. Reload Sanctum, wait a few seconds, then tap Enable again.',
+  return Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise<ServiceWorkerRegistration>((_, reject) => {
+      window.setTimeout(
+        () =>
+          reject(
+            new Error('Notifications are still loading. Reload Sanctum, then tap Enable again.'),
           ),
-        ),
-      SW_READY_TIMEOUT_MS,
-    )
-
-    const finish = () => {
-      window.clearTimeout(timeoutId)
-      resolve()
-    }
-
-    const worker = registration!.installing ?? registration!.waiting
-    if (worker) {
-      if (worker.state === 'activated') {
-        finish()
-        return
-      }
-      worker.addEventListener('statechange', () => {
-        if (worker.state === 'activated') finish()
-      })
-    }
-
-    navigator.serviceWorker.ready.then(finish).catch((err) => {
-      window.clearTimeout(timeoutId)
-      reject(err)
-    })
-  })
-
-  const ready = await navigator.serviceWorker.getRegistration('/')
-  if (!ready?.active) {
-    throw new Error('Service worker is not active yet. Reload the app and try again.')
-  }
-  return ready
+        SW_READY_TIMEOUT_MS,
+      )
+    }),
+  ])
 }
 
-/** Returns an active registration if one already exists — never registers. */
+/** Active registration only — never registers (safe for passive Settings load). */
 export async function existingPushServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (!('serviceWorker' in navigator)) return null
   const registration = await navigator.serviceWorker.getRegistration('/')

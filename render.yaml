@@ -144,6 +144,9 @@ services:
         value: "22"
       - key: VITE_SANCTUM_API_URL
         value: https://api.sanctumruntime.com
+      # Must match API VAPID_PUBLIC_KEY — subscribe fallback if /v1/push/vapid-key is unreachable
+      - key: VITE_VAPID_PUBLIC_KEY
+        sync: false
       - key: VITE_DOCS_URL
         value: https://www.sanctumruntime.com/docs
       - key: VITE_MARKETING_URL
