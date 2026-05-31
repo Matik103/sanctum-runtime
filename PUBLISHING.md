@@ -77,13 +77,13 @@ Add repo secrets:
 
 | Setting | Value |
 |---------|--------|
-| Build command | `npm run cf:build` (or `npm ci && npm run build`) |
-| Deploy command | `npx wrangler deploy` |
+| Build command | `npm run cf:build` |
+| Deploy command | `npm run cf:deploy` |
 | Root directory | `/` |
 
 Click **Update**, then **Retry build** on the latest `main` commit (after `bun.lock` was removed).
 
-If install still runs `bun install`, add a build variable: `SKIP_DEPENDENCY_INSTALL` = `true`, and keep build command as `npm run cf:build`.
+Cloudflare already installs dependencies before the build command. If you intentionally set `SKIP_DEPENDENCY_INSTALL=true`, use `npm run cf:ci-build` instead; it runs `npm ci --no-audit --no-fund` before building. The deploy command is explicit about `dist/server/wrangler.json`, which Nitro generates during the build.
 
 Do **not** keep `bun.lock` in the repo — Cloudflare auto-runs `bun install --frozen-lockfile` when it exists and the build will fail if it is out of sync.
 

@@ -268,7 +268,7 @@ Or split:
 
 ```bash
 npm run cf:build
-npx wrangler deploy
+npm run cf:deploy
 ```
 
 ### 4.3 Custom domain (optional)
