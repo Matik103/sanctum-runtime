@@ -60,7 +60,7 @@ function ArgView({ value }: { value: unknown }) {
   }
   const json = JSON.stringify(value, null, 2)
   return (
-    <pre style={{ margin: 0, fontSize: '0.75rem', maxHeight: 120, overflowY: 'auto', background: 'var(--surface-2, #1a1a2e)', borderRadius: '0.3rem', padding: '0.4rem 0.6rem', border: '1px solid var(--border, #2a2a3e)' }}>
+    <pre className="live-feed-args" style={{ margin: 0, fontSize: '0.75rem', maxHeight: 120, overflowY: 'auto', background: 'var(--surface-2, #1a1a2e)', borderRadius: '0.3rem', padding: '0.4rem 0.6rem', border: '1px solid var(--border, #2a2a3e)' }}>
       {json.length > 400 ? json.slice(0, 400) + '\n…' : json}
     </pre>
   )
@@ -93,29 +93,24 @@ function EventRow({
 
   return (
     <div
+      className="live-feed-row"
       role="button"
       tabIndex={0}
       onClick={() => onSelect(event)}
       onKeyDown={(e) => { if (e.key === 'Enter') onSelect(event) }}
       style={{
-      display: 'grid',
-      gridTemplateColumns: '90px 140px 140px 1fr auto',
-      gap: '0.75rem',
-      alignItems: 'start',
-      padding: '0.75rem 1rem',
-      borderBottom: '1px solid var(--border, #2a2a3e)',
       fontSize: '0.82rem',
       cursor: 'pointer',
     }}>
-      <div style={{ opacity: 0.55, fontSize: '0.75rem', paddingTop: '0.1rem' }}>
+      <div className="live-feed-time" style={{ opacity: 0.55, fontSize: '0.75rem', paddingTop: '0.1rem' }}>
         {timeAgo(event.created_at)}
       </div>
-      <div style={{ fontWeight: 500 }}>{agentLabel}</div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', opacity: 0.85 }}>
+      <div className="live-feed-agent" style={{ fontWeight: 500 }}>{agentLabel}</div>
+      <div className="live-feed-platform" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', opacity: 0.85 }}>
         <span>{PLATFORM_FLAGS[platform] ?? '🔌'}</span>
         <span>{PLATFORM_LABELS[platform] ?? platform}</span>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+      <div className="live-feed-tool" style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
           <code style={{ fontWeight: 600, fontSize: '0.82rem' }}>{event.action}</code>
           <DecisionBadge decision={event.decision} />
@@ -126,9 +121,9 @@ function EventRow({
         <ArgView value={ctx.arguments} />
       </div>
       {(held || orgId) && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }} onClick={(e) => e.stopPropagation()}>
+        <div className="live-feed-actions" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }} onClick={(e) => e.stopPropagation()}>
           {held && (
-            <div style={{ display: 'flex', gap: '0.25rem' }}>
+            <div className="live-feed-decision-actions" style={{ display: 'flex', gap: '0.25rem' }}>
               <button type="button" className="btn btn-primary btn-sm" disabled={resolving === event.id} title="Approve" onClick={() => onResolve(event, 'APPROVED')}>
                 <Check size={14} />
               </button>
@@ -138,7 +133,7 @@ function EventRow({
             </div>
           )}
           {orgId && (
-            <div style={{ display: 'flex', gap: '0.2rem', flexWrap: 'wrap' }}>
+            <div className="live-feed-policy-actions" style={{ display: 'flex', gap: '0.2rem', flexWrap: 'wrap' }}>
               <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }} disabled={policySaving === event.id} onClick={() => onPolicy(event, 'verify')}>Hold tool</button>
               <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }} disabled={policySaving === event.id} onClick={() => onPolicy(event, 'block')}>Block</button>
               <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }} disabled={policySaving === event.id} onClick={() => onPolicy(event, 'approve')}>Auto-approve</button>
@@ -301,13 +296,8 @@ export function LiveFeed({ orgId, onPage }: Props) {
         </div>
       )}
 
-      <div className="card" style={{ overflow: 'hidden', padding: 0 }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '90px 140px 140px 1fr auto',
-          gap: '0.75rem',
-          padding: '0.6rem 1rem',
-          borderBottom: '1px solid var(--border, #2a2a3e)',
+      <div className="card live-feed-card">
+        <div className="live-feed-header" style={{
           fontSize: '0.72rem',
           fontWeight: 600,
           textTransform: 'uppercase',

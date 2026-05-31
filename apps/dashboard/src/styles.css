@@ -1967,6 +1967,48 @@ tr.key-row--pending td {
   border-radius: 8px;
 }
 
+.live-feed-card {
+  overflow: hidden;
+  padding: 0;
+}
+
+.live-feed-header,
+.live-feed-row {
+  display: grid;
+  grid-template-columns: minmax(74px, 90px) minmax(110px, 140px) minmax(110px, 140px) minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.live-feed-header {
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--border, #2a2a3e);
+}
+
+.live-feed-row {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border, #2a2a3e);
+}
+
+.live-feed-row:last-child {
+  border-bottom: 0;
+}
+
+.live-feed-tool {
+  min-width: 0;
+}
+
+.live-feed-tool code,
+.live-feed-agent,
+.live-feed-platform {
+  overflow-wrap: anywhere;
+}
+
+.live-feed-args {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 /* ——— Responsive layout ——— */
 
 @media (max-width: 1200px) {
@@ -2483,6 +2525,81 @@ tr.key-row--pending td {
   .tab-bar__item {
     flex: 0 0 auto;
     min-height: 42px;
+  }
+
+  .live-feed-card {
+    overflow: visible;
+  }
+
+  .live-feed-header {
+    display: none;
+  }
+
+  .live-feed-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    padding: 0.9rem;
+  }
+
+  .live-feed-time,
+  .live-feed-agent,
+  .live-feed-platform {
+    font-size: 0.78rem;
+    line-height: 1.3;
+  }
+
+  .live-feed-time {
+    padding-top: 0 !important;
+  }
+
+  .live-feed-time::before {
+    content: "When ";
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  .live-feed-agent::before {
+    content: "Agent ";
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  .live-feed-platform::before {
+    content: "Platform ";
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  .live-feed-actions,
+  .live-feed-policy-actions {
+    width: 100%;
+  }
+
+  .live-feed-decision-actions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem !important;
+    width: 100%;
+  }
+
+  .live-feed-policy-actions {
+    display: grid !important;
+    grid-template-columns: 1fr;
+    gap: 0.45rem !important;
+  }
+
+  .live-feed-decision-actions .btn,
+  .live-feed-policy-actions .btn {
+    width: 100%;
+    justify-content: center;
+    min-height: 40px;
+    white-space: normal;
+  }
+
+  .live-feed-args {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
   }
 }
 
