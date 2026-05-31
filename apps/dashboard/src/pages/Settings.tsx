@@ -373,6 +373,13 @@ export function Settings({ status }: Props) {
                       <strong> Settings → General → Software Update</strong>, then reopen Sanctum from the home screen.
                     </p>
                   )}
+                  {pushState === 'ios_push_unavailable' && (
+                    <p className="settings-push__detail" style={{ marginTop: '0.35rem' }}>
+                      iOS is not exposing Web Push to this installed app yet. Open Sanctum from the Home Screen icon
+                      added through Safari, then tap <strong>Check again</strong>. If this keeps happening, remove the
+                      Home Screen app and add it again from Safari so iOS refreshes the manifest and service worker.
+                    </p>
+                  )}
                   {pushState === 'unsupported' && (
                     <p className="settings-push__detail" style={{ marginTop: '0.35rem' }}>
                       This browser does not support web push notifications. Try Safari (iOS) or Chrome / Edge (desktop / Android).
@@ -388,7 +395,7 @@ export function Settings({ status }: Props) {
                 </div>
                 <span className={`badge ${
                   pushState === 'subscribed' ? 'success'
-                  : pushState === 'denied' || pushState === 'unavailable' || pushState === 'ios_upgrade_required' ? 'warning'
+                  : pushState === 'denied' || pushState === 'unavailable' || pushState === 'ios_upgrade_required' || pushState === 'ios_push_unavailable' ? 'warning'
                   : 'neutral'
                 }`}>
                   {pushState === 'subscribed' ? 'Enabled'
@@ -398,6 +405,7 @@ export function Settings({ status }: Props) {
                     : pushState === 'unavailable' ? 'Not configured'
                     : pushState === 'ios_install_required' ? 'Add to Home Screen'
                     : pushState === 'ios_upgrade_required' ? 'Update iOS'
+                    : pushState === 'ios_push_unavailable' ? 'Unavailable'
                     : pushState === 'unsupported' ? 'Unsupported'
                     : 'Off'}
                 </span>
@@ -413,12 +421,13 @@ export function Settings({ status }: Props) {
                     || pushState === 'unavailable'
                     || pushState === 'ios_install_required'
                     || pushState === 'ios_upgrade_required'
+                    || pushState === 'ios_push_unavailable'
                   }
                   onClick={() => void handlePushToggle()}
                 >
                   {pushBusy || pushState === 'subscribing' ? 'Updating...' : pushState === 'subscribed' ? 'Disable' : 'Enable'}
                 </button>
-                {(pushState === 'ios_install_required' || pushState === 'ios_upgrade_required' || pushState === 'unsupported') && (
+                {(pushState === 'ios_install_required' || pushState === 'ios_upgrade_required' || pushState === 'ios_push_unavailable' || pushState === 'unsupported') && (
                   <button
                     type="button"
                     className="btn btn-ghost"

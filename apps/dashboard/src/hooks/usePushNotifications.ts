@@ -25,6 +25,7 @@ export type PushState =
   | 'unavailable'
   | 'ios_install_required'
   | 'ios_upgrade_required'
+  | 'ios_push_unavailable'
 
 type Environment = {
   hasServiceWorker: boolean
@@ -33,6 +34,19 @@ type Environment = {
   isSecureContext: boolean
   isIos: boolean
   isStandalone: boolean
+  iosVersion: number | null
+}
+
+function parseIosVersion(ua: string): number | null {
+  const osMatch = ua.match(/(?:CPU (?:iPhone )?OS|iPhone OS|iPad; CPU OS)\s+(\d+)[._](\d+)/i)
+  if (osMatch) return Number(`${osMatch[1]}.${osMatch[2]}`)
+
+  // iPadOS can present a desktop-style user agent. In that case Safari's
+  // Version token is the most useful signal we have.
+  const safariMatch = ua.match(/Version\/(\d+)\.(\d+)/i)
+  if (safariMatch) return Number(`${safariMatch[1]}.${safariMatch[2]}`)
+
+  return null
 }
 
 function detectEnvironment(): Environment {
@@ -44,6 +58,7 @@ function detectEnvironment(): Environment {
       isSecureContext: false,
       isIos: false,
       isStandalone: false,
+      iosVersion: null,
     }
   }
   const ua = navigator.userAgent || ''
@@ -53,20 +68,27 @@ function detectEnvironment(): Environment {
   const isStandalone =
     window.matchMedia?.('(display-mode: standalone)').matches === true ||
     (navigator as Navigator & { standalone?: boolean }).standalone === true
+  const hasPushManager =
+    'PushManager' in window ||
+    ('ServiceWorkerRegistration' in window && 'pushManager' in ServiceWorkerRegistration.prototype)
   return {
     hasServiceWorker: 'serviceWorker' in navigator,
     hasNotification: 'Notification' in window,
-    hasPushManager: 'PushManager' in window,
+    hasPushManager,
     isSecureContext: window.isSecureContext,
     isIos,
     isStandalone,
+    iosVersion: isIos ? parseIosVersion(ua) : null,
   }
 }
 
 function gatingState(env: Environment): PushState | null {
   if (env.isIos) {
     if (!env.isStandalone) return 'ios_install_required'
-    if (!env.hasPushManager || !env.hasNotification) return 'ios_upgrade_required'
+    if (!env.hasPushManager || !env.hasNotification) {
+      if (env.iosVersion !== null && env.iosVersion < 16.4) return 'ios_upgrade_required'
+      return 'ios_push_unavailable'
+    }
   }
   if (!env.isSecureContext || !env.hasServiceWorker || !env.hasPushManager || !env.hasNotification) {
     return 'unsupported'
