@@ -9,7 +9,7 @@ import {
 import { apiBaseUrl } from '../lib/api-url'
 import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 
-const BASE_POLL_MS  = 5_000
+const BASE_POLL_MS  = 10_000
 const MAX_BACKOFF_MS = 300_000  // 5 min cap
 
 function computeBackoff(n: number): number {
@@ -109,12 +109,15 @@ export function useDashboard() {
         e instanceof TypeError ||
         /failed to fetch|networkerror|load failed|net::/i.test(msg)
       const authFailed = /\b401\b/.test(msg)
+      const rateLimited = /\b429\b/.test(msg) || /rate_limit/i.test(msg)
       setApiError(
         networkFailed
           ? `API unreachable (${apiBaseUrl}). Check: 1) sanctum-api is deployed and running on Render, 2) the custom domain api.sanctumruntime.com is configured in Render → Settings → Custom Domains, 3) both services redeployed after env var changes.`
           : authFailed
             ? 'Session expired — please sign in again.'
-            : msg,
+            : rateLimited
+              ? 'Too many requests — backing off and retrying.'
+              : msg,
       )
 
       if (authFailed) {

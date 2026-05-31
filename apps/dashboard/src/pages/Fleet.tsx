@@ -137,7 +137,7 @@ export function Fleet() {
 
   useEffect(() => {
     void refresh()
-    const id = setInterval(() => void refresh(), 5000)
+    const id = setInterval(() => void refresh(), 15_000)
     return () => clearInterval(id)
   }, [refresh])
 

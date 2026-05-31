@@ -1,6 +1,9 @@
 import { createSupabaseAdmin, type SupabaseAuthConfig } from './auth.js'
 import { encryptSecret, decryptSecret, getEncryptionKey } from './crypto-utils.js'
+import { logger } from './logger.js'
 import { PROXY_PLATFORMS } from './proxy-routes.js'
+
+const log = logger.child({ module: 'platform-credentials' })
 
 export const PLATFORM_IDS = Object.keys(PROXY_PLATFORMS) as Array<keyof typeof PROXY_PLATFORMS>
 
@@ -113,7 +116,11 @@ export async function getPlatformSecret(
   orgId: string,
   platform: string,
   environment = 'production',
+  tried: Set<string> = new Set(),
 ): Promise<string | null> {
+  if (tried.has(environment)) return null
+  tried.add(environment)
+
   const admin = createSupabaseAdmin(cfg)
   const { data, error } = await admin
     .from('platform_credentials')
@@ -125,11 +132,25 @@ export async function getPlatformSecret(
 
   if (error || !data?.secret_enc) {
     if (environment !== 'production') {
-      return getPlatformSecret(cfg, orgId, platform, 'production')
+      return getPlatformSecret(cfg, orgId, platform, 'production', tried)
+    }
+    if (environment !== 'development') {
+      return getPlatformSecret(cfg, orgId, platform, 'development', tried)
     }
     return null
   }
-  return decryptSecret(data.secret_enc, getEncryptionKey())
+  try {
+    return await decryptSecret(data.secret_enc, getEncryptionKey())
+  } catch (err) {
+    log.warn(
+      { err, orgId, platform, environment },
+      'platform credential decrypt failed — re-save the key in Connect (encryption key mismatch)',
+    )
+    if (environment === 'production') {
+      return getPlatformSecret(cfg, orgId, platform, 'development', tried)
+    }
+    return null
+  }
 }
 
 export async function testPlatformSecret(

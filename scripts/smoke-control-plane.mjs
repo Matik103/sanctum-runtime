@@ -5,7 +5,9 @@
  *   npm run smoke:control-plane
  */
 const API = process.env.SANCTUM_API_URL?.replace(/\/$/, '')
-const KEY = process.env.SANCTUM_API_KEY?.trim()
+const KEY =
+  process.env.SANCTUM_E2E_API_KEY?.trim() ||
+  process.env.SANCTUM_API_KEY?.trim()
 const MEMORY_KEY = process.env.SANCTUM_MEMORY_KEY?.trim()
 
 if (!API || !KEY) {

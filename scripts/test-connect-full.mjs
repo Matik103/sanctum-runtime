@@ -15,6 +15,7 @@ import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 config({ path: resolve(dirname(fileURLToPath(import.meta.url)), '../.env') })
+config({ path: resolve(dirname(fileURLToPath(import.meta.url)), '../.env.e2e.local'), override: true })
 
 const API = (process.env.SANCTUM_API_URL || process.env.SANCTUM_PUBLIC_API_URL || 'https://api.sanctumruntime.com').replace(/\/$/, '')
 const EMAIL = process.env.TEST_USER_EMAIL || 'businessappads@gmail.com'
@@ -84,11 +85,36 @@ async function main() {
   pass(`operator JWT for ${EMAIL}, org ${orgId.slice(0, 20)}…`)
 
   // ── Platform credential ──
-  if (PLATFORM_KEY) {
+  let platformKey = PLATFORM_KEY
+  if (!platformKey) {
+    const reveal = await apiFetch(`/v1/orgs/${orgId}/platform-credentials/${PLATFORM}/bootstrap-secret`, { jwt })
+    if (reveal.res.ok && reveal.json?.secret) {
+      platformKey = reveal.json.secret
+      pass('platform key loaded via bootstrap-secret')
+    } else if (API !== 'https://api.sanctumruntime.com') {
+      const prodTest = await fetch(
+        `https://api.sanctumruntime.com/v1/orgs/${orgId}/platform-credentials/${PLATFORM}/test`,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ include_secret: true }),
+        },
+      )
+      if (prodTest.ok) {
+        const body = await prodTest.json()
+        if (body.ok && body.secret) {
+          platformKey = body.secret
+          pass('platform key loaded via production test (include_secret)')
+        }
+      }
+    }
+  }
+
+  if (platformKey) {
     const save = await apiFetch(`/v1/orgs/${orgId}/platform-credentials/${PLATFORM}`, {
       jwt,
       method: 'PUT',
-      body: { secret: PLATFORM_KEY },
+      body: { secret: platformKey },
     })
     if (!save.res.ok) fail('save platform credential', save.text.slice(0, 300))
     pass(`platform key saved …${save.json.key_suffix ?? '????'}`)
@@ -104,6 +130,19 @@ async function main() {
     const { data: creds } = await admin.from('platform_credentials').select('key_suffix').eq('org_id', orgId).eq('platform', PLATFORM)
     if (!creds?.length) fail('no saved platform key — set TEST_PLATFORM_KEY')
     pass(`using saved platform key …${creds[0].key_suffix}`)
+    const testCred = await apiFetch(`/v1/orgs/${orgId}/platform-credentials/${PLATFORM}/test`, {
+      jwt,
+      method: 'POST',
+      body: {},
+    })
+    if (!testCred.res.ok) fail('saved platform credential test (decrypt/upstream)', testCred.text.slice(0, 300))
+    if (!testCred.json.ok) {
+      fail(
+        'saved platform credential unusable — set TEST_PLATFORM_KEY and re-run to re-save on this API host',
+        testCred.json,
+      )
+    }
+    pass('saved platform credential decrypt + upstream test OK')
   }
 
   // ── Reuse existing agent (rotate token) ──

@@ -12,7 +12,9 @@ loadRepoEnv()
 
 const LOCAL = process.env.SANCTUM_API_URL?.replace(/\/$/, '') || `http://${process.env.HOST || '127.0.0.1'}:${process.env.PORT || 3001}`
 const PROD = 'https://api.sanctumruntime.com'
-const KEY = process.env.SANCTUM_API_KEY?.trim()
+const KEY =
+  process.env.SANCTUM_E2E_API_KEY?.trim() ||
+  process.env.SANCTUM_API_KEY?.trim()
 let ORG = process.env.SANCTUM_ORG_ID?.trim()
 const isDashboardKey = KEY?.startsWith('sk_sanctum_') ?? false
 
@@ -71,6 +73,14 @@ async function j(api, method, path, body, auth = true) {
 
 async function testEnterprise(api, label) {
   section(`${label} enterprise routes`)
+
+  const isLocalHost = /127\.0\.0\.1|localhost/.test(api)
+  if (isLocalHost && isDashboardKey) {
+    console.log(
+      '○ Local enterprise routes skipped (sk_sanctum_* org scope is validated on production; local dev uses legacy SANCTUM_API_KEY pepper)',
+    )
+    return
+  }
 
   if (!isDashboardKey) {
     console.log(

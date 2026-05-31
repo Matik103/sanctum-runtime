@@ -118,6 +118,7 @@ export async function registerPlatformCredentialRoutes(
       .object({
         secret: z.string().min(8).max(512).optional(),
         environment: z.enum(['development', 'staging', 'production']).optional(),
+        include_secret: z.boolean().optional(),
       })
       .parse(req.body ?? {})
 
@@ -138,11 +139,58 @@ export async function registerPlatformCredentialRoutes(
       await recordPlatformTestResult(cfg, orgId, platform, result, environment).catch(() => {})
     }
 
-    return {
+    const response: Record<string, unknown> = {
       ok: result.ok,
       platform,
       status: result.status,
       detail: result.detail,
     }
+    if (body.include_secret) {
+      try {
+        await assertOrgRole(cfg, orgId, user.id, 'admin')
+        response.secret = secret
+      } catch {
+        return reply.status(403).send({ error: 'org_admin_required' })
+      }
+    }
+
+    return response
+  })
+
+  /** Org admin: read saved platform secret for dev-machine E2E sync (audit logged). */
+  app.get('/v1/orgs/:orgId/platform-credentials/:platform/bootstrap-secret', async (req, reply) => {
+    const user = (req as SanctumReq).sanctumUser
+    if (!user) return reply.status(403).send({ error: 'dashboard_auth_required' })
+
+    const { orgId, platform } = req.params as { orgId: string; platform: string }
+    platformParam.parse(platform)
+    if (!(await requireRole(cfg, orgId, user.id, 'member', reply))) return
+
+    try {
+      await assertOrgRole(cfg, orgId, user.id, 'admin')
+    } catch {
+      return reply.status(403).send({ error: 'org_admin_required' })
+    }
+
+    const q = req.query as { environment?: string }
+    const environment = q.environment ?? 'production'
+    const secret = await getPlatformSecret(cfg, orgId, platform, environment)
+    if (!secret) {
+      return reply.status(404).send({ error: 'not_configured' })
+    }
+
+    const { createSupabaseAdmin } = await import('./auth.js')
+    const admin = createSupabaseAdmin(cfg)
+    void admin.from('audit_events').insert({
+      org_id: orgId,
+      actor: user.email ?? user.id,
+      action: 'platform_credential.bootstrap_reveal',
+      decision: 'APPROVED',
+      risk: 'medium',
+      reasoning: 'Platform credential revealed for E2E bootstrap sync.',
+      context: { platform, environment },
+    })
+
+    return { platform, environment, secret }
   })
 }

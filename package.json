@@ -80,6 +80,8 @@
     "smoke:control-plane": "node scripts/smoke-control-plane.mjs",
     "smoke:production": "node scripts/smoke-production.mjs",
     "test:all": "tsx scripts/test-all.mjs",
+    "e2e:bootstrap": "node scripts/e2e-bootstrap.mjs",
+    "e2e:all": "tsx scripts/e2e-run-all.mjs",
     "env:pull": "node scripts/pull-supabase-env.mjs",
     "db:push": "supabase db push",
     "db:status": "supabase migration list",

@@ -4,7 +4,9 @@
  *   SANCTUM_API_URL=... SANCTUM_API_KEY=... npm run production:check
  */
 const API = process.env.SANCTUM_API_URL?.replace(/\/$/, '')
-const KEY = process.env.SANCTUM_API_KEY?.trim()
+const KEY =
+  process.env.SANCTUM_E2E_API_KEY?.trim() ||
+  process.env.SANCTUM_API_KEY?.trim()
 const DASHBOARD = process.env.DASHBOARD_URL?.replace(/\/$/, '')
 
 if (!API) {

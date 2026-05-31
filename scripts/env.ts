@@ -28,6 +28,10 @@ export function loadRepoEnv(): void {
   if (existsSync(envPath)) {
     config({ path: envPath })
   }
+  const e2ePath = resolve(root, '.env.e2e.local')
+  if (existsSync(e2ePath)) {
+    config({ path: e2ePath, override: true })
+  }
   applyViteSupabaseAliases()
   // Cloud hosts (Render, etc.) inject env vars — no .env file required.
   loaded = true
@@ -50,7 +54,15 @@ export function apiRequestHeaders(json = true): Record<string, string> {
   loadRepoEnv()
   const h: Record<string, string> = {}
   if (json) h['Content-Type'] = 'application/json'
-  const key = process.env.SANCTUM_API_KEY?.trim()
+  const apiUrl = resolveSanctumApiUrl()
+  const isLocalHost =
+    /127\.0\.0\.1|localhost/.test(apiUrl) ||
+    apiUrl.startsWith(`http://${process.env.HOST || '127.0.0.1'}`)
+  // Local dev: legacy SANCTUM_API_KEY (pepper hash) matches the API process env.
+  // Production: dashboard sk_sanctum_* from e2e bootstrap.
+  const key = isLocalHost
+    ? process.env.SANCTUM_API_KEY?.trim() || process.env.SANCTUM_E2E_API_KEY?.trim()
+    : process.env.SANCTUM_E2E_API_KEY?.trim() || process.env.SANCTUM_API_KEY?.trim()
   if (key) h['X-Sanctum-Key'] = key
   return h
 }

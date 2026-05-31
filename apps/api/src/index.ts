@@ -188,13 +188,22 @@ await app.register(helmet, {
 // Now: presence of an API key promotes the request to its own per-key bucket
 // (keyed by SHA-256 hash, not the raw key) with a much higher budget,
 // isolating each customer from each other and from anonymous traffic.
-const ANON_RATE_LIMIT    = Number(process.env.SANCTUM_RATE_LIMIT_ANON    ?? 200)
-const API_KEY_RATE_LIMIT = Number(process.env.SANCTUM_RATE_LIMIT_API_KEY ?? 1000)
+const ANON_RATE_LIMIT       = Number(process.env.SANCTUM_RATE_LIMIT_ANON       ?? 200)
+const API_KEY_RATE_LIMIT    = Number(process.env.SANCTUM_RATE_LIMIT_API_KEY    ?? 1000)
+const DASHBOARD_RATE_LIMIT  = Number(process.env.SANCTUM_RATE_LIMIT_DASHBOARD  ?? 600)
 
 function requestApiKey(req: import('fastify').FastifyRequest): string | undefined {
   const raw = req.headers['x-sanctum-key']
   const v = Array.isArray(raw) ? raw[0] : raw
   return v?.trim() || undefined
+}
+
+function bearerToken(req: import('fastify').FastifyRequest): string | undefined {
+  const raw = req.headers['authorization']
+  const auth = Array.isArray(raw) ? raw[0] : raw
+  if (!auth?.startsWith('Bearer ')) return undefined
+  const token = auth.slice(7).trim()
+  return token || undefined
 }
 
 function rateLimitKey(req: import('fastify').FastifyRequest): string {
@@ -205,13 +214,21 @@ function rateLimitKey(req: import('fastify').FastifyRequest): string {
     // bucket separation and renders accidental disclosure useless.
     return 'k:' + createHash('sha256').update(key).digest('hex').slice(0, 16)
   }
+  const jwt = bearerToken(req)
+  if (jwt) {
+    // Dashboard sessions (Supabase JWT) get per-user buckets instead of
+    // sharing one IP bucket behind NAT or with anonymous traffic.
+    return 'jwt:' + createHash('sha256').update(jwt).digest('hex').slice(0, 16)
+  }
   const fwd = req.headers['x-forwarded-for']
   const ip = Array.isArray(fwd) ? fwd[0] : (typeof fwd === 'string' ? fwd.split(',')[0].trim() : req.ip)
   return 'ip:' + (ip ?? req.ip)
 }
 
 function rateLimitMax(req: import('fastify').FastifyRequest): number {
-  return requestApiKey(req) ? API_KEY_RATE_LIMIT : ANON_RATE_LIMIT
+  if (requestApiKey(req)) return API_KEY_RATE_LIMIT
+  if (bearerToken(req)) return DASHBOARD_RATE_LIMIT
+  return ANON_RATE_LIMIT
 }
 
 await app.register(rateLimit, {
@@ -232,10 +249,10 @@ await app.register(rateLimit, {
       limit: context.max,
       ttlMs: context.ttl,
     }, 'rate limit exceeded')
-    return {
-      error: 'rate_limit_exceeded',
-      hint: 'Too many requests — back off and retry',
-    }
+    // Must throw an Error with statusCode — plain objects become 500 in the global handler.
+    const err = new Error('rate_limit_exceeded') as Error & { statusCode: number }
+    err.statusCode = context.statusCode ?? 429
+    return err
   },
 })
 
@@ -262,6 +279,16 @@ app.setErrorHandler((err, _req, reply) => {
   }
   if (err && typeof err === 'object' && 'code' in err && err.code === 'FST_ERR_CTP_EMPTY_JSON_BODY') {
     return reply.status(400).send({ error: 'empty_json_body' })
+  }
+  const statusCode =
+    err && typeof err === 'object' && 'statusCode' in err
+      ? Number((err as { statusCode: unknown }).statusCode)
+      : undefined
+  if (statusCode === 429 || (err instanceof Error && err.message === 'rate_limit_exceeded')) {
+    return reply.status(429).send({
+      error: 'rate_limit_exceeded',
+      hint: 'Too many requests — back off and retry',
+    })
   }
   app.log.error(err)
   return reply.status(500).send(internalErrorBody(err))
