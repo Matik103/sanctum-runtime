@@ -213,6 +213,20 @@ describe('assessShield — gap coverage', () => {
     expect(result.requiredDecision).toBe('REQUIRE_VERIFICATION')
   })
 
+  it('holds sensitive tool results before model re-ingestion', () => {
+    const result = assess('tool_result', {
+      proxy: true,
+      phase: 'tool_result',
+      arguments: {
+        content: 'CONFIDENTIAL: internal revenue figure $9.2M for the quarter',
+      },
+    })
+
+    expect(result.signals.map((s) => s.id)).toContain('sensitive_tool_result_exfiltration')
+    expect(result.level).toBe('high')
+    expect(result.requiredDecision).toBe('REQUIRE_VERIFICATION')
+  })
+
   // Untrusted source accessing secrets → critical escalation
   it('escalates secret access to critical when instruction comes from untrusted content', () => {
     const result = assess('dump_credentials', { instructionSource: 'webpage' })

@@ -19,6 +19,7 @@ const SECRET_PATTERN = /(read|access|export|copy|send|reveal|dump).*(secret|cred
 const SECURITY_TAMPER_PATTERN = /(disable|turn[_ -]?off|bypass|delete|erase|stop|remove).*(security|alarm|camera|audit|log|monitor|guard|policy)|(delete|erase|wipe).*(audit|log)/i
 const PHYSICAL_HARM_PATTERN = /(unlock|disable_alarm|move_robot|drive|fly|actuate|open_gate|administer|dispense|fire|launch)/i
 const MONEY_PATTERN = /(transfer|wire|withdraw|pay|payment|charge|trade|refund)/i
+const SENSITIVE_TOOL_RESULT_PATTERN = /\b(confidential|proprietary|internal only|api[_ -]?key|secret|password|token|private[_ -]?key|ssn|social security|credit card|card number|bank account|routing number|revenue figure)\b/i
 
 // Elevated financial review threshold: amounts in this range require human verification.
 // Amounts at or above CRITICAL_FINANCIAL_THRESHOLD trigger automatic block.
@@ -108,6 +109,16 @@ function contextText(request: ActionRequest): string {
   ].filter((value): value is string => typeof value === 'string').join(' ')
 }
 
+function toolResultText(request: ActionRequest): string {
+  if (request.action !== 'tool_result') return ''
+  const args = request.context.arguments
+  if (args && typeof args === 'object' && !Array.isArray(args)) {
+    const content = (args as Record<string, unknown>).content
+    if (typeof content === 'string') return content
+  }
+  return typeof args === 'string' ? args : ''
+}
+
 function isRecent(entry: ActionResult, now: Date, minutes: number): boolean {
   return now.getTime() - new Date(entry.timestamp).getTime() <= minutes * 60_000
 }
@@ -155,6 +166,17 @@ export function assessShield(request: ActionRequest, inputs: ShieldInputs): Shie
       severity: inputs.sourceTrust === 'untrusted_content' ? 'critical' : 'high',
       label: 'Secret or credential access',
       evidence: 'The request targets credentials, tokens, or secret material.',
+    })
+  }
+
+  const resultText = toolResultText(request)
+  if (resultText && SENSITIVE_TOOL_RESULT_PATTERN.test(resultText)) {
+    addSignal(signals, {
+      id: 'sensitive_tool_result_exfiltration',
+      category: 'secrets',
+      severity: 'high',
+      label: 'Sensitive tool result',
+      evidence: 'A tool result contains sensitive or internal data and must be reviewed before model re-ingestion.',
     })
   }
 
