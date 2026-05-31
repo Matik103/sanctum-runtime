@@ -178,6 +178,7 @@ export function Settings({ status }: Props) {
   const {
     state: pushState,
     error: pushError,
+    environment: pushEnvironment,
     deviceCount: pushDeviceCount,
     testBusy: pushTestBusy,
     testMessage: pushTestMessage,
@@ -346,6 +347,11 @@ export function Settings({ status }: Props) {
                 <div className="settings-push__copy">
                   <p className="settings-push__title">Mobile push</p>
                   <p className="settings-push__detail">Approval and incident alerts on this device</p>
+                  {pushState !== 'subscribed' && (
+                    <p className="settings-push__detail" style={{ marginTop: '0.35rem' }}>
+                      Eligibility: installed {pushEnvironment.isStandalone ? 'yes' : 'no'} · secure {pushEnvironment.isSecureContext ? 'yes' : 'no'} · service worker {pushEnvironment.hasServiceWorker ? 'yes' : 'no'} · notifications {pushEnvironment.hasNotification ? pushEnvironment.notificationPermission : 'no'} · push manager {pushEnvironment.hasPushManager ? 'yes' : 'no'}
+                    </p>
+                  )}
                   {pushState === 'unavailable' && !pushError && (
                     <p className="settings-push__detail" style={{ marginTop: '0.35rem' }}>
                       Push delivery is not configured on this deployment. Ask your administrator to set

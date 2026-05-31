@@ -31,6 +31,7 @@ type Environment = {
   hasServiceWorker: boolean
   hasNotification: boolean
   hasPushManager: boolean
+  notificationPermission: NotificationPermission | 'unknown'
   isSecureContext: boolean
   isIos: boolean
   isStandalone: boolean
@@ -55,6 +56,7 @@ function detectEnvironment(): Environment {
       hasServiceWorker: false,
       hasNotification: false,
       hasPushManager: false,
+      notificationPermission: 'unknown',
       isSecureContext: false,
       isIos: false,
       isStandalone: false,
@@ -75,6 +77,8 @@ function detectEnvironment(): Environment {
     hasServiceWorker: 'serviceWorker' in navigator,
     hasNotification: 'Notification' in window,
     hasPushManager,
+    notificationPermission:
+      'Notification' in window ? Notification.permission : 'unknown',
     isSecureContext: window.isSecureContext,
     isIos,
     isStandalone,

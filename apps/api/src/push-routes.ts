@@ -35,10 +35,21 @@ export async function registerPushRoutes(app: FastifyInstance): Promise<void> {
   const admin = createSupabaseAdmin(cfg)
   const vapidPublic = process.env.VAPID_PUBLIC_KEY?.trim() || process.env.VITE_VAPID_PUBLIC_KEY?.trim()
   const vapidPrivate = process.env.VAPID_PRIVATE_KEY?.trim()
+  const firebaseConfigured = Boolean(
+    process.env.FIREBASE_PROJECT_ID?.trim() ||
+    process.env.FIREBASE_CLIENT_EMAIL?.trim() ||
+    process.env.FIREBASE_PRIVATE_KEY?.trim() ||
+    process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim(),
+  )
   const vapidConfigured = Boolean(vapidPublic && vapidPrivate)
 
   app.get('/v1/push/vapid-key', async (_req, reply) => {
-    return reply.send({ publicKey: vapidConfigured ? vapidPublic : null })
+    return reply.send({
+      provider: 'web-push-vapid',
+      publicKey: vapidConfigured ? vapidPublic : null,
+      vapidConfigured,
+      firebaseConfigured,
+    })
   })
 
   app.get('/v1/push/status', async (req, reply) => {
@@ -54,7 +65,9 @@ export async function registerPushRoutes(app: FastifyInstance): Promise<void> {
 
     return {
       deviceCount: count ?? 0,
+      provider: 'web-push-vapid',
       vapidConfigured,
+      firebaseConfigured,
       pushEnabled: vapidConfigured,
     }
   })
