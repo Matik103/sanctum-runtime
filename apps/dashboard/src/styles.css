@@ -1643,7 +1643,25 @@ table.data td .badge + .badge {
 }
 
 .connect-panel .card-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
   margin-bottom: 0.65rem;
+}
+
+.step-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 999px;
+  color: var(--accent);
+  background: rgba(79, 124, 255, 0.1);
+  font-size: 0.78rem;
+  line-height: 1;
 }
 
 .connect-field-label {
@@ -1777,6 +1795,55 @@ table.data td .badge + .badge {
 
 .connect-test-message--error {
   color: #f87171;
+}
+
+.connect-view-tabs {
+  position: sticky;
+  top: 0.75rem;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+  padding: 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(10, 15, 28, 0.9);
+  backdrop-filter: blur(16px);
+}
+
+.connect-view-tab {
+  min-width: 0;
+  min-height: 4.1rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.connect-view-tab strong,
+.connect-view-tab span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.connect-view-tab strong {
+  font-size: 0.86rem;
+  line-height: 1.25;
+}
+
+.connect-view-tab span {
+  margin-top: 0.22rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.connect-view-tab--active {
+  border-color: rgba(79, 124, 255, 0.65);
+  background: var(--accent-soft);
 }
 
 .key-table td {
@@ -2506,6 +2573,19 @@ tr.key-row--pending td {
 
   .connect-command__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .connect-view-tabs {
+    top: 0.5rem;
+    grid-template-columns: 1fr;
+  }
+
+  .connect-view-tab {
+    min-height: 0;
+  }
+
+  .connect-view-tab span {
+    display: none;
   }
 
   .connect-saved-key {

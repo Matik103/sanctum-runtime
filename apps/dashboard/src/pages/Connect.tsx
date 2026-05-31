@@ -52,11 +52,13 @@ type ConnectPrefs = {
   selectedAgentId?: string
   lang?: 'python' | 'typescript'
   snippetTab?: 'proxy' | 'execution' | 'langchain' | 'package'
+  connectView?: 'run' | 'protect' | 'code'
 }
 
 const CONNECT_PREF_PREFIX = 'sanctum.connect'
 const platformIds = new Set<PlatformId>(PLATFORMS.map((p) => p.id))
 const snippetTabs = new Set<ConnectPrefs['snippetTab']>(['proxy', 'execution', 'langchain', 'package'])
+const connectViews = new Set<ConnectPrefs['connectView']>(['run', 'protect', 'code'])
 
 function prefsKey(orgId?: string | null): string | null {
   return orgId ? `${CONNECT_PREF_PREFIX}.${orgId}` : null
@@ -74,6 +76,7 @@ function loadConnectPrefs(orgId?: string | null): ConnectPrefs {
       selectedAgentId: typeof parsed.selectedAgentId === 'string' ? parsed.selectedAgentId : undefined,
       lang: parsed.lang === 'typescript' ? 'typescript' : parsed.lang === 'python' ? 'python' : undefined,
       snippetTab: parsed.snippetTab && snippetTabs.has(parsed.snippetTab) ? parsed.snippetTab : undefined,
+      connectView: parsed.connectView && connectViews.has(parsed.connectView) ? parsed.connectView : undefined,
     }
   } catch {
     return {}
@@ -230,6 +233,7 @@ export function Connect({ orgId, onPage }: Props) {
   const [presetApplying, setPresetApplying] = useState<string | null>(null)
   const [testRunning, setTestRunning] = useState(false)
   const [snippetTab, setSnippetTab] = useState<'proxy' | 'execution' | 'langchain' | 'package'>('proxy')
+  const [connectView, setConnectView] = useState<'run' | 'protect' | 'code'>('run')
   const [rotationOpen, setRotationOpen] = useState(false)
   const [rotationStep, setRotationStep] = useState(1)
   const [rotationPlatform, setRotationPlatform] = useState<PlatformId | null>(null)
@@ -301,13 +305,14 @@ export function Connect({ orgId, onPage }: Props) {
     if (prefs.selectedAgentId) setSelectedAgentId(prefs.selectedAgentId)
     if (prefs.lang) setLang(prefs.lang)
     if (prefs.snippetTab) setSnippetTab(prefs.snippetTab)
+    if (prefs.connectView) setConnectView(prefs.connectView)
     setPrefsHydrated(true)
   }, [orgId])
 
   useEffect(() => {
     if (!prefsHydrated || !orgId) return
-    saveConnectPrefs(orgId, { platform, selectedAgentId, lang, snippetTab })
-  }, [orgId, platform, selectedAgentId, lang, snippetTab, prefsHydrated])
+    saveConnectPrefs(orgId, { platform, selectedAgentId, lang, snippetTab, connectView })
+  }, [orgId, platform, selectedAgentId, lang, snippetTab, connectView, prefsHydrated])
 
   useEffect(() => {
     if (!prefsHydrated || credentials.length === 0) return
@@ -363,7 +368,7 @@ export function Connect({ orgId, onPage }: Props) {
         )
         return [...rest, saved]
       })
-      saveConnectPrefs(orgId, { platform, selectedAgentId, lang, snippetTab })
+      saveConnectPrefs(orgId, { platform, selectedAgentId, lang, snippetTab, connectView })
       setPlatformKeyInput('')
       setKeyEntryOpen(false)
       setTestMsg('Platform API key saved securely.')
@@ -836,8 +841,40 @@ export function Connect({ orgId, onPage }: Props) {
           {loading && <p className="connect-panel__note">Loading saved keys…</p>}
         </section>
 
+        <div className="connect-view-tabs" role="tablist" aria-label="Connect Agent workspace">
+          {[
+            {
+              id: 'run',
+              title: 'Run & monitor',
+              body: 'Health, test calls, Live Feed',
+            },
+            {
+              id: 'protect',
+              title: 'Protect',
+              body: 'Mode, Shield, policies',
+            },
+            {
+              id: 'code',
+              title: 'Code',
+              body: 'Proxy URL and snippets',
+            },
+          ].map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              aria-selected={connectView === item.id}
+              className={`connect-view-tab ${connectView === item.id ? 'connect-view-tab--active' : ''}`}
+              onClick={() => setConnectView(item.id as 'run' | 'protect' | 'code')}
+            >
+              <strong>{item.title}</strong>
+              <span>{item.body}</span>
+            </button>
+          ))}
+        </div>
+
         {/* Health & usage */}
-        {health && (
+        {connectView === 'run' && health && (
           <section className="card" style={{ padding: '1.25rem' }}>
             <h2 className="card-title" style={{ marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               <Activity size={18} /> Connect health (7 days)
@@ -884,7 +921,7 @@ export function Connect({ orgId, onPage }: Props) {
         )}
 
         {/* Protect settings */}
-        {settings && (
+        {connectView === 'protect' && settings && (
           <section className="card" style={{ padding: '1.25rem' }}>
             <h2 className="card-title" style={{ marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               <Shield size={18} /> Protection settings
@@ -985,7 +1022,7 @@ export function Connect({ orgId, onPage }: Props) {
         )}
 
         {/* Shield presets */}
-        {shieldPresets.length > 0 && (
+        {connectView === 'protect' && shieldPresets.length > 0 && (
           <section className="card" style={{ padding: '1.25rem' }}>
             <h2 className="card-title" style={{ marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               <Shield size={18} /> Shield bundles
@@ -1026,7 +1063,7 @@ export function Connect({ orgId, onPage }: Props) {
         )}
 
         {/* Policy presets */}
-        {presets.length > 0 && (
+        {connectView === 'protect' && presets.length > 0 && (
           <section className="card" style={{ padding: '1.25rem' }}>
             <h2 className="card-title" style={{ marginBottom: '0.75rem' }}>Policy presets</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -1070,6 +1107,7 @@ export function Connect({ orgId, onPage }: Props) {
         )}
 
         {/* Step 4 — Proxy URL */}
+        {connectView === 'code' && (
         <section className="card" style={{ padding: '1.25rem' }}>
           <h2 className="card-title" style={{ marginBottom: '0.75rem' }}>
             <span className="step-badge">4</span> Your proxy URL
@@ -1084,8 +1122,10 @@ export function Connect({ orgId, onPage }: Props) {
             <CopyButton value={proxyUrl} />
           </div>
         </section>
+        )}
 
         {/* Step 5 — Quick start */}
+        {connectView === 'code' && (
         <section className="card" style={{ padding: '1.25rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
             <h2 className="card-title">
@@ -1148,7 +1188,9 @@ export function Connect({ orgId, onPage }: Props) {
             {selectedAgent ? ` Agent: ${selectedAgent.name}.` : ''}
           </p>
         </section>
+        )}
 
+        {connectView === 'run' && (
         <div className="alert alert--info">
           <div className="alert__body">
             <strong>That&apos;s it.</strong> Tool calls appear in real time in{' '}
@@ -1162,6 +1204,7 @@ export function Connect({ orgId, onPage }: Props) {
             Open Live Feed
           </button>
         </div>
+        )}
       </div>
     </div>
   )
