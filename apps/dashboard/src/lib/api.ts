@@ -49,11 +49,23 @@ export async function resolveVerification(
 }
 
 export async function fetchDashboard(): Promise<DashboardData> {
-  const [audit, policies, status] = await Promise.all([
+  const [auditResult, policiesResult, statusResult] = await Promise.allSettled([
     api.getAudit(100),
     api.getPolicies(),
     api.getStatus(),
   ])
+
+  if (
+    auditResult.status === 'rejected' &&
+    policiesResult.status === 'rejected' &&
+    statusResult.status === 'rejected'
+  ) {
+    throw auditResult.reason
+  }
+
+  const audit = auditResult.status === 'fulfilled' ? auditResult.value : []
+  const policies = policiesResult.status === 'fulfilled' ? policiesResult.value : {}
+  const status = statusResult.status === 'fulfilled' ? statusResult.value : null
   return { audit, policies, status }
 }
 

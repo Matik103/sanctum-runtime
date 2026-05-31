@@ -4,6 +4,27 @@ import { apiBaseUrl } from '../lib/api-url'
 type Props = { children: ReactNode; fallback?: ReactNode; page?: string }
 type State = { error: Error | null }
 
+function isModuleLoadError(error: Error): boolean {
+  return /importing a module script failed|failed to fetch dynamically imported module|loading chunk|module script/i
+    .test(error.message)
+}
+
+async function refreshInstalledApp(): Promise<void> {
+  try {
+    const registrations = await navigator.serviceWorker?.getRegistrations?.()
+    await Promise.all((registrations ?? []).map((registration) => registration.update()))
+  } catch {
+    /* best effort */
+  }
+  try {
+    const keys = await caches?.keys?.()
+    await Promise.all((keys ?? []).map((key) => caches.delete(key)))
+  } catch {
+    /* best effort */
+  }
+  window.location.assign(`/index.html?source=recover&ts=${Date.now()}`)
+}
+
 /**
  * Sends a structured error report to the API's /v1/client-errors endpoint.
  * Fire-and-forget — we never let the report itself throw or block the render.
@@ -63,6 +84,7 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.error) {
       if (this.props.fallback) return this.props.fallback
+      const moduleLoadError = isModuleLoadError(this.state.error)
       return (
         <div
           role="alert"
@@ -86,14 +108,19 @@ export class ErrorBoundary extends Component<Props, State> {
               wordBreak: 'break-word',
             }}
           >
-            {this.state.error.message}
+            {moduleLoadError
+              ? 'This installed app has an old cached screen bundle. Refresh the app to fetch the current console.'
+              : this.state.error.message}
           </p>
           <button
             type="button"
             className="btn btn-ghost btn-sm"
-            onClick={() => this.setState({ error: null })}
+            onClick={() => {
+              if (moduleLoadError) void refreshInstalledApp()
+              else this.setState({ error: null })
+            }}
           >
-            Try again
+            {moduleLoadError ? 'Refresh app' : 'Try again'}
           </button>
         </div>
       )
