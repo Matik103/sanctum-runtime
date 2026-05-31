@@ -18,10 +18,11 @@ export function pushSupported(): boolean {
 }
 
 const SW_SCRIPT_URL = '/sw.js'
+const SW_READY_TIMEOUT_MS = 20_000
 
 /**
  * Ensure a push-capable service worker is registered and active.
- * Mirrors the daily-quest pattern: getRegistration() first, else register('/sw.js').
+ * Call from user gestures (Enable push) — not on passive page load.
  */
 export async function ensurePushServiceWorker(): Promise<ServiceWorkerRegistration> {
   if (!('serviceWorker' in navigator)) {
@@ -34,34 +35,55 @@ export async function ensurePushServiceWorker(): Promise<ServiceWorkerRegistrati
       scope: '/',
       updateViaCache: 'none',
     })
+  } else {
+    void registration.update().catch(() => {})
   }
 
   if (registration.active) return registration
 
   await new Promise<void>((resolve, reject) => {
     const timeoutId = window.setTimeout(
-      () => reject(new Error('The app is still preparing notifications. Close and reopen Sanctum, then try again.')),
-      8_000,
+      () =>
+        reject(
+          new Error(
+            'Notifications are still loading. Reload Sanctum, wait a few seconds, then tap Enable again.',
+          ),
+        ),
+      SW_READY_TIMEOUT_MS,
     )
+
+    const finish = () => {
+      window.clearTimeout(timeoutId)
+      resolve()
+    }
+
     const worker = registration!.installing ?? registration!.waiting
     if (worker) {
+      if (worker.state === 'activated') {
+        finish()
+        return
+      }
       worker.addEventListener('statechange', () => {
-        if (worker.state === 'activated') {
-          window.clearTimeout(timeoutId)
-          resolve()
-        }
+        if (worker.state === 'activated') finish()
       })
     }
-    navigator.serviceWorker.ready
-      .then(() => {
-        window.clearTimeout(timeoutId)
-        resolve()
-      })
-      .catch((err) => {
-        window.clearTimeout(timeoutId)
-        reject(err)
-      })
+
+    navigator.serviceWorker.ready.then(finish).catch((err) => {
+      window.clearTimeout(timeoutId)
+      reject(err)
+    })
   })
 
-  return navigator.serviceWorker.ready
+  const ready = await navigator.serviceWorker.getRegistration('/')
+  if (!ready?.active) {
+    throw new Error('Service worker is not active yet. Reload the app and try again.')
+  }
+  return ready
+}
+
+/** Returns an active registration if one already exists — never registers. */
+export async function existingPushServiceWorker(): Promise<ServiceWorkerRegistration | null> {
+  if (!('serviceWorker' in navigator)) return null
+  const registration = await navigator.serviceWorker.getRegistration('/')
+  return registration?.active ? registration : null
 }

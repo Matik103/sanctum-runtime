@@ -354,11 +354,12 @@ export function Settings({ status }: Props) {
                   )}
                   {pushState === 'unavailable' && !pushError && (
                     <p className="settings-push__detail" style={{ marginTop: '0.35rem' }}>
-                      Push delivery is not configured on this deployment. Ask your administrator to set
+                      Push could not be initialized. Tap <strong>Enable</strong> to retry, or reload the app first.
+                      If this persists, confirm
                       <code style={{ margin: '0 0.25rem' }}>VAPID_PUBLIC_KEY</code>
                       and
                       <code style={{ margin: '0 0.25rem' }}>VAPID_PRIVATE_KEY</code>
-                      on the API service.
+                      are set on the API service.
                     </p>
                   )}
                   {pushState === 'denied' && (
@@ -408,7 +409,7 @@ export function Settings({ status }: Props) {
                     : pushState === 'checking' ? 'Checking'
                     : pushState === 'subscribing' ? 'Enabling'
                     : pushState === 'denied' ? 'Blocked'
-                    : pushState === 'unavailable' ? 'Not configured'
+                    : pushState === 'unavailable' ? 'Unavailable'
                     : pushState === 'ios_install_required' ? 'Add to Home Screen'
                     : pushState === 'ios_upgrade_required' ? 'Update iOS'
                     : pushState === 'ios_push_unavailable' ? 'Unavailable'
@@ -424,7 +425,6 @@ export function Settings({ status }: Props) {
                     || pushState === 'subscribing'
                     || pushState === 'unsupported'
                     || pushState === 'denied'
-                    || pushState === 'unavailable'
                     || pushState === 'ios_install_required'
                     || pushState === 'ios_upgrade_required'
                     || pushState === 'ios_push_unavailable'
@@ -433,13 +433,16 @@ export function Settings({ status }: Props) {
                 >
                   {pushBusy || pushState === 'subscribing' ? 'Updating...' : pushState === 'subscribed' ? 'Disable' : 'Enable'}
                 </button>
-                {(pushState === 'ios_install_required' || pushState === 'ios_upgrade_required' || pushState === 'ios_push_unavailable' || pushState === 'unsupported') && (
+                {(pushState === 'unavailable' || pushState === 'ios_install_required' || pushState === 'ios_upgrade_required' || pushState === 'ios_push_unavailable' || pushState === 'unsupported') && (
                   <button
                     type="button"
                     className="btn btn-ghost"
-                    onClick={refreshPushEnvironment}
+                    onClick={() => {
+                      refreshPushEnvironment()
+                      if (pushState === 'unavailable') void enablePush()
+                    }}
                   >
-                    Check again
+                    {pushState === 'unavailable' ? 'Retry' : 'Check again'}
                   </button>
                 )}
                 {pushState === 'subscribed' && (

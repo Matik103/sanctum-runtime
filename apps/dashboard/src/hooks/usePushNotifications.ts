@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { apiBaseUrl } from '../lib/api-url'
-import { ensurePushServiceWorker, urlBase64ToUint8Array } from '../lib/push'
+import {
+  ensurePushServiceWorker,
+  existingPushServiceWorker,
+  urlBase64ToUint8Array,
+} from '../lib/push'
 import { getAccessToken } from '../lib/supabase'
 
 async function authHeaders(json = false): Promise<HeadersInit> {
@@ -42,8 +46,6 @@ function parseIosVersion(ua: string): number | null {
   const osMatch = ua.match(/(?:CPU (?:iPhone )?OS|iPhone OS|iPad; CPU OS)\s+(\d+)[._](\d+)/i)
   if (osMatch) return Number(`${osMatch[1]}.${osMatch[2]}`)
 
-  // iPadOS can present a desktop-style user agent. In that case Safari's
-  // Version token is the most useful signal we have.
   const safariMatch = ua.match(/Version\/(\d+)\.(\d+)/i)
   if (safariMatch) return Number(`${safariMatch[1]}.${safariMatch[2]}`)
 
@@ -100,8 +102,20 @@ function gatingState(env: Environment): PushState | null {
   return null
 }
 
-async function readyServiceWorker(): Promise<ServiceWorkerRegistration> {
-  return ensurePushServiceWorker()
+async function fetchVapidPublicKey(): Promise<string> {
+  const res = await fetch(`${apiBaseUrl}/v1/push/vapid-key`)
+  if (!res.ok) {
+    throw new Error(`Could not load push configuration (HTTP ${res.status}). Check your network and try again.`)
+  }
+  const data = (await res.json()) as { publicKey?: string | null; vapidConfigured?: boolean }
+  if (!data.publicKey) {
+    throw new Error(
+      data.vapidConfigured === false
+        ? 'Push is not configured on the API (VAPID keys missing).'
+        : 'Push configuration is unavailable on the runtime API.',
+    )
+  }
+  return data.publicKey
 }
 
 async function storeSubscription(sub: PushSubscription): Promise<void> {
@@ -113,14 +127,18 @@ async function storeSubscription(sub: PushSubscription): Promise<void> {
       userAgent: navigator.userAgent,
     }),
   })
+  if (res.status === 401) {
+    throw new Error('Sign in again, then enable push notifications.')
+  }
+  if (res.status === 503) {
+    throw new Error('Push is not configured on the server (VAPID keys missing).')
+  }
   if (!res.ok) throw new Error('Could not register this device for push notifications.')
 }
 
 function subscriptionUsesKey(sub: PushSubscription, publicKey: string): boolean {
   const subscriptionKey = (sub as PushSubscription & { options?: PushSubscriptionOptions }).options
     ?.applicationServerKey
-  // Browsers often omit applicationServerKey on getSubscription() — do not force
-  // resubscribe (iOS requires a user gesture for subscribe()).
   if (!subscriptionKey) return true
 
   const current = new Uint8Array(subscriptionKey)
@@ -149,7 +167,6 @@ async function currentSubscription(
   if (!sub) return null
   if (subscriptionUsesKey(sub, publicKey)) return sub
 
-  // VAPID key rotated — clear stale subscription; resubscribe only from Enable (user gesture).
   await removeSubscription(sub)
   if (!opts.resubscribe) return null
 
@@ -206,6 +223,14 @@ export function usePushNotifications() {
     setDeviceCount(typeof data.deviceCount === 'number' ? data.deviceCount : null)
   }, [])
 
+  const loadVapidKey = useCallback(async (): Promise<string> => {
+    const key = await fetchVapidPublicKey()
+    setVapidKey(key)
+    return key
+  }, [])
+
+  // Passive bootstrap: load VAPID key only. Do not register/wait for SW here —
+  // that was marking the UI "unavailable" and disabling Enable before the user could act.
   useEffect(() => {
     setError(null)
     if (gating) {
@@ -221,40 +246,36 @@ export function usePushNotifications() {
     void (async () => {
       try {
         setState('checking')
-        const keyResponse = await fetch(`${apiBaseUrl}/v1/push/vapid-key`)
-        const data = keyResponse.ok ? await keyResponse.json() as { publicKey?: string } : {}
+        const publicKey = await loadVapidKey()
         if (!active) return
-        if (!data.publicKey) {
-          setError('Push configuration is unavailable on the runtime API.')
-          setState('unavailable')
-          return
-        }
-        setVapidKey(data.publicKey)
 
-        const reg = await readyServiceWorker()
-        const sub = await currentSubscription(reg, data.publicKey)
-        if (!active) return
-        if (!sub) {
-          setState('idle')
-          return
+        const reg = await existingPushServiceWorker()
+        if (reg) {
+          const sub = await reg.pushManager.getSubscription()
+          if (sub && subscriptionUsesKey(sub, publicKey)) {
+            setState('subscribed')
+            try {
+              await storeSubscription(sub)
+              await refreshStatus()
+            } catch {
+              if (active) {
+                setError('This device is subscribed locally but could not be synchronized with Sanctum.')
+              }
+            }
+            return
+          }
         }
-        setState('subscribed')
-        try {
-          await storeSubscription(sub)
-          await refreshStatus()
-        } catch {
-          if (active) setError('This device is subscribed locally but could not be synchronized with Sanctum.')
-        }
+
+        setState('idle')
       } catch (e) {
-        if (active) {
-          setError(e instanceof Error ? e.message : 'Push notifications are unavailable on this device.')
-          setState('unavailable')
-        }
+        if (!active) return
+        setError(e instanceof Error ? e.message : 'Push notifications are unavailable on this device.')
+        setState('unavailable')
       }
     })()
 
     return () => { active = false }
-  }, [gating, refreshStatus])
+  }, [gating, loadVapidKey, refreshStatus])
 
   const subscribe = useCallback(async () => {
     const freshEnvironment = detectEnvironment()
@@ -262,11 +283,6 @@ export function usePushNotifications() {
     const freshGating = gatingState(freshEnvironment)
     if (freshGating) {
       setState(freshGating)
-      return
-    }
-    if (!vapidKey) {
-      setError('Push configuration is not ready. Try again in a moment.')
-      setState('unavailable')
       return
     }
     setError(null)
@@ -277,20 +293,23 @@ export function usePushNotifications() {
 
     setState('subscribing')
     try {
-      // User-gesture permission first (required on iOS), then register/wait for SW.
+      const key = vapidKey ?? (await loadVapidKey())
+
       const permission = await Notification.requestPermission()
       if (permission !== 'granted') {
         setState(permission === 'denied' ? 'denied' : 'idle')
-        if (permission !== 'denied') setError('Notifications were not enabled. Tap Enable when you are ready.')
+        if (permission !== 'denied') {
+          setError('Notifications were not enabled. Tap Enable when you are ready.')
+        }
         return
       }
 
-      const reg = await readyServiceWorker()
-      let sub = await currentSubscription(reg, vapidKey, { resubscribe: true })
+      const reg = await ensurePushServiceWorker()
+      let sub = await currentSubscription(reg, key, { resubscribe: true })
       if (!sub) {
         sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(vapidKey),
+          applicationServerKey: urlBase64ToUint8Array(key),
         })
       }
 
@@ -299,15 +318,15 @@ export function usePushNotifications() {
       setState('subscribed')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not enable push notifications.')
-      setState('idle')
+      setState(vapidKey ? 'idle' : 'unavailable')
     }
-  }, [vapidKey, refreshStatus])
+  }, [vapidKey, loadVapidKey, refreshStatus])
 
   const unsubscribe = useCallback(async () => {
     if (!supported) return
     setError(null)
     try {
-      const reg = await readyServiceWorker()
+      const reg = (await existingPushServiceWorker()) ?? (await ensurePushServiceWorker())
       const sub = await reg.pushManager.getSubscription()
       if (!sub) {
         setState('idle')
