@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Activity, Check, Copy, ExternalLink, Loader2, Plug, Shield, Trash2, Zap } from 'lucide-react'
+import { Activity, Check, Copy, ExternalLink, KeyRound, Loader2, Plug, Shield, Trash2, Zap } from 'lucide-react'
 import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
 import {
@@ -45,6 +45,49 @@ type AgentOption = {
   id: string
   name: string
   token_hint: string
+}
+
+type ConnectPrefs = {
+  platform?: PlatformId
+  selectedAgentId?: string
+  lang?: 'python' | 'typescript'
+  snippetTab?: 'proxy' | 'execution' | 'langchain' | 'package'
+}
+
+const CONNECT_PREF_PREFIX = 'sanctum.connect'
+const platformIds = new Set<PlatformId>(PLATFORMS.map((p) => p.id))
+const snippetTabs = new Set<ConnectPrefs['snippetTab']>(['proxy', 'execution', 'langchain', 'package'])
+
+function prefsKey(orgId?: string | null): string | null {
+  return orgId ? `${CONNECT_PREF_PREFIX}.${orgId}` : null
+}
+
+function loadConnectPrefs(orgId?: string | null): ConnectPrefs {
+  const key = prefsKey(orgId)
+  if (!key || typeof window === 'undefined') return {}
+  try {
+    const raw = window.localStorage.getItem(key)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as ConnectPrefs
+    return {
+      platform: parsed.platform && platformIds.has(parsed.platform) ? parsed.platform : undefined,
+      selectedAgentId: typeof parsed.selectedAgentId === 'string' ? parsed.selectedAgentId : undefined,
+      lang: parsed.lang === 'typescript' ? 'typescript' : parsed.lang === 'python' ? 'python' : undefined,
+      snippetTab: parsed.snippetTab && snippetTabs.has(parsed.snippetTab) ? parsed.snippetTab : undefined,
+    }
+  } catch {
+    return {}
+  }
+}
+
+function saveConnectPrefs(orgId: string | null | undefined, prefs: ConnectPrefs): void {
+  const key = prefsKey(orgId)
+  if (!key || typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(key, JSON.stringify(prefs))
+  } catch {
+    // Ignore storage failures in private browsing or locked-down webviews.
+  }
 }
 
 function CopyButton({ value }: { value: string }) {
@@ -166,7 +209,7 @@ type Props = {
 }
 
 export function Connect({ orgId, onPage }: Props) {
-  const [platform, setPlatform] = useState<PlatformId>('deepseek')
+  const [platform, setPlatform] = useState<PlatformId>('openai')
   const [selectedAgentId, setSelectedAgentId] = useState('')
   const [agents, setAgents] = useState<AgentOption[]>([])
   const [credentials, setCredentials] = useState<PlatformCredential[]>([])
@@ -191,6 +234,7 @@ export function Connect({ orgId, onPage }: Props) {
   const [rotationStep, setRotationStep] = useState(1)
   const [rotationPlatform, setRotationPlatform] = useState<PlatformId | null>(null)
   const [rotationKey, setRotationKey] = useState('')
+  const [prefsHydrated, setPrefsHydrated] = useState(false)
 
   const credEnvironment = settings?.credential_environment ?? 'production'
   const savedCred = credentials.find(
@@ -201,6 +245,15 @@ export function Connect({ orgId, onPage }: Props) {
     ? agents.find((a) => a.id === savedCred.default_agent_id)
     : null
   const proxyUrl = `${apiBaseUrl}/v1/proxy/${platform}`
+  const platformName = PLATFORMS.find((p) => p.id === platform)?.name ?? platform
+  const setupReady = Boolean(selectedAgentId && savedCred)
+  const nextStep = !selectedAgentId
+    ? 'Choose an agent'
+    : !savedCred
+      ? `Save a ${platformName} key`
+      : settings?.proxy_mode === 'observe'
+        ? 'Promote to gate when ready'
+        : 'Send a test tool call'
 
   const load = useCallback(async () => {
     if (!orgId) return
@@ -242,10 +295,46 @@ export function Connect({ orgId, onPage }: Props) {
   }, [load])
 
   useEffect(() => {
-    if (agents.length === 1 && !selectedAgentId) {
+    if (!orgId) return
+    const prefs = loadConnectPrefs(orgId)
+    if (prefs.platform) setPlatform(prefs.platform)
+    if (prefs.selectedAgentId) setSelectedAgentId(prefs.selectedAgentId)
+    if (prefs.lang) setLang(prefs.lang)
+    if (prefs.snippetTab) setSnippetTab(prefs.snippetTab)
+    setPrefsHydrated(true)
+  }, [orgId])
+
+  useEffect(() => {
+    if (!prefsHydrated || !orgId) return
+    saveConnectPrefs(orgId, { platform, selectedAgentId, lang, snippetTab })
+  }, [orgId, platform, selectedAgentId, lang, snippetTab, prefsHydrated])
+
+  useEffect(() => {
+    if (!prefsHydrated || credentials.length === 0) return
+    const savedForCurrentEnv = credentials.find((c) => (c.environment ?? 'production') === credEnvironment)
+    if (!savedForCurrentEnv) return
+    const hasSelectedCredential = credentials.some(
+      (c) => c.platform === platform && (c.environment ?? 'production') === credEnvironment,
+    )
+    const prefs = loadConnectPrefs(orgId)
+    if (!prefs.platform && !hasSelectedCredential) {
+      setPlatform(savedForCurrentEnv.platform)
+    }
+  }, [credentials, credEnvironment, orgId, platform, prefsHydrated])
+
+  useEffect(() => {
+    if (!prefsHydrated || agents.length === 0) return
+    const selectedExists = selectedAgentId && agents.some((a) => a.id === selectedAgentId)
+    if (selectedExists) return
+    const linkedAgentId = savedCred?.default_agent_id
+    if (linkedAgentId && agents.some((a) => a.id === linkedAgentId)) {
+      setSelectedAgentId(linkedAgentId)
+      return
+    }
+    if (!selectedAgentId && agents.length === 1) {
       setSelectedAgentId(agents[0].id)
     }
-  }, [agents, selectedAgentId])
+  }, [agents, prefsHydrated, savedCred?.default_agent_id, selectedAgentId])
 
   useEffect(() => {
     setPlatformKeyInput('')
@@ -274,6 +363,7 @@ export function Connect({ orgId, onPage }: Props) {
         )
         return [...rest, saved]
       })
+      saveConnectPrefs(orgId, { platform, selectedAgentId, lang, snippetTab })
       setPlatformKeyInput('')
       setKeyEntryOpen(false)
       setTestMsg('Platform API key saved securely.')
@@ -535,7 +625,216 @@ export function Connect({ orgId, onPage }: Props) {
         </section>
       )}
 
-      <div style={{ maxWidth: 720, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <div className="connect-console">
+        <section className="card connect-command">
+          <div className="connect-command__intro">
+            <div className="connect-command__eyebrow">Current connection</div>
+            <h2>{platformName}</h2>
+            <p>
+              {setupReady
+                ? `${selectedAgent?.name ?? 'Selected agent'} is ready to route tool calls through Sanctum.`
+                : 'Pick an agent and save one platform key to turn this into a low-friction proxy path.'}
+            </p>
+          </div>
+          <div className="connect-command__grid">
+            <div className="connect-status-tile">
+              <span>Agent</span>
+              <strong>{selectedAgent?.name ?? 'Not selected'}</strong>
+            </div>
+            <div className="connect-status-tile">
+              <span>Platform key</span>
+              <strong>{savedCred ? `Saved · ••••${savedCred.key_suffix}` : 'Not saved'}</strong>
+            </div>
+            <div className="connect-status-tile">
+              <span>Mode</span>
+              <strong>{settings?.proxy_mode === 'observe' ? 'Observe' : 'Gate'}</strong>
+            </div>
+            <div className="connect-status-tile">
+              <span>Next</span>
+              <strong>{nextStep}</strong>
+            </div>
+          </div>
+          <div className="connect-command__actions">
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={testRunning || !selectedAgentId}
+              onClick={() => void handleConnectTest()}
+            >
+              {testRunning ? <Loader2 size={14} className="spin" /> : <Zap size={14} />}
+              Run verify test
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={() => onPage('live-feed')}>
+              <Activity size={14} />
+              Open Live Feed
+            </button>
+          </div>
+        </section>
+
+        <div className="connect-primary-grid">
+          {/* Step 1 — Agent */}
+          <section className="card connect-panel">
+            <h2 className="card-title">
+              <span className="step-badge">1</span> Sanctum agent
+            </h2>
+            <p>
+              Choose the token identity your agent will use. This selection is remembered for this org.
+            </p>
+            {loading && agents.length === 0 ? (
+              <div className="alert alert--info" style={{ margin: 0 }}>
+                <div className="alert__body" style={{ fontSize: '0.82rem' }}>
+                  Loading agents…
+                </div>
+              </div>
+            ) : agents.length === 0 ? (
+              <div className="alert alert--info" style={{ margin: 0 }}>
+                <div className="alert__body" style={{ fontSize: '0.82rem' }}>
+                  No agents yet. Create one on the Agents page, then return here to connect it.
+                </div>
+                <button type="button" className="btn btn-primary btn-sm" style={{ marginTop: '0.5rem' }} onClick={() => onPage('agents')}>
+                  Go to Agents
+                </button>
+              </div>
+            ) : (
+              <label className="connect-field-label">
+                Select agent
+                <select
+                  className="input"
+                  value={selectedAgentId}
+                  onChange={(e) => setSelectedAgentId(e.target.value)}
+                >
+                  <option value="">— Select agent —</option>
+                  {agents.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name} · …{a.token_hint}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {selectedAgent && (
+              <p className="connect-panel__note">
+                Live Feed labels rows by this token at request time.
+              </p>
+            )}
+          </section>
+
+          {/* Step 2 — Platform */}
+          <section className="card connect-panel">
+            <h2 className="card-title">
+              <span className="step-badge">2</span> Platform
+            </h2>
+            <p>
+              Pick the model provider this agent will call. Saved keys are marked per environment.
+            </p>
+            <div className="connect-platform-grid">
+              {PLATFORMS.map((p) => {
+                const cred = credentials.find(
+                  (c) => c.platform === p.id && (c.environment ?? 'production') === credEnvironment,
+                )
+                const credAgent = cred?.default_agent_id
+                  ? agents.find((a) => a.id === cred.default_agent_id)
+                  : null
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className={`connect-platform ${platform === p.id ? 'connect-platform--active' : ''}`}
+                    onClick={() => setPlatform(p.id)}
+                  >
+                    <span className="connect-platform__flag">{p.flag}</span>
+                    <span className="connect-platform__name">{p.name}</span>
+                    {cred && (
+                      <span className="connect-platform__status">key saved</span>
+                    )}
+                    {credAgent && (
+                      <span className="connect-platform__agent">{credAgent.name}</span>
+                    )}
+                  </button>
+              )})}
+            </div>
+          </section>
+        </div>
+
+        {/* Step 3 — Platform API key */}
+        <section className="card connect-panel">
+          <h2 className="card-title">
+            <span className="step-badge">3</span> Platform API key
+          </h2>
+          <p>
+            Save your {platformName} key once. Sanctum stores it encrypted, remembers this platform, and lets the proxy inject it later.
+          </p>
+
+          {savedCred && (
+            <div className="connect-saved-key">
+              <div className="connect-saved-key__body">
+                <KeyRound size={17} />
+                <div>
+                  <strong>Saved · ••••{savedCred.key_suffix}</strong>
+                  <span>
+                    {credEnvironment}
+                    {linkedAgent ? ` · ${linkedAgent.name}` : ''}
+                    {savedCred.last_tested_at ? ` · tested ${savedCred.last_test_ok ? 'ok' : 'failed'}` : ''}
+                  </span>
+                </div>
+              </div>
+              <div className="connect-saved-key__actions">
+                <button type="button" className="btn btn-ghost btn-sm" disabled={testing} onClick={() => void handleTestKey(true)}>
+                  {testing ? <Loader2 size={14} className="spin" /> : <Zap size={14} />} Test
+                </button>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setKeyEntryOpen(true); setPlatformKeyInput('') }}>
+                  Replace
+                </button>
+                <button type="button" className="btn btn-ghost btn-sm" disabled={saving} onClick={() => void handleRemoveKey()}>
+                  <Trash2 size={14} /> Remove
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!savedCred && !keyEntryOpen && (
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => setKeyEntryOpen(true)}>
+              Add platform API key
+            </button>
+          )}
+
+          {keyEntryOpen && (
+            <div className="connect-key-entry">
+              <input
+                type="text"
+                className="input"
+                placeholder="Paste your platform API key"
+                value={platformKeyInput}
+                onChange={(e) => setPlatformKeyInput(e.target.value)}
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+              />
+              <div className="responsive-action-row">
+                <button type="button" className="btn btn-primary btn-sm" disabled={saving || !platformKeyInput.trim()} onClick={() => void handleSaveKey()}>
+                  {saving ? <Loader2 size={14} className="spin" /> : null}
+                  {savedCred ? 'Update saved key' : 'Save platform key'}
+                </button>
+                <button type="button" className="btn btn-ghost btn-sm" disabled={testing || !platformKeyInput.trim()} onClick={() => void handleTestKey(false)}>
+                  {testing ? <Loader2 size={14} className="spin" /> : <Zap size={14} />}
+                  Test key
+                </button>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setKeyEntryOpen(false); setPlatformKeyInput('') }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {testMsg && (
+            <p className={`connect-test-message ${testMsg.includes('fail') || testMsg.includes('Fail') ? 'connect-test-message--error' : ''}`}>
+              {testMsg}
+            </p>
+          )}
+
+          {loading && <p className="connect-panel__note">Loading saved keys…</p>}
+        </section>
 
         {/* Health & usage */}
         {health && (
@@ -769,188 +1068,6 @@ export function Connect({ orgId, onPage }: Props) {
             )}
           </section>
         )}
-
-        {/* Step 1 — Agent */}
-        <section className="card" style={{ padding: '1.25rem' }}>
-          <h2 className="card-title" style={{ marginBottom: '0.75rem' }}>
-            <span className="step-badge">1</span> Sanctum agent
-          </h2>
-          <p style={{ fontSize: '0.85rem', marginBottom: '0.75rem', opacity: 0.75 }}>
-            Choose which Sanctum agent will send traffic through the proxy. Create one on{' '}
-            <button type="button" className="btn btn-ghost" style={{ padding: 0, fontSize: 'inherit', textDecoration: 'underline' }} onClick={() => onPage('agents')}>
-              Agents
-            </button>
-            {' '}if you do not have one yet — copy its token when shown (once) for your client code.
-          </p>
-          {agents.length === 0 ? (
-            <div className="alert alert--info" style={{ margin: 0 }}>
-              <div className="alert__body" style={{ fontSize: '0.82rem' }}>
-                No agents yet. Create one on the Agents page, then return here to connect it.
-              </div>
-              <button type="button" className="btn btn-primary btn-sm" style={{ marginTop: '0.5rem' }} onClick={() => onPage('agents')}>
-                Go to Agents
-              </button>
-            </div>
-          ) : (
-            <label style={{ display: 'block', fontSize: '0.82rem' }}>
-              Select agent
-              <select
-                className="input"
-                value={selectedAgentId}
-                onChange={(e) => setSelectedAgentId(e.target.value)}
-                style={{ width: '100%', marginTop: '0.35rem' }}
-              >
-                <option value="">— Select agent —</option>
-                {agents.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name} · …{a.token_hint}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          {selectedAgent && (
-            <p style={{ fontSize: '0.78rem', marginTop: '0.65rem', opacity: 0.6 }}>
-              Live Feed labels rows by this agent&apos;s token at request time — not by what you pick on Connect alone.
-            </p>
-          )}
-        </section>
-
-        {/* Step 2 — Platform */}
-        <section className="card" style={{ padding: '1.25rem' }}>
-          <h2 className="card-title" style={{ marginBottom: '0.75rem' }}>
-            <span className="step-badge">2</span> Pick your platform
-          </h2>
-          <p style={{ fontSize: '0.82rem', marginBottom: '0.75rem', opacity: 0.65 }}>
-            The platform you select here sets the proxy URL and which API key you save. Live Feed shows the platform from each actual proxy request.
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '0.5rem' }}>
-            {PLATFORMS.map((p) => {
-              const cred = credentials.find(
-                (c) => c.platform === p.id && (c.environment ?? 'production') === credEnvironment,
-              )
-              const credAgent = cred?.default_agent_id
-                ? agents.find((a) => a.id === cred.default_agent_id)
-                : null
-              return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => setPlatform(p.id)}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '0.3rem',
-                  padding: '0.75rem 0.5rem',
-                  borderRadius: '0.5rem',
-                  border: `2px solid ${platform === p.id ? 'var(--accent, #6366f1)' : 'var(--border, #2a2a3e)'}`,
-                  background: platform === p.id ? 'var(--accent-muted, rgba(99,102,241,0.12))' : 'transparent',
-                  cursor: 'pointer',
-                  fontSize: '0.8rem',
-                  fontWeight: platform === p.id ? 600 : 400,
-                  color: 'inherit',
-                }}
-              >
-                <span style={{ fontSize: '1.4rem' }}>{p.flag}</span>
-                <span>{p.name}</span>
-                {cred && (
-                  <span style={{ fontSize: '0.65rem', color: 'var(--success, #22c55e)' }}>key saved</span>
-                )}
-                {credAgent && (
-                  <span style={{ fontSize: '0.62rem', opacity: 0.55, textAlign: 'center' }}>{credAgent.name}</span>
-                )}
-              </button>
-            )})}
-          </div>
-        </section>
-
-        {/* Step 3 — Platform API key (NEW) */}
-        <section className="card" style={{ padding: '1.25rem' }}>
-          <h2 className="card-title" style={{ marginBottom: '0.75rem' }}>
-            <span className="step-badge">3</span> Platform API key
-          </h2>
-          <p style={{ fontSize: '0.85rem', marginBottom: '0.75rem', opacity: 0.75 }}>
-            Save your {PLATFORMS.find((p) => p.id === platform)?.name} key once — encrypted in Supabase, never shown again.
-            The proxy can use it so your agent code only needs the Sanctum agent token.
-          </p>
-
-          {savedCred && (
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem',
-              padding: '0.6rem 0.75rem', marginBottom: '0.75rem', borderRadius: '0.4rem',
-              background: 'var(--surface-2, #1a1a2e)', border: '1px solid var(--border, #2a2a3e)',
-            }}>
-              <div style={{ fontSize: '0.82rem' }}>
-                <strong>Saved</strong> · ••••{savedCred.key_suffix}
-                <span style={{ marginLeft: '0.5rem', opacity: 0.55 }}>({credEnvironment})</span>
-                {linkedAgent && (
-                  <span style={{ marginLeft: '0.5rem', opacity: 0.65 }}>· agent: {linkedAgent.name}</span>
-                )}
-                {savedCred.last_tested_at && (
-                  <span style={{ marginLeft: '0.5rem', opacity: 0.65 }}>
-                    · tested {savedCred.last_test_ok ? '✓' : '✗'}
-                  </span>
-                )}
-              </div>
-              <div style={{ display: 'flex', gap: '0.35rem' }}>
-                <button type="button" className="btn btn-ghost btn-sm" disabled={testing} onClick={() => void handleTestKey(true)}>
-                  {testing ? <Loader2 size={14} className="spin" /> : <Zap size={14} />} Test
-                </button>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setKeyEntryOpen(true); setPlatformKeyInput('') }}>
-                  Replace
-                </button>
-                <button type="button" className="btn btn-ghost btn-sm" disabled={saving} onClick={() => void handleRemoveKey()}>
-                  <Trash2 size={14} /> Remove
-                </button>
-              </div>
-            </div>
-          )}
-
-          {!savedCred && !keyEntryOpen && (
-            <button type="button" className="btn btn-primary btn-sm" onClick={() => setKeyEntryOpen(true)}>
-              Add platform API key
-            </button>
-          )}
-
-          {keyEntryOpen && (
-            <>
-              <input
-                type="text"
-                className="input"
-                placeholder="Paste your platform API key"
-                value={platformKeyInput}
-                onChange={(e) => setPlatformKeyInput(e.target.value)}
-                autoComplete="off"
-                autoCorrect="off"
-                autoCapitalize="off"
-                spellCheck={false}
-                style={{ fontFamily: 'monospace', fontSize: '0.85rem', width: '100%', marginBottom: '0.75rem' }}
-              />
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                <button type="button" className="btn btn-primary btn-sm" disabled={saving || !platformKeyInput.trim()} onClick={() => void handleSaveKey()}>
-                  {saving ? <Loader2 size={14} className="spin" /> : null}
-                  {savedCred ? 'Update saved key' : 'Save platform key'}
-                </button>
-                <button type="button" className="btn btn-ghost btn-sm" disabled={testing || !platformKeyInput.trim()} onClick={() => void handleTestKey(false)}>
-                  {testing ? <Loader2 size={14} className="spin" /> : <Zap size={14} />}
-                  Test key
-                </button>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setKeyEntryOpen(false); setPlatformKeyInput('') }}>
-                  Cancel
-                </button>
-              </div>
-            </>
-          )}
-
-          {testMsg && (
-            <p style={{ fontSize: '0.8rem', marginTop: '0.65rem', color: testMsg.includes('fail') || testMsg.includes('Fail') ? '#f87171' : 'var(--success, #22c55e)' }}>
-              {testMsg}
-            </p>
-          )}
-
-          {loading && <p style={{ fontSize: '0.78rem', opacity: 0.5, marginTop: '0.5rem' }}>Loading saved keys…</p>}
-        </section>
 
         {/* Step 4 — Proxy URL */}
         <section className="card" style={{ padding: '1.25rem' }}>
