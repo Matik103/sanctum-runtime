@@ -138,6 +138,13 @@ async function testEnterprise(api, label) {
 
 async function testPublicUrls() {
   section('Public URLs')
+  try {
+    const { execSync } = await import('node:child_process')
+    execSync('node scripts/verify-crawl.mjs', { stdio: 'pipe', encoding: 'utf8' })
+    ok('verify:crawl')
+  } catch (e) {
+    bad('verify:crawl', e.stderr || e.message)
+  }
   const urls = [
     ['marketing', 'https://www.sanctumruntime.com/'],
     ['sitemap', 'https://www.sanctumruntime.com/sitemap.xml'],

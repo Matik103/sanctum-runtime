@@ -78,9 +78,31 @@ Wired in `src/lib/seo.ts` → `searchVerificationMeta()` → `src/routes/__root.
 
 ---
 
+## “Robots.txt unreachable” / site-wide indexing blocked
+
+If **URL inspection** shows **Failed: Robots.txt unreachable** and *Page cannot be indexed: Not available due to a site-wide issue*:
+
+1. **Usually transient** — deploy window, DNS, or apex host before `public/robots.txt` was wired. Re-run **Test live URL** after the latest Vercel deploy.
+2. **Canonical host** — crawlers must reach **`https://www.sanctumruntime.com/robots.txt`** (200, `text/plain`). Apex `sanctumruntime.com` should **308** to `www` (one hop).
+3. **After merge** — marketing build serves `robots.txt` / sitemaps from the worker first (`src/lib/crawl-static.ts`) so SSR cannot block crawlers during edge deploys.
+4. **Verify production:**
+
+```bash
+npm run verify:crawl
+# or
+CRAWL_BASE=https://www.sanctumruntime.com node scripts/verify-crawl.mjs
+```
+
+5. In GSC: **Sitemaps** → submit `https://www.sanctumruntime.com/sitemap.xml` → **URL inspection** → `https://www.sanctumruntime.com/privacy` → **Request indexing**.
+
+Use property **`https://www.sanctumruntime.com`** (URL prefix), not only Domain property, for day-to-day indexing reports.
+
+---
+
 ## 3. After deploy checks
 
 ```bash
+npm run verify:crawl
 curl -sI https://www.sanctumruntime.com/sitemap.xml | head -5
 curl -s https://www.sanctumruntime.com/robots.txt | grep -i sitemap
 ```

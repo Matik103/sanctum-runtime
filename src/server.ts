@@ -1,5 +1,6 @@
 import "./lib/error-capture";
 
+import { crawlStaticResponse, isCrawlStaticPath } from "./lib/crawl-static";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 
@@ -78,6 +79,17 @@ export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     const apexRedirect = redirectApexToWww(request);
     if (apexRedirect) return apexRedirect;
+
+    const url = new URL(request.url);
+    if (request.method === "GET" || request.method === "HEAD") {
+      if (isCrawlStaticPath(url.pathname)) {
+        const body = crawlStaticResponse(url.pathname);
+        if (request.method === "HEAD") {
+          return new Response(null, { status: 200, headers: body.headers });
+        }
+        return body;
+      }
+    }
 
     try {
       const handler = await getServerEntry();

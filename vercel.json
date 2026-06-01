@@ -41,7 +41,12 @@
         {
           "key": "Permissions-Policy",
           "value": "camera=(), microphone=(), geolocation=(), payment=()"
-        },
+        }
+      ]
+    },
+    {
+      "source": "/((?!robots\\.txt$|sitemap\\.xml$|sitemap-index\\.xml$|sitemap-ai\\.xml$|llms\\.txt$).*)",
+      "headers": [
         {
           "key": "Content-Security-Policy",
           "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' fonts.googleapis.com; font-src 'self' fonts.gstatic.com data:; img-src 'self' data: https: https://www.google-analytics.com; connect-src 'self' https://api.sanctumruntime.com https://console.sanctumruntime.com https://www.google-analytics.com https://analytics.google.com https://*.google-analytics.com https://*.analytics.google.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://console.sanctumruntime.com; upgrade-insecure-requests;"
