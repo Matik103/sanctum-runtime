@@ -6,6 +6,7 @@ import { auditRecordHeadline } from '../lib/narrative'
 import { riskModelMetaLine } from '../lib/risk-label'
 import { sparkBars } from '../lib/spark'
 import { OctagonX, ShieldCheck } from 'lucide-react'
+import { ActionInterceptDemo } from '../components/ActionInterceptDemo'
 
 type Props = {
   audit: ActionResult[]
@@ -94,6 +95,8 @@ export function Overview({
           </span>
         </div>
       </header>
+
+      <ActionInterceptDemo orgId={orgId} onPage={onPage} />
 
       <div className="grid-4">
         <div className="card glow-success">

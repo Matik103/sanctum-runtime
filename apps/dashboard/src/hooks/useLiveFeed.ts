@@ -10,6 +10,26 @@ export type ProxyEvent = {
   decision: string
   reasoning?: string
   correlation_id?: string
+  sourceTrust?: string
+  blastRadius?: {
+    level: string
+    score: number
+    factors?: string[]
+    reversible?: boolean
+    dataSensitivity?: string
+    externalDestination?: boolean
+    physicalWorld?: boolean
+    estimatedValue?: number
+  }
+  actionIdentity?: {
+    actorId?: string
+    toolId?: string
+    runtimeId?: string
+    environmentId?: string
+    requestedPermission?: string
+    scope?: string[]
+    expiresAt?: string
+  }
   context: {
     proxy: true
     platform: string
@@ -36,6 +56,14 @@ function normalizeProxyEvent(raw: Record<string, unknown>): ProxyEvent | null {
     actor: String(raw.actor ?? ''),
     decision: String(raw.decision ?? 'APPROVED'),
     reasoning: typeof raw.reasoning === 'string' ? raw.reasoning : undefined,
+    sourceTrust:
+      typeof raw.sourceTrust === 'string'
+        ? raw.sourceTrust
+        : typeof raw.source_trust === 'string'
+          ? raw.source_trust
+          : undefined,
+    blastRadius: (raw.blastRadius ?? raw.blast_radius) as ProxyEvent['blastRadius'],
+    actionIdentity: (raw.actionIdentity ?? raw.action_identity) as ProxyEvent['actionIdentity'],
     correlation_id:
       typeof raw.correlation_id === 'string'
         ? raw.correlation_id

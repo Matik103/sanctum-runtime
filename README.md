@@ -60,7 +60,7 @@ Sanctum answers that question at runtime — before the side effect runs — wit
 
 | | |
 |---|---|
-| **Start** | [START_HERE.md](./START_HERE.md) · [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md) · [Sanctum vs guardrails](./DEVELOPER_GUIDE.md#sanctum-vs-guardrails) · [CATEGORIES.md](./CATEGORIES.md) |
+| **Start** | [START_HERE.md](./START_HERE.md) · [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md) · [Autonomy infrastructure](./docs/AUTONOMY_INFRASTRUCTURE.md) · [Sanctum vs guardrails](./DEVELOPER_GUIDE.md#sanctum-vs-guardrails) · [CATEGORIES.md](./CATEGORIES.md) |
 | **Production** | [PHASE_3.md](./PHASE_3.md) · [PRODUCTION_OPS.md](./PRODUCTION_OPS.md) · [RENDER.md](./RENDER.md) |
 | **Install** | `npm install @sanctum-runtime/sdk` · `pip install sanctum-runtime` · [integrations](./docs/integrations/) · [CLI](./packages/cli/) |
 | **Help** | [SUPPORT.md](./SUPPORT.md) · [Issues](https://github.com/Matik103/sanctum-runtime/issues) · [Discussions](https://github.com/Matik103/sanctum-runtime/discussions) |

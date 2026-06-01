@@ -66,6 +66,16 @@ function ArgView({ value }: { value: unknown }) {
   )
 }
 
+function blastTone(level?: string) {
+  if (level === 'critical' || level === 'high') return 'danger'
+  if (level === 'medium') return 'warn'
+  return 'neutral'
+}
+
+function readable(value?: string) {
+  return value ? value.replace(/_/g, ' ') : 'unknown'
+}
+
 function EventRow({
   event,
   agentNames,
@@ -116,6 +126,16 @@ function EventRow({
           <DecisionBadge decision={event.decision} />
           {ctx.phase && (
             <span style={{ fontSize: '0.62rem', opacity: 0.45 }}>{ctx.phase}</span>
+          )}
+          {event.sourceTrust && (
+            <span className={`badge ${event.sourceTrust === 'untrusted_content' ? 'danger' : event.sourceTrust === 'tool_output' ? 'warn' : 'neutral'}`}>
+              {readable(event.sourceTrust)}
+            </span>
+          )}
+          {event.blastRadius && (
+            <span className={`badge ${blastTone(event.blastRadius.level)}`}>
+              blast {event.blastRadius.level} · {event.blastRadius.score}/100
+            </span>
           )}
         </div>
         <ArgView value={ctx.arguments} />
@@ -191,6 +211,35 @@ function DetailDrawer({
           )}
           {event.reasoning && (
             <div><dt style={{ opacity: 0.55 }}>Reasoning</dt><dd>{event.reasoning}</dd></div>
+          )}
+          {event.sourceTrust && (
+            <div><dt style={{ opacity: 0.55 }}>Instruction source</dt><dd>{readable(event.sourceTrust)}</dd></div>
+          )}
+          {event.blastRadius && (
+            <div>
+              <dt style={{ opacity: 0.55 }}>Blast radius</dt>
+              <dd style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                <span className={`badge ${blastTone(event.blastRadius.level)}`}>
+                  {event.blastRadius.level} · {event.blastRadius.score}/100
+                </span>
+                {event.blastRadius.estimatedValue != null && (
+                  <span className="badge neutral">${event.blastRadius.estimatedValue.toLocaleString()} at risk</span>
+                )}
+                {event.blastRadius.externalDestination && <span className="badge warn">external</span>}
+                {event.blastRadius.physicalWorld && <span className="badge danger">physical world</span>}
+              </dd>
+            </div>
+          )}
+          {event.actionIdentity && (
+            <div>
+              <dt style={{ opacity: 0.55 }}>Action passport</dt>
+              <dd style={{ fontSize: '0.78rem', lineHeight: 1.55 }}>
+                {event.actionIdentity.requestedPermission && <div>Permission: {event.actionIdentity.requestedPermission}</div>}
+                {event.actionIdentity.toolId && <div>Tool: {event.actionIdentity.toolId}</div>}
+                {event.actionIdentity.runtimeId && <div>Runtime: {event.actionIdentity.runtimeId}</div>}
+                {event.actionIdentity.scope?.length ? <div>Scope: {event.actionIdentity.scope.join(' · ')}</div> : null}
+              </dd>
+            </div>
           )}
           <div><dt style={{ opacity: 0.55 }}>Arguments</dt><dd><ArgView value={event.context.arguments} /></dd></div>
           <div><dt style={{ opacity: 0.55 }}>When</dt><dd>{new Date(event.created_at).toLocaleString()}</dd></div>

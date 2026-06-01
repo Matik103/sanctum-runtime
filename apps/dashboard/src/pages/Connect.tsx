@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Activity, Check, Copy, ExternalLink, KeyRound, Loader2, Plug, Shield, Trash2, Zap } from 'lucide-react'
+import { Activity, ArrowRight, Check, Copy, ExternalLink, KeyRound, Loader2, Plug, Shield, Trash2, Zap } from 'lucide-react'
 import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
 import {
@@ -674,6 +674,24 @@ export function Connect({ orgId, onPage }: Props) {
               Open Live Feed
             </button>
           </div>
+        </section>
+
+        <section className="connect-boundary">
+          {[
+            ['1', 'Agent calls model', selectedAgent?.name ?? 'Choose agent'],
+            ['2', 'Tool call intercepted', platformName],
+            ['3', 'Policy + Shield decide', settings?.proxy_mode === 'observe' ? 'Observe mode' : 'Gate mode'],
+            ['4', 'Executor needs token', settings?.enforce_action_token ? 'Enforced' : 'Available'],
+          ].map(([num, title, detail], idx) => (
+            <div key={num} className="connect-boundary__step">
+              <span className="connect-boundary__num">{num}</span>
+              <div>
+                <strong>{title}</strong>
+                <span>{detail}</span>
+              </div>
+              {idx < 3 && <ArrowRight size={14} aria-hidden />}
+            </div>
+          ))}
         </section>
 
         <div className="connect-primary-grid">
