@@ -76,6 +76,35 @@ function ThreatBadge({ stats }: { stats?: AgentStats }) {
   )
 }
 
+function agentTrustScore(stats?: AgentStats): number {
+  if (!stats || stats.total24h === 0) return 100
+  const blockedPenalty = stats.blocked24h * 16
+  const heldPenalty = stats.held24h * 8
+  const shieldPenalty = Math.round((stats.maxScore ?? 0) * 0.35)
+  const approvalCredit = Math.min(8, stats.approved24h)
+  return Math.max(0, Math.min(100, 100 - blockedPenalty - heldPenalty - shieldPenalty + approvalCredit))
+}
+
+function AgentTrustBadge({ stats }: { stats?: AgentStats }) {
+  const score = agentTrustScore(stats)
+  const color = score >= 85 ? 'var(--success)' : score >= 65 ? '#f59e0b' : '#ef4444'
+  return (
+    <span
+      title="Computed from the last 24h of blocked, held, approved, and Shield-scored actions"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 4,
+        fontSize: '0.72rem',
+        color,
+        fontWeight: 600,
+      }}
+    >
+      Trust {score}%
+    </span>
+  )
+}
+
 type Props = { onOpenDevices: () => void }
 
 export function Agents({ onOpenDevices }: Props) {
@@ -305,6 +334,7 @@ export function Agents({ onOpenDevices }: Props) {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.2rem' }}>
                       <p style={{ margin: 0, fontWeight: 600, fontSize: '0.95rem' }}>{a.name}</p>
                       <StatusBadge lastSeen={a.last_seen_at} />
+                      <AgentTrustBadge stats={statsMap[a.id]} />
                       <ThreatBadge stats={statsMap[a.id]} />
                     </div>
                     {a.description && <p style={{ margin: '0 0 0.35rem', fontSize: '0.82rem', color: 'var(--muted)' }}>{a.description}</p>}
