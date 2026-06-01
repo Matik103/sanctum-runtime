@@ -1,4 +1,5 @@
 import {
+  acceptableUseUrl,
   contactUrl,
   docsUrl,
   pricingUrl,
@@ -11,12 +12,13 @@ const links = [
   { href: privacyUrl, label: 'Privacy Policy' },
   { href: termsUrl, label: 'Terms & Conditions' },
   { href: refundUrl, label: 'Refund Policy' },
+  { href: acceptableUseUrl, label: 'Acceptable Use' },
   { href: docsUrl, label: 'Documentation' },
   { href: pricingUrl, label: 'Pricing' },
   { href: contactUrl, label: 'Contact' },
 ] as const
 
-/** Paddle verification footer — links to public marketing legal pages. */
+/** Payment verification footer — links to public marketing legal pages. */
 export function LegalFooter({ className = '' }: { className?: string }) {
   return (
     <footer className={`legal-footer ${className}`.trim()} aria-label="Legal and support">

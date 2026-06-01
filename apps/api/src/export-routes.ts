@@ -292,7 +292,7 @@ export async function registerExportRoutes(app: FastifyInstance) {
       return reply.status(402).send({
         error: 'enterprise_feature',
         feature: 'sso',
-        message: 'SSO/OIDC is available on the Enterprise plan. Contact billing@sanctum.run to upgrade.',
+        message: 'SSO/OIDC is available on the Enterprise plan. Contact billing@sanctumruntime.com to upgrade.',
         currentPlan: limits.planId,
       })
     }

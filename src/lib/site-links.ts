@@ -57,6 +57,7 @@ export const githubUrl = githubRepo;
 export const privacyUrl = readEnv("VITE_PRIVACY_URL", "/privacy");
 export const termsUrl = readEnv("VITE_TERMS_URL", "/terms");
 export const refundUrl = readEnv("VITE_REFUND_URL", "/refund");
+export const acceptableUseUrl = readEnv("VITE_ACCEPTABLE_USE_URL", "/acceptable-use");
 export const pricingUrl = readEnv("VITE_PRICING_URL", "/pricing");
 export const contactUrl = readEnv("VITE_CONTACT_URL", "/contact");
 export const billingUrl = readEnv("VITE_BILLING_URL", "/billing");
@@ -64,3 +65,4 @@ export const cookiesUrl = readEnv("VITE_COOKIES_URL", "/cookies");
 
 export const privacyEmail = readEnv("VITE_PRIVACY_EMAIL", "privacy@sanctumruntime.com");
 export const billingEmail = readEnv("VITE_BILLING_EMAIL", "billing@sanctumruntime.com");
+export const supportEmail = readEnv("VITE_SUPPORT_EMAIL", "support@sanctumruntime.com");

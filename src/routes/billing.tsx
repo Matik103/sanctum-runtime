@@ -20,7 +20,7 @@ function BillingPage() {
       title="Billing"
       lead="This page describes how paid plans, subscriptions, and usage limits work for Sanctum Runtime cloud services."
     >
-      <p className="text-sm text-muted-foreground">Last updated: April 30, 2026</p>
+      <p className="text-sm text-muted-foreground">Last updated: June 1, 2026</p>
 
       <section>
         <h2>1. Plans</h2>
@@ -34,9 +34,9 @@ function BillingPage() {
       <section>
         <h2>2. Payment</h2>
         <p>
-          Paid subscriptions are processed by our payment provider (for example Paddle). By subscribing,
-          you authorize recurring charges according to your selected plan and billing cycle. Prices are
-          shown before purchase and may exclude applicable taxes.
+          Paid subscriptions are processed by Creem or another authorized merchant/payment provider. By
+          subscribing, you authorize recurring charges according to your selected plan and billing
+          cycle. Prices are shown before purchase and may exclude applicable taxes.
         </p>
       </section>
 
@@ -52,7 +52,7 @@ function BillingPage() {
         <h2>4. Cancellations and refunds</h2>
         <p>
           You may cancel a subscription according to the process in the console or payment provider
-          portal. Refunds and disputes are handled by Paddle as described in our{" "}
+          portal. Refunds and disputes are handled as described in our{" "}
           <Link to="/refund/">Refund and Dispute Policy</Link>. After cancellation, you may retain
           access until the end of the paid period; data retention follows your plan and our{" "}
           <Link to="/privacy/">Privacy Policy</Link>.

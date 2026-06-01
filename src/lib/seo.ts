@@ -21,6 +21,7 @@ export const publicRoutes = [
   "/enterprise",
   "/privacy",
   "/terms",
+  "/acceptable-use",
   "/billing",
   "/cookies",
   "/pricing",
@@ -47,7 +48,11 @@ export const sitemapPages: ReadonlyArray<{
   { path: "/glossary", changefreq: "monthly", priority: 0.8 },
   { path: "/privacy", changefreq: "monthly", priority: 0.5 },
   { path: "/terms", changefreq: "monthly", priority: 0.5 },
+  { path: "/acceptable-use", changefreq: "monthly", priority: 0.5 },
   { path: "/billing", changefreq: "monthly", priority: 0.5 },
+  { path: "/refund", changefreq: "monthly", priority: 0.5 },
+  { path: "/pricing", changefreq: "monthly", priority: 0.65 },
+  { path: "/contact", changefreq: "monthly", priority: 0.6 },
   { path: "/cookies", changefreq: "monthly", priority: 0.5 },
 ];
 

@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { DiscoverPageLayout } from "@/components/DiscoverPageLayout";
 import { pageSeo, webPageJsonLd } from "@/lib/seo";
-import { privacyEmail } from "@/lib/site-links";
+import { acceptableUseUrl, billingEmail, supportEmail } from "@/lib/site-links";
 
 const path = "/terms";
 const title = "Terms & Conditions — Sanctum Runtime";
@@ -20,7 +20,7 @@ function TermsPage() {
       title="Terms & Conditions"
       lead="These terms govern your access to and use of Sanctum Runtime websites, the cloud console, APIs, and related services."
     >
-      <p className="text-sm text-muted-foreground">Last updated: April 30, 2026</p>
+      <p className="text-sm text-muted-foreground">Last updated: June 1, 2026</p>
 
       <section>
         <h2>1. Agreement</h2>
@@ -38,6 +38,11 @@ function TermsPage() {
           tools. Features vary by plan. We may modify or discontinue features with reasonable notice where
           practicable.
         </p>
+        <p>
+          Sanctum is not an official product of OpenAI, Anthropic, Google, Meta, DeepSeek, xAI, NVIDIA,
+          or any other model provider. Connect Agent and related proxy features let customers route
+          requests to third-party AI platforms using credentials and configurations they control.
+        </p>
       </section>
 
       <section>
@@ -50,19 +55,44 @@ function TermsPage() {
       </section>
 
       <section>
-        <h2>4. Acceptable use</h2>
-        <p>You agree not to:</p>
+        <h2>4. AI responsibility and outputs</h2>
+        <p>
+          You are responsible for the agents, tools, prompts, model providers, credentials, workflows,
+          and runtime policies you connect to Sanctum. AI outputs and autonomous actions may be wrong,
+          unsafe, biased, incomplete, or unexpected. You must evaluate, test, supervise, and approve
+          deployments before using them in production or high-impact environments.
+        </p>
+      </section>
+
+      <section>
+        <h2>5. Acceptable use</h2>
+        <p>
+          You agree to follow our <Link to={acceptableUseUrl}>Acceptable Use Policy</Link>. You must not:
+        </p>
         <ul>
           <li>Violate applicable law or third-party rights</li>
           <li>Probe, scan, or attack the service without authorization</li>
           <li>Interfere with other users or overload infrastructure</li>
-          <li>Use the service to develop malware or unlawful autonomous systems</li>
+          <li>Use the service to develop, deploy, or coordinate malware, credential theft, phishing, fraud, or unlawful autonomous systems</li>
+          <li>Use the service to bypass third-party model provider terms, safety policies, rate limits, or access controls</li>
+          <li>Connect agents to physical, financial, medical, legal, or safety-critical systems without appropriate authorization, safeguards, testing, and human oversight</li>
           <li>Reverse engineer hosted components except where permitted by open-source licenses</li>
         </ul>
       </section>
 
       <section>
-        <h2>5. Open source</h2>
+        <h2>6. Subscriptions and payments</h2>
+        <p>
+          Paid plans are shown before checkout and may be billed through Creem or another authorized
+          merchant/payment provider. You authorize recurring charges for the selected subscription until
+          cancelled. Taxes, receipts, card processing, and payment disputes may be handled by the
+          payment provider under the buyer terms shown at checkout. See our <Link to="/billing/">Billing</Link>{" "}
+          and <Link to="/refund/">Refund Policy</Link> pages for more detail.
+        </p>
+      </section>
+
+      <section>
+        <h2>7. Open source</h2>
         <p>
           Components released under open-source licenses are governed by those licenses in addition to
           these Terms for the hosted service.
@@ -70,7 +100,7 @@ function TermsPage() {
       </section>
 
       <section>
-        <h2>6. Disclaimer</h2>
+        <h2>8. Disclaimer</h2>
         <p>
           THE SERVICE IS PROVIDED “AS IS” WITHOUT WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
           PURPOSE, OR NON-INFRINGEMENT. Sanctum does not guarantee that autonomous actions will be safe
@@ -79,7 +109,7 @@ function TermsPage() {
       </section>
 
       <section>
-        <h2>7. Limitation of liability</h2>
+        <h2>9. Limitation of liability</h2>
         <p>
           TO THE MAXIMUM EXTENT PERMITTED BY LAW, SANCTUM AND ITS SUPPLIERS WILL NOT BE LIABLE FOR
           INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS, DATA,
@@ -90,7 +120,7 @@ function TermsPage() {
       </section>
 
       <section>
-        <h2>8. Termination</h2>
+        <h2>10. Termination</h2>
         <p>
           You may stop using the service at any time. We may suspend or terminate access for breach of
           these Terms or to protect the service. Provisions that by nature should survive will survive
@@ -99,7 +129,7 @@ function TermsPage() {
       </section>
 
       <section>
-        <h2>9. Governing law</h2>
+        <h2>11. Governing law</h2>
         <p>
           These Terms are governed by the laws of the State of Delaware, USA, without regard to conflict
           of law principles, except where mandatory local law applies.
@@ -107,16 +137,22 @@ function TermsPage() {
       </section>
 
       <section>
-        <h2>10. Contact</h2>
+        <h2>12. Contact</h2>
         <p>
           Questions:{" "}
-          <a href={`mailto:${privacyEmail}`} className="text-primary hover:underline">
-            {privacyEmail}
+          <a href={`mailto:${supportEmail}`} className="text-primary hover:underline">
+            {supportEmail}
+          </a>
+        </p>
+        <p>
+          Billing:{" "}
+          <a href={`mailto:${billingEmail}`} className="text-primary hover:underline">
+            {billingEmail}
           </a>
         </p>
         <p>
           <Link to="/privacy/">Privacy Policy</Link> · <Link to="/refund/">Refund Policy</Link> ·{" "}
-          <Link to="/billing/">Billing</Link> · <Link to="/pricing/">Pricing</Link> ·{" "}
+          <Link to={acceptableUseUrl}>Acceptable Use</Link> · <Link to="/billing/">Billing</Link> · <Link to="/pricing/">Pricing</Link> ·{" "}
           <Link to="/contact/">Contact</Link> · <Link to="/cookies/">Cookies</Link>
         </p>
       </section>

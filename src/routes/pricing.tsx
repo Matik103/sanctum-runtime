@@ -65,7 +65,7 @@ function PricingPage() {
     <DiscoverPageLayout
       eyebrow="Plans"
       title="Pricing"
-      lead="Sanctum Runtime meters cloud usage by runtimes, agents, and policy verifications. Paid subscriptions are billed through Paddle; prices shown before checkout may exclude applicable taxes."
+      lead="Sanctum Runtime meters cloud usage by runtimes, agents, and policy verifications. Paid subscriptions are billed through Creem or another authorized payment provider; prices shown before checkout may exclude applicable taxes."
     >
       <p className="text-sm text-muted-foreground">Last updated: May 19, 2026</p>
 

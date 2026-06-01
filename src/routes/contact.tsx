@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { DiscoverPageLayout } from "@/components/DiscoverPageLayout";
 import { pageSeo, webPageJsonLd } from "@/lib/seo";
-import { billingEmail, consoleUrl, privacyEmail } from "@/lib/site-links";
+import { billingEmail, consoleUrl, privacyEmail, supportEmail } from "@/lib/site-links";
 
 const path = "/contact";
 const title = "Contact — Sanctum Runtime";
@@ -20,14 +20,25 @@ function ContactPage() {
       title="Contact"
       lead="Sanctum Runtime builds runtime trust infrastructure for autonomous AI — policy enforcement, audit trails, fleet orchestration, and a hosted operator console."
     >
-      <p className="text-sm text-muted-foreground">Last updated: May 19, 2026</p>
+      <p className="text-sm text-muted-foreground">Last updated: June 1, 2026</p>
 
       <section>
         <h2>Billing and refunds</h2>
         <p>
-          Subscription billing, receipts, and refund requests (processed via Paddle):{" "}
+          Subscription billing, receipts, and refund requests (processed through Creem or another
+          authorized payment provider):{" "}
           <a href={`mailto:${billingEmail}`} className="text-primary hover:underline">
             {billingEmail}
+          </a>
+        </p>
+      </section>
+
+      <section>
+        <h2>Product support</h2>
+        <p>
+          Account, console, API, and technical support:{" "}
+          <a href={`mailto:${supportEmail}`} className="text-primary hover:underline">
+            {supportEmail}
           </a>
         </p>
       </section>

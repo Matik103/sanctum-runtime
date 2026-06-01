@@ -203,7 +203,7 @@ export async function registerBillingRoutes(app: FastifyInstance) {
       if (body.plan_id === 'enterprise' || !process.env.PADDLE_VENDOR_ID) {
         return {
           checkoutUrl: null,
-          contactEmail: 'billing@sanctum.run',
+          contactEmail: 'billing@sanctumruntime.com',
           message: 'Contact us for Enterprise pricing',
         }
       }
@@ -224,7 +224,7 @@ export async function registerBillingRoutes(app: FastifyInstance) {
       planId: body.plan_id,
       planName: PLAN_DEFAULTS[body.plan_id as PlanId].planName,
       priceMonthlyUsd: PLAN_DEFAULTS[body.plan_id as PlanId].priceMonthlyUsd,
-      message: checkoutUrl ? null : 'Paddle not configured — contact billing@sanctum.run',
+      message: checkoutUrl ? null : 'Billing checkout is not configured — contact billing@sanctumruntime.com',
     }
   })
 

@@ -19,6 +19,9 @@ export const termsUrl =
 export const refundUrl =
   (import.meta.env.VITE_REFUND_URL as string | undefined) ?? `${marketingBase}/refund`
 
+export const acceptableUseUrl =
+  (import.meta.env.VITE_ACCEPTABLE_USE_URL as string | undefined) ?? `${marketingBase}/acceptable-use`
+
 export const pricingUrl =
   (import.meta.env.VITE_PRICING_URL as string | undefined) ?? `${marketingBase}/pricing`
 

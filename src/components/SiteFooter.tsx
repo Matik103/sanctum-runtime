@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
+  acceptableUseUrl,
   consoleUrl,
   contactUrl,
   docsPath,
@@ -53,7 +54,7 @@ function FooterNavLink({
   );
 }
 
-/** Shared site footer — Paddle verification links + product entry. */
+/** Shared site footer — payment verification links + product entry. */
 export function SiteFooter() {
   return (
     <footer className="relative z-20 border-t border-border bg-background">
@@ -71,6 +72,7 @@ export function SiteFooter() {
             <FooterNavLink href={privacyUrl}>Privacy Policy</FooterNavLink>
             <FooterNavLink href={termsUrl}>Terms &amp; Conditions</FooterNavLink>
             <FooterNavLink href={refundUrl}>Refund Policy</FooterNavLink>
+            <FooterNavLink href={acceptableUseUrl}>Acceptable Use</FooterNavLink>
             <FooterNavLink href="/blog">Blog</FooterNavLink>
             <FooterNavLink href="/ai/">AI Index</FooterNavLink>
             <FooterNavLink href={docsPath}>Documentation</FooterNavLink>

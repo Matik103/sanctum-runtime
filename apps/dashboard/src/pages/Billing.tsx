@@ -109,7 +109,7 @@ export function Billing() {
       if (result.checkoutUrl) {
         window.open(result.checkoutUrl, '_blank', 'noopener,noreferrer')
       } else {
-        setCheckoutMsg(result.message ?? `Contact ${result.contactEmail ?? 'billing@sanctum.run'} for ${planId} pricing`)
+        setCheckoutMsg(result.message ?? `Contact ${result.contactEmail ?? 'billing@sanctumruntime.com'} for ${planId} pricing`)
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Checkout failed')

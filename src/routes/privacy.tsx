@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { DiscoverPageLayout } from "@/components/DiscoverPageLayout";
 import { pageSeo, webPageJsonLd } from "@/lib/seo";
-import { privacyEmail } from "@/lib/site-links";
+import { acceptableUseUrl, privacyEmail } from "@/lib/site-links";
 
 const path = "/privacy";
 const title = "Privacy Policy — Sanctum Runtime";
@@ -20,7 +20,7 @@ function PrivacyPage() {
       title="Privacy Policy"
       lead="Sanctum Runtime (“we”, “us”, “our”) provides runtime trust infrastructure for autonomous AI systems. This policy explains what we collect, why we collect it, and the choices you have."
     >
-      <p className="text-sm text-muted-foreground">Last updated: April 30, 2026</p>
+      <p className="text-sm text-muted-foreground">Last updated: June 1, 2026</p>
 
       <section>
         <h2>1. Data we collect</h2>
@@ -79,10 +79,16 @@ function PrivacyPage() {
       <section>
         <h2>3. AI and infrastructure processing</h2>
         <p>
-          Optional risk models may process action context to score risk. You control whether cloud AI
-          providers are enabled in your deployment. Infrastructure providers (hosting, database,
-          authentication, email, analytics, and payments) process data only as needed to run the
-          service.
+          Sanctum may receive prompts, tool calls, tool results, action context, policy decisions, and
+          other AI-agent runtime data when you route an agent through the SDK, Connect Agent proxy, or
+          API. We process that data to verify actions, score risk, enforce policy, generate audit logs,
+          and provide operator notifications. We do not use customer runtime content to train foundation
+          models.
+        </p>
+        <p>
+          Some features can call third-party model or infrastructure providers selected by you or needed
+          to operate the service. If you save external platform credentials in Sanctum, we store them
+          encrypted and use them only to route the requests you initiate.
         </p>
       </section>
 
@@ -96,7 +102,18 @@ function PrivacyPage() {
       </section>
 
       <section>
-        <h2>5. Retention and deletion</h2>
+        <h2>5. Payments and checkout data</h2>
+        <p>
+          Paid subscriptions may be processed by Creem or another authorized merchant/payment provider.
+          Checkout pages, receipts, tax calculation, card data, payout information, chargebacks, and
+          payment support requests may be handled directly by that provider under its buyer terms and
+          privacy notices. We receive limited billing metadata needed to activate plans, reconcile
+          payments, and provide support.
+        </p>
+      </section>
+
+      <section>
+        <h2>6. Retention and deletion</h2>
         <p>
           We retain data only as long as needed for the purposes above. Retention for audit and usage
           data depends on your plan (see{" "}
@@ -109,7 +126,7 @@ function PrivacyPage() {
       </section>
 
       <section>
-        <h2>6. Security</h2>
+        <h2>7. Security</h2>
         <p>
           We use reasonable technical and organizational safeguards, including encryption for sensitive
           configuration (such as SSO client secrets), access controls, and rate limiting. No service is
@@ -118,7 +135,7 @@ function PrivacyPage() {
       </section>
 
       <section>
-        <h2>7. Your rights</h2>
+        <h2>8. Your rights</h2>
         <p>
           Depending on your jurisdiction, you may have rights to access, correct, export, delete, or
           restrict processing of your personal data. Use in-app export where available or contact us
@@ -127,7 +144,7 @@ function PrivacyPage() {
       </section>
 
       <section>
-        <h2>8. International transfers</h2>
+        <h2>9. International transfers</h2>
         <p>
           Data may be processed in the United States and other countries where our providers operate.
           We rely on appropriate safeguards where required by applicable law.
@@ -135,7 +152,7 @@ function PrivacyPage() {
       </section>
 
       <section>
-        <h2>9. Contact</h2>
+        <h2>10. Contact</h2>
         <p>
           Privacy requests:{" "}
           <a href={`mailto:${privacyEmail}`} className="text-primary hover:underline">
@@ -144,7 +161,7 @@ function PrivacyPage() {
         </p>
         <p>
           See also: <Link to="/terms/">Terms &amp; Conditions</Link>, <Link to="/refund/">Refund Policy</Link>,{" "}
-          <Link to="/billing/">Billing</Link>, <Link to="/pricing/">Pricing</Link>,{" "}
+          <Link to={acceptableUseUrl}>Acceptable Use</Link>, <Link to="/billing/">Billing</Link>, <Link to="/pricing/">Pricing</Link>,{" "}
           <Link to="/contact/">Contact</Link>, <Link to="/cookies/">Cookies</Link>.
         </p>
       </section>

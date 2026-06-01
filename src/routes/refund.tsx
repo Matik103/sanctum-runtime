@@ -6,7 +6,7 @@ import { billingEmail } from "@/lib/site-links";
 const path = "/refund";
 const title = "Refund and Dispute Policy — Sanctum Runtime";
 const description =
-  "Refunds, subscription cancellation, and payment disputes for Sanctum Runtime cloud subscriptions processed via Paddle.";
+  "Refunds, subscription cancellation, and payment disputes for Sanctum Runtime cloud subscriptions processed through Creem or another authorized payment provider.";
 
 export const Route = createFileRoute("/refund")({
   component: RefundPage,
@@ -20,14 +20,14 @@ function RefundPage() {
       title="Refund and Dispute Policy"
       lead="Sanctum Runtime provides runtime trust infrastructure for autonomous AI systems — policy enforcement, audit trails, fleet visibility, and a hosted cloud console. This policy explains how refunds and billing disputes work for paid subscriptions."
     >
-      <p className="text-sm text-muted-foreground">Last updated: May 19, 2026</p>
+      <p className="text-sm text-muted-foreground">Last updated: June 1, 2026</p>
 
       <section>
         <h2>Payment processor</h2>
         <p>
           Refunds, withdrawals, and payment disputes for Sanctum Runtime subscriptions are handled by
-          our authorized reseller (currently <strong>Paddle</strong>), under the active buyer terms and
-          refund policy presented at checkout.
+          our authorized merchant/payment provider (currently <strong>Creem</strong> where available),
+          under the active buyer terms and refund policy presented at checkout.
         </p>
       </section>
 
@@ -35,8 +35,8 @@ function RefundPage() {
         <h2>Refund eligibility</h2>
         <p>
           You can request a refund within <strong>14 days</strong> of the original purchase date (or
-          longer if local consumer law requires it). Paddle applies final eligibility under Paddle
-          policy and applicable law.
+          longer if local consumer law requires it). Refund eligibility may depend on the payment
+          provider&apos;s buyer terms, the applicable subscription state, usage, and local law.
         </p>
       </section>
 
@@ -45,7 +45,7 @@ function RefundPage() {
         <p>
           To request a refund or cancel recurring billing, use the &quot;View receipt&quot; or
           &quot;Manage subscription&quot; links in your payment confirmation email, or contact buyer
-          support from your payment receipt.
+          support from your Creem/payment-provider receipt.
         </p>
         <p>
           You can also manage your plan from the{" "}
@@ -60,7 +60,8 @@ function RefundPage() {
         <h2>Subscription cancellation</h2>
         <p>
           Subscription cancellation takes effect at the end of your current billing period and prevents
-          future charges. Completed billing periods are handled under Paddle&apos;s refund rules.
+          future charges. Completed billing periods are handled under the payment provider&apos;s refund
+          rules and applicable consumer law.
         </p>
       </section>
 
