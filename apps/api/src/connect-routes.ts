@@ -426,18 +426,29 @@ export async function registerConnectRoutes(
       })
       .parse(req.body ?? {})
 
+    const testAction = 'connect_verify_test_tool_call'
     const verifyRes = await app.inject({
       method: 'POST',
       url: '/v1/actions/verify',
       headers: { 'content-type': 'application/json' },
       payload: {
         actor: `connect-test-${body.agent_id.slice(0, 8)}`,
-        action: 'connect_health_check',
+        action: testAction,
         context: {
           org_id: orgId,
           proxy: true,
           platform: body.platform ?? 'connect',
           test: true,
+          dryRun: true,
+          toolName: 'send_status_email',
+          instructionSource: 'trusted_user',
+          dataSensitivity: 'internal',
+          destination: 'operator@example.com',
+          blastRadius: {
+            score: 12,
+            reversibility: 'high',
+            externalRecipient: true,
+          },
         },
       },
     })
@@ -451,6 +462,7 @@ export async function registerConnectRoutes(
     return {
       ok: verifyRes.statusCode === 200,
       status: verifyRes.statusCode,
+      action: testAction,
       decision: entry.decision,
       reasoning: entry.reasoning,
     }

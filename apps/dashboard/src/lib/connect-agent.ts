@@ -121,14 +121,14 @@ export async function runConnectTest(
   orgId: string,
   agentId: string,
   platform?: string,
-): Promise<{ ok: boolean; decision?: string; reasoning?: string }> {
+): Promise<{ ok: boolean; status?: number; action?: string; decision?: string; reasoning?: string }> {
   const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/connect/test-run`, {
     method: 'POST',
     headers: await authHeaders(),
     body: JSON.stringify({ agent_id: agentId, platform }),
   })
   if (!res.ok) throw new Error(`connect_test_failed:${res.status}`)
-  return res.json() as Promise<{ ok: boolean; decision?: string; reasoning?: string }>
+  return res.json() as Promise<{ ok: boolean; status?: number; action?: string; decision?: string; reasoning?: string }>
 }
 
 export async function applyToolPolicy(

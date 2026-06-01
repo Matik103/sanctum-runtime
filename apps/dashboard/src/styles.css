@@ -1829,6 +1829,33 @@ table.data td .badge + .badge {
   gap: 0.55rem;
 }
 
+.connect-command__result {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 8px;
+  background: rgba(34, 197, 94, 0.08);
+  color: var(--success, #22c55e);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.connect-command__result span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.connect-command__result--error {
+  border-color: rgba(248, 113, 113, 0.35);
+  background: rgba(248, 113, 113, 0.08);
+  color: #f87171;
+}
+
 .connect-boundary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1849,9 +1876,9 @@ table.data td .badge + .badge {
 }
 
 .connect-boundary__num {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: inline-grid;
+  place-items: center;
+  box-sizing: border-box;
   width: 1.5rem;
   height: 1.5rem;
   border-radius: 999px;
@@ -1860,10 +1887,13 @@ table.data td .badge + .badge {
   color: var(--accent);
   font-size: 0.72rem;
   font-weight: 800;
+  line-height: 1;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .connect-boundary__step strong,
-.connect-boundary__step span {
+.connect-boundary__step div > span {
   display: block;
   min-width: 0;
   overflow-wrap: anywhere;
@@ -1899,11 +1929,11 @@ table.data td .badge + .badge {
 }
 
 .step-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  min-width: 1.35rem;
+  display: inline-grid;
+  place-items: center;
+  box-sizing: border-box;
+  flex: 0 0 1.35rem;
+  width: 1.35rem;
   height: 1.35rem;
   border: 1px solid rgba(148, 163, 184, 0.22);
   border-radius: 999px;
@@ -1911,6 +1941,8 @@ table.data td .badge + .badge {
   background: rgba(79, 124, 255, 0.1);
   font-size: 0.78rem;
   line-height: 1;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .connect-field-label {

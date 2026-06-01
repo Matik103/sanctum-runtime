@@ -250,8 +250,9 @@ export function Connect({ orgId, onPage }: Props) {
     : null
   const proxyUrl = `${apiBaseUrl}/v1/proxy/${platform}`
   const platformName = PLATFORMS.find((p) => p.id === platform)?.name ?? platform
-  const setupReady = Boolean(selectedAgentId && savedCred)
-  const nextStep = !selectedAgentId
+  const hasRunnableAgent = Boolean(selectedAgent)
+  const setupReady = Boolean(hasRunnableAgent && savedCred)
+  const nextStep = !hasRunnableAgent
     ? 'Choose an agent'
     : !savedCred
       ? `Save a ${platformName} key`
@@ -436,18 +437,27 @@ export function Connect({ orgId, onPage }: Props) {
   }
 
   async function handleConnectTest() {
-    if (!orgId || !selectedAgentId) {
+    if (!orgId || !selectedAgent) {
       setTestMsg('Select an agent first.')
       return
     }
     setTestRunning(true)
-    setTestMsg(null)
+    setError(null)
+    setTestMsg('Sending a dry-run tool call through Sanctum…')
     try {
       const result = await runConnectTest(orgId, selectedAgentId, platform)
+      const [nextHealth, nextSuggestions] = await Promise.all([
+        fetchConnectHealth(orgId).catch(() => null),
+        fetchPolicySuggestions(orgId).catch(() => suggestions),
+      ])
+      if (nextHealth) setHealth(nextHealth)
+      setSuggestions(nextSuggestions)
+      const action = result.action ?? 'connect_verify_test_tool_call'
+      const decision = result.decision ?? (result.ok ? 'APPROVED' : `HTTP ${result.status ?? 'failed'}`)
       setTestMsg(
         result.ok
-          ? `Verify pipeline OK (${result.decision ?? 'APPROVED'}).`
-          : `Test returned: ${result.reasoning ?? 'failed'}`,
+          ? `Verify pipeline OK: ${action} was ${decision}. Live Feed now has the dry-run audit event.`
+          : `Verify test reached Sanctum but returned ${decision}: ${result.reasoning ?? 'no reason supplied'}`,
       )
     } catch (e) {
       setTestMsg(e instanceof Error ? e.message : 'Test failed')
@@ -531,6 +541,8 @@ export function Connect({ orgId, onPage }: Props) {
     setRotationPlatform(platformId ?? (staleCredentials[0]?.platform as PlatformId | undefined) ?? platform)
     setRotationKey('')
   }
+
+  const testMessageIsError = Boolean(testMsg && /fail|error|unreachable|blocked|denied|forbidden/i.test(testMsg))
 
   return (
     <div className="page">
@@ -663,7 +675,8 @@ export function Connect({ orgId, onPage }: Props) {
             <button
               type="button"
               className="btn btn-primary"
-              disabled={testRunning || !selectedAgentId}
+              disabled={testRunning || !hasRunnableAgent}
+              title={!hasRunnableAgent ? 'Choose a Sanctum agent before running the dry-run verify test.' : undefined}
               onClick={() => void handleConnectTest()}
             >
               {testRunning ? <Loader2 size={14} className="spin" /> : <Zap size={14} />}
@@ -674,6 +687,21 @@ export function Connect({ orgId, onPage }: Props) {
               Open Live Feed
             </button>
           </div>
+          {testMsg && (
+            <div
+              className={`connect-command__result ${testMessageIsError ? 'connect-command__result--error' : ''}`}
+              role="status"
+              aria-live="polite"
+            >
+              {testMessageIsError ? <Zap size={15} /> : <Check size={15} />}
+              <span>{testMsg}</span>
+              {!testMessageIsError && (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => onPage('live-feed')}>
+                  View event
+                </button>
+              )}
+            </div>
+          )}
         </section>
 
         <section className="connect-boundary">
@@ -851,7 +879,7 @@ export function Connect({ orgId, onPage }: Props) {
           )}
 
           {testMsg && (
-            <p className={`connect-test-message ${testMsg.includes('fail') || testMsg.includes('Fail') ? 'connect-test-message--error' : ''}`}>
+            <p className={`connect-test-message ${testMessageIsError ? 'connect-test-message--error' : ''}`}>
               {testMsg}
             </p>
           )}
@@ -929,7 +957,7 @@ export function Connect({ orgId, onPage }: Props) {
               type="button"
               className="btn btn-ghost btn-sm"
               style={{ marginTop: '0.65rem' }}
-              disabled={testRunning || !selectedAgentId}
+              disabled={testRunning || !hasRunnableAgent}
               onClick={() => void handleConnectTest()}
             >
               {testRunning ? <Loader2 size={14} className="spin" /> : <Zap size={14} />}

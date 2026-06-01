@@ -25,8 +25,12 @@ export function UpdatePrompt() {
     })
     activateUpdate.current = updateSW
 
+    let lastUpdateCheck = 0
     const checkForUpdate = () => {
       if (!navigator.onLine || document.visibilityState !== 'visible') return
+      const now = Date.now()
+      if (now - lastUpdateCheck < 30 * 60 * 1000) return
+      lastUpdateCheck = now
       void navigator.serviceWorker.getRegistration()
         .then((registration) => registration?.update())
         .catch(() => {})
