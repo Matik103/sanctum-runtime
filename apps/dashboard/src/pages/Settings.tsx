@@ -79,6 +79,20 @@ export function Settings({ status }: Props) {
     })()
   }, [orgId])
 
+  useEffect(() => {
+    let focusTarget: string | null = null
+    try {
+      focusTarget = sessionStorage.getItem('sanctum.settings.focus')
+      if (focusTarget) sessionStorage.removeItem('sanctum.settings.focus')
+    } catch {
+      // best effort
+    }
+    if (focusTarget !== 'notifications' && window.location.hash !== '#notifications') return
+    window.setTimeout(() => {
+      document.getElementById('notifications')?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+    }, 80)
+  }, [])
+
   const handleExport = async () => {
     setExportBusy(true)
     setExportMsg(null)
@@ -247,7 +261,7 @@ export function Settings({ status }: Props) {
 
       {orgs.length > 0 && (
         <>
-          <section className="section">
+          <section className="section" id="notifications">
             <div className="section__header">
               <h2>
                 <Bell size={18} style={{ verticalAlign: 'middle', marginRight: '0.4rem' }} />

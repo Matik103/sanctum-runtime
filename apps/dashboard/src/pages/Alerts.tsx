@@ -609,20 +609,28 @@ export function Alerts({ onPage }: { onPage?: (p: PageId) => void }) {
         </>
       )}
 
-      <div style={{ marginTop: '2rem', padding: '1rem', background: 'var(--surface-raised)', borderRadius: 8, border: '1px solid var(--border)' }}>
-        <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--muted)' }}>
-          <AlertTriangle size={13} style={{ verticalAlign: 'middle', marginRight: '0.3rem', color: 'var(--warn, #f59e0b)' }} />
-          Alerts are sent via <strong>alerts@sanctumruntime.com</strong>. Configure delivery channels in{' '}
-          <button
-            type="button"
-            className="btn btn-ghost"
-            style={{ fontSize: '0.8rem', padding: 0, display: 'inline', color: 'var(--primary)' }}
-            onClick={() => onPage?.('settings')}
-          >
-            Settings → Notifications
-            <ExternalLink size={11} style={{ marginLeft: '0.25rem', verticalAlign: 'middle' }} />
-          </button>.
+      <div className="alerts-delivery-note">
+        <p>
+          <AlertTriangle size={15} aria-hidden />
+          <span>
+            Alerts are sent via <strong>alerts@sanctumruntime.com</strong>. Configure delivery channels in Settings.
+          </span>
         </p>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm alerts-delivery-note__action"
+          onClick={() => {
+            try {
+              sessionStorage.setItem('sanctum.settings.focus', 'notifications')
+            } catch {
+              // best effort
+            }
+            onPage?.('settings')
+          }}
+        >
+          Settings → Notifications
+          <ExternalLink size={13} aria-hidden />
+        </button>
       </div>
     </>
   )

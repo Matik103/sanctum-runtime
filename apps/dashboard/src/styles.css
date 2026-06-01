@@ -1337,6 +1337,45 @@ table.data td .badge + .badge {
   color: var(--warning, #f59e0b);
 }
 
+.alerts-delivery-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  margin-top: 2rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-raised);
+}
+
+.alerts-delivery-note p {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.alerts-delivery-note svg {
+  flex: 0 0 auto;
+  color: var(--warning, #f59e0b);
+}
+
+.alerts-delivery-note strong {
+  color: var(--text);
+}
+
+.alerts-delivery-note__action {
+  flex: 0 0 auto;
+  min-height: 2.35rem;
+  color: var(--accent, #818cf8);
+  white-space: nowrap;
+}
+
 .tab-bar {
   display: flex;
   flex-wrap: wrap;
@@ -2862,6 +2901,16 @@ tr.key-row--pending td {
   .responsive-form-grid .btn,
   .responsive-form-grid button {
     width: 100%;
+  }
+
+  .alerts-delivery-note {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .alerts-delivery-note__action {
+    width: 100%;
+    justify-content: center;
   }
 
   .connect-steps,
