@@ -92,10 +92,16 @@ function detectEnvironment(): Environment {
 function gatingState(env: Environment): PushState | null {
   if (env.isIos) {
     if (!env.isStandalone) return 'ios_install_required'
-    if (!env.hasPushManager || !env.hasNotification) {
+    if (!env.hasNotification) {
       if (env.iosVersion !== null && env.iosVersion < 16.4) return 'ios_upgrade_required'
       return 'ios_push_unavailable'
     }
+    // iOS Web Push is exposed from the installed app's service-worker
+    // registration. Some builds do not advertise PushManager reliably during
+    // passive feature detection, so let the user-gesture enrollment path make
+    // the definitive check against registration.pushManager.
+    if (env.iosVersion !== null && env.iosVersion < 16.4) return 'ios_upgrade_required'
+    return null
   }
   if (!env.isSecureContext || !env.hasServiceWorker || !env.hasPushManager || !env.hasNotification) {
     return 'unsupported'
@@ -236,6 +242,10 @@ export function usePushNotifications() {
 
         const reg = await existingPushServiceWorker()
         if (reg) {
+          if (!('pushManager' in reg)) {
+            setState('idle')
+            return
+          }
           const sub = await reg.pushManager.getSubscription()
           if (sub && subscriptionUsesKey(sub, publicKey)) {
             setState('subscribed')
@@ -290,6 +300,11 @@ export function usePushNotifications() {
       }
 
       const reg = await ensurePushServiceWorker()
+      if (!('pushManager' in reg)) {
+        throw new Error(
+          'This installed app is not exposing Web Push yet. Remove the Home Screen app, add Sanctum again from Safari, then reopen it from the new icon.',
+        )
+      }
       let sub = await currentSubscription(reg, key, { resubscribe: true })
       if (!sub) {
         sub = await reg.pushManager.subscribe({
