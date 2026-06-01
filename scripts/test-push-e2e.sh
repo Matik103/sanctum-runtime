@@ -140,10 +140,12 @@ fi
 
 # ── 8. Dashboard SW deploy probe ─────────────────────────────────────────────
 SW="$(curl -sS "${DASH}/sw.js?probe=$(date +%s)" )"
-if echo "${SW}" | grep -q 'parsePushPayload'; then
-  ok "dashboard /sw.js includes fixed push handler (parsePushPayload)"
-elif echo "${SW}" | grep -q 'if(!s.data)return'; then
+if echo "${SW}" | grep -q 'showNotification' && echo "${SW}" | grep -Eq 'if\(![a-zA-Z0-9_$]+\.data\)return\{\}|if \(!event\.data\) return \{\}'; then
+  ok "dashboard /sw.js handles empty push payloads"
+elif echo "${SW}" | grep -Eq 'if\(![a-zA-Z0-9_$]+\.data\)return;|if \(!event\.data\) return$'; then
   bad "dashboard /sw.js" "still has early-return push bug — redeploy sanctum-dashboard"
+elif echo "${SW}" | grep -q 'parsePushPayload'; then
+  ok "dashboard /sw.js includes fixed push handler (parsePushPayload)"
 else
   bad "dashboard /sw.js" "could not detect push handler version"
 fi
