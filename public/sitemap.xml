@@ -25,7 +25,7 @@
     <priority>0.90</priority>
   </url>
   <url>
-    <loc>https://www.sanctumruntime.com/first-100-users</loc>
+    <loc>https://www.sanctumruntime.com/pilot</loc>
     <lastmod>2026-06-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.90</priority>
@@ -1231,7 +1231,7 @@
     <priority>0.75</priority>
   </url>
   <url>
-    <loc>https://www.sanctumruntime.com/blog/first-100-users-ai-agent-security-playbook</loc>
+    <loc>https://www.sanctumruntime.com/blog/ai-agent-safety-pilot-for-startups</loc>
     <lastmod>2026-06-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>

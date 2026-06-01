@@ -112,14 +112,14 @@ const POSTS = [
   ['agent2agent-protocol-trust-boundaries', 'Agent2Agent protocol trust boundaries', 'Cross-vendor agent messaging needs delegation limits and verify-before-forward for side effects.', ['a2a', 'protocol', 'multi-agent', 'acquisition'], 6],
   ['connect-agent-openai-claude-gemini-unified', 'Sanctum Connect: one gate for OpenAI, Claude, and Gemini agents', 'Connect Agent proxies tool calls with verify — one console for multi-provider fleets.', ['connect', 'multi-model', 'get-started', 'acquisition'], 6, true],
 
-  // First 100 users / founder acquisition (10)
-  ['first-100-users-ai-agent-security-playbook', 'First 100 users: AI agent security playbook for founders', 'Acquire early adopters by shipping safe agent features — week-one gates that become case studies.', ['founder', 'startup', 'get-started', 'acquisition'], 6, true],
+  // Startup and founder acquisition (10)
+  ['ai-agent-safety-pilot-for-startups', 'AI agent safety pilot for startup teams', 'Protect one real agent action, show runtime approval, and turn safety into customer trust before launch.', ['founder', 'startup', 'get-started', 'acquisition'], 6, true],
   ['founder-guide-runtime-trust-before-launch', 'Founder guide: runtime trust before your agent launch', 'Pre-launch checklist: three actions gated, mobile approve tested, audit export saved for investors.', ['founder', 'startup', 'checklist', 'acquisition'], 5],
   ['indie-hacker-ai-saas-agent-gates-weekend', 'Indie hacker AI SaaS: agent gates in one weekend', 'Solo founders can gate send_email and stripe charges Saturday — ship Sunday with confidence.', ['indie-hacker', 'startup', 'get-started', 'acquisition'], 5],
   ['product-hunt-launch-agentic-ai-safely', 'Product Hunt launch: ship agentic AI safely', 'Hunters ask about safety — show live approve/block in demo and link your trust center.', ['product-hunt', 'launch', 'marketing', 'acquisition'], 5],
   ['hackernews-ai-agent-security-what-to-build', 'Hacker News AI agent security: what builders actually need', 'HN threads converge on execution proof — open-core runtime + console beats another governance PDF.', ['hackernews', 'developer', 'open-core', 'acquisition'], 6],
   ['github-stars-to-production-agent-controls', 'From GitHub stars to production agent controls', 'OSS traction means scrutiny — add runtime trust before enterprise pilots ask for your SOC packet.', ['github', 'open-core', 'enterprise', 'acquisition'], 5],
-  ['startup-seo-ai-agent-security-keywords', 'Startup SEO: AI agent security keywords that convert', 'Long-tail queries on approval, MCP, and kill switch — content map for your first 100 signups.', ['seo', 'startup', 'marketing', 'acquisition'], 6],
+  ['startup-seo-ai-agent-security-keywords', 'Startup SEO: AI agent security keywords that convert', 'Long-tail queries on approval, MCP, and kill switch — content map for agent teams ready to deploy.', ['seo', 'startup', 'marketing', 'acquisition'], 6],
   ['free-console-ai-agent-approval-no-sales-call', 'Free console: AI agent approval with no sales call', 'Sign in, gate one action, export audit — frictionless path for technical buyers from search and social.', ['sign-up', 'get-started', 'console', 'acquisition'], 4, true],
   ['invite-team-ai-agent-console-onboarding', 'Invite your team: AI agent console onboarding in 15 minutes', 'Second user is often security or ops — shared Shield Rules and Fleet pause without custom RBAC build.', ['team', 'onboarding', 'console', 'acquisition'], 5],
   ['yc-batch-agent-security-one-pager', 'YC batch agent security one-pager for investors', 'What to show partners: policy version, held actions, fleet pause — evidence in one export.', ['yc', 'startup', 'compliance', 'acquisition'], 5],
@@ -227,7 +227,7 @@ function defaultAcq(slug: string, post: BlogPostMeta): BlogAnswerPost {
     [
       \`Discovery channel: \${channel} — intent is deploy or compare, not casual reading.\`,
       'Runtime trust gates side effects before they run; guardrails alone miss tool calls.',
-      'First 100 teams typically gate email, payments, or prod writes in week one.',
+      'Successful pilots typically gate email, payments, or production writes in week one.',
     ],
     [
       'Console → Agents → register agent → copy SDK snippet.',
@@ -238,7 +238,7 @@ function defaultAcq(slug: string, post: BlogPostMeta): BlogAnswerPost {
     post.tags.includes('connect')
       ? ['connect-agent-openai-claude-gemini-unified', 'mcp-server-action-gate']
       : post.tags.includes('founder') || post.tags.includes('startup')
-        ? ['first-100-users-ai-agent-security-playbook', 'sanctum-runtime-free-trial-get-started']
+        ? ['ai-agent-safety-pilot-for-startups', 'sanctum-runtime-free-trial-get-started']
         : ['people-also-ask-ai-agent-approval-software', 'best-ai-agent-security-software-2026'],
     channel,
   )

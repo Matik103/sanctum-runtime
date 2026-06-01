@@ -17,7 +17,7 @@ export function Navbar() {
           <a href="#problem" className="hover:text-foreground transition-colors">Problem</a>
           <a href="#solution" className="hover:text-foreground transition-colors">Runtime</a>
           <a href="#quick-start" className="hover:text-foreground transition-colors">Quick start</a>
-          <Link to="/first-100-users/" className="hover:text-foreground transition-colors">Pilot</Link>
+          <Link to="/pilot/" className="hover:text-foreground transition-colors">Pilot</Link>
           <a href="#sdk" className="hover:text-foreground transition-colors">SDK</a>
           <a href="#use-cases" className="hover:text-foreground transition-colors">Use cases</a>
           <Link to="/blog/" className="hover:text-foreground transition-colors">Blog</Link>

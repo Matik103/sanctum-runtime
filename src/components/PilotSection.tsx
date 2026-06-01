@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, MessageSquareText, Radar, ShieldCheck } from "lucide-react";
+import { ArrowRight, KeyRound, Radar, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { trackCta } from "@/lib/analytics";
 import { consoleUrl } from "@/lib/site-links";
@@ -7,45 +7,46 @@ import { consoleUrl } from "@/lib/site-links";
 const pilotSteps = [
   {
     icon: ShieldCheck,
-    title: "Protect one real action",
-    desc: "Pick the action your users fear most: send_email, transfer_funds, delete_record, deploy_production, unlock_door.",
+    title: "Choose one action to protect",
+    desc: "Start with the tool call your team cannot afford to let run unchecked: email, money movement, production writes, secrets, or physical access.",
   },
   {
     icon: Radar,
-    title: "Show the live boundary",
-    desc: "Run it through Connect Agent or the SDK so the operator sees the hold, policy reason, blast radius, and audit trail.",
+    title: "Route it through Sanctum",
+    desc: "Use Connect Agent for the fastest proxy path, or the SDK/adapters when you want deeper control inside your runtime.",
   },
   {
-    icon: MessageSquareText,
-    title: "Invite the exact buyer",
-    desc: "Target agent founders, platform engineers, MCP server teams, robotics integrators, and security leads with a five-minute pilot.",
+    icon: KeyRound,
+    title: "Execute only with proof",
+    desc: "Sanctum records the decision, shows the approval context, and can issue a signed action token before the executor runs.",
   },
 ];
 
-export function First100Users() {
+export function PilotSection() {
   return (
-    <section id="first-100" className="relative py-20 md:py-24 bg-gradient-surface">
+    <section id="pilot" className="relative py-20 md:py-24 bg-gradient-surface">
       <div className="container mx-auto px-6">
         <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
           <div>
             <p className="text-sm font-medium text-primary uppercase tracking-wider">Pilot path</p>
             <h2 className="mt-3 text-4xl md:text-5xl font-semibold">
-              Sell the moment an agent asks for power
+              Prove agent safety with one real action
             </h2>
             <p className="mt-5 text-muted-foreground leading-relaxed">
-              The sharpest acquisition path is not a broad “AI security” pitch. It is a
-              concrete runtime demo: an agent tries a risky tool call, Sanctum pauses it,
-              the operator approves or blocks, and the executor only runs with proof.
+              Pick a high-impact tool call, run it through Sanctum, and show the
+              exact moment the system verifies, holds, blocks, or approves execution.
+              It is the fastest way to move from “we have guardrails” to enforceable
+              runtime control.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button asChild className="bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90">
                 <Link
-                  to="/first-100-users/"
+                  to="/pilot/"
                   onClick={() =>
-                    trackCta({ location: "first_100_home", cta: "open_playbook", destination: "first_100_users" })
+                    trackCta({ location: "pilot_home", cta: "open_pilot_guide", destination: "pilot" })
                   }
                 >
-                  Get the playbook
+                  View pilot guide
                   <ArrowRight className="ml-1 h-4 w-4" />
                 </Link>
               </Button>
@@ -53,10 +54,10 @@ export function First100Users() {
                 <a
                   href={consoleUrl}
                   onClick={() =>
-                    trackCta({ location: "first_100_home", cta: "open_console", destination: "console" })
+                    trackCta({ location: "pilot_home", cta: "open_console", destination: "console" })
                   }
                 >
-                  Run a pilot
+                  Open console
                 </a>
               </Button>
             </div>

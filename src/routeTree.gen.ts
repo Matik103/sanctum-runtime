@@ -16,8 +16,8 @@ import { Route as SdkRouteImport } from './routes/sdk'
 import { Route as RefundRouteImport } from './routes/refund'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as PilotRouteImport } from './routes/pilot'
 import { Route as GlossaryRouteImport } from './routes/glossary'
-import { Route as First100UsersRouteImport } from './routes/first-100-users'
 import { Route as EnterpriseRouteImport } from './routes/enterprise'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as CookiesRouteImport } from './routes/cookies'
@@ -81,14 +81,14 @@ const PricingRoute = PricingRouteImport.update({
   path: '/pricing',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PilotRoute = PilotRouteImport.update({
+  id: '/pilot',
+  path: '/pilot',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GlossaryRoute = GlossaryRouteImport.update({
   id: '/glossary',
   path: '/glossary',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const First100UsersRoute = First100UsersRouteImport.update({
-  id: '/first-100-users',
-  path: '/first-100-users',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EnterpriseRoute = EnterpriseRouteImport.update({
@@ -250,8 +250,8 @@ export interface FileRoutesByFullPath {
   '/cookies': typeof CookiesRoute
   '/docs': typeof DocsRoute
   '/enterprise': typeof EnterpriseRoute
-  '/first-100-users': typeof First100UsersRoute
   '/glossary': typeof GlossaryRoute
+  '/pilot': typeof PilotRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
   '/refund': typeof RefundRoute
@@ -288,8 +288,8 @@ export interface FileRoutesByTo {
   '/cookies': typeof CookiesRoute
   '/docs': typeof DocsRoute
   '/enterprise': typeof EnterpriseRoute
-  '/first-100-users': typeof First100UsersRoute
   '/glossary': typeof GlossaryRoute
+  '/pilot': typeof PilotRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
   '/refund': typeof RefundRoute
@@ -327,8 +327,8 @@ export interface FileRoutesById {
   '/cookies': typeof CookiesRoute
   '/docs': typeof DocsRoute
   '/enterprise': typeof EnterpriseRoute
-  '/first-100-users': typeof First100UsersRoute
   '/glossary': typeof GlossaryRoute
+  '/pilot': typeof PilotRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
   '/refund': typeof RefundRoute
@@ -367,8 +367,8 @@ export interface FileRouteTypes {
     | '/cookies'
     | '/docs'
     | '/enterprise'
-    | '/first-100-users'
     | '/glossary'
+    | '/pilot'
     | '/pricing'
     | '/privacy'
     | '/refund'
@@ -405,8 +405,8 @@ export interface FileRouteTypes {
     | '/cookies'
     | '/docs'
     | '/enterprise'
-    | '/first-100-users'
     | '/glossary'
+    | '/pilot'
     | '/pricing'
     | '/privacy'
     | '/refund'
@@ -443,8 +443,8 @@ export interface FileRouteTypes {
     | '/cookies'
     | '/docs'
     | '/enterprise'
-    | '/first-100-users'
     | '/glossary'
+    | '/pilot'
     | '/pricing'
     | '/privacy'
     | '/refund'
@@ -482,8 +482,8 @@ export interface RootRouteChildren {
   CookiesRoute: typeof CookiesRoute
   DocsRoute: typeof DocsRoute
   EnterpriseRoute: typeof EnterpriseRoute
-  First100UsersRoute: typeof First100UsersRoute
   GlossaryRoute: typeof GlossaryRoute
+  PilotRoute: typeof PilotRoute
   PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
   RefundRoute: typeof RefundRoute
@@ -564,18 +564,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PricingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pilot': {
+      id: '/pilot'
+      path: '/pilot'
+      fullPath: '/pilot'
+      preLoaderRoute: typeof PilotRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/glossary': {
       id: '/glossary'
       path: '/glossary'
       fullPath: '/glossary'
       preLoaderRoute: typeof GlossaryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/first-100-users': {
-      id: '/first-100-users'
-      path: '/first-100-users'
-      fullPath: '/first-100-users'
-      preLoaderRoute: typeof First100UsersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/enterprise': {
@@ -778,8 +778,8 @@ const rootRouteChildren: RootRouteChildren = {
   CookiesRoute: CookiesRoute,
   DocsRoute: DocsRoute,
   EnterpriseRoute: EnterpriseRoute,
-  First100UsersRoute: First100UsersRoute,
   GlossaryRoute: GlossaryRoute,
+  PilotRoute: PilotRoute,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,
   RefundRoute: RefundRoute,

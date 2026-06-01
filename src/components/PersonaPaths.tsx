@@ -5,9 +5,9 @@ const paths = [
   {
     title: "Agent Startup",
     desc: "Launch with visible action controls before customers trust your agent with data, money, or production.",
-    cta: "Run the first-user pilot",
-    href: "/first-100-users/",
-    destination: "first_100_users",
+    cta: "Run the safety pilot",
+    href: "/pilot/",
+    destination: "pilot",
     event: "startup_path",
     internal: true,
   },

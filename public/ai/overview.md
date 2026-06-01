@@ -10,7 +10,7 @@ Sanctum Runtime is open-core infrastructure that sits between AI reasoning and r
 - **Audit trail** — correlation IDs, resolve workflow, webhooks
 - **Local-first** — offline heuristics and Ollama risk scoring (MIT SDK)
 - **Fleet control plane** — dashboard, API keys, marketplace adapters, billing
-- **First-user pilot** — protect one real action in minutes, then expand to fleet policy
+- **Safety pilot** — protect one real action in minutes, then expand to fleet policy
 
 ## URLs
 
@@ -21,7 +21,7 @@ Sanctum Runtime is open-core infrastructure that sits between AI reasoning and r
 | Marketing | https://www.sanctumruntime.com/ |
 | Blog hub | https://www.sanctumruntime.com/blog |
 | Documentation | https://www.sanctumruntime.com/docs |
-| First 100 users playbook | https://www.sanctumruntime.com/first-100-users |
+| AI agent safety pilot | https://www.sanctumruntime.com/pilot |
 | Architecture | https://www.sanctumruntime.com/architecture |
 | SDK | https://www.sanctumruntime.com/sdk |
 | Security | https://www.sanctumruntime.com/security |

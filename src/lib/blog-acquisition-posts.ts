@@ -75,13 +75,13 @@ export const BLOG_ACQUISITION_POSTS: BlogPostMeta[] = [
   { slug: 'mcp-registry-third-party-server-trust', title: "MCP registry and third-party server trust", description: "Installing community MCP servers? Treat them like supply chain — schema + pre-execution policy.", publishedAt: date, tags: ["mcp","supply-chain","security","acquisition"], readTime: 7 },
   { slug: 'agent2agent-protocol-trust-boundaries', title: "Agent2Agent protocol trust boundaries", description: "Cross-vendor agent messaging needs delegation limits and verify-before-forward for side effects.", publishedAt: date, tags: ["a2a","protocol","multi-agent","acquisition"], readTime: 6 },
   { slug: 'connect-agent-openai-claude-gemini-unified', title: "Sanctum Connect: one gate for OpenAI, Claude, and Gemini agents", description: "Connect Agent proxies tool calls with verify — one console for multi-provider fleets.", publishedAt: date, tags: ["connect","multi-model","get-started","acquisition"], readTime: 6, featured: true },
-  { slug: 'first-100-users-ai-agent-security-playbook', title: "First 100 users: AI agent security playbook for founders", description: "Acquire early adopters by shipping safe agent features — week-one gates that become case studies.", publishedAt: date, tags: ["founder","startup","get-started","acquisition"], readTime: 6, featured: true },
+  { slug: 'ai-agent-safety-pilot-for-startups', title: "AI agent safety pilot for startup teams", description: "Protect one real agent action, show runtime approval, and turn safety into customer trust before launch.", publishedAt: date, tags: ["founder","startup","get-started","acquisition"], readTime: 6, featured: true },
   { slug: 'founder-guide-runtime-trust-before-launch', title: "Founder guide: runtime trust before your agent launch", description: "Pre-launch checklist: three actions gated, mobile approve tested, audit export saved for investors.", publishedAt: date, tags: ["founder","startup","checklist","acquisition"], readTime: 5 },
   { slug: 'indie-hacker-ai-saas-agent-gates-weekend', title: "Indie hacker AI SaaS: agent gates in one weekend", description: "Solo founders can gate send_email and stripe charges Saturday — ship Sunday with confidence.", publishedAt: date, tags: ["indie-hacker","startup","get-started","acquisition"], readTime: 5 },
   { slug: 'product-hunt-launch-agentic-ai-safely', title: "Product Hunt launch: ship agentic AI safely", description: "Hunters ask about safety — show live approve/block in demo and link your trust center.", publishedAt: date, tags: ["product-hunt","launch","marketing","acquisition"], readTime: 5 },
   { slug: 'hackernews-ai-agent-security-what-to-build', title: "Hacker News AI agent security: what builders actually need", description: "HN threads converge on execution proof — open-core runtime + console beats another governance PDF.", publishedAt: date, tags: ["hackernews","developer","open-core","acquisition"], readTime: 6 },
   { slug: 'github-stars-to-production-agent-controls', title: "From GitHub stars to production agent controls", description: "OSS traction means scrutiny — add runtime trust before enterprise pilots ask for your SOC packet.", publishedAt: date, tags: ["github","open-core","enterprise","acquisition"], readTime: 5 },
-  { slug: 'startup-seo-ai-agent-security-keywords', title: "Startup SEO: AI agent security keywords that convert", description: "Long-tail queries on approval, MCP, and kill switch — content map for your first 100 signups.", publishedAt: date, tags: ["seo","startup","marketing","acquisition"], readTime: 6 },
+  { slug: 'startup-seo-ai-agent-security-keywords', title: "Startup SEO: AI agent security keywords that convert", description: "Long-tail queries on approval, MCP, and kill switch — content map for agent teams ready to deploy.", publishedAt: date, tags: ["seo","startup","marketing","acquisition"], readTime: 6 },
   { slug: 'free-console-ai-agent-approval-no-sales-call', title: "Free console: AI agent approval with no sales call", description: "Sign in, gate one action, export audit — frictionless path for technical buyers from search and social.", publishedAt: date, tags: ["sign-up","get-started","console","acquisition"], readTime: 4, featured: true },
   { slug: 'invite-team-ai-agent-console-onboarding', title: "Invite your team: AI agent console onboarding in 15 minutes", description: "Second user is often security or ops — shared Shield Rules and Fleet pause without custom RBAC build.", publishedAt: date, tags: ["team","onboarding","console","acquisition"], readTime: 5 },
   { slug: 'yc-batch-agent-security-one-pager', title: "YC batch agent security one-pager for investors", description: "What to show partners: policy version, held actions, fleet pause — evidence in one export.", publishedAt: date, tags: ["yc","startup","compliance","acquisition"], readTime: 5 },
@@ -138,7 +138,7 @@ function defaultAcq(slug: string, post: BlogPostMeta): BlogAnswerPost {
     [
       `Discovery channel: ${channel} — intent is deploy or compare, not casual reading.`,
       'Runtime trust gates side effects before they run; guardrails alone miss tool calls.',
-      'First 100 teams typically gate email, payments, or prod writes in week one.',
+      'Successful pilots typically gate email, payments, or production writes in week one.',
     ],
     [
       'Console → Agents → register agent → copy SDK snippet.',
@@ -149,7 +149,7 @@ function defaultAcq(slug: string, post: BlogPostMeta): BlogAnswerPost {
     post.tags.includes('connect')
       ? ['connect-agent-openai-claude-gemini-unified', 'mcp-server-action-gate']
       : post.tags.includes('founder') || post.tags.includes('startup')
-        ? ['first-100-users-ai-agent-security-playbook', 'sanctum-runtime-free-trial-get-started']
+        ? ['ai-agent-safety-pilot-for-startups', 'sanctum-runtime-free-trial-get-started']
         : ['people-also-ask-ai-agent-approval-software', 'best-ai-agent-security-software-2026'],
     channel,
   )
@@ -232,9 +232,9 @@ const ACQ_CUSTOM: Record<string, AcqAnswer> = {
     ],
     ['sanctum-runtime-free-trial-get-started', 'first-production-agent-gate-this-weekend'],
   ),
-'first-100-users-ai-agent-security-playbook': acq(
-    'first-100-users-ai-agent-security-playbook',
-    'Teams discover Sanctum through search, AI assistants, and social — this article answers that intent with a clear path to console.sanctumruntime.com.',
+'ai-agent-safety-pilot-for-startups': acq(
+    'ai-agent-safety-pilot-for-startups',
+    'Teams discover Sanctum when they need to prove one real agent action is controlled before launch.',
     [
       'Execution gates beat post-hoc monitoring when agents can spend, email, or touch prod.',
       'Open-core SDK + hosted console fits founders and enterprise pilots alike.',
