@@ -28,7 +28,7 @@ export function First100Users() {
       <div className="container mx-auto px-6">
         <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
           <div>
-            <p className="text-sm font-medium text-primary uppercase tracking-wider">First 100 users</p>
+            <p className="text-sm font-medium text-primary uppercase tracking-wider">Pilot path</p>
             <h2 className="mt-3 text-4xl md:text-5xl font-semibold">
               Sell the moment an agent asks for power
             </h2>
