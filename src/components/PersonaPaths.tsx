@@ -1,32 +1,32 @@
 import { Link } from "@tanstack/react-router";
 import { trackCta } from "@/lib/analytics";
-import { consoleUrl } from "@/lib/site-links";
 
 const paths = [
   {
-    title: "Founder / Product Lead",
-    desc: "Ship quickly without betting trust on prompts alone.",
-    cta: "Launch first gated workflow",
-    href: consoleUrl,
-    destination: "console",
-    event: "founder_path",
-  },
-  {
-    title: "Security / Compliance",
-    desc: "Get approval evidence, policy history, and incident-ready controls.",
-    cta: "Review pricing and plans",
-    href: "/pricing/",
-    destination: "pricing",
-    event: "security_path",
+    title: "Agent Startup",
+    desc: "Launch with visible action controls before customers trust your agent with data, money, or production.",
+    cta: "Run the first-user pilot",
+    href: "/first-100-users/",
+    destination: "first_100_users",
+    event: "startup_path",
     internal: true,
   },
   {
-    title: "Platform Engineer",
-    desc: "Integrate verifyAction() once and tune policies without redeploying.",
-    cta: "Go to docs quickstart",
+    title: "Platform / AI Engineer",
+    desc: "Use Connect Agent for no-SDK proxy gating, or keep the SDK and adapters for deeper runtime ownership.",
+    cta: "Open quickstart docs",
     href: "/docs#quickstart",
     destination: "docs",
     event: "platform_path",
+    internal: true,
+  },
+  {
+    title: "Security / Compliance",
+    desc: "Turn agent activity into approval evidence, source-trust history, policy replay, and incident response.",
+    cta: "Review plans",
+    href: "/pricing/",
+    destination: "pricing",
+    event: "security_path",
     internal: true,
   },
 ];

@@ -9,6 +9,7 @@ import { SdkSection } from "@/components/SdkSection";
 import { QuickStartStrip } from "@/components/QuickStartStrip";
 import { PersonaPaths } from "@/components/PersonaPaths";
 import { UseCases } from "@/components/UseCases";
+import { First100Users } from "@/components/First100Users";
 import { Trust } from "@/components/Trust";
 import { FaqSection } from "@/components/FaqSection";
 import { CtaFooter } from "@/components/CtaFooter";
@@ -39,6 +40,7 @@ function Index() {
         <Problem />
         <Solution />
         <QuickStartStrip />
+        <First100Users />
         <PersonaPaths />
         <Architecture />
         <SdkSection />

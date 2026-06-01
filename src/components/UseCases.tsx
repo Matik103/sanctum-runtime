@@ -34,11 +34,11 @@ export function UseCases() {
     <section id="use-cases" className="relative py-24 md:py-32">
       <div className="container mx-auto px-6">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-medium text-primary uppercase tracking-wider">12 categories</p>
-          <h2 className="mt-3 text-4xl md:text-5xl font-semibold">One runtime, every autonomous system</h2>
+          <p className="text-sm font-medium text-primary uppercase tracking-wider">Targeted users</p>
+          <h2 className="mt-3 text-4xl md:text-5xl font-semibold">Where the first 100 users should feel the pain</h2>
           <p className="mt-4 text-muted-foreground">
-            Same <code className="text-sm font-mono text-foreground/80">verifyAction()</code> API — your action names,
-            your context.
+            Teams shipping agents that can write, buy, deploy, message, move, unlock,
+            or touch customer data need runtime control now — not after an incident.
           </p>
         </div>
 

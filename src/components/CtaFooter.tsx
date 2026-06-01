@@ -19,12 +19,12 @@ export function CtaFooter() {
 
         <div className="container relative z-10 mx-auto px-6 text-center">
           <h2 className="font-display text-5xl md:text-6xl font-semibold leading-tight">
-            Build AI humans <br className="hidden md:block" />
-            can <span className="text-gradient">trust</span>.
+            Give every agent action <br className="hidden md:block" />
+            a <span className="text-gradient">trust boundary</span>.
           </h2>
           <p className="mt-6 text-lg text-muted-foreground max-w-xl mx-auto">
-            Open the cloud console to manage runtimes and policies, or self-host the open-source
-            runtime from GitHub.
+            Start with Connect Agent, keep the SDK path for deeper fleets, and prove
+            exactly what was approved, blocked, or contained.
           </p>
           <div className="mt-10 flex flex-wrap justify-center gap-3">
             <Button
@@ -38,7 +38,7 @@ export function CtaFooter() {
                   trackCta({ location: "cta_footer", cta: "start_with_runtime", destination: "console" })
                 }
               >
-                Start with Runtime
+                Connect an Agent
                 <ArrowRight className="ml-1 h-4 w-4" />
               </a>
             </Button>
