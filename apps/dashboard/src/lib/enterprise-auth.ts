@@ -18,7 +18,9 @@ export async function completeEnterpriseSignIn(
   let joinedOrgId: string | null = null
   const { data: bootOrg, error: bootErr } = await sb.rpc('bootstrap_enterprise_org_for_user')
   if (bootErr) {
-    console.warn('[enterprise-auth] bootstrap_enterprise_org_for_user:', bootErr.message)
+    if (import.meta.env.DEV) {
+      console.warn('[enterprise-auth] bootstrap_enterprise_org_for_user failed')
+    }
   } else if (typeof bootOrg === 'string' && bootOrg.length > 0) {
     joinedOrgId = bootOrg
   }

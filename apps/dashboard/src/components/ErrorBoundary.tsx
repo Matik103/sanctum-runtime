@@ -29,7 +29,7 @@ async function refreshInstalledApp(): Promise<void> {
  * Sends a structured error report to the API's /v1/client-errors endpoint.
  * Fire-and-forget — we never let the report itself throw or block the render.
  * The API rate-limits this endpoint at 30 req/min and caps body size at 8 KiB,
- * so we truncate large stacks here before transmission.
+ * so production reports intentionally avoid stack, component, URL, or user data.
  */
 function reportClientError(
   error: Error,
@@ -37,15 +37,23 @@ function reportClientError(
   page: string | undefined,
 ): void {
   try {
-    const payload = {
-      page,
-      message:        error.message.slice(0, 500),
-      stack:          (error.stack ?? '').slice(0, 3500),
-      componentStack: info.componentStack.slice(0, 3500),
-      userAgent:      navigator.userAgent.slice(0, 300),
-      href:           window.location.href.slice(0, 500),
-      buildId:        (import.meta.env.VITE_BUILD_ID as string | undefined)?.slice(0, 80),
-    }
+    const buildId = (import.meta.env.VITE_BUILD_ID as string | undefined)?.slice(0, 80)
+    const payload = import.meta.env.DEV
+      ? {
+          page,
+          message:        error.message.slice(0, 500),
+          stack:          (error.stack ?? '').slice(0, 3500),
+          componentStack: info.componentStack.slice(0, 3500),
+          userAgent:      navigator.userAgent.slice(0, 300),
+          href:           window.location.href.slice(0, 500),
+          buildId,
+        }
+      : {
+          page,
+          type:    isModuleLoadError(error) ? 'module_load_error' : 'client_render_error',
+          path:    window.location.pathname.slice(0, 240),
+          buildId,
+        }
     // Use sendBeacon when available so the report survives page unloads.
     const url = `${apiBaseUrl}/v1/client-errors`
     if (navigator.sendBeacon) {
@@ -71,13 +79,14 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: { componentStack: string }) {
-    // Structured console output for local dev / source-mapped traces
-    console.error(
-      `[ErrorBoundary${this.props.page ? `:${this.props.page}` : ''}]`,
-      error,
-      info.componentStack,
-    )
-    // Forward to API so production errors surface in the server log stream
+    if (import.meta.env.DEV) {
+      console.error(
+        `[ErrorBoundary${this.props.page ? `:${this.props.page}` : ''}]`,
+        error,
+        info.componentStack,
+      )
+    }
+    // Forward sanitized production telemetry so issues surface without leaking context.
     reportClientError(error, info, this.props.page)
   }
 

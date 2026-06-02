@@ -10,10 +10,12 @@
  *   OTEL_SERVICE_NAME             → default: sanctum-api
  *   OTEL_ENVIRONMENT              → default: production
  */
+import { logger as rootLogger } from './logger.js'
 
 const SERVICE_NAME = process.env.OTEL_SERVICE_NAME ?? 'sanctum-api'
 const ENVIRONMENT = process.env.OTEL_ENVIRONMENT ?? process.env.NODE_ENV ?? 'production'
 const OTLP_ENDPOINT = process.env.OTEL_EXPORTER_OTLP_ENDPOINT?.replace(/\/$/, '')
+const log = rootLogger.child({ module: 'telemetry' })
 
 export interface Span {
   traceId: string
@@ -28,6 +30,20 @@ function randomHex(bytes: number): string {
   return Array.from(crypto.getRandomValues(new Uint8Array(bytes)))
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('')
+}
+
+function safeAttrs(attrs: Record<string, string | number | boolean>): Record<string, string | number | boolean> {
+  const redacted: Record<string, string | number | boolean> = {}
+  for (const [key, value] of Object.entries(attrs)) {
+    if (/(secret|token|password|authorization|api[_-]?key|email|cookie|credential)/i.test(key)) {
+      redacted[key] = '[redacted]'
+    } else if (typeof value === 'string' && value.length > 240) {
+      redacted[key] = `${value.slice(0, 240)}...`
+    } else {
+      redacted[key] = value
+    }
+  }
+  return redacted
 }
 
 async function exportOtlp(spans: object[]): Promise<void> {
@@ -61,11 +77,9 @@ export function startSpan(
     attrs,
     end(extraAttrs = {}) {
       const durationMs = Math.round(performance.now() - startMs)
-      const allAttrs = { ...attrs, ...extraAttrs }
+      const allAttrs = safeAttrs({ ...attrs, ...extraAttrs })
 
-      // Emit structured log line (ingested by log aggregators)
-      console.log(JSON.stringify({
-        level: 'trace',
+      log.debug({
         service: SERVICE_NAME,
         env: ENVIRONMENT,
         trace_id: traceId,
@@ -73,7 +87,7 @@ export function startSpan(
         span: name,
         duration_ms: durationMs,
         ...allAttrs,
-      }))
+      }, 'trace span ended')
 
       // Optionally export to OTLP
       if (OTLP_ENDPOINT) {

@@ -18,7 +18,10 @@ import type { FastifyInstance, FastifyRequest } from 'fastify'
 import type { SupabaseAuthConfig } from './auth.js'
 import { createSupabaseAdmin } from './auth.js'
 import { ControlPlaneStore } from './control-plane-store.js'
+import { logger as rootLogger } from './logger.js'
 import { queryWithTimeout, SUPABASE_ROW_LIMITS } from './supabase-limits.js'
+
+const log = rootLogger.child({ module: 'compliance' })
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -276,7 +279,7 @@ async function generateSoc2Report(
     try {
       const r = await run()
       if (r.error) {
-        console.warn(`[supabase] soc2 ${label}: ${r.error.message}`)
+        log.warn({ label }, 'soc2 evidence count query failed')
         return 0
       }
       return r.count ?? 0

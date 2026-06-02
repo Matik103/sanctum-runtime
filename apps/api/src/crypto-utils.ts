@@ -5,6 +5,10 @@ import {
   scryptSync,
 } from 'node:crypto'
 
+import { logger as rootLogger } from './logger.js'
+
+const log = rootLogger.child({ module: 'crypto-utils' })
+
 const SCHEME_PREFIX = 'enc:v1:'
 const KEY_SALT = 'sanctum-aes-v1'
 const KEY_LEN = 32 // AES-256
@@ -101,10 +105,7 @@ export function getEncryptionKey(): string {
   if (serviceKey) {
     if (process.env.NODE_ENV === 'production') {
       // Warn but still allow fallback so existing deployments don't break immediately
-      console.warn(
-        'WARN: SSO_ENCRYPTION_KEY is not set. Falling back to SUPABASE_SERVICE_ROLE_KEY for SSO secret encryption. ' +
-        'Set SSO_ENCRYPTION_KEY to a dedicated 32+ byte random value in production.',
-      )
+      log.warn('dedicated SSO encryption key is not configured')
     }
     return serviceKey
   }

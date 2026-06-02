@@ -1722,7 +1722,7 @@ try {
 /**
  * Emit a single structured startup banner so Render's log stream (and any
  * log aggregator) gets the full configuration state at boot — no more
- * grepping across a dozen scattered console.log lines to figure out why
+ * grepping across a dozen scattered startup lines to figure out why
  * the risk model is offline or why email isn't delivering.
  */
 function logStartupSummary({ host, port }: { host: string; port: number }): void {

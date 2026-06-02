@@ -44,7 +44,7 @@ function NotFoundComponent() {
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   if (import.meta.env.DEV) {
-    console.error(error);
+    console.error("[site:error-boundary]", error);
   }
   const router = useRouter();
 

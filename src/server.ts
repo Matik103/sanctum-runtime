@@ -26,6 +26,14 @@ function brandedErrorResponse(): Response {
   });
 }
 
+function reportServerError(label: string, error?: unknown): void {
+  if (import.meta.env.DEV) {
+    console.error(`[site:${label}]`, error);
+    return;
+  }
+  console.error(`[site:${label}] request failed`);
+}
+
 function isCatastrophicSsrErrorBody(body: string, responseStatus: number): boolean {
   let payload: unknown;
   try {
@@ -63,7 +71,7 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
     return response;
   }
 
-  console.error(consumeLastCapturedError() ?? new Error(`h3 swallowed SSR error: ${body}`));
+  reportServerError("ssr", consumeLastCapturedError());
   return brandedErrorResponse();
 }
 
@@ -98,7 +106,7 @@ export default {
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);
     } catch (error) {
-      console.error(error);
+      reportServerError("fetch", error);
       return brandedErrorResponse();
     }
   },
