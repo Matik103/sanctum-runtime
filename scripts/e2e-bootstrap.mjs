@@ -17,7 +17,7 @@ config({ path: resolve(root, '.env') })
 
 const PROD = 'https://api.sanctumruntime.com'
 const LOCAL = `http://${process.env.HOST || '127.0.0.1'}:${process.env.PORT || 3001}`
-const EMAIL = process.env.TEST_USER_EMAIL || 'businessappads@gmail.com'
+const EMAIL = process.env.TEST_USER_EMAIL?.trim()
 const OUT = resolve(root, '.env.e2e.local')
 
 async function operatorJwt() {
@@ -47,15 +47,6 @@ async function resolvePlatformSecret(admin, orgId, jwt) {
   const fromEnv = process.env.TEST_PLATFORM_KEY?.trim()
   if (fromEnv) return fromEnv
 
-  const reveal = await fetch(
-    `${PROD}/v1/orgs/${orgId}/platform-credentials/openai/bootstrap-secret`,
-    { headers: { Authorization: `Bearer ${jwt}` } },
-  )
-  if (reveal.ok) {
-    const body = await reveal.json()
-    if (body.secret) return body.secret
-  }
-
   const { data } = await admin
     .from('platform_credentials')
     .select('secret_enc')
@@ -70,16 +61,6 @@ async function resolvePlatformSecret(admin, orgId, jwt) {
     } catch {
       // ciphertext may use production SSO_ENCRYPTION_KEY
     }
-  }
-
-  const prodTest = await fetch(`${PROD}/v1/orgs/${orgId}/platform-credentials/openai/test`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ include_secret: true }),
-  })
-  if (prodTest.ok) {
-    const body = await prodTest.json()
-    if (body.ok && body.secret) return body.secret
   }
 
   const prodVerify = await fetch(`${PROD}/v1/orgs/${orgId}/platform-credentials/openai/test`, {
@@ -127,6 +108,7 @@ async function createDashboardKey(api, jwt, orgId) {
 
 async function main() {
   console.log('E2E bootstrap\n')
+  if (!EMAIL) throw new Error('TEST_USER_EMAIL is required for E2E bootstrap')
   const { jwt, admin, orgId } = await operatorJwt()
   console.log(`org ${orgId}`)
 
@@ -145,7 +127,7 @@ async function main() {
     }
   } else {
     await testPlatformKey(PROD, jwt, orgId)
-    console.log('✓ production platform credential verified (local sync skipped — deploy API for bootstrap-secret or set TEST_PLATFORM_KEY)')
+    console.log('✓ production platform credential verified (local sync skipped — set TEST_PLATFORM_KEY to sync locally)')
   }
 
   const dashboardKey = await createDashboardKey(PROD, jwt, orgId)

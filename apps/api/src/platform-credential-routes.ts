@@ -18,6 +18,14 @@ type SanctumReq = import('fastify').FastifyRequest & {
 
 const platformParam = z.enum(['openai', 'deepseek', 'qwen', 'kimi', 'doubao', 'gemini'])
 
+function canRevealPlatformSecretForDevE2E(): boolean {
+  const isProduction =
+    process.env.NODE_ENV === 'production' ||
+    process.env.RENDER === 'true' ||
+    process.env.SANCTUM_ENV === 'production'
+  return !isProduction && process.env.SANCTUM_ALLOW_CREDENTIAL_REVEAL === 'true'
+}
+
 async function requireRole(
   cfg: SupabaseAuthConfig,
   orgId: string,
@@ -146,6 +154,12 @@ export async function registerPlatformCredentialRoutes(
       detail: result.detail,
     }
     if (body.include_secret) {
+      if (!canRevealPlatformSecretForDevE2E()) {
+        return reply.status(403).send({
+          error: 'credential_reveal_disabled',
+          hint: 'Set TEST_PLATFORM_KEY for E2E runs; saved platform secrets are not revealed by this environment.',
+        })
+      }
       try {
         await assertOrgRole(cfg, orgId, user.id, 'admin')
         response.secret = secret
@@ -157,8 +171,12 @@ export async function registerPlatformCredentialRoutes(
     return response
   })
 
-  /** Org admin: read saved platform secret for dev-machine E2E sync (audit logged). */
+  /** Dev-only E2E helper. Disabled in production even for org admins. */
   app.get('/v1/orgs/:orgId/platform-credentials/:platform/bootstrap-secret', async (req, reply) => {
+    if (!canRevealPlatformSecretForDevE2E()) {
+      return reply.status(404).send({ error: 'not_found' })
+    }
+
     const user = (req as SanctumReq).sanctumUser
     if (!user) return reply.status(403).send({ error: 'dashboard_auth_required' })
 

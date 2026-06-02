@@ -49,7 +49,7 @@ if token := result.get("actionToken"):
 
 | Variable | Purpose |
 |----------|---------|
-| `SANCTUM_API_URL` | Runtime API base (e.g. `https://sanctum-api-6zgy.onrender.com`) |
+| `SANCTUM_API_URL` | Runtime API base (e.g. `https://api.sanctumruntime.com`) |
 | `SANCTUM_API_KEY` | `X-Sanctum-Key` for scripts / CI |
 
 ## API surface

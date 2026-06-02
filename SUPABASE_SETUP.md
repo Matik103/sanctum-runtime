@@ -168,7 +168,7 @@ Users who sign in via **Enterprise SSO** with `@acme.com` are auto-added to `acm
 
 1. Run migrations (Step 4) on your Supabase project.
 2. Add **API** env on Render: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
-3. **Authentication** → **URL configuration** → set **Site URL** and **Redirect URLs** to your hosted dashboard (e.g. `https://sanctum-dashboard.onrender.com/**`).
+3. **Authentication** → **URL configuration** → set **Site URL** and **Redirect URLs** to your hosted dashboard (e.g. `https://console.sanctumruntime.com/**`).
 4. Build dashboard with `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` (see [PRODUCTION_OPS.md](./PRODUCTION_OPS.md)).
 
 Audit entries sync to `audit_events` when the API runs with service role configured.

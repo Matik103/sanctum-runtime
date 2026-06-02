@@ -6,9 +6,9 @@ Your dashboard is connected to production (`sanctum-api` + `sanctum-dashboard`).
 
 | Check | How |
 |-------|-----|
-| API healthy | `curl https://sanctum-api-6zgy.onrender.com/health` → `"ok":true` |
-| Dashboard loads | [sanctum-dashboard.onrender.com](https://sanctum-dashboard.onrender.com) — no “API unreachable” |
-| CORS | `DASHBOARD_URL=https://sanctum-dashboard.onrender.com` on **sanctum-api** |
+| API healthy | `curl https://api.sanctumruntime.com/health` → `"ok":true` |
+| Dashboard loads | [console.sanctumruntime.com](https://console.sanctumruntime.com) — no “API unreachable” |
+| CORS | `DASHBOARD_URL=https://console.sanctumruntime.com` on **sanctum-api** |
 | API key | Render → **sanctum-api** → `SANCTUM_API_KEY` (for scripts) |
 
 ## Step 1 — Seed demo events
@@ -16,7 +16,7 @@ Your dashboard is connected to production (`sanctum-api` + `sanctum-dashboard`).
 From your laptop (repo cloned, or copy the script):
 
 ```bash
-export SANCTUM_API_URL=https://sanctum-api-6zgy.onrender.com
+export SANCTUM_API_URL=https://api.sanctumruntime.com
 export SANCTUM_API_KEY=<from Render sanctum-api Environment>
 
 npm run seed:production
@@ -45,7 +45,7 @@ Refresh the dashboard **Overview** — you should see actions processed &gt; 0.
 3. Point agents at the API:
 
 ```bash
-export SANCTUM_API_URL=https://sanctum-api-6zgy.onrender.com
+export SANCTUM_API_URL=https://api.sanctumruntime.com
 export SANCTUM_API_KEY=sk_sanctum_...
 npx @sanctum-runtime/cli verify --actor my-agent --action read_calendar --offline
 ```

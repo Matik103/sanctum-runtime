@@ -215,7 +215,7 @@ These are baked into the static bundle:
 
 | Key | Value |
 |-----|--------|
-| `VITE_SANCTUM_API_URL` | `https://sanctum-api-6zgy.onrender.com` |
+| `VITE_SANCTUM_API_URL` | `https://api.sanctumruntime.com` |
 | `VITE_SUPABASE_URL` | `https://YOUR_REF.supabase.co` (no `/rest/v1/`) |
 | `VITE_SUPABASE_ANON_KEY` | Anon public key |
 

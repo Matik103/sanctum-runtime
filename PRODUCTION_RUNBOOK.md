@@ -6,8 +6,8 @@ Single checklist for **Sanctum control plane** in production (Render + Supabase)
 
 | Service | URL |
 |---------|-----|
-| API | `https://sanctum-api-6zgy.onrender.com` |
-| Dashboard | `https://sanctum-dashboard.onrender.com` |
+| API | `https://api.sanctumruntime.com` |
+| Dashboard | `https://console.sanctumruntime.com` |
 | Repo | `main` on GitHub → CI gate → Deploy Render workflow → Render |
 
 ```text
@@ -152,8 +152,8 @@ curl -s https://api.sanctumruntime.com/health | jq .version.commit
 ### Quick health
 
 ```bash
-export SANCTUM_API_URL=https://sanctum-api-6zgy.onrender.com
-export DASHBOARD_URL=https://sanctum-dashboard.onrender.com
+export SANCTUM_API_URL=https://api.sanctumruntime.com
+export DASHBOARD_URL=https://console.sanctumruntime.com
 
 npm run production:check
 ```
@@ -165,7 +165,7 @@ Set `SANCTUM_ORG_ID` to your workspace org for fleet map + usage checks.
 Use a dashboard **API key** (`sk_sanctum_…`), not the legacy hex `SANCTUM_API_KEY` unless you know you need it.
 
 ```bash
-export SANCTUM_API_URL=https://sanctum-api-6zgy.onrender.com
+export SANCTUM_API_URL=https://api.sanctumruntime.com
 export SANCTUM_API_KEY=sk_sanctum_...
 export SANCTUM_ORG_ID=personal-xxxxxxxx   # from Devices or operator context
 
@@ -206,7 +206,7 @@ Runs `production:check` then `smoke:control-plane`.
 ## 5. Connect a runtime (customer / script)
 
 ```bash
-export SANCTUM_API_URL=https://sanctum-api-6zgy.onrender.com
+export SANCTUM_API_URL=https://api.sanctumruntime.com
 export SANCTUM_API_KEY=sk_sanctum_...
 # optional: export SANCTUM_ORG_ID=...  # else resolved from operator context
 

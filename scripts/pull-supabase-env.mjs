@@ -6,7 +6,7 @@
  *   supabase login
  *   npm run env:pull
  *
- * Optional: SUPABASE_PROJECT_REF=nimvcudvrhanxlcpiizz
+ * Optional: SUPABASE_PROJECT_REF=YOUR_SUPABASE_PROJECT_REF
  */
 import { execSync } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'

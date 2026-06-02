@@ -4,7 +4,7 @@
  * Usage: node scripts/test-connect-live-feed.mjs
  * Requires .env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
  * Optional: SANCTUM_API_URL (default https://api.sanctumruntime.com)
- * Optional: TEST_USER_EMAIL (default businessappads@gmail.com)
+ * Required: TEST_USER_EMAIL
  */
 import { config } from 'dotenv'
 import { createClient } from '@supabase/supabase-js'
@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url'
 config({ path: resolve(dirname(fileURLToPath(import.meta.url)), '../.env') })
 
 const API = (process.env.SANCTUM_API_URL || process.env.SANCTUM_PUBLIC_API_URL || 'https://api.sanctumruntime.com').replace(/\/$/, '')
-const EMAIL = process.env.TEST_USER_EMAIL || 'businessappads@gmail.com'
+const EMAIL = process.env.TEST_USER_EMAIL?.trim()
 const PLATFORM = process.env.TEST_PLATFORM || 'openai'
 
 async function operatorJwt() {
@@ -44,6 +44,7 @@ async function operatorJwt() {
 
 async function main() {
   console.log(`API ${API}`)
+  if (!EMAIL) throw new Error('TEST_USER_EMAIL is required for Connect Agent Live Feed E2E')
   const health = await fetch(`${API}/health`).then((r) => r.json())
   console.log(`commit ${health.version?.commit}`)
 

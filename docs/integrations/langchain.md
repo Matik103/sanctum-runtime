@@ -72,6 +72,6 @@ export const unlockDoor = tool(
 1. **One Sanctum action per tool** (or per risky capability).
 2. Call `verify_action` **at the start** of the tool handler.
 3. On `REQUIRE_VERIFICATION`, return a message to the model — do not call downstream APIs.
-4. Operator resolves in the [dashboard](https://sanctum-dashboard.onrender.com) or via `wait_for_verification` / CLI.
+4. Operator resolves in the [dashboard](https://console.sanctumruntime.com) or via `wait_for_verification` / CLI.
 
 See [DEVELOPER_GUIDE.md](../../DEVELOPER_GUIDE.md) for policies, webhooks, and YAML export.

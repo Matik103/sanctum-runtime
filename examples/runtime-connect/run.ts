@@ -1,7 +1,7 @@
 /**
  * Register a runtime with the Sanctum control plane and emit demo events.
  *
- *   SANCTUM_API_URL=https://sanctum-api-6zgy.onrender.com \
+ *   SANCTUM_API_URL=https://api.sanctumruntime.com \
  *   SANCTUM_API_KEY=... \
  *   npx tsx examples/runtime-connect/run.ts
  */

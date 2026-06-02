@@ -2,7 +2,7 @@
 
 The operator UI lives on **Render** (not Cloudflare). Marketing/docs stay on Cloudflare.
 
-**API (already live):** `https://sanctum-api-6zgy.onrender.com`
+**API (already live):** `https://api.sanctumruntime.com`
 
 ---
 
@@ -26,8 +26,8 @@ Render → **Environment** → add:
 
 | Key | Value |
 |-----|--------|
-| `VITE_SANCTUM_API_URL` | `https://sanctum-api-6zgy.onrender.com` |
-| `VITE_SUPABASE_URL` | `https://nimvcudvrhanxlcpiizz.supabase.co` |
+| `VITE_SANCTUM_API_URL` | `https://api.sanctumruntime.com` |
+| `VITE_SUPABASE_URL` | `https://YOUR_SUPABASE_PROJECT_REF.supabase.co` |
 | `VITE_SUPABASE_ANON_KEY` | *(Supabase → Settings → API → anon public)* |
 
 Do **not** add `VITE_SUPABASE_SERVICE_ROLE_KEY` here.
@@ -48,12 +48,12 @@ Render → **Redirects/Rewrites** → add:
 
 ## Step 4 — Wire API CORS + Supabase auth
 
-Copy your dashboard URL, e.g. `https://sanctum-dashboard.onrender.com`
+Copy your dashboard URL, e.g. `https://console.sanctumruntime.com`
 
 **sanctum-api** → Environment:
 
 ```bash
-DASHBOARD_URL=https://sanctum-dashboard.onrender.com
+DASHBOARD_URL=https://console.sanctumruntime.com
 ```
 
 Redeploy **sanctum-api**.
@@ -62,8 +62,8 @@ Redeploy **sanctum-api**.
 
 | Field | Value |
 |-------|--------|
-| Site URL | `https://sanctum-dashboard.onrender.com` |
-| Redirect URLs | `https://sanctum-dashboard.onrender.com/**` |
+| Site URL | `https://console.sanctumruntime.com` |
+| Redirect URLs | `https://console.sanctumruntime.com/**` |
 
 Keep `http://127.0.0.1:5174/**` for local dev.
 
@@ -76,7 +76,7 @@ Keep `http://127.0.0.1:5174/**` for local dev.
 3. Trigger verify from API → **Runtime activity** + **Review queue**
 
 ```bash
-curl -s -H "X-Sanctum-Key: YOUR_KEY" https://sanctum-api-6zgy.onrender.com/v1/status
+curl -s -H "X-Sanctum-Key: YOUR_KEY" https://api.sanctumruntime.com/v1/status
 # supabaseConfigured: true
 ```
 
@@ -87,5 +87,5 @@ curl -s -H "X-Sanctum-Key: YOUR_KEY" https://sanctum-api-6zgy.onrender.com/v1/st
 | Product | Host |
 |---------|------|
 | Marketing + `/docs` | Cloudflare (your existing setup) |
-| Dashboard | `https://sanctum-dashboard.onrender.com` |
-| API | `https://sanctum-api-6zgy.onrender.com` |
+| Dashboard | `https://console.sanctumruntime.com` |
+| API | `https://api.sanctumruntime.com` |

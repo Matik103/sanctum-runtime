@@ -6,8 +6,9 @@
  *   TEST_PLATFORM_KEY=sk-... node scripts/test-connect-full.mjs
  *
  * Requires .env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY
- * Optional: SANCTUM_API_URL, TEST_USER_EMAIL, TEST_PLATFORM (default openai),
+ * Optional: SANCTUM_API_URL, TEST_PLATFORM (default openai),
  *           TEST_AGENT_ID (reuse agent; rotates token to obtain sk_agent_...)
+ * Required: TEST_USER_EMAIL
  */
 import { config } from 'dotenv'
 import { createClient } from '@supabase/supabase-js'
@@ -18,7 +19,7 @@ config({ path: resolve(dirname(fileURLToPath(import.meta.url)), '../.env') })
 config({ path: resolve(dirname(fileURLToPath(import.meta.url)), '../.env.e2e.local'), override: true })
 
 const API = (process.env.SANCTUM_API_URL || process.env.SANCTUM_PUBLIC_API_URL || 'https://api.sanctumruntime.com').replace(/\/$/, '')
-const EMAIL = process.env.TEST_USER_EMAIL || 'businessappads@gmail.com'
+const EMAIL = process.env.TEST_USER_EMAIL?.trim()
 const PLATFORM = process.env.TEST_PLATFORM || 'openai'
 const PLATFORM_KEY = process.env.TEST_PLATFORM_KEY?.trim()
 
@@ -74,6 +75,7 @@ async function apiFetch(path, { jwt, method = 'GET', body, agentToken, headers: 
 
 async function main() {
   console.log(`\nConnect Agent full E2E → ${API}\n`)
+  if (!EMAIL) fail('TEST_USER_EMAIL is required for Connect Agent E2E')
 
   const health = await fetch(`${API}/health`).then((r) => r.json())
   console.log(`API commit: ${health.version?.commit}`)
@@ -86,29 +88,6 @@ async function main() {
 
   // ── Platform credential ──
   let platformKey = PLATFORM_KEY
-  if (!platformKey) {
-    const reveal = await apiFetch(`/v1/orgs/${orgId}/platform-credentials/${PLATFORM}/bootstrap-secret`, { jwt })
-    if (reveal.res.ok && reveal.json?.secret) {
-      platformKey = reveal.json.secret
-      pass('platform key loaded via bootstrap-secret')
-    } else if (API !== 'https://api.sanctumruntime.com') {
-      const prodTest = await fetch(
-        `https://api.sanctumruntime.com/v1/orgs/${orgId}/platform-credentials/${PLATFORM}/test`,
-        {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ include_secret: true }),
-        },
-      )
-      if (prodTest.ok) {
-        const body = await prodTest.json()
-        if (body.ok && body.secret) {
-          platformKey = body.secret
-          pass('platform key loaded via production test (include_secret)')
-        }
-      }
-    }
-  }
 
   if (platformKey) {
     const save = await apiFetch(`/v1/orgs/${orgId}/platform-credentials/${PLATFORM}`, {
@@ -350,8 +329,7 @@ async function main() {
   }
 
   console.log('\n✅ Connect Agent full E2E passed\n')
-  console.log('Agent token (store securely — shown once after rotate):')
-  console.log(agentToken.slice(0, 20) + '…' + agentToken.slice(-6))
+  console.log('Agent token rotated and discarded by test runner.')
 }
 
 main().catch((e) => {

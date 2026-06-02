@@ -128,7 +128,7 @@ Requires **034**–**036** (portal sync, enterprise SSO RPC, individual/organiza
 Project callback (for Google/GitHub redirect URIs):
 
 ```text
-https://nimvcudvrhanxlcpiizz.supabase.co/auth/v1/callback
+https://YOUR_SUPABASE_PROJECT_REF.supabase.co/auth/v1/callback
 ```
 
 ## 8. Verify

@@ -1,7 +1,7 @@
 /**
  * Seed the hosted control plane with demo audit events (Phase 3).
  *
- *   SANCTUM_API_URL=https://sanctum-api-6zgy.onrender.com \
+ *   SANCTUM_API_URL=https://api.sanctumruntime.com \
  *   SANCTUM_API_KEY=your-render-api-key \
  *   node scripts/seed-production-demo.mjs
  */
@@ -88,7 +88,7 @@ async function main() {
   }).then((r) => r.json())
 
   console.log(`Audit entries: ${audit.length}`)
-  console.log('\nOpen https://sanctum-dashboard.onrender.com → Runtime Activity')
+  console.log('\nOpen https://console.sanctumruntime.com → Runtime Activity')
   console.log('Pending reviews: use Review next or keyboard A / D in the modal.\n')
 }
 

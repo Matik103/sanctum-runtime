@@ -8,10 +8,15 @@ import { fileURLToPath } from 'node:url'
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 config({ path: resolve(root, '.env'), quiet: true })
 
-const email = process.env.TEST_USER_EMAIL?.trim() || 'businessappads@gmail.com'
+const email = process.env.TEST_USER_EMAIL?.trim()
 const url = process.env.SUPABASE_URL?.trim()
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
 const anonKey = (process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY)?.trim()
+
+if (!email) {
+  process.stderr.write('Missing TEST_USER_EMAIL in environment\n')
+  process.exit(1)
+}
 
 if (!url || !serviceKey || !anonKey) {
   process.stderr.write('Missing SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, or SUPABASE_ANON_KEY in .env\n')
