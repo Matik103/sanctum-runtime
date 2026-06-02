@@ -104,6 +104,7 @@ export async function applyConnectPreset(orgId: string, presetId: string): Promi
   const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/connect/policy-presets/${presetId}/apply`, {
     method: 'POST',
     headers: await authHeaders(),
+    body: JSON.stringify({}),
   })
   if (!res.ok) throw new Error(await responseError(res, 'connect_preset_apply_failed'))
 }
@@ -163,6 +164,7 @@ export async function applyConnectShieldPreset(orgId: string, presetId: string):
   const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/connect/shield-presets/${presetId}/apply`, {
     method: 'POST',
     headers: await authHeaders(),
+    body: JSON.stringify({}),
   })
   if (!res.ok) throw new Error(await responseError(res, 'connect_shield_preset_apply_failed'))
 }
@@ -171,8 +173,9 @@ export async function promoteConnectToGate(orgId: string): Promise<ConnectOrgSet
   const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/connect/promote-to-gate`, {
     method: 'POST',
     headers: await authHeaders(),
+    body: JSON.stringify({}),
   })
-  if (!res.ok) throw new Error(`connect_promote_failed:${res.status}`)
+  if (!res.ok) throw new Error(await responseError(res, 'connect_promote_failed'))
   return res.json() as Promise<ConnectOrgSettings>
 }
 
