@@ -3,5 +3,17 @@ packages
 services
 examples
 supabase
-scripts
 data
+# Keep scripts/ on Vercel — build:vercel runs generate:sitemap (needs scripts/generate-sitemap.ts).
+# Ignore heavy script trees only:
+scripts/test-*
+scripts/e2e-*
+scripts/smoke*
+scripts/demo*
+scripts/seed-*
+scripts/pull-*
+scripts/live-*
+scripts/console-*
+scripts/production-check.mjs
+scripts/test-all.mjs
+scripts/e2e-*

@@ -96,7 +96,7 @@
     "generate:sitemap": "tsx scripts/generate-sitemap.ts",
     "generate:ai-discovery": "tsx scripts/generate-ai-discovery.ts",
     "build": "vite build",
-    "build:vercel": "npm run generate:sitemap && vite build --config vite.config.vercel.ts",
+    "build:vercel": "npx tsx scripts/generate-sitemap.ts && vite build --config vite.config.vercel.ts",
     "verify:crawl": "node scripts/verify-crawl.mjs",
     "cf:build": "npm run build",
     "cf:ci-build": "npm ci --no-audit --no-fund && npm run build",
