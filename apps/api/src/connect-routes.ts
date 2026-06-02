@@ -11,7 +11,7 @@ import { CONNECT_POLICY_PRESETS, getConnectPreset } from './connect-presets.js'
 import { CONNECT_SHIELD_PRESETS, getConnectShieldPreset } from './connect-shield-presets.js'
 import { listConnectTools } from './connect-tool-registry.js'
 import { invalidateShieldRulesCache } from './shield-routes.js'
-import { verifyAgentToken } from './agent-tokens.js'
+import { issueAgentToken, verifyAgentToken } from './agent-tokens.js'
 import { gateProxyToolCall } from './proxy-gate.js'
 import { listPlatformCredentials } from './platform-credentials.js'
 import { UsageStore } from './usage-store.js'
@@ -284,36 +284,70 @@ export async function registerConnectRoutes(
     const policyPreset = getConnectPreset(bundle.policy_preset_id)
     if (policyPreset) {
       const engine = runtime.getPolicyEngine()
-      for (const [action, policy] of Object.entries(policyPreset.policies)) {
-        const key = policyStorageKey(action, orgId, [orgId])
-        await engine.updatePolicy(key, {
-          requiresVerification: policy.requiresVerification,
-          autoBlock: policy.autoBlock,
-          reasoning: policy.reasoning,
+      try {
+        for (const [action, policy] of Object.entries(policyPreset.policies)) {
+          const key = policyStorageKey(action, orgId, [orgId])
+          await engine.updatePolicy(key, {
+            requiresVerification: policy.requiresVerification,
+            autoBlock: policy.autoBlock,
+            reasoning: policy.reasoning,
+          })
+        }
+        await upsertConnectSettings(cfg, orgId, {
+          proxy_mode: policyPreset.proxy_mode,
+          applied_policy_preset: bundle.policy_preset_id,
+        })
+      } catch (err) {
+        return reply.status(500).send({
+          error: 'policy_preset_apply_failed',
+          detail: err instanceof Error ? err.message : String(err),
         })
       }
-      await upsertConnectSettings(cfg, orgId, {
-        proxy_mode: policyPreset.proxy_mode,
-        applied_policy_preset: bundle.policy_preset_id,
-      })
     }
 
     const admin = (await import('./auth.js')).createSupabaseAdmin(cfg)
-    let rulesCreated = 0
-    for (const rule of bundle.shield_rules) {
-      const { error } = await admin.from('shield_rules').insert({
-        org_id: orgId,
-        action_pattern: rule.actionPattern,
-        label: rule.label,
-        response: rule.response,
-        category: rule.category ?? null,
-        enabled: true,
-        created_by: user.email ?? user.id,
+    const bundledPatterns = bundle.shield_rules.map((rule) => rule.actionPattern)
+    const bundledLabels = bundle.shield_rules.map((rule) => rule.label)
+    if (bundledPatterns.length > 0 && bundledLabels.length > 0) {
+      const { error } = await admin
+        .from('shield_rules')
+        .delete()
+        .eq('org_id', orgId)
+        .in('action_pattern', bundledPatterns)
+        .in('label', bundledLabels)
+      if (error) {
+        return reply.status(400).send({
+          error: 'shield_rules_replace_failed',
+          detail: error.message,
+          code: error.code,
+        })
+      }
+    }
+
+    const rows = bundle.shield_rules.map((rule) => ({
+      org_id: orgId,
+      action_pattern: rule.actionPattern,
+      label: rule.label,
+      response: rule.response,
+      category: rule.category ?? null,
+      enabled: true,
+      created_by: user.email ?? user.id,
+    }))
+    const { data: insertedRules, error: insertError } = await admin.from('shield_rules').insert(rows).select('id')
+    if (insertError) {
+      return reply.status(400).send({
+        error: 'shield_rules_insert_failed',
+        detail: insertError.message,
+        code: insertError.code,
       })
-      if (!error) rulesCreated++
     }
     invalidateShieldRulesCache(orgId)
-    return { ok: true, preset: presetId, policies_applied: policyPreset ? Object.keys(policyPreset.policies).length : 0, shield_rules_created: rulesCreated }
+    return {
+      ok: true,
+      preset: presetId,
+      policies_applied: policyPreset ? Object.keys(policyPreset.policies).length : 0,
+      shield_rules_created: insertedRules?.length ?? rows.length,
+    }
   })
 
   app.post('/v1/orgs/:orgId/connect/promote-to-gate', async (req, reply) => {
@@ -426,13 +460,32 @@ export async function registerConnectRoutes(
       })
       .parse(req.body ?? {})
 
+    const admin = (await import('./auth.js')).createSupabaseAdmin(cfg)
+    const { data: agentRow, error: agentError } = await admin
+      .from('agent_registrations')
+      .select('id,name')
+      .eq('id', body.agent_id)
+      .eq('org_id', orgId)
+      .is('revoked_at', null)
+      .maybeSingle()
+    if (agentError) {
+      return reply.status(502).send({ error: 'agent_lookup_failed', detail: agentError.message })
+    }
+    if (!agentRow) {
+      return reply.status(404).send({ error: 'agent_not_found' })
+    }
+
+    const agentToken = issueAgentToken(body.agent_id, orgId)
     const testAction = 'connect_verify_test_tool_call'
     const verifyRes = await app.inject({
       method: 'POST',
       url: '/v1/actions/verify',
-      headers: { 'content-type': 'application/json' },
+      headers: {
+        'content-type': 'application/json',
+        'x-sanctum-agent-token': agentToken,
+      },
       payload: {
-        actor: `connect-test-${body.agent_id.slice(0, 8)}`,
+        actor: `connect-test-${agentRow.name ?? body.agent_id.slice(0, 8)}`,
         action: testAction,
         context: {
           org_id: orgId,
@@ -459,12 +512,20 @@ export async function registerConnectRoutes(
     } catch {
       // ignore
     }
+    const reasoning =
+      typeof entry.reasoning === 'string'
+        ? entry.reasoning
+        : typeof entry.error === 'string'
+          ? entry.error
+          : typeof entry.message === 'string'
+            ? entry.message
+            : undefined
     return {
-      ok: verifyRes.statusCode === 200,
+      ok: verifyRes.statusCode >= 200 && verifyRes.statusCode < 300,
       status: verifyRes.statusCode,
       action: testAction,
       decision: entry.decision,
-      reasoning: entry.reasoning,
+      reasoning,
     }
   })
 }

@@ -189,6 +189,19 @@ async function main() {
   if (!presets.res.ok) fail('connect presets', presets.text)
   pass(`policy presets: ${presets.json.presets?.map((p) => p.id).join(', ')}`)
 
+  // ── Shield bundles ──
+  const shieldPresets = await apiFetch(`/v1/orgs/${orgId}/connect/shield-presets`, { jwt })
+  if (!shieldPresets.res.ok) fail('connect shield presets', shieldPresets.text)
+  const shieldBundle = shieldPresets.json.presets?.find((p) => p.id === 'connect-balanced-shield') ?? shieldPresets.json.presets?.[0]
+  if (!shieldBundle?.id) fail('no Connect Shield presets returned')
+  const shieldApply = await apiFetch(`/v1/orgs/${orgId}/connect/shield-presets/${shieldBundle.id}/apply`, {
+    jwt,
+    method: 'POST',
+    body: {},
+  })
+  if (!shieldApply.res.ok) fail('connect shield preset apply', shieldApply.text.slice(0, 500))
+  pass(`shield bundle applied: ${shieldBundle.id} (${shieldApply.json.shield_rules_created ?? 0} rules)`)
+
   // ── Suggest policies ──
   const suggest = await apiFetch(`/v1/orgs/${orgId}/connect/suggest-policies`, { jwt })
   if (!suggest.res.ok) fail('suggest policies', suggest.text)
@@ -201,7 +214,8 @@ async function main() {
     body: { agent_id: agentId, platform: PLATFORM },
   })
   if (!testRun.res.ok) fail('connect test-run', testRun.text)
-  pass(`connect test-run: ${testRun.json.decision}`)
+  if (!testRun.json?.ok) fail('connect test-run internal verify', testRun.json)
+  pass(`connect test-run: ${testRun.json.decision ?? 'ok'}`)
 
   // ── Proxy: tool call proposal gating ──
   const toolName = `connect_e2e_${Date.now().toString(36)}`

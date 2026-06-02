@@ -105,7 +105,7 @@ export async function applyConnectPreset(orgId: string, presetId: string): Promi
     method: 'POST',
     headers: await authHeaders(),
   })
-  if (!res.ok) throw new Error(`connect_preset_apply_failed:${res.status}`)
+  if (!res.ok) throw new Error(await responseError(res, 'connect_preset_apply_failed'))
 }
 
 export async function fetchPolicySuggestions(orgId: string): Promise<PolicySuggestion[]> {
@@ -127,7 +127,7 @@ export async function runConnectTest(
     headers: await authHeaders(),
     body: JSON.stringify({ agent_id: agentId, platform }),
   })
-  if (!res.ok) throw new Error(`connect_test_failed:${res.status}`)
+  if (!res.ok) throw new Error(await responseError(res, 'connect_test_failed'))
   return res.json() as Promise<{ ok: boolean; status?: number; action?: string; decision?: string; reasoning?: string }>
 }
 
@@ -164,7 +164,7 @@ export async function applyConnectShieldPreset(orgId: string, presetId: string):
     method: 'POST',
     headers: await authHeaders(),
   })
-  if (!res.ok) throw new Error(`connect_shield_preset_apply_failed:${res.status}`)
+  if (!res.ok) throw new Error(await responseError(res, 'connect_shield_preset_apply_failed'))
 }
 
 export async function promoteConnectToGate(orgId: string): Promise<ConnectOrgSettings> {
@@ -191,6 +191,18 @@ await runGatedToolCalls(toolCalls, executors, {
   agentToken: process.env.SANCTUM_AGENT_TOKEN!,
   platform: '${platform}',
 })`
+}
+
+async function responseError(res: Response, fallback: string): Promise<string> {
+  let detail = ''
+  try {
+    const body = (await res.json()) as { error?: unknown; detail?: unknown; message?: unknown; code?: unknown }
+    const pieces = [body.error, body.detail, body.message, body.code].filter((value): value is string => typeof value === 'string' && value.length > 0)
+    detail = pieces.join(' · ')
+  } catch {
+    detail = ''
+  }
+  return detail ? `${fallback}:${res.status} — ${detail}` : `${fallback}:${res.status}`
 }
 
 export function executionSnippet(platform: string, lang: 'python' | 'typescript'): string {

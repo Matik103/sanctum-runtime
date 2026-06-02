@@ -296,18 +296,22 @@ export function Connect({ orgId, onPage }: Props) {
   }, [orgId])
 
   useEffect(() => {
-    void load()
+    const timer = window.setTimeout(() => void load(), 0)
+    return () => window.clearTimeout(timer)
   }, [load])
 
   useEffect(() => {
     if (!orgId) return
-    const prefs = loadConnectPrefs(orgId)
-    if (prefs.platform) setPlatform(prefs.platform)
-    if (prefs.selectedAgentId) setSelectedAgentId(prefs.selectedAgentId)
-    if (prefs.lang) setLang(prefs.lang)
-    if (prefs.snippetTab) setSnippetTab(prefs.snippetTab)
-    if (prefs.connectView) setConnectView(prefs.connectView)
-    setPrefsHydrated(true)
+    const timer = window.setTimeout(() => {
+      const prefs = loadConnectPrefs(orgId)
+      if (prefs.platform) setPlatform(prefs.platform)
+      if (prefs.selectedAgentId) setSelectedAgentId(prefs.selectedAgentId)
+      if (prefs.lang) setLang(prefs.lang)
+      if (prefs.snippetTab) setSnippetTab(prefs.snippetTab)
+      if (prefs.connectView) setConnectView(prefs.connectView)
+      setPrefsHydrated(true)
+    }, 0)
+    return () => window.clearTimeout(timer)
   }, [orgId])
 
   useEffect(() => {
@@ -324,7 +328,8 @@ export function Connect({ orgId, onPage }: Props) {
     )
     const prefs = loadConnectPrefs(orgId)
     if (!prefs.platform && !hasSelectedCredential) {
-      setPlatform(savedForCurrentEnv.platform)
+      const timer = window.setTimeout(() => setPlatform(savedForCurrentEnv.platform), 0)
+      return () => window.clearTimeout(timer)
     }
   }, [credentials, credEnvironment, orgId, platform, prefsHydrated])
 
@@ -334,18 +339,22 @@ export function Connect({ orgId, onPage }: Props) {
     if (selectedExists) return
     const linkedAgentId = savedCred?.default_agent_id
     if (linkedAgentId && agents.some((a) => a.id === linkedAgentId)) {
-      setSelectedAgentId(linkedAgentId)
-      return
+      const timer = window.setTimeout(() => setSelectedAgentId(linkedAgentId), 0)
+      return () => window.clearTimeout(timer)
     }
     if (!selectedAgentId && agents.length === 1) {
-      setSelectedAgentId(agents[0].id)
+      const timer = window.setTimeout(() => setSelectedAgentId(agents[0].id), 0)
+      return () => window.clearTimeout(timer)
     }
   }, [agents, prefsHydrated, savedCred?.default_agent_id, selectedAgentId])
 
   useEffect(() => {
-    setPlatformKeyInput('')
-    setKeyEntryOpen(false)
-    setTestMsg(null)
+    const timer = window.setTimeout(() => {
+      setPlatformKeyInput('')
+      setKeyEntryOpen(false)
+      setTestMsg(null)
+    }, 0)
+    return () => window.clearTimeout(timer)
   }, [platform, credEnvironment])
 
   const staleCredentials = health?.credentials.filter((c) => c.age_days >= 90) ?? []
@@ -438,7 +447,8 @@ export function Connect({ orgId, onPage }: Props) {
 
   async function handleConnectTest() {
     if (!orgId || !selectedAgent) {
-      setTestMsg('Select an agent first.')
+      setError('Select an agent first.')
+      setTestMsg(null)
       return
     }
     setTestRunning(true)
@@ -454,13 +464,15 @@ export function Connect({ orgId, onPage }: Props) {
       setSuggestions(nextSuggestions)
       const action = result.action ?? 'connect_verify_test_tool_call'
       const decision = result.decision ?? (result.ok ? 'APPROVED' : `HTTP ${result.status ?? 'failed'}`)
-      setTestMsg(
-        result.ok
-          ? `Verify pipeline OK: ${action} was ${decision}. Live Feed now has the dry-run audit event.`
-          : `Verify test reached Sanctum but returned ${decision}: ${result.reasoning ?? 'no reason supplied'}`,
-      )
+      if (result.ok) {
+        setTestMsg(`Verify pipeline OK: ${action} was ${decision}. Live Feed now has the dry-run audit event.`)
+      } else {
+        setTestMsg(null)
+        setError(`Verify test failed: ${decision}${result.reasoning ? ` — ${result.reasoning}` : ''}`)
+      }
     } catch (e) {
-      setTestMsg(e instanceof Error ? e.message : 'Test failed')
+      setTestMsg(null)
+      setError(e instanceof Error ? e.message : 'Test failed')
     } finally {
       setTestRunning(false)
     }
