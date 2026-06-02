@@ -40,18 +40,12 @@ async function main() {
   if (!robotsGoogle.res.ok) fail(`Googlebot robots ${robotsGoogle.res.status}`);
   ok("Googlebot robots.txt");
 
-  const apex = await check("apex robots redirect", `${APEX}/robots.txt`, {
-    followRedirects: false,
+  const apex = await check("apex robots direct", `${APEX}/robots.txt`, {
     readBody: true,
   });
-  if (apex.res.status !== 308 && apex.res.status !== 301) {
-    fail(`apex robots expected 308, got ${apex.res.status}`);
-  }
-  const loc = apex.res.headers.get("location") || "";
-  if (!loc.includes("www.sanctumruntime.com/robots.txt")) {
-    fail(`apex robots location: ${loc || "(missing)"}`);
-  }
-  ok("apex robots.txt → www");
+  if (!apex.res.ok) fail(`apex robots ${apex.res.status} (must be 200 for GSC domain property)`);
+  if (!apex.text.includes("User-agent:")) fail("apex robots.txt missing User-agent");
+  ok("apex robots.txt 200 (no redirect required)");
 
   const privacy = await check("privacy", `${BASE}/privacy`);
   if (!privacy.res.ok) fail(`privacy ${privacy.res.status}`);

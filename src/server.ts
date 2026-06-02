@@ -77,10 +77,9 @@ function redirectApexToWww(request: Request): Response | null {
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
-    const apexRedirect = redirectApexToWww(request);
-    if (apexRedirect) return apexRedirect;
-
     const url = new URL(request.url);
+    // Serve robots/sitemaps on apex + www before apex→www redirect. GSC "robots.txt unreachable"
+    // often traces to 308-only robots on the bare domain or SSR catching the path during deploy.
     if (request.method === "GET" || request.method === "HEAD") {
       if (isCrawlStaticPath(url.pathname)) {
         const body = crawlStaticResponse(url.pathname);
@@ -90,6 +89,9 @@ export default {
         return body;
       }
     }
+
+    const apexRedirect = redirectApexToWww(request);
+    if (apexRedirect) return apexRedirect;
 
     try {
       const handler = await getServerEntry();

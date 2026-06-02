@@ -12,7 +12,7 @@
       "statusCode": 308
     },
     {
-      "source": "/:path*",
+      "source": "/:path((?!robots\\.txt$|sitemap\\.xml$|sitemap-index\\.xml$|sitemap-ai\\.xml$).*)",
       "has": [{ "type": "host", "value": "sanctumruntime.com" }],
       "destination": "https://www.sanctumruntime.com/:path*",
       "statusCode": 308
