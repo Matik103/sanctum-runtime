@@ -42,6 +42,10 @@ export function DiscoverPageLayout({ title, eyebrow, lead, children }: DiscoverP
               llms.txt
             </a>
             {" · "}
+            <a href="/llms-full.txt" className="text-primary hover:underline">
+              llms-full.txt
+            </a>
+            {" · "}
             <a href="/ai/architecture.md" className="text-primary hover:underline">
               architecture.md
             </a>
