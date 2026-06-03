@@ -1,0 +1,1333 @@
+# Sanctum Runtime — Complete LLM Documentation
+# https://www.sanctumruntime.com/llms-full.txt
+# Updated: 2026-06-03
+# Format: plain text, section-delimited, machine-readable
+# Short index: https://www.sanctumruntime.com/llms.txt
+
+This file contains the complete documentation for Sanctum Runtime, including
+platform overview, API reference, SDK reference, policy engine, architecture,
+pricing, security model, use cases, and all blog articles.
+
+It is intended for large language models, AI assistants, and developer tools
+that need to understand how Sanctum Runtime works without crawling multiple pages.
+
+================================================================================
+SECTION 1: WHAT IS SANCTUM RUNTIME
+================================================================================
+
+Sanctum Runtime is open-source middleware that sits between AI reasoning and
+real-world execution. It is the runtime trust boundary for autonomous systems.
+
+Every meaningful agent — LLM tools, robots, MCP servers, computer-use, workflow
+bots — eventually needs a trusted place where a proposed action becomes a
+permitted action. Sanctum is that place.
+
+Core principle: Content guardrails protect what the model says. Sanctum protects
+what the system does — before side effects happen.
+
+Key capabilities:
+- Pre-execution action verification: approve, pause for human review, or block
+- Policy engine: unlimited per-action rules with YAML import/export
+- Signed action tokens: HMAC-SHA256 proof that an action was approved
+- Blast-radius scoring: reversibility, data sensitivity, physical-world impact
+- Source-trust classification: indirect prompt injection defense (7 levels)
+- Human-in-the-loop: verification queue with resume after operator approval
+- Dual approver + auto-escalate: two distinct approvers required for high-risk
+- Fleet kill switch: org-wide pause that blocks all actions until resumed
+- Policy replay: test current policies against historical audit entries
+- SOC2 + NIST AI RMF evidence exports: 16 mapped controls
+- 16 framework adapters: LangChain, OpenAI Agents, MCP, CrewAI, ROS2, and more
+- Local LLM risk scoring via Ollama — no cloud required
+- Domain policy marketplace: healthcare PHI, finance, ROS2 safety, MCP baseline
+
+License: MIT open core
+GitHub: https://github.com/Matik103/sanctum-runtime
+npm: @sanctum-runtime/sdk
+Console: https://console.sanctumruntime.com
+API: https://api.sanctumruntime.com
+Docs: https://www.sanctumruntime.com/docs
+
+================================================================================
+SECTION 2: WHO IT IS FOR
+================================================================================
+
+Sanctum Runtime is built for:
+
+Agent builders — LangChain, CrewAI, custom Node/Python agents, MCP servers,
+and agentic SaaS. Gate function calling and tool use with approve/verify/block.
+
+Platform engineers — standardize "verify before execute" across products.
+One API, one audit trail, one policy layer.
+
+Security-minded teams — policy engine plus audit trail without locking into
+a proprietary black box. MIT license, self-hostable.
+
+Local-first developers — Ollama, GGUF, vLLM, or OpenAI-compatible APIs for
+risk scoring. Full offline mode with heuristics.
+
+Operators — optional dashboard for human-in-the-loop review, verification
+queues, fleet management, and real-time monitoring.
+
+Robotics and physical system builders — same verifyAction() API gates
+software and physical-world commands: unlock_door, move_robot, emergency_stop.
+
+================================================================================
+SECTION 3: SANCTUM VS GUARDRAILS
+================================================================================
+
+"Guardrails" in 2024-2026 typically means content safety on the LLM boundary:
+blocking jailbreaks, toxicity, PII in chat, structured output validation.
+Tools: OpenAI moderation, Llama Guard, NeMo Guardrails, Azure Content Safety.
+
+That stack is necessary for customer-facing chat. It does not replace a gate
+on execution — unlock_door, transfer_funds, delete_production_data, run_shell.
+
+Sanctum adds the action layer:
+
+  User / sensor input
+        |
+        v
+  Content guardrails    — jailbreak, toxicity, PII in chat
+        |
+        v
+  Model plans an action
+        |
+        v
+  Sanctum Runtime       — policy + risk → APPROVE · VERIFY · BLOCK
+        |                  audit, webhooks, human approval, resume
+        v
+  Real execution (email, door, DB, robot, API, ...)
+
+Recommendation: use both. Guardrails on chat; Sanctum on anything that changes
+the world.
+
+Comparison:
+- Content guardrails stop harmful text.
+- Sanctum stops harmful tool/API/robot calls.
+- Content guardrails rarely have human approval with resume built in.
+- Sanctum has correlationId, resolve, webhooks, and waitForVerification().
+- Content guardrails vary on audit trails.
+- Sanctum has humanRecord on every decision, audit API, optional Supabase.
+- Content guardrails vary on self-hostability.
+- Sanctum is MIT, local-first, no account required to try.
+
+When you need Sanctum:
+- Essential: agents with privileged tools, robotics/physical access, payments,
+  healthcare, infrastructure automation
+- High: platform teams standardizing verify-before-execute
+- Medium: internal copilots with terminal, file delete, or admin API access
+- Lower: read-only chat with no tools (guardrails may suffice)
+
+================================================================================
+SECTION 4: HOW IT WORKS — THE DECISION FLOW
+================================================================================
+
+  Agent / robot / automation proposes action
+        |
+        v
+  SDK sends POST /v1/actions/verify
+  {
+    "actor": "agent-1",
+    "action": "unlock_door",
+    "context": { ... }
+  }
+        |
+        v
+  Policy engine evaluates rules
+        |
+        v
+  Risk model scores (Ollama / OpenAI-compatible / heuristics)
+        |
+        v
+  Decision returned:
+    APPROVED             — safe to execute
+    REQUIRE_VERIFICATION — pause, operator must approve via dashboard or API
+    BLOCKED              — deny execution
+        |
+        v
+  If APPROVED and action tokens are configured:
+    actionToken returned (HMAC-SHA256, 5 min TTL, scoped to actor+action+org)
+        |
+        v
+  Executor verifies token before running side effect
+        |
+        v
+  Execution outcome reported back (succeeded / failed / skipped)
+        |
+        v
+  Full lifecycle in audit trail
+
+================================================================================
+SECTION 5: QUICK START
+================================================================================
+
+Clone and run locally:
+
+  git clone https://github.com/Matik103/sanctum-runtime.git
+  cd sanctum-runtime
+  cp .env.example .env
+  npm install
+  npm run dev:runtime    # API + dashboard
+  npm run smoke          # integration check
+
+Embed via npm:
+
+  npm install @sanctum-runtime/sdk @sanctum-runtime/adapter-agent-runtime
+
+  import { SanctumRuntime } from '@sanctum-runtime/sdk'
+  import { protectAgent, AgentActions } from '@sanctum-runtime/adapter-agent-runtime'
+
+  const sanctum = new SanctumRuntime({
+    baseUrl: process.env.SANCTUM_API_URL!,
+  })
+
+  await protectAgent(sanctum, {
+    actor: 'support-bot',
+    action: AgentActions.SEND_EMAIL,
+    context: { to: 'user@example.com', heard: 'Send them the reset link' },
+    execute: async () => sendEmail(),
+  })
+
+Python (pip):
+
+  pip install sanctum-runtime
+
+Works without the dashboard. Works with Ollama off (heuristics + policies).
+Works self-hosted on your infrastructure.
+
+================================================================================
+SECTION 6: RUNTIME API REFERENCE
+================================================================================
+
+Base URL: SANCTUM_API_URL (env) or https://api.sanctumruntime.com (cloud)
+Auth: X-Sanctum-Key header, or Authorization: Bearer <Supabase JWT>
+
+--- Action Verification ---
+
+POST /v1/actions/verify
+  Gate one action before execution.
+
+  Request body:
+  {
+    "actor": "agent-1",
+    "action": "unlock_door",
+    "context": {
+      "heard": "Open the front door",
+      "time": "02:13 AM",
+      "owner_sleeping": true,
+      "instructionSource": "trusted_user",
+      "dataSensitivity": "internal",
+      "reversible": false,
+      "physicalWorld": true,
+      "org_id": "acme"
+    },
+    "offlineMode": false,
+    "correlationId": "run-42"
+  }
+
+  Response:
+  {
+    "id": "uuid",
+    "decision": "APPROVED" | "REQUIRE_VERIFICATION" | "BLOCKED",
+    "reason": "...",
+    "humanRecord": "plain English description",
+    "actionToken": { "token": "...", "expiresAt": "..." },
+    "blastRadius": { "level": "high", "score": 78, "factors": [...] },
+    "sourceTrust": "trusted_user" | "system" | "memory" | "tool_output" | "untrusted_content"
+  }
+
+POST /v1/actions/token/verify
+  Validate a signed approval token before running side effects.
+
+--- Audit ---
+
+GET /v1/audit?limit=50&org_id=acme
+  List audit log entries.
+
+GET /v1/audit/replay?limit=50&org_id=acme
+  Replay recent audit events against current policies (shadow test).
+
+POST /v1/audit/:id/resolve
+  Approve or deny a pending REQUIRE_VERIFICATION entry.
+  Body: { "decision": "approved" | "blocked", "resolvedBy": "...", "note": "..." }
+
+GET /v1/verifications/:correlationId
+  Poll verification state: pending / approved / blocked.
+
+--- Policies ---
+
+GET /v1/policies
+  List all policies.
+
+POST /v1/policies
+  Create or update a policy.
+  Body: { "action": "send_email", "requiresVerification": false, "autoBlock": false }
+
+PATCH /v1/policies/:action
+  Update policy fields.
+
+DELETE /v1/policies/:action
+  Remove policy.
+
+POST /v1/policies/simulate
+  Simulate an action without writing an audit entry.
+
+GET /v1/policies/export.yaml
+  Export all policies as YAML.
+
+POST /v1/policies/import.yaml
+  Import policies from YAML. Body: { "yaml": "...", "merge": true }
+
+GET /v1/orgs/:orgId/policies
+  Org-scoped policy view.
+
+--- Evidence / Compliance ---
+
+GET /v1/evidence/summary
+  Export action-boundary control evidence for SOC2 / NIST AI RMF audits.
+
+--- Health / Status ---
+
+GET /health
+  Liveness check. Returns ok, ollama status, policy count, audit count.
+
+GET /v1/status
+  Runtime + risk model + policy stats.
+
+GET /v1/webhooks/status
+  Webhook configuration summary.
+
+--- Proxy (Connect Agent) ---
+
+POST /v1/proxy/:platform/chat/completions
+  Zero-install proxy for external AI platforms. Supported platforms:
+  openai, deepseek, qwen, kimi, doubao, gemini.
+  Add header: X-Sanctum-Agent-Token: sk_agent_...
+  The proxy forwards to the real platform, streams back, and logs tool calls.
+
+GET /v1/proxy/platforms
+  List supported proxy platforms.
+
+--- Agent Tokens (Connect Agent) ---
+
+POST /v1/orgs/:orgId/agent-tokens
+  Register a new agent and receive an sk_agent_... token.
+
+DELETE /v1/orgs/:orgId/agent-tokens/:tokenId
+  Revoke an agent token.
+
+================================================================================
+SECTION 7: SDK REFERENCE (@sanctum-runtime/sdk)
+================================================================================
+
+const sanctum = new SanctumRuntime({
+  baseUrl: 'http://127.0.0.1:3001',   // or https://api.sanctumruntime.com
+  apiKey: process.env.SANCTUM_API_KEY,  // optional
+  getAccessToken: async () => jwtOrNull, // optional Supabase integration
+})
+
+Core methods:
+
+verifyAction(request, options?)
+  Gate one action. Returns decision, actionToken, blastRadius, sourceTrust.
+
+policy(action, 'approve' | 'verify' | 'block')
+  Set policy mode shorthand.
+
+registerPolicy(action, modeOrPartialPolicy)
+  Create any action policy with full field control.
+
+deletePolicy(action)
+  Remove a policy.
+
+getPolicies()
+  Fetch all policies.
+
+exportPoliciesYaml()
+  Download YAML string of all policies.
+
+importPoliciesYaml(yaml, merge?)
+  Import from YAML string.
+
+getAudit(limit?)
+  Fetch audit entries.
+
+replayAudit(limit?, orgId?)
+  Shadow-test current policies against recent audit entries.
+
+getEvidenceSummary(limit?, orgId?)
+  Export action-boundary evidence package.
+
+verifyActionToken(token)
+  Verify a signed approval token at the executor boundary.
+
+resolveAuditEntry(id, { decision, resolvedBy?, note? })
+  Operator approve/deny a pending verification.
+
+getVerificationStatus(correlationId)
+  Single poll for verification state.
+
+waitForVerification(correlationId, { timeoutMs?, pollIntervalMs? })
+  Poll until verification resolves (approved / blocked / timeout).
+
+getStatus()
+  Runtime status.
+
+getWebhookStatus()
+  Webhook configuration.
+
+middleware()
+  Express/Fastify middleware pattern: agent.use(sanctum.middleware())
+
+runtime().attach(host)
+  Robotics-style attach hook for device/robot hosts.
+
+--- Agent Adapter (@sanctum-runtime/adapter-agent-runtime) ---
+
+import { protectAgent, AgentActions } from '@sanctum-runtime/adapter-agent-runtime'
+
+await protectAgent(sanctum, {
+  action: 'unlock_door',
+  context: { heard: 'Open the door', org_id: 'acme' },
+  correlationId: 'run-123',
+  awaitVerification: { timeoutMs: 120_000 },  // wait for dashboard approval
+  execute: async () => unlock(),
+})
+
+AgentActions constants:
+SEND_EMAIL, DELETE_FILE, EXECUTE_TERMINAL, UNLOCK_DOOR, MOVE_ROBOT,
+DISABLE_ALARM, MOVE_TO_LOCATION, NAVIGATE, DOCK, CALIBRATE_ARM,
+RUN_WORKFLOW, POST_SLACK, UPDATE_CRM, EMERGENCY_STOP, START_LINE,
+DISPENSE, MOVE_BED, ACCESS_RECORD, SEND_MESSAGE, STORE_MEMORY, PLACE_ORDER
+
+================================================================================
+SECTION 8: POLICY ENGINE
+================================================================================
+
+Each policy is keyed by action name — any string. Optional org prefix:
+"acme:wire_transfer" with org_id in verify context.
+
+Policy fields:
+
+requiresVerification (boolean)
+  Force human review even when risk model says low risk.
+
+autoBlock (boolean)
+  Always block this action regardless of context.
+
+blockWhenOffline (boolean)
+  Block when operating in heuristics-only / no model mode.
+
+allowedActors (string[])
+  Allowlist of actor values allowed to request this action.
+
+riskPrompt (string)
+  Custom instructions for the risk model on this specific action.
+
+Policy modes (SDK shorthand):
+- approve    → no verify, no block
+- verify     → requiresVerification: true
+- block      → autoBlock: true
+
+Unknown actions use a permissive default until you register a policy.
+
+YAML format (export/import):
+
+  actions:
+    send_email:
+      requiresVerification: false
+      autoBlock: false
+      allowedActors: ["support-bot", "billing-agent"]
+      riskPrompt: "Email to external domains should be flagged"
+    unlock_door:
+      requiresVerification: true
+      blockWhenOffline: true
+    wire_transfer:
+      autoBlock: true
+
+================================================================================
+SECTION 9: SIGNED ACTION TOKENS
+================================================================================
+
+When SANCTUM_ACTION_TOKEN_SECRET (or fallback signing secret) is configured,
+approved actions receive a signed actionToken:
+
+{
+  "decision": "APPROVED",
+  "actionToken": {
+    "token": "eyJ...",
+    "expiresAt": "2026-06-03T12:05:00Z"
+  }
+}
+
+Token is HMAC-SHA256, scoped to: actor + action + org + audit ID, 5 min TTL.
+
+Executor pattern:
+
+  const result = await sanctum.verifyAction(request)
+  if (result.decision !== 'APPROVED' || !result.actionToken) {
+    throw new Error('not approved')
+  }
+
+  // Verify at executor boundary (optional but recommended):
+  await sanctum.verifyActionToken(result.actionToken.token)
+
+  await performSideEffect()
+
+  // Report outcome:
+  await sanctum.reportActionExecution(result.id, {
+    actionToken: result.actionToken.token,
+    status: 'succeeded',
+    reportedBy: 'gmail.executor',
+    resultSummary: 'Email sent to customer@example.com',
+    durationMs: 184,
+  })
+
+================================================================================
+SECTION 10: BLAST-RADIUS SCORING
+================================================================================
+
+Every action can be scored for blast radius. Score 0-100, returned on verify.
+
+blastRadius response shape:
+{
+  "level": "low" | "medium" | "high" | "critical",
+  "score": 78,
+  "reversible": false,
+  "dataSensitivity": "internal" | "confidential" | "public",
+  "externalDestination": true,
+  "physicalWorld": true,
+  "estimatedValue": 50000,
+  "factors": ["irreversible", "external_recipient", "physical_access"]
+}
+
+Pass in context to influence scoring:
+- reversible: false (e.g. deleting a file with no backup)
+- dataSensitivity: "confidential"
+- physicalWorld: true (robotics, smart home, industrial)
+- externalDestination: true (emails, API calls leaving the org)
+- estimatedValue: 50000 (monetary value of transaction)
+
+Heuristic floors apply — physical-access actions cannot be under-rated by
+small local models.
+
+================================================================================
+SECTION 11: SOURCE-TRUST CLASSIFICATION (INJECTION DEFENSE)
+================================================================================
+
+Every action carries an instructionSource level. Sanctum uses this to elevate
+risk automatically when instructions come from untrusted sources.
+
+Source trust levels (most to least trusted):
+1. trusted_user        — direct, authenticated user input
+2. system              — internal system or scheduled automation
+3. memory              — retrieved from agent long-term memory
+4. tool_output         — output from a tool/API call (moderate trust)
+5. untrusted_content   — retrieved web, email body, user-uploaded docs
+6. indirect_injection  — detected indirect prompt injection attempt
+7. unknown             — source not declared
+
+Use in verify context:
+  "instructionSource": "tool_output"
+
+Sanctum automatically raises blast-radius scoring and may require verification
+when source is tool_output or untrusted_content — preventing indirect prompt
+injection from silently triggering irreversible actions.
+
+================================================================================
+SECTION 12: HUMAN-IN-THE-LOOP (HITL)
+================================================================================
+
+When a policy sets requiresVerification: true or the risk model returns
+REQUIRE_VERIFICATION, the action pauses.
+
+Operator resolves via:
+1. Dashboard — review queue at console.sanctumruntime.com
+2. API — POST /v1/audit/:id/resolve { "decision": "approved", "note": "..." }
+
+Agent waits via:
+  await sanctum.waitForVerification(correlationId, { timeoutMs: 120_000 })
+
+Or with protectAgent():
+  await protectAgent(sanctum, {
+    action: 'transfer_funds',
+    awaitVerification: { timeoutMs: 120_000 },
+    execute: async () => transfer(),
+  })
+
+Webhooks fire on state transitions:
+- verification.required → operator notified
+- verification.resolved → agent continues or gets blocked
+
+================================================================================
+SECTION 13: WEBHOOKS
+================================================================================
+
+Configuration:
+  SANCTUM_WEBHOOK_URL=https://your-app.com/sanctum/events
+  SANCTUM_WEBHOOK_SECRET=optional-signing-secret
+  SANCTUM_WEBHOOK_EVENTS=verification.required,action.blocked,verification.resolved
+
+Events:
+- verification.required — decision was REQUIRE_VERIFICATION
+- action.blocked        — decision was BLOCKED
+- verification.resolved — operator approved or denied a pending verification
+
+Payload:
+  {
+    "event": "verification.required",
+    "timestamp": "2026-06-03T12:00:00Z",
+    "entry": { /* full audit record */ }
+  }
+
+Signature (when SANCTUM_WEBHOOK_SECRET set):
+  X-Sanctum-Signature: sha256=<hmac>
+
+================================================================================
+SECTION 14: RISK MODEL CONFIGURATION
+================================================================================
+
+Sanctum supports three risk model providers:
+
+Ollama (local):
+  SANCTUM_RISK_PROVIDER=ollama (or omit, Ollama is default if OLLAMA_URL set)
+  OLLAMA_URL=http://127.0.0.1:11434
+  OLLAMA_MODEL=qwen2.5-3b-instruct  (or llama3.2, mistral, any GGUF model)
+
+OpenAI-compatible (cloud or vLLM/LiteLLM/Groq):
+  SANCTUM_RISK_PROVIDER=openai
+  OPENAI_API_KEY=sk-...
+  OPENAI_BASE_URL=https://api.openai.com/v1  (or your vLLM endpoint)
+  OPENAI_MODEL=gpt-4o-mini
+
+Heuristics only (no model):
+  SANCTUM_RISK_PROVIDER=none
+  (or SANCTUM_OFFLINE_MODE=true per-request)
+
+Override model name:
+  SANCTUM_RISK_MODEL=llama3.2:3b
+
+================================================================================
+SECTION 15: AUDIT TRAIL
+================================================================================
+
+Every verify call creates an audit entry:
+
+{
+  "id": "uuid",
+  "action": "unlock_door",
+  "actor": "security-agent",
+  "decision": "REQUIRE_VERIFICATION",
+  "reason": "Late night access + owner sleeping",
+  "humanRecord": "Security agent requested to unlock the front door at 2:13 AM while the owner was sleeping. Decision: held for verification.",
+  "context": { ... },
+  "correlationId": "run-42",
+  "createdAt": "2026-06-03T02:13:00Z",
+  "resolvedAt": null,
+  "humanResolution": null
+}
+
+Storage:
+- Local: data/audit.jsonl (default)
+- Cloud: Supabase audit_events table (optional, set SUPABASE_* vars)
+
+Narrative context keys for human-readable records:
+- heard, user_said, spoken_command — what was said
+- intent, goal — stated purpose
+- prompt, instruction — prompt/injection text
+- channel, source — voice, api, webhook, etc.
+
+Export:
+  GET /v1/audit         — JSON list
+  GET /v1/evidence/summary — compliance-mapped evidence package
+
+================================================================================
+SECTION 16: COMPLIANCE (SOC2 + NIST AI RMF)
+================================================================================
+
+Sanctum exports 16 mapped controls across GOVERN, MAP, MEASURE, MANAGE:
+
+GOVERN:
+  GV.OC-1 — Organizational context (policy registry, action catalog)
+  GV.RM-1 — Risk management strategy (blast-radius scoring)
+  GV.SC-1 — Cybersecurity supply chain (source-trust classification)
+
+MAP:
+  MP.AC-1 — Asset classification (action categories, reversibility flags)
+  MP.RM-1 — Risk identification (risk model scoring per action)
+  MP.RM-2 — Risk assessment (dual-approver, verification requirements)
+
+MEASURE:
+  ME.AE-1 — Adverse event analysis (blocked/verified action counts)
+  ME.CM-1 — Continuous monitoring (audit trail, webhook alerts)
+  ME.CM-2 — Security metrics (blast-radius distribution, decision rates)
+
+MANAGE:
+  MN.RS-1 — Incident response (fleet kill switch, manual resolve)
+  MN.RS-2 — Recovery (policy replay for post-incident analysis)
+  MN.IM-1 — Improvements (policy update audit, version history)
+
+Evidence export: GET /v1/evidence/summary
+Returns: control descriptions, implementation evidence, audit samples,
+decision statistics, and policy configuration snapshots.
+
+================================================================================
+SECTION 17: CONNECT AGENT (ZERO-INSTALL PROXY)
+================================================================================
+
+Sanctum includes a zero-install proxy for external AI platforms. External agents
+set base_url to the Sanctum proxy and add their agent token. Sanctum forwards
+to the real platform, streams back, and logs all tool calls.
+
+Supported platforms: openai, deepseek, qwen, kimi, doubao, gemini
+
+Anthropic/Claude uses a proprietary protocol and is not compatible with this
+proxy. Use the Sanctum SDK directly for Claude agents.
+
+Setup:
+1. Register an agent at console.sanctumruntime.com → Agents → Register
+2. Copy your sk_agent_... token
+3. At console.sanctumruntime.com → Connect Agent, save your platform API key
+
+Agent configuration (Python):
+  from openai import OpenAI
+
+  client = OpenAI(
+      base_url="https://api.sanctumruntime.com/v1/proxy/openai",
+      api_key="<your-openai-api-key>",
+      default_headers={
+          "X-Sanctum-Agent-Token": "sk_agent_...",
+      },
+  )
+
+Agent configuration (TypeScript):
+  import OpenAI from 'openai'
+
+  const client = new OpenAI({
+    baseURL: 'https://api.sanctumruntime.com/v1/proxy/deepseek',
+    apiKey: '<your-deepseek-api-key>',
+    defaultHeaders: {
+      'X-Sanctum-Agent-Token': 'sk_agent_...',
+    },
+  })
+
+The proxy:
+- Streams responses (SSE) with full compatibility
+- Accumulates tool call arguments across delta chunks
+- Logs complete tool calls to the audit trail
+- Enforces rate limits: 600 req/min per agent token, 200 req/min anonymous
+- Requires no SDK changes — just change base_url
+
+================================================================================
+SECTION 18: FLEET KILL SWITCH
+================================================================================
+
+Operator-triggered org-wide pause. When activated, every verify call returns
+BLOCKED until the operator resumes.
+
+Use case: incident response — immediately stop all agents, robots, and
+automations in your organization while you investigate.
+
+Activate: Dashboard → Fleet → Emergency Stop (or API endpoint)
+Resume: Dashboard → Fleet → Resume (or API endpoint)
+
+During pause: all verify calls return { "decision": "BLOCKED", "reason": "fleet_paused" }
+
+================================================================================
+SECTION 19: DUAL APPROVER + AUTO-ESCALATE
+================================================================================
+
+For high-risk actions, require two distinct human approvers before execution:
+
+Policy:
+  {
+    "action": "wire_transfer",
+    "requireSecondApprover": true,
+    "escalationAfterMinutes": 10,
+    "escalationRole": "admin"
+  }
+
+Behavior:
+- First approval queues the action for second review
+- If no second approval within escalationAfterMinutes, escalated to escalationRole
+- Execution only proceeds after both approvals
+- Both approvals logged in audit trail with approver identity
+
+================================================================================
+SECTION 20: ENVIRONMENT VARIABLES
+================================================================================
+
+Required:
+  HOST                    API listen hostname (default 127.0.0.1)
+  PORT                    API listen port (default 3001)
+  SANCTUM_API_URL         Client-side API URL (for SDK consumers)
+
+Risk model:
+  SANCTUM_RISK_PROVIDER   ollama | openai | none
+  OLLAMA_URL              http://127.0.0.1:11434
+  OLLAMA_MODEL            qwen2.5-3b-instruct
+  OPENAI_API_KEY          sk-... (for openai provider)
+  OPENAI_BASE_URL         https://api.openai.com/v1
+  OPENAI_MODEL            gpt-4o-mini
+  SANCTUM_RISK_MODEL      Override model name
+  SANCTUM_OFFLINE_MODE    true = heuristics only (no model)
+
+Security:
+  SANCTUM_API_KEY         Lock down the API (X-Sanctum-Key header)
+  SANCTUM_API_KEY_PEPPER  Salt for API key hashing
+  SANCTUM_ACTION_TOKEN_SECRET  HMAC secret for signed action tokens
+  SANCTUM_SECRETS_KEY     AES-256-GCM key for encrypting stored credentials
+  SANCTUM_WEBHOOK_SECRET  HMAC secret for webhook signatures
+
+Webhooks:
+  SANCTUM_WEBHOOK_URL     https://your-app.com/sanctum/events
+  SANCTUM_WEBHOOK_EVENTS  verification.required,action.blocked,verification.resolved
+
+Supabase (optional cloud persistence):
+  SUPABASE_URL            Your Supabase project URL
+  SUPABASE_ANON_KEY       Supabase anon key
+  SUPABASE_SERVICE_ROLE_KEY  Supabase service role key
+
+Rate limiting:
+  SANCTUM_RATE_LIMIT_AGENT_TOKEN  req/min per agent token (default 600)
+  UPSTREAM_TIMEOUT_MS             proxy upstream timeout (default 25000)
+
+Dashboard:
+  DASHBOARD_HOST          Dashboard listen hostname
+  DASHBOARD_PORT          Dashboard listen port
+  VITE_SANCTUM_API_URL    API URL baked into dashboard build
+
+================================================================================
+SECTION 21: 12 CATEGORIES — ONE RUNTIME
+================================================================================
+
+The same verifyAction() API gates software and physical actions.
+
+Category 1: AI Agents
+  Example actions: send_email, delete_file, execute_terminal, tool calls, MCP calls
+  Example context: heard, intent, tool args, instructionSource
+  Adapter: @sanctum-runtime/adapter-agent-runtime (protectAgent)
+  Frameworks: LangChain, CrewAI, OpenAI Agents, Mastra, AutoGen, LlamaIndex,
+              smolagents, Pydantic AI, Vercel AI, n8n, Zapier
+
+Category 2: Humanoids
+  Example actions: unlock_door, move_to_location, handover_object, grasp
+  Example context: location, owner_sleeping, time, near_human
+  Use: blast-radius scoring for physical actions, dual approver for high-risk
+
+Category 3: Embodied AI
+  Example actions: move_robot, grasp, release_payload, navigate_zone
+  Example context: zone, speed, near_human, sensor_flags
+
+Category 4: Smart Home
+  Example actions: unlock_door, disable_alarm, set_thermostat, stream_camera
+  Example context: device_id, room, user_home, time
+  Policy: require verification for lock/alarm actions when owner away
+
+Category 5: AI Operating Systems (Computer Use)
+  Example actions: delete_file, install_package, kill_process, run_shell
+  Example context: path, privilege, user_id
+  Use: verify before any destructive file or process operations
+
+Category 6: Robotics Integrators (ROS2, AMR, Warehouse)
+  Example actions: navigate, dock, calibrate_arm, emergency_stop
+  Example context: map_id, battery_pct, sensor_flags, zone
+  Adapter: sanctum.runtime().attach(host) for ROS2 action servers
+
+Category 7: Workflow Automation
+  Example actions: run_workflow, post_slack, update_crm, trigger_webhook
+  Example context: workflow_id, tenant, trigger, external_destination
+  Frameworks: n8n, Zapier, CrewAI, custom automation pipelines
+
+Category 8: Physical Security / Edge
+  Example actions: open_gate, arm_perimeter, stream_camera, unlock_access
+  Example context: site_id, operator, offline, auth_level
+
+Category 9: Healthcare Robotics
+  Example actions: dispense, move_bed, access_record, administer
+  Example context: patient_zone, role, policy_id, phi_involved
+  Policy pack: healthcare-phi marketplace template
+
+Category 10: Autonomous Mobility
+  Example actions: change_route, engage_autonomous_mode, open_door
+  Example context: route_id, occupancy, weather, speed
+
+Category 11: AI Companions
+  Example actions: send_message, store_memory, place_order, share_data
+  Example context: channel, user_id, consent, data_sensitivity
+
+Category 12: Industrial Automation
+  Example actions: emergency_stop, start_line, adjust_setpoint, open_valve
+  Example context: line_id, shift, safety_interlock, zone
+
+================================================================================
+SECTION 22: SUPPORTED FRAMEWORK ADAPTERS (16)
+================================================================================
+
+1.  LangChain           — verifyAction in tool/chain; middleware wrapper
+2.  Vercel AI           — tool interception before execute
+3.  OpenAI Agents SDK   — function call gate
+4.  Mastra              — agent step verification
+5.  MCP (Model Context Protocol) — tool call approval before server executes
+6.  CrewAI              — crew task gate
+7.  ROS2                — action server middleware
+8.  Claude Desktop      — MCP tool interception
+9.  n8n                 — workflow node gate
+10. Zapier              — automation step verification
+11. AutoGen             — agent conversation tool gate
+12. Pydantic AI         — structured tool verification
+13. LlamaIndex          — query tool approval
+14. smolagents          — agent tool gate
+15. Bedrock Agents      — AWS action verification
+16. Browser-use         — computer use action control
+17. Home Assistant      — smart home command gate
+
+================================================================================
+SECTION 23: PRICING
+================================================================================
+
+Developer (Free):
+  - Up to 3 connected runtimes
+  - 10,000 verified actions/month
+  - 1 registered agent
+  - Community dashboard
+  - Local/self-hosted API
+  - MIT license
+
+Operator — $49/month:
+  - Up to 10 connected runtimes
+  - 100,000 verified actions/month
+  - 10 registered agents
+  - All framework adapters
+  - Webhook integrations
+  - Policy YAML import/export
+  - Audit export (CSV/JSON)
+  - Email support
+
+Team — $299/month:
+  - Up to 50 connected runtimes
+  - 1,000,000 verified actions/month
+  - Unlimited registered agents
+  - Fleet kill switch
+  - Dual approver workflows
+  - NIST AI RMF evidence export
+  - SOC2 control mapping
+  - Priority support
+
+Enterprise — Custom pricing:
+  - Unlimited runtimes and agents
+  - Managed Sanctum Cloud
+  - SSO (SAML, OIDC)
+  - RBAC and org-level governance
+  - Advanced threat intelligence
+  - Signed attestation packs
+  - SLA + dedicated support
+  - Private deployment options
+
+================================================================================
+SECTION 24: SECURITY MODEL
+================================================================================
+
+Authentication:
+- Dashboard: Supabase JWT (email/password or OAuth)
+- API from agents: X-Sanctum-Key header (hashed with SANCTUM_API_KEY_PEPPER)
+- Agent proxy: sk_agent_... token (HMAC-SHA256 with SANCTUM_API_KEY_PEPPER)
+- Connect proxy: X-Sanctum-Agent-Token header
+
+Credential storage:
+- Platform API keys: AES-256-GCM encrypted at rest
+- Key derived from SANCTUM_SECRETS_KEY via SHA-256
+- Format: iv:tag:ciphertext (hex-encoded)
+- Keys never logged, never returned after save
+
+Rate limiting:
+- Agent tokens: 600 req/min per token (configurable via SANCTUM_RATE_LIMIT_AGENT_TOKEN)
+- Anonymous/IP: 200 req/min
+- Per-route limits on sensitive endpoints
+
+Audit immutability:
+- Entries append-only in local JSONL
+- Supabase mirror with RLS (each user owns their rows)
+- Correlation IDs link related events
+
+Org isolation:
+- All API handlers check org membership via resolveOrgScope + assertOrgAllowed
+- Cross-org writes are rejected at the middleware layer
+
+Action token security:
+- HMAC-SHA256 signed, 5 min TTL
+- Scoped to actor + action + org + audit ID
+- Executor must verify before any side effect
+
+Source-trust classification:
+- Untrusted content and tool output automatically elevate risk
+- Indirect prompt injection defense at the policy layer
+
+Hardware attestation (enterprise):
+- TPM2, software-sealed, SGX
+- Runtime identity verification before connect
+
+================================================================================
+SECTION 25: OPEN-CORE MODEL
+================================================================================
+
+This repository is MIT licensed. Use in commercial products is permitted.
+
+Included in OSS (this repo):
+- Full runtime API (verify, policies, audit, webhooks)
+- SDK (@sanctum-runtime/sdk)
+- Agent adapter (@sanctum-runtime/adapter-agent-runtime)
+- Community dashboard
+- Ollama + OpenAI-compatible risk model integration
+- Offline/heuristics mode
+- Policy YAML import/export
+- Org-scoped policies
+- Self-hosted deployment
+- Supabase audit mirror (optional)
+- Connect Agent proxy (zero-install)
+- Live Feed (real-time audit via Supabase Realtime)
+- Basic attestation
+
+Enterprise / hosted (separate track, not in this repo):
+- Managed Sanctum Cloud
+- Advanced threat intelligence and proprietary risk models
+- Fleet orchestration and org-wide policy sync
+- SSO (SAML, OIDC)
+- Advanced analytics and behavioral graphs
+- SIEM connectors
+- Signed attestation packs with TPM verification
+- Webhook retry DLQ and multi-tenant routing
+- Compliance packs (HIPAA, PCI, SOC2 premium)
+
+GitHub: https://github.com/Matik103/sanctum-runtime
+Enterprise/design partners: open issue at github.com/Matik103/sanctum-runtime
+
+================================================================================
+SECTION 26: MONOREPO STRUCTURE
+================================================================================
+
+apps/api           — Fastify HTTP runtime API
+apps/dashboard     — React operator UI (console.sanctumruntime.com)
+packages/sdk       — @sanctum-runtime/sdk (published to npm)
+packages/runtime-engine  — Policy → risk → audit pipeline
+packages/policy-engine   — Policies + YAML
+packages/adapters/agent-runtime  — protectAgent() wrapper
+services/risk-model      — Pluggable model providers
+examples/          — Agent + npm consumer samples
+examples/policies.example.yaml  — Sample policies
+local-ai/          — Ollama model setup guides
+src/               — Marketing site (TanStack Start, www.sanctumruntime.com)
+supabase/migrations/  — Database migrations
+
+================================================================================
+SECTION 27: BLOG ARTICLES
+================================================================================
+
+All articles at https://www.sanctumruntime.com/blog
+
+---
+Title: What is a runtime trust layer for AI agents?
+URL: https://www.sanctumruntime.com/blog/runtime-trust-layer-for-ai-agents
+Published: 2026-05-20 | Read time: 8 min
+Tags: ai-agents, runtime-trust, policy-engine, human-in-the-loop
+Summary: Why execution-time verification beats chat guardrails for agents,
+robots, and workflows — and how Sanctum gates actions before they run.
+
+---
+Title: AI agent action approval: gate side effects before execution
+URL: https://www.sanctumruntime.com/blog/ai-agent-action-approval-before-execution
+Published: 2026-05-19 | Read time: 7 min
+Tags: ai-agents, tool-use, verification, sdk
+Summary: Approve, verify, or block tool calls, API writes, and file operations
+with a single verifyAction() — patterns for LangChain, MCP, and custom agents.
+
+---
+Title: MCP server action gate: verify Model Context Protocol tools before execution
+URL: https://www.sanctumruntime.com/blog/mcp-server-action-gate
+Published: 2026-05-21 | Read time: 7 min
+Tags: mcp, ai-agents, tool-use, llm-security
+Summary: MCP connects LLMs to filesystems, APIs, and devices. Gate every tool
+call with Sanctum — approve, verify, or block before the server executes.
+
+---
+Title: Embodied AI and robotics: policy gates for physical actions
+URL: https://www.sanctumruntime.com/blog/embodied-ai-robotics-policy-gate
+Published: 2026-05-18 | Read time: 9 min
+Tags: robotics, embodied-ai, smart-home, humanoids
+Summary: Humanoids, ROS2, smart home, and industrial systems need the same
+trust boundary — intercept unlock_door, move_robot, and emergency_stop before
+motors run.
+
+---
+Title: Sanctum Runtime vs guardrails: what the model says vs what it does
+URL: https://www.sanctumruntime.com/blog/sanctum-vs-guardrails
+Published: 2026-05-17 | Read time: 6 min
+Tags: guardrails, llm-security, comparison, ai-safety
+Summary: Content moderation protects chat. Runtime trust protects execution.
+When to use both — and why autonomous systems need a boundary at the action layer.
+
+---
+Title: Mobile runtime verification: PWA companion for human-in-the-loop
+URL: https://www.sanctumruntime.com/blog/mobile-pwa-runtime-verification
+Published: 2026-05-16 | Read time: 5 min
+Tags: pwa, mobile, verification, human-in-the-loop
+Summary: Turn the operator console into an installable mobile trust layer —
+push alerts, approve verifications, and supervise autonomous systems from your
+phone.
+
+---
+Title: ROS2 safety policy runtime: gate robot commands before the stack runs
+URL: https://www.sanctumruntime.com/blog/ros2-safety-policy-runtime
+Published: 2026-05-15 | Read time: 8 min
+Tags: ros2, robotics, safety, embodied-ai
+Summary: Navigation, manipulation, and safety interlocks need a trust layer.
+Intercept ROS2 actions with policies — verify hazardous moves, always approve
+e-stop.
+
+---
+Title: SOC2 and NIST AI RMF: runtime evidence from your action gate
+URL: https://www.sanctumruntime.com/blog/soc2-nist-ai-rmf-runtime-evidence
+Published: 2026-05-14 | Read time: 8 min
+Tags: soc2, compliance, ai-governance, audit-log
+Summary: Map GOVERN, MAP, MEASURE, and MANAGE controls to signed action tokens,
+audit logs, and policy replay — exportable evidence for compliance reviews.
+
+---
+Title: Fleet kill switch: pause every autonomous agent in one operator action
+URL: https://www.sanctumruntime.com/blog/fleet-kill-switch-autonomous-systems
+Published: 2026-05-13 | Read time: 6 min
+Tags: fleet, ai-safety, operations, human-in-the-loop
+Summary: When incident response matters, org-wide kill switch returns BLOCKED
+on every verify until you resume — agents, robots, and workflows stop
+immediately.
+
+---
+Title: LangChain agent middleware: verify tools before your chain executes
+URL: https://www.sanctumruntime.com/blog/langchain-agent-middleware-verification
+Published: 2026-05-12 | Read time: 7 min
+Tags: langchain, ai-agents, middleware, sdk
+Summary: Wrap LangChain tool calls with Sanctum verifyAction() or
+protectAgent() — policies, human approval, and audit without rewriting your
+agent graph.
+
+---
+Title: Smart home AI: unlock_door policies and local verification
+URL: https://www.sanctumruntime.com/blog/smart-home-ai-unlock-door-policy
+Published: 2026-05-11 | Read time: 6 min
+Tags: smart-home, iot, policy-engine, verification
+Summary: Voice assistants and home agents must not unlock doors on poisoned
+prompts. Policy-gate lock, alarm, and thermostat actions with context-aware
+verify.
+
+---
+Title: Signed action tokens: HMAC proof before executors run side effects
+URL: https://www.sanctumruntime.com/blog/signed-action-tokens-executor-verification
+Published: 2026-05-10 | Read time: 7 min
+Tags: security, tokens, runtime-trust, sdk
+Summary: Approving in Sanctum is not enough — executors must verify a
+short-lived HMAC token scoped to actor, action, and audit ID before any
+real-world effect.
+
+---
+Title: Indirect prompt injection defense with source-trust classification
+URL: https://www.sanctumruntime.com/blog/indirect-prompt-injection-source-trust
+Published: 2026-05-09 | Read time: 7 min
+Tags: llm-security, prompt-injection, ai-agents, policy-engine
+Summary: Tool output and untrusted content can hijack agents. Source-trust
+levels let policies treat tool_output and untrusted_content as higher risk
+automatically.
+
+---
+Title: Local Ollama and offline runtime trust for sovereign AI
+URL: https://www.sanctumruntime.com/blog/local-ollama-offline-runtime-trust
+Published: 2026-05-08 | Read time: 6 min
+Tags: ollama, local-llm, offline, sovereign-ai
+Summary: Run risk scoring with Ollama on-device, fall back to heuristics when
+disconnected — policies and audit without sending actions to the cloud.
+
+---
+Title: Workflow automation governance: n8n, CrewAI, and enterprise AI ops
+URL: https://www.sanctumruntime.com/blog/workflow-automation-ai-governance
+Published: 2026-05-07 | Read time: 6 min
+Tags: workflow, automation, crewai, ai-governance
+Summary: Automations that post to Slack, update CRMs, or trigger scripts need
+the same gate as agents. One verifyAction() API for workflow steps and
+multi-agent crews.
+
+---
+Title: Healthcare robotics: PHI policy packs and role-based verify
+URL: https://www.sanctumruntime.com/blog/healthcare-robotics-phi-policy-packs
+Published: 2026-05-06 | Read time: 7 min
+Tags: healthcare, robotics, compliance, policy-engine
+Summary: Dispense, bed motion, and record access require HIPAA-aware policies.
+Install marketplace packs and require verify for cross-patient actions.
+
+---
+Title: Humanoid robots: physical action gates for manipulation and access
+URL: https://www.sanctumruntime.com/blog/humanoid-robot-physical-action-gate
+Published: 2026-05-05 | Read time: 8 min
+Tags: humanoids, embodied-ai, robotics, verification
+Summary: Humanoids blend navigation, grasp, and building access. Gate unlock,
+handover, and locomotion with blast-radius scoring and dual-approver for
+high-risk moves.
+
+================================================================================
+SECTION 28: GLOSSARY
+================================================================================
+
+Runtime
+  The execution layer that intercepts actions before side effects occur.
+
+Trusted runtime
+  A runtime that enforces policy, signs decisions, and produces audit evidence.
+
+Action verification
+  The API call to POST /v1/actions/verify that returns APPROVED, BLOCKED, or
+  REQUIRE_VERIFICATION before a side effect runs.
+
+Policy
+  A per-action rule set specifying whether to approve, verify, or block.
+  Keyed by action name (string). Supports org prefixes (acme:send_email).
+
+Blast radius
+  Scoring of an action's potential impact: reversibility, data sensitivity,
+  physical-world effect, external destination, monetary value.
+
+Source trust
+  Classification of where instructions came from. Untrusted sources elevate
+  risk automatically — indirect prompt injection defense.
+
+Action token
+  HMAC-SHA256 signed proof that an action was approved. Short-lived (5 min TTL).
+  Executors must verify before running side effects.
+
+Human-in-the-loop (HITL)
+  An approval workflow where a human operator must review and approve an action
+  before the agent continues execution.
+
+Correlation ID
+  A client-supplied ID linking related audit events (the original request,
+  verification state, resolution, and execution outcome).
+
+Fleet kill switch
+  Org-wide emergency pause. All verify calls return BLOCKED until resumed.
+
+Dual approver
+  Policy requiring two distinct human approvals before an action executes.
+
+Policy replay
+  Testing current policies against historical audit entries to preview what
+  would change if policies were applied yesterday.
+
+Blast-radius scoring
+  See blast radius above. Score 0-100 with level (low/medium/high/critical).
+
+Embodied AI
+  AI acting in physical systems — robots, IoT devices, industrial controls.
+
+Agent
+  Autonomous software proposing actions (LLM with tools, workflow bot,
+  robot controller, MCP server).
+
+Open core
+  MIT-licensed local runtime (this repo). Enterprise hosted features in
+  a separate commercial track.
+
+Orchestration
+  Coordinating multiple agents and runtimes across a fleet with shared policies.
+
+Attestation
+  Hardware-backed proof of runtime identity (TPM2, SGX, or software-sealed).
+
+Control plane
+  The hosted dashboard + API for operator management (console.sanctumruntime.com).
+
+Connect Agent
+  Sanctum's zero-install proxy for external AI platforms. Change base_url to
+  route through Sanctum without installing an SDK.
+
+================================================================================
+SECTION 29: FREQUENTLY ASKED QUESTIONS
+================================================================================
+
+Q: Is Sanctum only for AI agents?
+A: No. Sanctum gates any autonomous system: AI agents, robots, smart home
+devices, industrial PLCs, workflow automations, computer use, and more.
+The same verifyAction() API works for all 12 categories.
+
+Q: Do I need to use the dashboard?
+A: No. The SDK and REST API work standalone. The dashboard is optional.
+
+Q: Does it work with local/offline models?
+A: Yes. Set OLLAMA_URL and OLLAMA_MODEL to use a local Ollama instance.
+Set SANCTUM_OFFLINE_MODE=true for heuristics-only (no model at all).
+
+Q: Can I self-host?
+A: Yes. Full self-host instructions in HOSTED.md and RENDER.md. MIT license.
+
+Q: Does Sanctum replace content guardrails (NeMo, Llama Guard, etc.)?
+A: No — they solve different problems. Use content guardrails on chat/LLM
+outputs. Use Sanctum on tool calls, APIs, robots, and anything that changes
+the world. Use both.
+
+Q: How is Sanctum different from just building an if/else policy in my agent?
+A: Server-side enforcement (can't be bypassed by prompt injection), signed
+audit trail, human-approval workflow with resume, blast-radius scoring,
+policy replay for post-incident analysis, org-level fleet management.
+
+Q: What happens if the Sanctum API is down?
+A: Set blockWhenOffline: true on sensitive policies to fail safe.
+Or use offlineMode: true for heuristics-only decisions.
+
+Q: Can I use multiple agent tokens?
+A: Yes. Each registered agent gets its own sk_agent_... token. Tokens can be
+rotated or revoked individually.
+
+Q: What AI platforms does the Connect Agent proxy support?
+A: OpenAI, DeepSeek, Qwen, Kimi, Doubao, Gemini.
+Anthropic/Claude requires the Sanctum SDK directly.
+
+Q: Is the audit log tamper-proof?
+A: Local JSONL is append-only by convention. Supabase mirror has RLS.
+Enterprise tier adds cryptographic audit signing.
+
+================================================================================
+SECTION 30: LINKS AND RESOURCES
+================================================================================
+
+Website:         https://www.sanctumruntime.com
+Console:         https://console.sanctumruntime.com
+API:             https://api.sanctumruntime.com
+GitHub:          https://github.com/Matik103/sanctum-runtime
+npm (SDK):       https://www.npmjs.com/package/@sanctum-runtime/sdk
+npm (adapter):   https://www.npmjs.com/package/@sanctum-runtime/adapter-agent-runtime
+PyPI:            https://pypi.org/project/sanctum-runtime/
+
+Documentation pages:
+  Architecture:  https://www.sanctumruntime.com/architecture
+  SDK:           https://www.sanctumruntime.com/sdk
+  Security:      https://www.sanctumruntime.com/security
+  Glossary:      https://www.sanctumruntime.com/glossary
+  Pricing:       https://www.sanctumruntime.com/pricing
+  Enterprise:    https://www.sanctumruntime.com/enterprise
+  Blog:          https://www.sanctumruntime.com/blog
+
+Legal:
+  Terms:         https://www.sanctumruntime.com/terms
+  Privacy:       https://www.sanctumruntime.com/privacy
+  Refund:        https://www.sanctumruntime.com/refund
+
+Contact:
+  General:       https://www.sanctumruntime.com/contact
+  Privacy:       privacy@sanctumruntime.com
+  Billing:       billing@sanctumruntime.com
+  Enterprise:    https://github.com/Matik103/sanctum-runtime/issues/new?template=early-access.md
+
+License: MIT — https://github.com/Matik103/sanctum-runtime/blob/main/LICENSE
+
+================================================================================
+END OF DOCUMENT
+Generated: 2026-06-03
+Source: https://www.sanctumruntime.com/llms-full.txt
+Short index: https://www.sanctumruntime.com/llms.txt
+================================================================================

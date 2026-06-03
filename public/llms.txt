@@ -1,20 +1,65 @@
 # Sanctum Runtime
+# https://www.sanctumruntime.com/llms.txt
 
-> Trusted runtime infrastructure for autonomous AI — verification, policy, and audit before agents and robots execute in the physical world.
+> Sanctum Runtime is the runtime trust boundary for autonomous systems.
+> It sits between AI reasoning and real-world execution — approve, pause,
+> or block actions before side effects happen.
 
-## Product
+## What it is
 
-- Website: https://www.sanctumruntime.com/
-- Console (operators): https://console.sanctumruntime.com/
-- API: https://api.sanctumruntime.com/
-- Open source: https://github.com/Matik103/sanctum-runtime
+Open-source (MIT) middleware that gates any action — tool calls, robot commands,
+API writes, file operations, smart home devices, industrial controls — with a
+policy engine, optional human approval, signed action tokens, and an audit trail.
+
+Not a chat guardrail. Not an LLM wrapper. The boundary at execution time.
+
+## Full documentation (LLM-optimized, ~30 sections)
+
+https://www.sanctumruntime.com/llms-full.txt
+
+## Key URLs
+
+- Website:      https://www.sanctumruntime.com
+- Console:      https://console.sanctumruntime.com
+- API:          https://api.sanctumruntime.com
+- GitHub:       https://github.com/Matik103/sanctum-runtime
+- npm SDK:      https://www.npmjs.com/package/@sanctum-runtime/sdk
+
+## Quick start
+
+  npm install @sanctum-runtime/sdk @sanctum-runtime/adapter-agent-runtime
+
+  import { SanctumRuntime } from '@sanctum-runtime/sdk'
+  import { protectAgent } from '@sanctum-runtime/adapter-agent-runtime'
+
+  const sanctum = new SanctumRuntime({ baseUrl: process.env.SANCTUM_API_URL! })
+
+  await protectAgent(sanctum, {
+    actor: 'my-agent',
+    action: 'send_email',
+    context: { to: 'user@example.com' },
+    execute: async () => sendEmail(),
+  })
+
+## Core API
+
+  POST /v1/actions/verify   — gate an action → APPROVED | REQUIRE_VERIFICATION | BLOCKED
+  GET  /v1/audit            — audit log
+  POST /v1/policies         — create/update policy
+  GET  /v1/evidence/summary — SOC2 / NIST AI RMF control evidence
+
+## Connect Agent (zero-install proxy)
+
+Route external AI agents (OpenAI, DeepSeek, Qwen, Kimi, Doubao, Gemini)
+through Sanctum by changing base_url — no SDK installation required:
+
+  base_url: https://api.sanctumruntime.com/v1/proxy/openai
+  header:   X-Sanctum-Agent-Token: sk_agent_...
 
 ## Crawlers
 
-- Sitemap index: https://www.sanctumruntime.com/sitemap-index.xml
 - Sitemap: https://www.sanctumruntime.com/sitemap.xml
 - robots.txt: https://www.sanctumruntime.com/robots.txt
-- Blog: https://www.sanctumruntime.com/blog
 
 ## Blog (17 articles)
 
@@ -36,25 +81,26 @@
 - https://www.sanctumruntime.com/blog/sanctum-vs-guardrails
 - https://www.sanctumruntime.com/blog/mobile-pwa-runtime-verification
 
-## Machine-readable pages
+## Documentation pages
 
-- Enterprise: https://www.sanctumruntime.com/enterprise
-- Docs: https://www.sanctumruntime.com/docs
-- What is Sanctum Runtime: https://www.sanctumruntime.com/what-is-sanctum-runtime
-- Architecture: https://www.sanctumruntime.com/architecture
-- SDK: https://www.sanctumruntime.com/sdk
-- Security: https://www.sanctumruntime.com/security
-- Glossary: https://www.sanctumruntime.com/glossary
+- Docs:          https://www.sanctumruntime.com/docs
+- Architecture:  https://www.sanctumruntime.com/architecture
+- SDK:           https://www.sanctumruntime.com/sdk
+- Security:      https://www.sanctumruntime.com/security
+- Glossary:      https://www.sanctumruntime.com/glossary
+- Pricing:       https://www.sanctumruntime.com/pricing
+- Enterprise:    https://www.sanctumruntime.com/enterprise
 
-## Markdown (AI-friendly)
+## AI-friendly markdown
 
-- /ai/architecture.md
-- /ai/sdk.md
-- /ai/security.md
-- /ai/glossary.md
-- /ai/overview.md
+- https://www.sanctumruntime.com/ai/overview.md
+- https://www.sanctumruntime.com/ai/architecture.md
+- https://www.sanctumruntime.com/ai/sdk.md
+- https://www.sanctumruntime.com/ai/security.md
+- https://www.sanctumruntime.com/ai/glossary.md
 
 ## Packages
 
-- npm: @sanctum-runtime/sdk, @sanctum-runtime/adapter-agent-runtime
-- Python: sanctum-runtime
+- npm: @sanctum-runtime/sdk
+- npm: @sanctum-runtime/adapter-agent-runtime
+- Python: sanctum-runtime (pip)
