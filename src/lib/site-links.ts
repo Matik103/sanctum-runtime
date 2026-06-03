@@ -47,6 +47,9 @@ export const enterpriseAccessUrl = readEnv("VITE_EARLY_ACCESS_URL", "/enterprise
 /** Machine-readable index for AI crawlers — absolute so FooterNavLink uses <a>, not TanStack <Link> */
 export const llmsTxtUrl = marketingUrl.replace(/\/$/, "") + "/llms.txt";
 
+/** Full LLM documentation — all platform content in one file */
+export const llmsFullTxtUrl = marketingUrl.replace(/\/$/, "") + "/llms-full.txt";
+
 /** @deprecated Use enterpriseAccessUrl */
 export const earlyAccessUrl = enterpriseAccessUrl;
 

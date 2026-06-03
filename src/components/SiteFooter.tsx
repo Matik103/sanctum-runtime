@@ -5,6 +5,7 @@ import {
   contactUrl,
   docsPath,
   llmsTxtUrl,
+  llmsFullTxtUrl,
   privacyUrl,
   refundUrl,
   termsUrl,
@@ -74,6 +75,7 @@ export function SiteFooter() {
             <FooterNavLink href="/blog">Blog</FooterNavLink>
             <FooterNavLink href={docsPath}>Documentation</FooterNavLink>
             <FooterNavLink href={llmsTxtUrl}>llms.txt</FooterNavLink>
+            <FooterNavLink href={llmsFullTxtUrl}>llms-full.txt</FooterNavLink>
             <FooterNavLink href={contactUrl}>Contact</FooterNavLink>
             <FooterNavLink href={consoleUrl} external>
               Console
