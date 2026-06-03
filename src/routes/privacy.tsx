@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { DiscoverPageLayout } from "@/components/DiscoverPageLayout";
 import { pageSeo, webPageJsonLd } from "@/lib/seo";
-import { acceptableUseUrl, privacyEmail } from "@/lib/site-links";
+import { acceptableUseUrl, companyLegalName, privacyEmail, productLegalName } from "@/lib/site-links";
 
 const path = "/privacy";
 const title = "Privacy Policy — Sanctum Runtime";
 const description =
-  "How Sanctum Runtime collects, uses, retains, and protects operator data, audit logs, API keys, and enterprise SSO configuration.";
+  `How ${companyLegalName} collects, uses, retains, and protects data for ${productLegalName}.`;
 
 export const Route = createFileRoute("/privacy")({
   component: PrivacyPage,
@@ -18,9 +18,18 @@ function PrivacyPage() {
     <DiscoverPageLayout
       eyebrow="Legal"
       title="Privacy Policy"
-      lead="Sanctum Runtime (“we”, “us”, “our”) provides runtime trust infrastructure for autonomous AI systems. This policy explains what we collect, why we collect it, and the choices you have."
+      lead={`${productLegalName} is operated by ${companyLegalName}. This policy explains what we collect, why we collect it, and the choices you have.`}
     >
-      <p className="text-sm text-muted-foreground">Last updated: June 1, 2026</p>
+      <p className="text-sm text-muted-foreground">Last updated: June 3, 2026</p>
+
+      <section>
+        <h2>Controller and service operator</h2>
+        <p>
+          <strong>{companyLegalName}</strong> operates <strong>{productLegalName}</strong>. References
+          to “Sanctum”, “Sanctum Runtime”, “we”, “us”, or “our” mean {companyLegalName} in connection
+          with the Sanctum Runtime website, cloud console, APIs, and related services.
+        </p>
+      </section>
 
       <section>
         <h2>1. Data we collect</h2>
@@ -66,7 +75,7 @@ function PrivacyPage() {
         <h2>2. How we use data</h2>
         <p>We use data to:</p>
         <ul>
-          <li>Provide, operate, and secure the Sanctum Runtime API and cloud console</li>
+          <li>Provide, operate, and secure the {productLegalName} API and cloud console</li>
           <li>Enforce policies, human-in-the-loop verification, and audit trails</li>
           <li>Support billing, entitlements, and plan limits</li>
           <li>Configure enterprise SSO and fleet orchestration</li>
@@ -79,7 +88,7 @@ function PrivacyPage() {
       <section>
         <h2>3. AI and infrastructure processing</h2>
         <p>
-          Sanctum may receive prompts, tool calls, tool results, action context, policy decisions, and
+          {productLegalName} may receive prompts, tool calls, tool results, action context, policy decisions, and
           other AI-agent runtime data when you route an agent through the SDK, Connect Agent proxy, or
           API. We process that data to verify actions, score risk, enforce policy, generate audit logs,
           and provide operator notifications. We do not use customer runtime content to train foundation
@@ -87,7 +96,7 @@ function PrivacyPage() {
         </p>
         <p>
           Some features can call third-party model or infrastructure providers selected by you or needed
-          to operate the service. If you save external platform credentials in Sanctum, we store them
+          to operate the service. If you save external platform credentials in {productLegalName}, we store them
           encrypted and use them only to route the requests you initiate.
         </p>
       </section>
@@ -95,7 +104,7 @@ function PrivacyPage() {
       <section>
         <h2>4. Sharing</h2>
         <p>
-          We share data only with service providers required to operate Sanctum Runtime (for example
+          We share data only with service providers required to operate {productLegalName} (for example
           hosting, Supabase authentication and database, payment processing, and email) or when
           required by law. We do not sell personal information.
         </p>
@@ -104,7 +113,7 @@ function PrivacyPage() {
       <section>
         <h2>5. Payments and checkout data</h2>
         <p>
-          Paid subscriptions may be processed by Creem or another authorized merchant/payment provider.
+          Paid subscriptions may be processed by Paddle, Creem, or another authorized merchant/payment provider.
           Checkout pages, receipts, tax calculation, card data, payout information, chargebacks, and
           payment support requests may be handled directly by that provider under its buyer terms and
           privacy notices. We receive limited billing metadata needed to activate plans, reconcile

@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { DiscoverPageLayout } from "@/components/DiscoverPageLayout";
 import { pageSeo, webPageJsonLd } from "@/lib/seo";
-import { billingEmail } from "@/lib/site-links";
+import { billingEmail, companyLegalName, productLegalName } from "@/lib/site-links";
 
 const path = "/refund";
 const title = "Refund and Dispute Policy — Sanctum Runtime";
 const description =
-  "Refunds, subscription cancellation, and payment disputes for Sanctum Runtime cloud subscriptions processed through Creem or another authorized payment provider.";
+  `Refunds, subscription cancellation, and payment disputes for ${productLegalName} subscriptions operated by ${companyLegalName}.`;
 
 export const Route = createFileRoute("/refund")({
   component: RefundPage,
@@ -18,15 +18,24 @@ function RefundPage() {
     <DiscoverPageLayout
       eyebrow="Legal"
       title="Refund and Dispute Policy"
-      lead="Sanctum Runtime provides runtime trust infrastructure for autonomous AI systems — policy enforcement, audit trails, fleet visibility, and a hosted cloud console. This policy explains how refunds and billing disputes work for paid subscriptions."
+      lead={`${productLegalName} is operated by ${companyLegalName}. This policy explains how refunds and billing disputes work for paid subscriptions.`}
     >
-      <p className="text-sm text-muted-foreground">Last updated: June 1, 2026</p>
+      <p className="text-sm text-muted-foreground">Last updated: June 3, 2026</p>
+
+      <section>
+        <h2>Merchant and product</h2>
+        <p>
+          <strong>{companyLegalName}</strong> operates <strong>{productLegalName}</strong>, a runtime
+          trust service for autonomous AI systems including policy enforcement, audit trails, fleet
+          visibility, and a hosted cloud console.
+        </p>
+      </section>
 
       <section>
         <h2>Payment processor</h2>
         <p>
-          Refunds, withdrawals, and payment disputes for Sanctum Runtime subscriptions are handled by
-          our authorized merchant/payment provider (currently <strong>Creem</strong> where available),
+          Refunds, withdrawals, and payment disputes for {productLegalName} subscriptions are handled by
+          our authorized merchant/payment provider (including <strong>Paddle</strong> or <strong>Creem</strong> where available),
           under the active buyer terms and refund policy presented at checkout.
         </p>
       </section>

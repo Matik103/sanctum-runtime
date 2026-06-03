@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { DiscoverPageLayout } from "@/components/DiscoverPageLayout";
 import { pageSeo, webPageJsonLd } from "@/lib/seo";
-import { billingEmail, privacyEmail } from "@/lib/site-links";
+import { billingEmail, companyLegalName, productLegalName } from "@/lib/site-links";
 
 const path = "/billing";
 const title = "Billing — Sanctum Runtime";
 const description =
-  "Subscription plans, billing cycles, refunds, and payment processing for Sanctum Runtime cloud services.";
+  `Subscription plans, billing cycles, refunds, and payment processing for ${productLegalName}, operated by ${companyLegalName}.`;
 
 export const Route = createFileRoute("/billing")({
   component: BillingPage,
@@ -18,9 +18,18 @@ function BillingPage() {
     <DiscoverPageLayout
       eyebrow="Legal"
       title="Billing"
-      lead="This page describes how paid plans, subscriptions, and usage limits work for Sanctum Runtime cloud services."
+      lead={`${productLegalName} is operated by ${companyLegalName}. This page describes how paid plans, subscriptions, and usage limits work for the cloud services.`}
     >
-      <p className="text-sm text-muted-foreground">Last updated: June 1, 2026</p>
+      <p className="text-sm text-muted-foreground">Last updated: June 3, 2026</p>
+
+      <section>
+        <h2>Merchant and product</h2>
+        <p>
+          <strong>{companyLegalName}</strong> operates <strong>{productLegalName}</strong>. Paid plans
+          provide access to hosted runtime trust services, including the cloud console, API usage,
+          policy enforcement, audit retention, and related operator features.
+        </p>
+      </section>
 
       <section>
         <h2>1. Plans</h2>
@@ -34,7 +43,7 @@ function BillingPage() {
       <section>
         <h2>2. Payment</h2>
         <p>
-          Paid subscriptions are processed by Creem or another authorized merchant/payment provider. By
+          Paid subscriptions are processed by Paddle, Creem, or another authorized merchant/payment provider. By
           subscribing, you authorize recurring charges according to your selected plan and billing
           cycle. Prices are shown before purchase and may exclude applicable taxes.
         </p>

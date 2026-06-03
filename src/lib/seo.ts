@@ -74,7 +74,18 @@ function readViteEnv(key: string): string | undefined {
   if (typeof import.meta === "undefined" || !import.meta.env) {
     return process.env[key]?.trim() || undefined;
   }
-  const v = (import.meta.env as Record<string, string | undefined>)[key];
+  const v = (() => {
+    switch (key) {
+      case "VITE_GOOGLE_SITE_VERIFICATION":
+        return import.meta.env.VITE_GOOGLE_SITE_VERIFICATION;
+      case "VITE_BING_SITE_VERIFICATION":
+        return import.meta.env.VITE_BING_SITE_VERIFICATION;
+      case "VITE_OG_IMAGE_URL":
+        return import.meta.env.VITE_OG_IMAGE_URL;
+      default:
+        return undefined;
+    }
+  })();
   return v?.trim() || process.env[key]?.trim() || undefined;
 }
 

@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { DiscoverPageLayout } from "@/components/DiscoverPageLayout";
 import { pageSeo, webPageJsonLd } from "@/lib/seo";
-import { acceptableUseUrl, billingEmail, supportEmail } from "@/lib/site-links";
+import { acceptableUseUrl, billingEmail, companyLegalName, productLegalName, supportEmail } from "@/lib/site-links";
 
 const path = "/terms";
 const title = "Terms & Conditions — Sanctum Runtime";
 const description =
-  "Terms governing use of the Sanctum Runtime website, cloud console, API, and related services.";
+  `Terms governing use of ${productLegalName}, operated by ${companyLegalName}.`;
 
 export const Route = createFileRoute("/terms")({
   component: TermsPage,
@@ -18,14 +18,24 @@ function TermsPage() {
     <DiscoverPageLayout
       eyebrow="Legal"
       title="Terms & Conditions"
-      lead="These terms govern your access to and use of Sanctum Runtime websites, the cloud console, APIs, and related services."
+      lead={`${productLegalName} is operated by ${companyLegalName}. These terms govern your access to and use of the website, cloud console, APIs, and related services.`}
     >
-      <p className="text-sm text-muted-foreground">Last updated: June 1, 2026</p>
+      <p className="text-sm text-muted-foreground">Last updated: June 3, 2026</p>
+
+      <section>
+        <h2>Merchant and contracting entity</h2>
+        <p>
+          These Terms &amp; Conditions are between you and <strong>{companyLegalName}</strong>, the
+          company that operates <strong>{productLegalName}</strong>. References to “Sanctum”, “Sanctum
+          Runtime”, “we”, “us”, or “our” mean {companyLegalName} acting through the Sanctum Runtime
+          product and services.
+        </p>
+      </section>
 
       <section>
         <h2>1. Agreement</h2>
         <p>
-          By accessing or using Sanctum Runtime, you agree to these Terms and our{" "}
+          By accessing or using {productLegalName}, you agree to these Terms and our{" "}
           <Link to="/privacy/">Privacy Policy</Link>. If you use the service on behalf of an organization,
           you represent that you have authority to bind that organization.
         </p>
@@ -34,12 +44,12 @@ function TermsPage() {
       <section>
         <h2>2. Service</h2>
         <p>
-          Sanctum provides runtime verification, policy enforcement, audit logging, and related operator
+          {productLegalName} provides runtime verification, policy enforcement, audit logging, and related operator
           tools. Features vary by plan. We may modify or discontinue features with reasonable notice where
           practicable.
         </p>
         <p>
-          Sanctum is not an official product of OpenAI, Anthropic, Google, Meta, DeepSeek, xAI, NVIDIA,
+          {productLegalName} is not an official product of OpenAI, Anthropic, Google, Meta, DeepSeek, xAI, NVIDIA,
           or any other model provider. Connect Agent and related proxy features let customers route
           requests to third-party AI platforms using credentials and configurations they control.
         </p>
@@ -83,8 +93,8 @@ function TermsPage() {
       <section>
         <h2>6. Subscriptions and payments</h2>
         <p>
-          Paid plans are shown before checkout and may be billed through Creem or another authorized
-          merchant/payment provider. You authorize recurring charges for the selected subscription until
+          Paid plans are shown before checkout and may be sold by {companyLegalName} and processed
+          through Paddle, Creem, or another authorized merchant/payment provider. You authorize recurring charges for the selected subscription until
           cancelled. Taxes, receipts, card processing, and payment disputes may be handled by the
           payment provider under the buyer terms shown at checkout. See our <Link to="/billing/">Billing</Link>{" "}
           and <Link to="/refund/">Refund Policy</Link> pages for more detail.
@@ -103,7 +113,7 @@ function TermsPage() {
         <h2>8. Disclaimer</h2>
         <p>
           THE SERVICE IS PROVIDED “AS IS” WITHOUT WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-          PURPOSE, OR NON-INFRINGEMENT. Sanctum does not guarantee that autonomous actions will be safe
+          PURPOSE, OR NON-INFRINGEMENT. {productLegalName} does not guarantee that autonomous actions will be safe
           in all environments — you remain responsible for deployment, testing, and human oversight.
         </p>
       </section>
@@ -111,7 +121,7 @@ function TermsPage() {
       <section>
         <h2>9. Limitation of liability</h2>
         <p>
-          TO THE MAXIMUM EXTENT PERMITTED BY LAW, SANCTUM AND ITS SUPPLIERS WILL NOT BE LIABLE FOR
+          TO THE MAXIMUM EXTENT PERMITTED BY LAW, {companyLegalName.toUpperCase()}, {productLegalName.toUpperCase()}, AND THEIR SUPPLIERS WILL NOT BE LIABLE FOR
           INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS, DATA,
           OR GOODWILL. OUR AGGREGATE LIABILITY FOR CLAIMS RELATING TO THE SERVICE IS LIMITED TO THE
           AMOUNTS YOU PAID US IN THE TWELVE MONTHS BEFORE THE CLAIM (OR ONE HUNDRED US DOLLARS IF NO
@@ -138,6 +148,9 @@ function TermsPage() {
 
       <section>
         <h2>12. Contact</h2>
+        <p>
+          Legal entity: <strong>{companyLegalName}</strong>, operator of {productLegalName}.
+        </p>
         <p>
           Questions:{" "}
           <a href={`mailto:${supportEmail}`} className="text-primary hover:underline">

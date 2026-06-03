@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { DiscoverPageLayout } from "@/components/DiscoverPageLayout";
 import { pageSeo, webPageJsonLd } from "@/lib/seo";
-import { billingEmail, consoleUrl, privacyEmail, supportEmail } from "@/lib/site-links";
+import { billingEmail, companyLegalName, consoleUrl, privacyEmail, productLegalName, supportEmail } from "@/lib/site-links";
 
 const path = "/contact";
 const title = "Contact — Sanctum Runtime";
 const description =
-  "Contact Sanctum Runtime for billing support, privacy requests, enterprise sales, and product questions.";
+  `Contact ${companyLegalName}, operator of ${productLegalName}, for billing support, privacy requests, enterprise sales, and product questions.`;
 
 export const Route = createFileRoute("/contact")({
   component: ContactPage,
@@ -18,9 +18,18 @@ function ContactPage() {
     <DiscoverPageLayout
       eyebrow="Support"
       title="Contact"
-      lead="Sanctum Runtime builds runtime trust infrastructure for autonomous AI — policy enforcement, audit trails, fleet orchestration, and a hosted operator console."
+      lead={`${productLegalName} is operated by ${companyLegalName}. Contact us for billing support, privacy requests, enterprise sales, and product questions.`}
     >
-      <p className="text-sm text-muted-foreground">Last updated: June 1, 2026</p>
+      <p className="text-sm text-muted-foreground">Last updated: June 3, 2026</p>
+
+      <section>
+        <h2>Company</h2>
+        <p>
+          Legal entity: <strong>{companyLegalName}</strong>
+          <br />
+          Product/service: <strong>{productLegalName}</strong>
+        </p>
+      </section>
 
       <section>
         <h2>Billing and refunds</h2>

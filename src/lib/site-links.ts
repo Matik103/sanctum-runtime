@@ -7,11 +7,52 @@
  * Override via Vite env at build time (Cloudflare, Vercel, Render static).
  */
 
+function readPublicViteEnv(key: string): string | undefined {
+  if (typeof import.meta === "undefined" || !import.meta.env) return undefined;
+  switch (key) {
+    case "VITE_GITHUB_URL":
+      return import.meta.env.VITE_GITHUB_URL;
+    case "VITE_CONSOLE_URL":
+      return import.meta.env.VITE_CONSOLE_URL;
+    case "VITE_MARKETING_URL":
+      return import.meta.env.VITE_MARKETING_URL;
+    case "VITE_DOCS_PATH":
+      return import.meta.env.VITE_DOCS_PATH;
+    case "VITE_EARLY_ACCESS_URL":
+      return import.meta.env.VITE_EARLY_ACCESS_URL;
+    case "VITE_PRIVACY_URL":
+      return import.meta.env.VITE_PRIVACY_URL;
+    case "VITE_TERMS_URL":
+      return import.meta.env.VITE_TERMS_URL;
+    case "VITE_REFUND_URL":
+      return import.meta.env.VITE_REFUND_URL;
+    case "VITE_ACCEPTABLE_USE_URL":
+      return import.meta.env.VITE_ACCEPTABLE_USE_URL;
+    case "VITE_PRICING_URL":
+      return import.meta.env.VITE_PRICING_URL;
+    case "VITE_CONTACT_URL":
+      return import.meta.env.VITE_CONTACT_URL;
+    case "VITE_BILLING_URL":
+      return import.meta.env.VITE_BILLING_URL;
+    case "VITE_COOKIES_URL":
+      return import.meta.env.VITE_COOKIES_URL;
+    case "VITE_PRIVACY_EMAIL":
+      return import.meta.env.VITE_PRIVACY_EMAIL;
+    case "VITE_BILLING_EMAIL":
+      return import.meta.env.VITE_BILLING_EMAIL;
+    case "VITE_SUPPORT_EMAIL":
+      return import.meta.env.VITE_SUPPORT_EMAIL;
+    case "VITE_COMPANY_LEGAL_NAME":
+      return import.meta.env.VITE_COMPANY_LEGAL_NAME;
+    case "VITE_PRODUCT_LEGAL_NAME":
+      return import.meta.env.VITE_PRODUCT_LEGAL_NAME;
+    default:
+      return undefined;
+  }
+}
+
 function readEnv(key: string, fallback: string): string {
-  const vite =
-    typeof import.meta !== "undefined" && import.meta.env
-      ? (import.meta.env as Record<string, string | undefined>)[key]
-      : undefined;
+  const vite = readPublicViteEnv(key);
   if (vite?.trim()) return vite.trim();
   const node = process.env[key]?.trim();
   if (node) return node;
@@ -66,3 +107,7 @@ export const cookiesUrl = readEnv("VITE_COOKIES_URL", "/cookies");
 export const privacyEmail = readEnv("VITE_PRIVACY_EMAIL", "privacy@sanctumruntime.com");
 export const billingEmail = readEnv("VITE_BILLING_EMAIL", "billing@sanctumruntime.com");
 export const supportEmail = readEnv("VITE_SUPPORT_EMAIL", "support@sanctumruntime.com");
+
+/** Public legal entity for merchant verification and policy pages. */
+export const companyLegalName = readEnv("VITE_COMPANY_LEGAL_NAME", "ER Consulting LLC");
+export const productLegalName = readEnv("VITE_PRODUCT_LEGAL_NAME", "Sanctum Runtime");
