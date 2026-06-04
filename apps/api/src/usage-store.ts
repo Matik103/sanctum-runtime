@@ -7,6 +7,7 @@ export const UsageMetrics = {
   RUNTIME_CONNECT: 'runtime.connect',
   RUNTIME_HOURS: 'runtime.hours',
   ACTION_VERIFY: 'action.verify',
+  ACTION_OBSERVE: 'action.observe',
   COMMAND_DISPATCH: 'command.dispatch',
   MARKETPLACE_INSTALL: 'marketplace.install',
   MEMORY_WRITE: 'memory.write',

@@ -46,18 +46,19 @@ function UsageMeter({ label, used, limit, pct, unit = '' }: {
       </div>
       {limit !== null && pctVal >= 80 && (
         <p style={{ margin: '0.25rem 0 0', fontSize: '0.73rem', color }}>
-          {pctVal >= 100 ? 'Quota reached — upgrade to continue' : `${pctVal}% used`}
+          {pctVal >= 100 ? 'Quota reached - upgrade to continue' : `${pctVal}% used`}
         </p>
       )}
     </div>
   )
 }
 
-const PLAN_CARDS: { id: PlanId; label: string; price: string; runtimes: string; events: string; agents: string; highlight?: boolean }[] = [
-  { id: 'free',       label: 'Developer',  price: 'Free',        runtimes: '3',    events: '10k/mo',  agents: '5' },
-  { id: 'operator',   label: 'Operator',   price: '$49/mo',      runtimes: '25',   events: '500k/mo', agents: '10',  highlight: true },
-  { id: 'team',       label: 'Team',       price: '$299/mo',     runtimes: '250',  events: '10M/mo',  agents: '50' },
-  { id: 'enterprise', label: 'Enterprise', price: 'Custom',      runtimes: '∞',    events: 'Unlimited', agents: '∞' },
+const PLAN_CARDS: { id: PlanId; label: string; price: string; runtimes: string; governed: string; agents: string; highlight?: boolean }[] = [
+  { id: 'observer',   label: 'Observer',   price: 'Free',        runtimes: '3',    governed: '50/mo',    agents: '2' },
+  { id: 'personal',   label: 'Personal',   price: '$12/mo',      runtimes: '5',    governed: '500/mo',   agents: '5' },
+  { id: 'operator',   label: 'Operator',   price: '$59/mo',      runtimes: '25',   governed: '500k/mo',  agents: '10',  highlight: true },
+  { id: 'team',       label: 'Team',       price: '$299/mo',     runtimes: '250',  governed: '10M/mo',   agents: '50' },
+  { id: 'enterprise', label: 'Enterprise', price: 'Custom',      runtimes: 'Unlimited', governed: 'Unlimited', agents: 'Unlimited' },
 ]
 
 export function Billing() {
@@ -118,15 +119,15 @@ export function Billing() {
     }
   }
 
-  const currentPlanId = plan?.plan.id ?? 'free'
-  const currentPlanIdx = PLAN_ORDER.indexOf(currentPlanId)
+  const currentPlanId = plan?.plan.id ?? 'observer'
+  const currentPlanIdx = Math.max(0, PLAN_ORDER.indexOf(currentPlanId))
 
   return (
     <>
       <header className="page-header">
         <div>
           <h1>Billing & Usage</h1>
-          <p>Infrastructure-based billing — events, runtimes, and orchestration hours</p>
+          <p>Watch agents for free. Pay when Sanctum governs real-world actions.</p>
         </div>
         <div className="responsive-action-row">
           {orgs.length > 1 && (
@@ -159,15 +160,15 @@ export function Billing() {
 
       {plan && plan.quotas.events.pct !== null && plan.quotas.events.pct >= 80 && (
         <Alert variant="warn">
-          <strong>Event quota at {plan.quotas.events.pct}%</strong> —{' '}
+          <strong>Governed action quota at {plan.quotas.events.pct}%</strong> -{' '}
           {plan.quotas.events.pct >= 100
-            ? 'Quota reached. New events may be dropped. Upgrade your plan.'
-            : `You've used ${formatNumber(plan.usage.eventsThisMonth)} of ${formatLimit(plan.limits.maxEventsPerMonth)} events this month.`}
+            ? 'Quota reached. New gated actions may be held or blocked until you upgrade.'
+            : `You've used ${formatNumber(plan.usage.eventsThisMonth)} of ${formatLimit(plan.limits.maxEventsPerMonth)} governed actions this month.`}
         </Alert>
       )}
       {plan && plan.quotas.runtimes.pct !== null && plan.quotas.runtimes.pct >= 80 && (
         <Alert variant="warn">
-          <strong>Runtime slots at {plan.quotas.runtimes.pct}%</strong> —{' '}
+          <strong>Runtime slots at {plan.quotas.runtimes.pct}%</strong> -{' '}
           {plan.quotas.runtimes.used} of {plan.quotas.runtimes.limit} slots used. Upgrade to connect more runtimes.
         </Alert>
       )}
@@ -175,7 +176,7 @@ export function Billing() {
       {loading && !plan ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '2rem 0', color: 'var(--muted)' }}>
           <Loader2 size={18} className="spin" />
-          <span>Loading billing info…</span>
+          <span>Loading billing info...</span>
         </div>
       ) : plan ? (
         <>
@@ -193,7 +194,7 @@ export function Billing() {
                         ${plan.plan.priceMonthlyUsd}/mo
                       </span>
                     )}
-                    {plan.plan.priceMonthlyUsd == null && plan.plan.id !== 'free' && (
+                    {plan.plan.priceMonthlyUsd == null && plan.plan.id !== 'observer' && (
                       <span style={{ fontWeight: 400, color: 'var(--muted)', fontSize: '0.9rem', marginLeft: '0.5rem' }}>Custom pricing</span>
                     )}
                   </p>
@@ -201,7 +202,7 @@ export function Billing() {
               </div>
 
               <UsageMeter
-                label="Events this month"
+                label="Governed actions this month"
                 used={plan.usage.eventsThisMonth}
                 limit={plan.limits.maxEventsPerMonth}
                 pct={plan.quotas.events.pct}
@@ -229,7 +230,7 @@ export function Billing() {
               <p style={{ margin: '0.5rem 0 0', fontSize: '0.78rem', color: 'var(--muted)' }}>
                 Audit retention: {plan.limits.retentionDays} days
                 {plan.billing.billingCycleAnchor && (
-                  <> · Cycle started {new Date(plan.billing.billingCycleAnchor).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</>
+                  <> | Cycle started {new Date(plan.billing.billingCycleAnchor).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</>
                 )}
               </p>
             </div>
@@ -239,7 +240,7 @@ export function Billing() {
           <section className="section">
             <div className="section__header">
               <h2><Zap size={18} style={{ verticalAlign: 'middle', marginRight: '0.4rem' }} />Plans</h2>
-              <p>Scale as your fleet grows — billed per runtime activity, not per seat</p>
+              <p>Observe generously. Upgrade when you need block, approve, Shield, and audit control.</p>
             </div>
             <div className="section__body">
               <div className="policy-grid">
@@ -261,7 +262,7 @@ export function Billing() {
                       <p style={{ margin: '0 0 0.5rem', fontWeight: 700, fontSize: '1rem' }}>{pc.price}</p>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', fontSize: '0.8rem', color: 'var(--muted)', marginBottom: '0.75rem' }}>
                         <span>{pc.runtimes} runtimes</span>
-                        <span>{pc.events} events</span>
+                        <span>{pc.governed} governed actions</span>
                         <span>{pc.agents} agents</span>
                       </div>
                       {isUpgrade && (
@@ -273,7 +274,7 @@ export function Billing() {
                           style={{ width: '100%' }}
                         >
                           {busy ? (
-                            <><Loader2 size={13} style={{ marginRight: '0.3rem', verticalAlign: 'middle' }} className="spin" />Opening checkout…</>
+                            <><Loader2 size={13} style={{ marginRight: '0.3rem', verticalAlign: 'middle' }} className="spin" />Opening checkout...</>
                           ) : pc.id === 'enterprise' ? 'Contact sales' : `Upgrade to ${pc.label}`}
                         </button>
                       )}
@@ -286,7 +287,7 @@ export function Billing() {
               </div>
 
               <p className="hint-line" style={{ marginTop: '1.25rem' }}>
-                All plans include the open-source runtime engine and policy evaluation.
+                Observer includes unlimited observe events with fair-use protection. Paid plans are processed through Creem or another authorized payment provider.
                 Enterprise adds air-gapped deployments, SSO, compliance exports, and SLA.
               </p>
             </div>

@@ -288,6 +288,13 @@ export function registerProxyRoutes(app: FastifyInstance, runtime: RuntimeEngine
         }
 
         function logObservedToolCalls(toolCalls: ProxyToolCall[]): void {
+          if (toolCalls.length > 0) {
+            recordUsage(cfg, orgId, UsageMetrics.ACTION_OBSERVE, toolCalls.length, {
+              proxy: true,
+              phase: 'proposal',
+              platform,
+            })
+          }
           for (const tc of toolCalls) {
             void admin
               .from('audit_events')

@@ -1,40 +1,135 @@
 import { createSupabaseAdmin, type SupabaseAuthConfig } from './auth.js'
+import { UsageMetrics } from './usage-store.js'
 
-export type PlanId = 'free' | 'operator' | 'team' | 'enterprise'
+export type PlanId = 'observer' | 'personal' | 'operator' | 'team' | 'enterprise'
+
+/** Legacy org_plans.plan_id values still seen in the wild. */
+export type LegacyPlanId = 'free' | PlanId
 
 export interface PlanLimits {
   planId: PlanId
   planName: string
   priceMonthlyUsd: number | null
   maxRuntimes: number | null
-  maxEventsPerMonth: number | null
+  /** Governed actions (verify, gate, hold) per month. */
+  maxGovernedActionsPerMonth: number | null
+  /** Observe-only events (Connect live feed) per month; null = unlimited. */
+  maxObserveEventsPerMonth: number | null
   maxAgents: number | null
   retentionDays: number
   features: string[]
+  /** @deprecated Use maxGovernedActionsPerMonth — kept for API compat. */
+  maxEventsPerMonth: number | null
 }
 
 const PLAN_DEFAULTS: Record<PlanId, PlanLimits> = {
-  free: {
-    planId: 'free', planName: 'Developer', priceMonthlyUsd: null,
-    maxRuntimes: 3, maxEventsPerMonth: 10_000, maxAgents: 5,
-    retentionDays: 7, features: ['basic_dashboard', 'community_support'],
+  observer: {
+    planId: 'observer',
+    planName: 'Observer',
+    priceMonthlyUsd: null,
+    maxRuntimes: 3,
+    maxGovernedActionsPerMonth: 50,
+    maxObserveEventsPerMonth: null,
+    maxAgents: 2,
+    retentionDays: 7,
+    features: ['connect', 'live_feed', 'observe_mode', 'basic_dashboard', 'community_support'],
+    maxEventsPerMonth: 50,
+  },
+  personal: {
+    planId: 'personal',
+    planName: 'Personal',
+    priceMonthlyUsd: 12,
+    maxRuntimes: 5,
+    maxGovernedActionsPerMonth: 500,
+    maxObserveEventsPerMonth: null,
+    maxAgents: 5,
+    retentionDays: 30,
+    features: [
+      'connect',
+      'live_feed',
+      'observe_mode',
+      'light_gates',
+      'weekly_digest',
+      'basic_dashboard',
+      'email_alerts',
+    ],
+    maxEventsPerMonth: 500,
   },
   operator: {
-    planId: 'operator', planName: 'Operator', priceMonthlyUsd: 49,
-    maxRuntimes: 25, maxEventsPerMonth: 500_000, maxAgents: 10,
-    retentionDays: 14, features: ['live_telemetry', 'runtime_health', 'api_access', 'alerts', 'cloud_sync'],
+    planId: 'operator',
+    planName: 'Operator',
+    priceMonthlyUsd: 59,
+    maxRuntimes: 25,
+    maxGovernedActionsPerMonth: 500_000,
+    maxObserveEventsPerMonth: null,
+    maxAgents: 10,
+    retentionDays: 30,
+    features: [
+      'connect',
+      'live_feed',
+      'shield_rules',
+      'webhooks',
+      'live_telemetry',
+      'runtime_health',
+      'api_access',
+      'alerts',
+      'cloud_sync',
+      'holds_approve',
+    ],
+    maxEventsPerMonth: 500_000,
   },
   team: {
-    planId: 'team', planName: 'Team', priceMonthlyUsd: 299,
-    maxRuntimes: 250, maxEventsPerMonth: 10_000_000, maxAgents: 50,
-    retentionDays: 30, features: ['sso', 'rbac', 'alerts', 'audit_logs', 'advanced_fleet', 'webhooks'],
+    planId: 'team',
+    planName: 'Team',
+    priceMonthlyUsd: 299,
+    maxRuntimes: 250,
+    maxGovernedActionsPerMonth: 10_000_000,
+    maxObserveEventsPerMonth: null,
+    maxAgents: 50,
+    retentionDays: 30,
+    features: [
+      'connect',
+      'live_feed',
+      'shield_rules',
+      'sso',
+      'rbac',
+      'alerts',
+      'audit_logs',
+      'advanced_fleet',
+      'webhooks',
+      'compliance_export',
+    ],
+    maxEventsPerMonth: 10_000_000,
   },
   enterprise: {
-    planId: 'enterprise', planName: 'Enterprise', priceMonthlyUsd: null,
-    maxRuntimes: null, maxEventsPerMonth: null, maxAgents: null,
-    retentionDays: 90, features: ['everything', 'air_gap', 'private_cloud', 'sla', 'dedicated_support', 'compliance', 'encrypted_memory'],
+    planId: 'enterprise',
+    planName: 'Enterprise',
+    priceMonthlyUsd: null,
+    maxRuntimes: null,
+    maxGovernedActionsPerMonth: null,
+    maxObserveEventsPerMonth: null,
+    maxAgents: null,
+    retentionDays: 90,
+    features: [
+      'everything',
+      'air_gap',
+      'private_cloud',
+      'sla',
+      'dedicated_support',
+      'compliance',
+      'encrypted_memory',
+    ],
+    maxEventsPerMonth: null,
   },
 }
+
+export function normalizePlanId(raw: string | undefined | null): PlanId {
+  if (raw === 'free' || raw === 'developer' || !raw) return 'observer'
+  if (raw in PLAN_DEFAULTS) return raw as PlanId
+  return 'observer'
+}
+
+export const PLAN_ORDER: PlanId[] = ['observer', 'personal', 'operator', 'team', 'enterprise']
 
 export class EntitlementEngine {
   private _admin: ReturnType<typeof createSupabaseAdmin>
@@ -54,14 +149,12 @@ export class EntitlementEngine {
         .select('plan_id,trial_ends_at')
         .eq('org_id', orgId)
         .maybeSingle()
-      // Active trial: treat as operator plan
       if (data?.trial_ends_at && new Date(data.trial_ends_at as string) > new Date()) {
         return 'operator'
       }
-      const id = (data?.plan_id as string | undefined) ?? 'free'
-      return (id in PLAN_DEFAULTS ? id : 'free') as PlanId
+      return normalizePlanId(data?.plan_id as string | undefined)
     } catch {
-      return 'free'
+      return 'observer'
     }
   }
 
@@ -95,7 +188,7 @@ export class EntitlementEngine {
 
   async getActiveRuntimeCount(orgId: string): Promise<number> {
     try {
-      const cutoff = new Date(Date.now() - 120_000).toISOString() // 2min stale window
+      const cutoff = new Date(Date.now() - 120_000).toISOString()
       const { count } = await this.admin()
         .from('registered_runtimes')
         .select('id', { count: 'exact', head: true })
@@ -114,28 +207,60 @@ export class EntitlementEngine {
     return { allowed: used < limits.maxRuntimes, used, limit: limits.maxRuntimes }
   }
 
-  async getMonthlyEventCount(orgId: string): Promise<number> {
+  async getMonthlyMetricSum(orgId: string, metric: string): Promise<number> {
     try {
       const from = new Date()
       from.setDate(1)
       from.setHours(0, 0, 0, 0)
-      const { data } = await this.admin()
+      const { data, error } = await this.admin()
         .from('usage_events')
-        .select('quantity.sum()')
+        .select('quantity')
         .eq('org_id', orgId)
+        .eq('metric', metric)
         .gte('recorded_at', from.toISOString())
-        .single()
-      return Number((data as unknown as { sum: number } | null)?.sum ?? 0)
+      if (error) return 0
+      return (data ?? []).reduce((sum, row) => sum + (Number(row.quantity) || 0), 0)
     } catch {
       return 0
     }
   }
 
-  async checkEventQuota(orgId: string): Promise<{ allowed: boolean; used: number; limit: number | null }> {
+  async getMonthlyGovernedCount(orgId: string): Promise<number> {
+    return this.getMonthlyMetricSum(orgId, UsageMetrics.ACTION_VERIFY)
+  }
+
+  async getMonthlyObserveCount(orgId: string): Promise<number> {
+    return this.getMonthlyMetricSum(orgId, UsageMetrics.ACTION_OBSERVE)
+  }
+
+  /** @deprecated Prefer getMonthlyGovernedCount */
+  async getMonthlyEventCount(orgId: string): Promise<number> {
+    return this.getMonthlyGovernedCount(orgId)
+  }
+
+  async checkGovernedQuota(
+    orgId: string,
+  ): Promise<{ allowed: boolean; used: number; limit: number | null }> {
     const limits = await this.getLimits(orgId)
-    if (limits.maxEventsPerMonth === null) return { allowed: true, used: 0, limit: null }
-    const used = await this.getMonthlyEventCount(orgId)
-    return { allowed: used < limits.maxEventsPerMonth, used, limit: limits.maxEventsPerMonth }
+    const limit = limits.maxGovernedActionsPerMonth
+    if (limit === null) return { allowed: true, used: 0, limit: null }
+    const used = await this.getMonthlyGovernedCount(orgId)
+    return { allowed: used < limit, used, limit }
+  }
+
+  async checkObserveQuota(
+    orgId: string,
+  ): Promise<{ allowed: boolean; used: number; limit: number | null }> {
+    const limits = await this.getLimits(orgId)
+    const limit = limits.maxObserveEventsPerMonth
+    if (limit === null) return { allowed: true, used: 0, limit: null }
+    const used = await this.getMonthlyObserveCount(orgId)
+    return { allowed: used < limit, used, limit }
+  }
+
+  /** @deprecated Prefer checkGovernedQuota */
+  async checkEventQuota(orgId: string): Promise<{ allowed: boolean; used: number; limit: number | null }> {
+    return this.checkGovernedQuota(orgId)
   }
 
   hasFeature(limits: PlanLimits, feature: string): boolean {

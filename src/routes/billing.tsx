@@ -4,7 +4,7 @@ import { pageSeo, webPageJsonLd } from "@/lib/seo";
 import { billingEmail, companyLegalName, productLegalName } from "@/lib/site-links";
 
 const path = "/billing";
-const title = "Billing — Sanctum Runtime";
+const title = "Billing - Sanctum Runtime";
 const description =
   `Subscription plans, billing cycles, refunds, and payment processing for ${productLegalName}, operated by ${companyLegalName}.`;
 
@@ -34,8 +34,9 @@ function BillingPage() {
       <section>
         <h2>1. Plans</h2>
         <p>
-          We offer multiple plans (for example Developer, Operator, Team, and Enterprise) with different
-          limits on runtimes, agents, events, retention, and features such as SSO and compliance export.
+          We offer multiple plans (Observer, Personal, Operator, Team, and Enterprise) with different
+          limits on runtimes, agents, governed actions, audit retention, and features such as Shield,
+          webhooks, SSO, and compliance export.
           Current limits are shown in the cloud console and may change with notice.
         </p>
       </section>
@@ -43,7 +44,7 @@ function BillingPage() {
       <section>
         <h2>2. Payment</h2>
         <p>
-          Paid subscriptions are processed by Paddle, Creem, or another authorized merchant/payment provider. By
+          Paid subscriptions are processed by Creem or another authorized merchant/payment provider. By
           subscribing, you authorize recurring charges according to your selected plan and billing
           cycle. Prices are shown before purchase and may exclude applicable taxes.
         </p>
@@ -62,25 +63,28 @@ function BillingPage() {
         <p>
           You may cancel a subscription according to the process in the console or payment provider
           portal. Refunds and disputes are handled as described in our{" "}
-          <Link to="/refund/">Refund and Dispute Policy</Link>. After cancellation, you may retain
+          <Link to="/refund">Refund and Dispute Policy</Link>. After cancellation, you may retain
           access until the end of the paid period; data retention follows your plan and our{" "}
-          <Link to="/privacy/">Privacy Policy</Link>.
+          <Link to="/privacy">Privacy Policy</Link>.
         </p>
       </section>
 
       <section>
         <h2>5. Usage metering</h2>
         <p>
-          Some features are metered (for example action verifications or stored events). Overage may be
-          blocked or billed as described in your plan. We may apply rate limits to protect the service.
+          Observe events are designed for generous visibility. Governed actions, including verification,
+          proxy gate, holds, approve/block decisions, and Shield enforcement, are metered by plan.
+          Overage may be blocked or billed as described in your plan. We may apply fair-use and rate
+          limits to protect the service.
         </p>
       </section>
 
       <section>
-        <h2>6. Free tier</h2>
+        <h2>6. Observer tier</h2>
         <p>
-          Free plans are provided without guaranteed availability or support SLAs. We may modify free-tier
-          limits with reasonable notice.
+          Observer is the free plan for seeing what agents touch before paying for production control.
+          It includes live feed visibility, limited governed actions for evaluation, and no guaranteed
+          availability or support SLA. We may modify free-tier limits with reasonable notice.
         </p>
       </section>
 
@@ -93,9 +97,9 @@ function BillingPage() {
           </a>
         </p>
         <p>
-          <Link to="/terms/">Terms &amp; Conditions</Link> · <Link to="/privacy/">Privacy Policy</Link>{" "}
-          · <Link to="/refund/">Refund Policy</Link> · <Link to="/pricing/">Pricing</Link> ·{" "}
-          <Link to="/contact/">Contact</Link> · <Link to="/cookies/">Cookies</Link>
+          <Link to="/terms">Terms &amp; Conditions</Link> | <Link to="/privacy">Privacy Policy</Link>{" "}
+          | <Link to="/refund">Refund Policy</Link> | <Link to="/pricing">Pricing</Link> |{" "}
+          <Link to="/contact">Contact</Link> | <Link to="/cookies">Cookies</Link>
         </p>
       </section>
 

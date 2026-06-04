@@ -113,7 +113,7 @@ function PrivacyPage() {
       <section>
         <h2>5. Payments and checkout data</h2>
         <p>
-          Paid subscriptions may be processed by Paddle, Creem, or another authorized merchant/payment provider.
+          Paid subscriptions may be processed by Creem or another authorized merchant/payment provider.
           Checkout pages, receipts, tax calculation, card data, payout information, chargebacks, and
           payment support requests may be handled directly by that provider under its buyer terms and
           privacy notices. We receive limited billing metadata needed to activate plans, reconcile
@@ -126,7 +126,7 @@ function PrivacyPage() {
         <p>
           We retain data only as long as needed for the purposes above. Retention for audit and usage
           data depends on your plan (see{" "}
-          <Link to="/billing/" className="text-primary hover:underline">
+          <Link to="/billing" className="text-primary hover:underline">
             Billing
           </Link>
           ). You may export organization data from the console where available (GDPR export). You may
@@ -169,9 +169,9 @@ function PrivacyPage() {
           </a>
         </p>
         <p>
-          See also: <Link to="/terms/">Terms &amp; Conditions</Link>, <Link to="/refund/">Refund Policy</Link>,{" "}
-          <Link to={acceptableUseUrl}>Acceptable Use</Link>, <Link to="/billing/">Billing</Link>, <Link to="/pricing/">Pricing</Link>,{" "}
-          <Link to="/contact/">Contact</Link>, <Link to="/cookies/">Cookies</Link>.
+          See also: <Link to="/terms">Terms &amp; Conditions</Link>, <Link to="/refund">Refund Policy</Link>,{" "}
+          <Link to={acceptableUseUrl}>Acceptable Use</Link>, <Link to="/billing">Billing</Link>, <Link to="/pricing">Pricing</Link>,{" "}
+          <Link to="/contact">Contact</Link>, <Link to="/cookies">Cookies</Link>.
         </p>
       </section>
 

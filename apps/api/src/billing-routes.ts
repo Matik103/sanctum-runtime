@@ -7,22 +7,22 @@ import { getEntitlementEngine, PLAN_DEFAULTS, type PlanId } from './entitlements
 import { getUsageStore } from './usage-store.js'
 import { sendNotificationDeduped } from './notifications.js'
 
-// ── Webhook deduplication ────────────────────────────────────────────────────
-// Paddle retries any webhook that times out or receives a 5xx response. The
+// Webhook deduplication.
+// Payment providers retry any webhook that times out or receives a 5xx response. The
 // underlying upsert into org_plans is itself idempotent, but reprocessing
 // still wastes work, fires duplicate notification emails, and burns Supabase
 // quota. Track event_ids we've already successfully processed and short-
 // circuit retries.
 //
 // Mark-after-success: we only record an event as processed once the handler
-// completes without error. If the upsert fails (returning 500), Paddle's
-// retry is allowed to attempt processing again — losing dedup is preferable
+// completes without error. If the upsert fails (returning 500), the provider
+// can attempt processing again; losing dedup is preferable
 // to silently dropping a billing event after a transient DB failure.
 //
 // Bounded FIFO: 5000 events at ~80 B each = ~400 KB ceiling.
-const PROCESSED_EVENT_TTL_MS  = 24 * 60 * 60 * 1000   // 24h covers Paddle's retry window
+const PROCESSED_EVENT_TTL_MS  = 24 * 60 * 60 * 1000   // 24h covers provider retry windows
 const PROCESSED_EVENT_MAX     = 5000
-const processedEvents = new Map<string, number>()     // event_id → seenAt (epoch ms)
+const processedEvents = new Map<string, number>()     // event_id to seenAt (epoch ms)
 
 function wasRecentlyProcessed(eventId: string | undefined): boolean {
   if (!eventId) return false
@@ -121,7 +121,8 @@ export async function registerBillingRoutes(app: FastifyInstance) {
       }
     } catch { /* ignore */ }
 
-    // Paddle subscription info
+    // Subscription info (legacy Paddle columns are retained until Creem
+    // customer/subscription columns land in the billing schema).
     let paddleCustomerId: string | null = null
     let billingCycleAnchor: string | null = null
     let paddleSubscriptionId: string | null = null
@@ -149,6 +150,8 @@ export async function registerBillingRoutes(app: FastifyInstance) {
       limits: {
         maxRuntimes: limits.maxRuntimes,
         maxEventsPerMonth: limits.maxEventsPerMonth,
+        maxGovernedActionsPerMonth: limits.maxGovernedActionsPerMonth,
+        maxObserveEventsPerMonth: limits.maxObserveEventsPerMonth,
         maxAgents: limits.maxAgents,
         retentionDays: limits.retentionDays,
         features: limits.features,
@@ -172,6 +175,7 @@ export async function registerBillingRoutes(app: FastifyInstance) {
         },
       },
       billing: {
+        billingProvider: paddleSubscriptionId || paddleCustomerId ? 'paddle' : null,
         paddleCustomerId,
         paddleSubscriptionId,
         billingCycleAnchor,
@@ -179,11 +183,12 @@ export async function registerBillingRoutes(app: FastifyInstance) {
     }
   })
 
-  // POST /v1/billing/checkout — Paddle checkout URL stub
+  // POST /v1/billing/checkout - hosted checkout URL. Creem URLs are preferred;
+  // Paddle env vars remain as a compatibility fallback during migration.
   app.post('/v1/billing/checkout', async (req, reply) => {
     const body = z.object({
       org_id: z.string().min(1),
-      plan_id: z.enum(['operator', 'team', 'enterprise']),
+      plan_id: z.enum(['personal', 'operator', 'team', 'enterprise']),
       success_url: z.string().url().optional(),
       cancel_url: z.string().url().optional(),
     }).parse(req.body)
@@ -191,7 +196,32 @@ export async function registerBillingRoutes(app: FastifyInstance) {
     const orgId = await resolveOrgId(req as SanctumReq, store, body.org_id)
     if (!orgId) return reply.status(403).send({ error: 'org_forbidden' })
 
+    const creemCheckoutUrls: Record<string, string> = {
+      personal: process.env.CREEM_CHECKOUT_PERSONAL_URL ?? '',
+      operator: process.env.CREEM_CHECKOUT_OPERATOR_URL ?? '',
+      team: process.env.CREEM_CHECKOUT_TEAM_URL ?? '',
+      enterprise: process.env.CREEM_CHECKOUT_ENTERPRISE_URL ?? '',
+    }
+
+    const creemUrl = creemCheckoutUrls[body.plan_id]
+    if (creemUrl) {
+      const checkout = new URL(creemUrl)
+      checkout.searchParams.set('org_id', orgId)
+      checkout.searchParams.set('plan', body.plan_id)
+      if (body.success_url) checkout.searchParams.set('success_url', body.success_url)
+      if (body.cancel_url) checkout.searchParams.set('cancel_url', body.cancel_url)
+      return {
+        checkoutUrl: checkout.toString(),
+        billingProvider: 'creem',
+        planId: body.plan_id,
+        planName: PLAN_DEFAULTS[body.plan_id as PlanId].planName,
+        priceMonthlyUsd: PLAN_DEFAULTS[body.plan_id as PlanId].priceMonthlyUsd,
+        message: null,
+      }
+    }
+
     const paddleProductIds: Record<string, string> = {
+      personal: process.env.PADDLE_PRODUCT_PERSONAL ?? '',
       operator: process.env.PADDLE_PRODUCT_OPERATOR ?? '',
       team: process.env.PADDLE_PRODUCT_TEAM ?? '',
       enterprise: process.env.PADDLE_PRODUCT_ENTERPRISE ?? '',
@@ -203,8 +233,11 @@ export async function registerBillingRoutes(app: FastifyInstance) {
       if (body.plan_id === 'enterprise' || !process.env.PADDLE_VENDOR_ID) {
         return {
           checkoutUrl: null,
+          billingProvider: null,
           contactEmail: 'billing@sanctumruntime.com',
-          message: 'Contact us for Enterprise pricing',
+          message: body.plan_id === 'enterprise'
+            ? 'Contact us for Enterprise pricing'
+            : 'Creem checkout is not configured yet - contact billing@sanctumruntime.com',
         }
       }
     }
@@ -221,14 +254,17 @@ export async function registerBillingRoutes(app: FastifyInstance) {
 
     return {
       checkoutUrl,
+      billingProvider: checkoutUrl ? 'paddle' : null,
       planId: body.plan_id,
       planName: PLAN_DEFAULTS[body.plan_id as PlanId].planName,
       priceMonthlyUsd: PLAN_DEFAULTS[body.plan_id as PlanId].priceMonthlyUsd,
-      message: checkoutUrl ? null : 'Billing checkout is not configured — contact billing@sanctumruntime.com',
+      message: checkoutUrl ? null : 'Billing checkout is not configured - contact billing@sanctumruntime.com',
     }
   })
 
-  // POST /v1/billing/webhook — Paddle inbound webhook (no auth, signature-verified)
+  // POST /v1/billing/webhook - Paddle inbound webhook (no auth, signature-verified).
+  // TODO: add Creem signature verification once the Creem webhook secret and
+  // event payload contract are locked in production.
   app.post('/v1/billing/webhook', {
     config: { rawBody: true },
   }, async (req, reply) => {
@@ -236,10 +272,10 @@ export async function registerBillingRoutes(app: FastifyInstance) {
     if (!secret) {
       const { isProduction } = await import('./security.js')
       if (isProduction()) {
-        app.log.error('[billing/webhook] PADDLE_WEBHOOK_SECRET not set — rejecting webhook')
+        app.log.error('[billing/webhook] PADDLE_WEBHOOK_SECRET not set - rejecting webhook')
         return reply.status(503).send({ error: 'webhook_not_configured' })
       }
-      app.log.warn('[billing/webhook] PADDLE_WEBHOOK_SECRET not set — skipping signature check')
+      app.log.warn('[billing/webhook] PADDLE_WEBHOOK_SECRET not set - skipping signature check')
     } else {
       // Paddle Billing signature: "ts=<epoch>;h1=<hmac>"
       const sigHeader = req.headers['paddle-signature'] as string | undefined
@@ -287,10 +323,10 @@ export async function registerBillingRoutes(app: FastifyInstance) {
     const passthrough = customData?.['org_id'] as string | undefined
 
     if (!passthrough) {
-      // Nothing to do but it IS a successfully-handled event — mark it processed
+      // Nothing to do, but it is a successfully handled event. Mark it processed
       // so Paddle doesn't retry the same payload forever.
       markEventProcessed(eventId)
-      return reply.status(200).send({ ok: true, note: 'no org_id in custom_data — skipped' })
+      return reply.status(200).send({ ok: true, note: 'no org_id in custom_data - skipped' })
     }
 
     const admin = createSupabaseAdmin(cfg)
@@ -298,8 +334,8 @@ export async function registerBillingRoutes(app: FastifyInstance) {
     const PLAN_MAP: Record<string, PlanId> = {
       'subscription.activated': 'operator',  // default; overridden by product mapping below
       'subscription.updated': 'operator',
-      'subscription.cancelled': 'free',
-      'subscription.paused': 'free',
+      'subscription.cancelled': 'observer',
+      'subscription.paused': 'observer',
     }
 
     // Map Paddle price/product IDs to plan IDs
@@ -307,6 +343,7 @@ export async function registerBillingRoutes(app: FastifyInstance) {
     let planId: PlanId | null = null
 
     const productIdMap: Record<string, PlanId> = {
+      [process.env.PADDLE_PRODUCT_PERSONAL ?? '__none_personal__']: 'personal',
       [process.env.PADDLE_PRODUCT_OPERATOR ?? '__none__']: 'operator',
       [process.env.PADDLE_PRODUCT_TEAM ?? '__none__']: 'team',
       [process.env.PADDLE_PRODUCT_ENTERPRISE ?? '__none__']: 'enterprise',
@@ -357,7 +394,7 @@ export async function registerBillingRoutes(app: FastifyInstance) {
             data: { planId, eventType },
           },
           { email: prefs.email, slackWebhookUrl: prefs.slackWebhookUrl, notificationWebhookUrl: prefs.notificationWebhookUrl },
-          86_400_000, // 24h cooldown — plan changes are rare
+          86_400_000, // 24h cooldown; plan changes are rare
         )
       }).catch(() => {})
     }
@@ -380,7 +417,7 @@ export async function registerBillingRoutes(app: FastifyInstance) {
       }).catch(() => {})
     }
 
-    // All side effects completed without error — record so Paddle retries
+    // All side effects completed without error. Record so provider retries
     // (e.g., from a network timeout that arrived after we'd already finished)
     // don't re-run the upsert + notifications.
     markEventProcessed(eventId)

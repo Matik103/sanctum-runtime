@@ -35,7 +35,7 @@ function RefundPage() {
         <h2>Payment processor</h2>
         <p>
           Refunds, withdrawals, and payment disputes for {productLegalName} subscriptions are handled by
-          our authorized merchant/payment provider (including <strong>Paddle</strong> or <strong>Creem</strong> where available),
+          our authorized merchant/payment provider (<strong>Creem</strong> where available),
           under the active buyer terms and refund policy presented at checkout.
         </p>
       </section>
@@ -84,9 +84,9 @@ function RefundPage() {
           .
         </p>
         <p>
-          <Link to="/terms/">Terms &amp; Conditions</Link> · <Link to="/privacy/">Privacy Policy</Link> ·{" "}
-          <Link to="/billing/">Billing</Link> · <Link to="/pricing/">Pricing</Link> ·{" "}
-          <Link to="/contact/">Contact</Link>
+          <Link to="/terms">Terms &amp; Conditions</Link> · <Link to="/privacy">Privacy Policy</Link> ·{" "}
+          <Link to="/billing">Billing</Link> · <Link to="/pricing">Pricing</Link> ·{" "}
+          <Link to="/contact">Contact</Link>
         </p>
       </section>
 

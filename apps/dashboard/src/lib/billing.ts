@@ -7,13 +7,15 @@ async function authHeaders(): Promise<Record<string, string>> {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
-export type PlanId = 'free' | 'operator' | 'team' | 'enterprise'
+export type PlanId = 'observer' | 'personal' | 'operator' | 'team' | 'enterprise'
 
 export interface BillingPlan {
   plan: { id: PlanId; name: string; priceMonthlyUsd: number | null }
   limits: {
     maxRuntimes: number | null
     maxEventsPerMonth: number | null
+    maxGovernedActionsPerMonth?: number | null
+    maxObserveEventsPerMonth?: number | null
     maxAgents: number | null
     retentionDays: number
     features: string[]
@@ -29,8 +31,9 @@ export interface BillingPlan {
     runtimes: { used: number; limit: number | null; pct: number | null }
   }
   billing: {
-    paddleCustomerId: string | null
-    paddleSubscriptionId: string | null
+    billingProvider?: string | null
+    paddleCustomerId?: string | null
+    paddleSubscriptionId?: string | null
     billingCycleAnchor: string | null
   }
 }
@@ -42,7 +45,10 @@ export async function fetchBillingPlan(orgId: string): Promise<BillingPlan> {
   return res.json() as Promise<BillingPlan>
 }
 
-export async function createCheckout(orgId: string, planId: PlanId): Promise<{ checkoutUrl: string | null; message: string | null; contactEmail?: string }> {
+export async function createCheckout(
+  orgId: string,
+  planId: PlanId,
+): Promise<{ checkoutUrl: string | null; billingProvider?: string | null; message: string | null; contactEmail?: string }> {
   const headers = { ...await authHeaders(), 'Content-Type': 'application/json' }
   const res = await fetch(`${apiBase}/v1/billing/checkout`, {
     method: 'POST',
@@ -53,7 +59,7 @@ export async function createCheckout(orgId: string, planId: PlanId): Promise<{ c
   return res.json()
 }
 
-export const PLAN_ORDER: PlanId[] = ['free', 'operator', 'team', 'enterprise']
+export const PLAN_ORDER: PlanId[] = ['observer', 'personal', 'operator', 'team', 'enterprise']
 
 export function formatLimit(n: number | null, unit = ''): string {
   if (n === null) return 'Unlimited'
