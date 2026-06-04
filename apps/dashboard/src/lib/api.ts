@@ -203,11 +203,9 @@ async function authHeaders(): Promise<Record<string, string>> {
 }
 
 export async function getFleetStatus(orgId?: string): Promise<FleetPauseStatus> {
+  void orgId
   const h = await authHeaders()
-  const url = orgId
-    ? `${apiBaseUrl}/v1/fleet/pause-status?org_id=${encodeURIComponent(orgId)}`
-    : `${apiBaseUrl}/v1/fleet/pause-status`
-  const res = await fetch(url, { headers: h })
+  const res = await fetch(`${apiBaseUrl}/v1/fleet/pause-status`, { headers: h })
   if (!res.ok) throw new Error(`Fleet status failed: ${res.status}`)
   return res.json() as Promise<FleetPauseStatus>
 }

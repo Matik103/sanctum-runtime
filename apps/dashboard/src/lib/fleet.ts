@@ -4,7 +4,36 @@ import { apiBaseUrl as apiBase } from './api-url'
 
 export type FleetOrg = { org_id: string; org_name: string; role: string }
 
+type OperatorContext = {
+  defaultOrganizationId: string | null
+  organizationIds: string[]
+}
+
+async function fetchOperatorOrgs(): Promise<FleetOrg[]> {
+  const token = await getAccessToken()
+  const headers: Record<string, string> = {}
+  if (token) headers['Authorization'] = `Bearer ${token}`
+
+  const res = await fetch(`${apiBase}/v1/operator/context`, { headers })
+  if (!res.ok) return []
+  const ctx = (await res.json()) as OperatorContext
+  const ids = ctx.organizationIds?.length
+    ? ctx.organizationIds
+    : ctx.defaultOrganizationId
+      ? [ctx.defaultOrganizationId]
+      : []
+
+  return ids.map((org_id, idx) => ({
+    org_id,
+    org_name: idx === 0 ? 'Workspace' : `Workspace ${idx + 1}`,
+    role: 'operator',
+  }))
+}
+
 export async function fetchMyOrgs(): Promise<FleetOrg[]> {
+  const apiOrgs = await fetchOperatorOrgs().catch(() => [])
+  if (apiOrgs.length > 0 || !import.meta.env.DEV) return apiOrgs
+
   const sb = getSupabase()
   if (!sb) return []
   const { data, error } = await sb.rpc('get_my_orgs')

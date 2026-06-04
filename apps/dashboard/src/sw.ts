@@ -2,7 +2,7 @@
 import { clientsClaim } from 'workbox-core'
 import { addRoute, precache, cleanupOutdatedCaches, createHandlerBoundToURL } from 'workbox-precaching'
 import { registerRoute, NavigationRoute } from 'workbox-routing'
-import { NetworkFirst, CacheFirst, StaleWhileRevalidate } from 'workbox-strategies'
+import { NetworkFirst, StaleWhileRevalidate } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
 import { sameOriginNotificationTarget } from './lib/notification-target'
 
@@ -12,12 +12,10 @@ declare const self: ServiceWorkerGlobalScope & {
 
 // Bump this whenever the caching strategy or app shell changes.
 // Old caches whose name doesn't match are deleted on activate.
-const SW_VERSION = '9'
+const SW_VERSION = '10'
 
 const CACHE_NAMES = {
   shell:      `sanctum-shell-v${SW_VERSION}`,
-  fontsCss:   `google-fonts-stylesheets-v${SW_VERSION}`,
-  fontsFiles: `google-fonts-webfonts-v${SW_VERSION}`,
   images:     `images-v${SW_VERSION}`,
 }
 
@@ -38,7 +36,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) =>
       Promise.all(
         keys
-          .filter((k) => k.startsWith('sanctum-') || k.startsWith('google-fonts-') || k.startsWith('images-'))
+          .filter((k) => k.startsWith('sanctum-') || k.startsWith('images-'))
           .filter((k) => !keep.has(k))
           .map((k) => caches.delete(k)),
       ),
@@ -70,22 +68,6 @@ addRoute()
 
 // Never cache authenticated control-plane API data. Offline action submissions
 // are queued in app storage; historical and credential-bearing reads stay live.
-
-// Google Fonts
-registerRoute(
-  ({ url }) => url.origin === 'https://fonts.googleapis.com',
-  new CacheFirst({
-    cacheName: CACHE_NAMES.fontsCss,
-    plugins: [new ExpirationPlugin({ maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 })],
-  }),
-)
-registerRoute(
-  ({ url }) => url.origin === 'https://fonts.gstatic.com',
-  new CacheFirst({
-    cacheName: CACHE_NAMES.fontsFiles,
-    plugins: [new ExpirationPlugin({ maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 })],
-  }),
-)
 
 // Images — StaleWhileRevalidate so they load fast and refresh in background
 registerRoute(

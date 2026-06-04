@@ -39,8 +39,9 @@ export interface BillingPlan {
 }
 
 export async function fetchBillingPlan(orgId: string): Promise<BillingPlan> {
+  void orgId
   const headers = await authHeaders()
-  const res = await fetch(`${apiBase}/v1/billing/plan?org_id=${encodeURIComponent(orgId)}`, { headers })
+  const res = await fetch(`${apiBase}/v1/billing/plan`, { headers })
   if (!res.ok) throw new Error(`billing_plan_error: ${res.status}`)
   return res.json() as Promise<BillingPlan>
 }

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiBaseUrl } from '../lib/api-url'
 import { fetchMyOrgs } from '../lib/fleet'
-import { fetchOperatorContext } from '../lib/marketplace'
 import { getAccessToken, getSupabase } from '../lib/supabase'
+
+const ENABLE_DIRECT_REALTIME =
+  import.meta.env.DEV || import.meta.env.VITE_ENABLE_DIRECT_SUPABASE_REALTIME === 'true'
 
 export type InAppNotification = {
   id: string
@@ -44,11 +46,7 @@ async function resolveAlertsOrgId(explicitOrgId?: string | null): Promise<string
 
   alertsOrgIdPromise ??= (async () => {
     const orgs = await fetchMyOrgs().catch(() => [])
-    const orgId = orgs[0]?.org_id
-    if (orgId) return orgId
-
-    const ctx = await fetchOperatorContext().catch(() => null)
-    return ctx?.defaultOrganizationId ?? null
+    return orgs[0]?.org_id ?? null
   })()
 
   try {
@@ -111,8 +109,11 @@ export function useInAppNotifications(orgId: string | null | undefined) {
     return () => clearInterval(timer)
   }, [load])
 
-  // Supabase Realtime subscription for instant updates when tab is open
+  // Supabase Realtime subscription for local development or explicitly
+  // opted-in deployments. Production relies on the org-scoped Alerts API
+  // poll above to avoid exposing database websocket URLs in the browser.
   useEffect(() => {
+    if (!ENABLE_DIRECT_REALTIME) return
     if (!orgId) return
     const sb = getSupabase()
     if (!sb) return

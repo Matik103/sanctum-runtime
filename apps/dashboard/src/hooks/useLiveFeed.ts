@@ -2,6 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken, getSupabase } from '../lib/supabase'
 
+const ENABLE_DIRECT_REALTIME =
+  import.meta.env.DEV || import.meta.env.VITE_ENABLE_DIRECT_SUPABASE_REALTIME === 'true'
+
 export type ProxyEvent = {
   id: string
   org_id: string
@@ -103,18 +106,37 @@ export function useLiveFeed(orgId: string | null | undefined) {
   const [loading, setLoading] = useState(true)
   const channelRef = useRef<ReturnType<NonNullable<ReturnType<typeof getSupabase>>['channel']> | null>(null)
 
-  // Initial load
+  // Initial load. Production uses API polling instead of direct Supabase
+  // Realtime so the browser does not expose database channel URLs.
   useEffect(() => {
     if (!orgId) return
-    setLoading(true)
-    fetchRecentProxyEvents()
-      .then(setEvents)
-      .catch(() => {})
-      .finally(() => setLoading(false))
+    let cancelled = false
+    const load = async (showLoading = false) => {
+      if (showLoading) setLoading(true)
+      const recent = await fetchRecentProxyEvents().catch(() => [])
+      if (cancelled) return
+      setEvents(recent)
+      if (showLoading) setLoading(false)
+    }
+
+    void load(true)
+    if (ENABLE_DIRECT_REALTIME) {
+      return () => {
+        cancelled = true
+      }
+    }
+
+    const timer = window.setInterval(() => { void load(false) }, 15_000)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+    }
   }, [orgId])
 
-  // Supabase Realtime subscription for instant updates
+  // Supabase Realtime subscription for local development or explicitly
+  // opted-in deployments.
   useEffect(() => {
+    if (!ENABLE_DIRECT_REALTIME) return
     if (!orgId) return
     const sb = getSupabase()
     if (!sb) return

@@ -14,7 +14,7 @@
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Embedder-Policy: credentialless
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' fonts.googleapis.com; font-src 'self' fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://api.sanctumruntime.com wss://api.sanctumruntime.com https://*.supabase.co wss://*.supabase.co; frame-ancestors 'none'; base-uri 'self'; upgrade-insecure-requests;
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: https: blob:; connect-src 'self' https://api.sanctumruntime.com wss://api.sanctumruntime.com https://*.supabase.co; frame-ancestors 'none'; base-uri 'self'; upgrade-insecure-requests;
 
 # Only hashed bundles under /assets/* are safe to cache immutably.
 # Vite emits every fingerprinted artifact there. Unhashed root files

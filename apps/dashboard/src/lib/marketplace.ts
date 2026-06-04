@@ -43,7 +43,7 @@ async function apiError(res: Response, label: string): Promise<never> {
   throw new Error(detail);
 }
 
-/** Fallback when Supabase get_my_orgs RPC returns empty (dashboard JWT). */
+/** Resolve browser-safe operator context through the Sanctum API boundary. */
 export async function fetchOperatorContext(): Promise<OperatorContext | null> {
   const res = await fetch(`${apiBase}/v1/operator/context`, { headers: await headers() });
   if (!res.ok) return null;
