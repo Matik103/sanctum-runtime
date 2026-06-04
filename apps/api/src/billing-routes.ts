@@ -12,6 +12,7 @@ import {
 } from './creem-billing.js'
 import {
   creemCreateCheckoutSession,
+  creemHostedPaymentUrl,
   creemProductIdForPlan,
   creemPublicConfig,
   defaultBillingReturnUrls,
@@ -75,13 +76,17 @@ async function resolveOrgId(req: SanctumReq, store: ControlPlaneStore, qOrgId?: 
   return null
 }
 
-function staticCreemCheckoutUrl(planId: PaidPlanId, orgId: string, urls: { success?: string; cancel?: string }): string | null {
+function staticCreemCheckoutUrl(
+  planId: PaidPlanId,
+  orgId: string,
+  urls: { success?: string; cancel?: string; baseUrl?: string },
+): string | null {
   const envMap: Record<PaidPlanId, string | undefined> = {
     personal: process.env.CREEM_CHECKOUT_PERSONAL_URL,
     operator: process.env.CREEM_CHECKOUT_OPERATOR_URL,
     team: process.env.CREEM_CHECKOUT_TEAM_URL,
   }
-  const base = envMap[planId]?.trim()
+  const base = urls.baseUrl ?? envMap[planId]?.trim()
   if (!base) return null
   const checkout = new URL(base)
   checkout.searchParams.set('org_id', orgId)
@@ -397,13 +402,40 @@ export async function registerBillingRoutes(app: FastifyInstance) {
       }
     }
 
+    // Product IDs only (no API key): use Creem hosted test/live payment pages.
+    if (productId) {
+      const hosted = staticCreemCheckoutUrl(planId, orgId, {
+        success: successUrl,
+        cancel: cancelUrl,
+        baseUrl: creemHostedPaymentUrl(productId),
+      })
+      if (hosted) {
+        return {
+          checkoutUrl: hosted,
+          billingProvider: 'creem',
+          checkoutMode: 'link',
+          planId,
+          planName: PLAN_DEFAULTS[planId].planName,
+          priceMonthlyUsd: PLAN_DEFAULTS[planId].priceMonthlyUsd,
+          message: getCreemConfig()
+            ? null
+            : 'Using hosted Creem checkout. Add CREEM_API_KEY on the API for metadata-rich checkout and reliable webhooks.',
+        }
+      }
+    }
+
+    const missing: string[] = []
+    if (!getCreemConfig()) missing.push('CREEM_API_KEY')
+    if (!productId) missing.push(`CREEM_PRODUCT_${planId.toUpperCase()}`)
+
     return {
       checkoutUrl: null,
       billingProvider: null,
       checkoutMode: null,
       contactEmail: 'billing@sanctumruntime.com',
       message:
-        'Creem is not configured. Set CREEM_API_KEY + CREEM_PRODUCT_* (Checkout API) or CREEM_CHECKOUT_*_URL (hosted links). See docs/CREEM_BILLING.md.',
+        `Creem checkout is not configured. Missing on sanctum-api: ${missing.join(', ') || 'unknown'}. `
+        + 'See docs/CREEM_BILLING.md.',
       planId,
       planName: PLAN_DEFAULTS[planId].planName,
       priceMonthlyUsd: PLAN_DEFAULTS[planId].priceMonthlyUsd,

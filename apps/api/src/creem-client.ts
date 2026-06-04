@@ -36,6 +36,19 @@ export function creemProductIdForPlan(planId: PaidPlanId): string | null {
   return map[planId]?.trim() || null
 }
 
+/** Hosted payment page when Checkout API is unavailable (test: creem.io/test/payment/...). */
+export function creemHostedPaymentUrl(productId: string): string {
+  const test =
+    process.env.CREEM_TEST_MODE === 'true'
+    || process.env.CREEM_API_BASE_URL?.includes('test-api')
+    || process.env.CREEM_API_KEY?.startsWith('creem_test_')
+    || process.env.CREEM_PRODUCT_PERSONAL?.startsWith('prod_')
+  const base =
+    process.env.CREEM_PAYMENT_BASE_URL?.trim()
+    || (test ? 'https://www.creem.io/test/payment' : 'https://www.creem.io/payment')
+  return `${base.replace(/\/$/, '')}/${productId}`
+}
+
 export function creemProductsConfigured(): Record<PaidPlanId, boolean> {
   return {
     personal: !!creemProductIdForPlan('personal'),
