@@ -131,6 +131,43 @@ export function normalizePlanId(raw: string | undefined | null): PlanId {
 
 export const PLAN_ORDER: PlanId[] = ['observer', 'personal', 'operator', 'team', 'enterprise']
 
+function parseFeatures(raw: unknown): string[] {
+  if (Array.isArray(raw)) return raw.filter((f): f is string => typeof f === 'string')
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw) as unknown
+      if (Array.isArray(parsed)) return parsed.filter((f): f is string => typeof f === 'string')
+    } catch { /* ignore */ }
+  }
+  return []
+}
+
+function rowToPlanLimits(planId: PlanId, row: Record<string, unknown>): PlanLimits {
+  const governed =
+    row.max_governed_actions_per_month != null
+      ? Number(row.max_governed_actions_per_month)
+      : row.max_events_per_month != null
+        ? Number(row.max_events_per_month)
+        : null
+  const observe =
+    row.max_observe_events_per_month != null ? Number(row.max_observe_events_per_month) : null
+  return {
+    planId,
+    planName: String(row.name ?? PLAN_DEFAULTS[planId].planName),
+    priceMonthlyUsd:
+      row.price_monthly_usd != null && row.price_monthly_usd !== ''
+        ? Number(row.price_monthly_usd)
+        : null,
+    maxRuntimes: row.max_runtimes != null ? Number(row.max_runtimes) : null,
+    maxGovernedActionsPerMonth: governed,
+    maxObserveEventsPerMonth: observe,
+    maxAgents: row.max_agents != null ? Number(row.max_agents) : null,
+    retentionDays: Number(row.retention_days ?? PLAN_DEFAULTS[planId].retentionDays),
+    features: parseFeatures(row.features).length > 0 ? parseFeatures(row.features) : PLAN_DEFAULTS[planId].features,
+    maxEventsPerMonth: governed,
+  }
+}
+
 export class EntitlementEngine {
   private _admin: ReturnType<typeof createSupabaseAdmin>
 
@@ -142,8 +179,26 @@ export class EntitlementEngine {
     return this._admin
   }
 
+  /** Ensures every org has an org_plans row (Observer) for billing + Creem webhooks. */
+  async ensureOrgPlan(orgId: string): Promise<void> {
+    try {
+      const { data } = await this.admin()
+        .from('org_plans')
+        .select('org_id')
+        .eq('org_id', orgId)
+        .maybeSingle()
+      if (data) return
+      await this.admin().from('org_plans').insert({
+        org_id: orgId,
+        plan_id: 'observer',
+        updated_at: new Date().toISOString(),
+      })
+    } catch { /* non-fatal — getPlanId still defaults to observer */ }
+  }
+
   async getPlanId(orgId: string): Promise<PlanId> {
     try {
+      await this.ensureOrgPlan(orgId)
       const { data } = await this.admin()
         .from('org_plans')
         .select('plan_id,trial_ends_at')
@@ -158,9 +213,26 @@ export class EntitlementEngine {
     }
   }
 
+  async loadPlanLimitsFromDb(planId: PlanId): Promise<PlanLimits | null> {
+    try {
+      const { data, error } = await this.admin()
+        .from('plans')
+        .select(
+          'id,name,price_monthly_usd,max_runtimes,max_events_per_month,max_agents,retention_days,features,max_observe_events_per_month,max_governed_actions_per_month',
+        )
+        .eq('id', planId)
+        .maybeSingle()
+      if (error || !data) return null
+      return rowToPlanLimits(planId, data as Record<string, unknown>)
+    } catch {
+      return null
+    }
+  }
+
   async getLimits(orgId: string): Promise<PlanLimits> {
     const planId = await this.getPlanId(orgId)
-    return PLAN_DEFAULTS[planId]
+    const fromDb = await this.loadPlanLimitsFromDb(planId)
+    return fromDb ?? PLAN_DEFAULTS[planId]
   }
 
   async getNotificationPrefs(orgId: string): Promise<{

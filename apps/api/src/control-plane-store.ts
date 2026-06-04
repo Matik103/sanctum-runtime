@@ -79,6 +79,18 @@ export class ControlPlaneStore {
       id: orgId,
       name: name ?? orgId,
     })
+    const { data: planRow } = await admin
+      .from('org_plans')
+      .select('org_id')
+      .eq('org_id', orgId)
+      .maybeSingle()
+    if (!planRow) {
+      await admin.from('org_plans').insert({
+        org_id: orgId,
+        plan_id: 'observer',
+        updated_at: new Date().toISOString(),
+      })
+    }
   }
 
   async connectRuntime(input: {

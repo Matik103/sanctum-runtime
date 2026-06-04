@@ -88,6 +88,8 @@
     "db:push": "supabase db push",
     "db:status": "supabase migration list",
     "db:reset": "supabase db reset --linked",
+    "data:reset": "node scripts/reset-sanctum-data.mjs",
+    "plans:verify": "node scripts/verify-plans-alignment.mjs",
     "predev:runtime": "node scripts/ensure-env.mjs && npm run build:sdk",
     "predev": "node scripts/ensure-env.mjs",
     "presmoke": "node scripts/ensure-env.mjs",
