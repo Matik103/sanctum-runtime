@@ -1,4 +1,5 @@
 import { apiBaseUrl } from './api-url'
+import { sanitizeApiError } from './sanitize-error'
 import { getAccessToken } from './supabase'
 
 export type ConnectOrgSettings = {
@@ -64,7 +65,7 @@ export async function fetchConnectHealth(orgId: string): Promise<ConnectHealth> 
   const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/connect/health`, {
     headers: await authHeaders(),
   })
-  if (!res.ok) throw new Error(`connect_health_failed:${res.status}`)
+  if (!res.ok) throw await safeResponseError(res, 'Could not load Connect health.')
   return res.json() as Promise<ConnectHealth>
 }
 
@@ -72,7 +73,7 @@ export async function fetchConnectSettings(orgId: string): Promise<ConnectOrgSet
   const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/connect/settings`, {
     headers: await authHeaders(),
   })
-  if (!res.ok) throw new Error(`connect_settings_failed:${res.status}`)
+  if (!res.ok) throw await safeResponseError(res, 'Could not load Connect settings.')
   return res.json() as Promise<ConnectOrgSettings>
 }
 
@@ -85,7 +86,7 @@ export async function updateConnectSettings(
     headers: await authHeaders(),
     body: JSON.stringify(patch),
   })
-  if (!res.ok) throw new Error(`connect_settings_update_failed:${res.status}`)
+  if (!res.ok) throw await safeResponseError(res, 'Could not save Connect settings.')
   return res.json() as Promise<ConnectOrgSettings>
 }
 
@@ -96,7 +97,7 @@ export async function fetchConnectPresets(orgId: string): Promise<{
   const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/connect/policy-presets`, {
     headers: await authHeaders(),
   })
-  if (!res.ok) throw new Error(`connect_presets_failed:${res.status}`)
+  if (!res.ok) throw await safeResponseError(res, 'Could not load policy presets.')
   return res.json() as Promise<{ presets: ConnectPreset[]; applied: string | null }>
 }
 
@@ -106,14 +107,14 @@ export async function applyConnectPreset(orgId: string, presetId: string): Promi
     headers: await authHeaders(),
     body: JSON.stringify({}),
   })
-  if (!res.ok) throw new Error(await responseError(res, 'connect_preset_apply_failed'))
+  if (!res.ok) throw await safeResponseError(res, 'Could not apply policy preset.')
 }
 
 export async function fetchPolicySuggestions(orgId: string): Promise<PolicySuggestion[]> {
   const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/connect/suggest-policies`, {
     headers: await authHeaders(),
   })
-  if (!res.ok) throw new Error(`connect_suggest_failed:${res.status}`)
+  if (!res.ok) throw await safeResponseError(res, 'Could not load policy suggestions.')
   const data = (await res.json()) as { suggestions: PolicySuggestion[] }
   return data.suggestions
 }
@@ -128,7 +129,7 @@ export async function runConnectTest(
     headers: await authHeaders(),
     body: JSON.stringify({ agent_id: agentId, platform }),
   })
-  if (!res.ok) throw new Error(await responseError(res, 'connect_test_failed'))
+  if (!res.ok) throw await safeResponseError(res, 'Verify test could not complete.')
   return res.json() as Promise<{ ok: boolean; status?: number; action?: string; decision?: string; reasoning?: string }>
 }
 
@@ -142,7 +143,7 @@ export async function applyToolPolicy(
     headers: await authHeaders(),
     body: JSON.stringify({ mode }),
   })
-  if (!res.ok) throw new Error(`connect_tool_policy_failed:${res.status}`)
+  if (!res.ok) throw await safeResponseError(res, 'Could not save tool policy.')
 }
 
 export type ConnectShieldPreset = {
@@ -155,7 +156,7 @@ export type ConnectShieldPreset = {
 
 export async function fetchConnectShieldPresets(orgId: string): Promise<ConnectShieldPreset[]> {
   const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/connect/shield-presets`, { headers: await authHeaders() })
-  if (!res.ok) throw new Error(`connect_shield_presets_failed:${res.status}`)
+  if (!res.ok) throw await safeResponseError(res, 'Could not load Shield presets.')
   const data = (await res.json()) as { presets: ConnectShieldPreset[] }
   return data.presets
 }
@@ -166,7 +167,7 @@ export async function applyConnectShieldPreset(orgId: string, presetId: string):
     headers: await authHeaders(),
     body: JSON.stringify({}),
   })
-  if (!res.ok) throw new Error(await responseError(res, 'connect_shield_preset_apply_failed'))
+  if (!res.ok) throw await safeResponseError(res, 'Could not apply Shield preset.')
 }
 
 export async function promoteConnectToGate(orgId: string): Promise<ConnectOrgSettings> {
@@ -175,7 +176,7 @@ export async function promoteConnectToGate(orgId: string): Promise<ConnectOrgSet
     headers: await authHeaders(),
     body: JSON.stringify({}),
   })
-  if (!res.ok) throw new Error(await responseError(res, 'connect_promote_failed'))
+  if (!res.ok) throw await safeResponseError(res, 'Could not promote this connection.')
   return res.json() as Promise<ConnectOrgSettings>
 }
 
@@ -196,16 +197,16 @@ await runGatedToolCalls(toolCalls, executors, {
 })`
 }
 
-async function responseError(res: Response, fallback: string): Promise<string> {
-  let detail = ''
+async function safeResponseError(res: Response, fallback: string): Promise<Error> {
+  let detail = `${fallback} (${res.status})`
   try {
-    const body = (await res.json()) as { error?: unknown; detail?: unknown; message?: unknown; code?: unknown }
-    const pieces = [body.error, body.detail, body.message, body.code].filter((value): value is string => typeof value === 'string' && value.length > 0)
-    detail = pieces.join(' · ')
+    const body = (await res.json()) as { error?: unknown; message?: unknown }
+    const raw = [body.error, body.message].find((value): value is string => typeof value === 'string' && value.length > 0)
+    if (raw && import.meta.env.DEV) detail = `${fallback} (${res.status}): ${raw}`
   } catch {
-    detail = ''
+    /* non-JSON response */
   }
-  return detail ? `${fallback}:${res.status} — ${detail}` : `${fallback}:${res.status}`
+  return new Error(sanitizeApiError(new Error(detail), fallback))
 }
 
 export function executionSnippet(platform: string, lang: 'python' | 'typescript'): string {

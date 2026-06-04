@@ -105,6 +105,11 @@ export default defineConfig(({ mode, command }) => {
         },
       },
     },
+    esbuild: isServe
+      ? undefined
+      : {
+          drop: ['console', 'debugger'],
+        },
     define: {
       'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(
         env.VITE_SUPABASE_URL ?? env.SUPABASE_URL ?? '',

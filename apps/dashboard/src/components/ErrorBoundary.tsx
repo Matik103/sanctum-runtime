@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from 'react'
 import { apiBaseUrl } from '../lib/api-url'
+import { sanitizeApiError } from '../lib/sanitize-error'
 
 type Props = { children: ReactNode; fallback?: ReactNode; page?: string }
 type State = { error: Error | null }
@@ -119,7 +120,7 @@ export class ErrorBoundary extends Component<Props, State> {
           >
             {moduleLoadError
               ? 'This installed app has an old cached screen bundle. Refresh the app to fetch the current console.'
-              : this.state.error.message}
+              : sanitizeApiError(this.state.error, 'This screen could not load. Try again shortly.')}
           </p>
           <button
             type="button"

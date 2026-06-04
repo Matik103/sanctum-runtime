@@ -6,7 +6,7 @@ import {
   type DashboardData,
   type PolicyResponse,
 } from '../lib/api'
-import { apiBaseUrl } from '../lib/api-url'
+import { sanitizeApiError } from '../lib/sanitize-error'
 import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 
 const BASE_POLL_MS  = 10_000
@@ -112,12 +112,12 @@ export function useDashboard() {
       const rateLimited = /\b429\b/.test(msg) || /rate_limit/i.test(msg)
       setApiError(
         networkFailed
-          ? `API unreachable (${apiBaseUrl}). Check: 1) sanctum-api is deployed and running on Render, 2) the custom domain api.sanctumruntime.com is configured in Render → Settings → Custom Domains, 3) both services redeployed after env var changes.`
+          ? 'API unreachable. Check your connection and try again shortly.'
           : authFailed
             ? 'Session expired — please sign in again.'
             : rateLimited
               ? 'Too many requests — backing off and retrying.'
-              : msg,
+              : sanitizeApiError(e, 'Could not refresh console data.'),
       )
 
       if (authFailed) {

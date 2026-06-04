@@ -20,8 +20,8 @@ export function Phase3Onboarding() {
         }}
       >
         <li>
-          Copy <strong style={{ color: 'var(--text)' }}>SANCTUM_API_KEY</strong> from Render → sanctum-api
-          → Environment
+          Create or copy a scoped <strong style={{ color: 'var(--text)' }}>SANCTUM_API_KEY</strong> from
+          Devices.
         </li>
         <li>
           Run:{' '}
