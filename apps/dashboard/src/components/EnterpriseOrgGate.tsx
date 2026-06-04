@@ -10,6 +10,7 @@ type Props = { children: ReactNode }
  */
 export function EnterpriseOrgGate({ children }: Props) {
   const { user, signOut } = useAuth()
+  const userId = user?.id ?? null
   const [checking, setChecking] = useState(true)
   const [checkError, setCheckError] = useState<string | null>(null)
   const [retryAttempt, setRetryAttempt] = useState(0)
@@ -20,7 +21,7 @@ export function EnterpriseOrgGate({ children }: Props) {
   useEffect(() => {
     setChecking(true)
     setCheckError(null)
-    if (!user) {
+    if (!userId || !user) {
       setChecking(false)
       return
     }
@@ -56,7 +57,7 @@ export function EnterpriseOrgGate({ children }: Props) {
     return () => {
       cancelled = true
     }
-  }, [user, retryAttempt])
+  }, [userId, retryAttempt])
 
   if (checking) {
     return (
