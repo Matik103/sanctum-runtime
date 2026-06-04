@@ -1,5 +1,4 @@
 import { privacyUrl, termsUrl } from '../lib/site-links'
-import { TERMS_VERSION } from '../lib/signup-fields'
 
 type Props = {
   id: string
@@ -30,7 +29,7 @@ export function SignupTermsField({ id, checked, onChange, disabled }: Props) {
           <a href={privacyUrl} target="_blank" rel="noopener noreferrer">
             Privacy Policy
           </a>
-          {TERMS_VERSION ? ` (version ${TERMS_VERSION})` : null}.
+          .
         </span>
       </label>
     </div>
