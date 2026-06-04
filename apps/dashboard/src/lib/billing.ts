@@ -33,6 +33,7 @@ export interface BillingPlan {
     governed?: { used: number; limit: number | null; pct: number | null }
     observe?: { used: number; limit: number | null; pct: number | null }
     runtimes: { used: number; limit: number | null; pct: number | null }
+    agents?: { used: number; limit: number | null; pct: number | null }
   }
   billing: {
     billingProvider?: string | null

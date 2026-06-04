@@ -188,8 +188,30 @@ export async function gateProxyToolCall(
     }
   }
 
+  if (verifyRes.statusCode === 402) {
+    let detail = 'Plan limit or feature required.'
+    try {
+      const errBody = JSON.parse(verifyRes.payload as string) as { message?: string; error?: string }
+      detail = errBody.message ?? errBody.error ?? detail
+    } catch { /* ignore */ }
+    return {
+      allowed: false,
+      entry: {
+        ...entry,
+        decision: 'BLOCKED',
+        reasoning: detail,
+        policyPath: 'billing:plan',
+      },
+      reason: 'plan_limit',
+    }
+  }
+
   if (verifyRes.statusCode !== 200) {
     return { allowed: false, entry, reason: 'verification_failed' }
+  }
+
+  if (entry.decision === 'BLOCKED' && entry.policyPath === 'billing:governed_quota') {
+    return { allowed: false, entry, reason: 'quota_exceeded' }
   }
 
   if (entry.decision === 'REQUIRE_VERIFICATION' && opts.waitVerification) {

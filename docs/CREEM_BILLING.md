@@ -62,6 +62,10 @@ Success redirect: `{DASHBOARD_URL}/?page=billing&checkout=success`
 
 We intentionally **do not** grant on `subscription.active` (Creem recommends `subscription.paid` for access).
 
+If a grant event arrives with `org_id` but the plan cannot be resolved (no `metadata.plan` and no `CREEM_PRODUCT_*` match), the API returns **500** `grant_plan_unresolved` so Creem retries after you fix product env vars.
+
+**Entitlements:** `org_plans.plan_id` is read on every gated request via `EntitlementEngine.getLimits()` — limits come from code (`PLAN_DEFAULTS`), not the `plans` table row. After webhook upsert, new limits apply immediately (no cache).
+
 ## Supabase
 
 Run migrations:

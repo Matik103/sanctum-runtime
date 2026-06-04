@@ -97,6 +97,19 @@ describe('creem-billing', () => {
     expect(obj.id).toBe('sub_x')
   })
 
+  it('flags grantFailed when org present but plan cannot be resolved', () => {
+    const update = resolveCreemPlanUpdate({
+      eventType: 'checkout.completed',
+      object: {
+        request_id: 'org_9',
+        product: { id: 'prod_unknown' },
+      },
+    })
+    expect(update.orgId).toBe('org_9')
+    expect(update.grantFailed).toBe(true)
+    expect(update.shouldUpsertPlan).toBe(false)
+  })
+
   it('maps product id from env', () => {
     const prev = process.env.CREEM_PRODUCT_OPERATOR
     process.env.CREEM_PRODUCT_OPERATOR = 'prod_op'

@@ -4,6 +4,8 @@ import { z } from 'zod'
 import { createSupabaseAdmin, type SupabaseAuthConfig } from './auth.js'
 import { ControlPlaneStore } from './control-plane-store.js'
 import { assertOrgRole } from './rbac.js'
+import { getEntitlementEngine } from './entitlements.js'
+import { sendAgentLimitReached } from './entitlements-gate.js'
 
 type SanctumReq = import('fastify').FastifyRequest & {
   sanctumUser?: { id: string; email?: string }
@@ -133,6 +135,14 @@ export async function registerAgentTokenRoutes(
       name: z.string().min(1).max(128),
       description: z.string().max(512).optional(),
     }).parse(req.body)
+
+    const entitlements = getEntitlementEngine(cfg)
+    const agentSlot = await entitlements.checkAgentSlot(orgId)
+    if (!agentSlot.allowed && agentSlot.limit !== null) {
+      const limits = await entitlements.getLimits(orgId)
+      sendAgentLimitReached(reply, agentSlot.used, agentSlot.limit, limits)
+      return
+    }
 
     // Insert registration row to get an ID
     const { data: row, error: insertErr } = await admin

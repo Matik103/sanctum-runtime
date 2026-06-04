@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { createSupabaseAdmin, getSupabaseAuthConfig } from './auth.js'
 import { ControlPlaneStore } from './control-plane-store.js'
 import { getEntitlementEngine } from './entitlements.js'
+import { canUseComplianceExport, hasPlanFeature, sendPlanFeatureRequired } from './entitlements-gate.js'
 import { encryptSecret, decryptSecret, getEncryptionKey } from './crypto-utils.js'
 import { isProduction, maskWebhookUrl } from './security.js'
 import { queryWithTimeout, SUPABASE_ROW_LIMITS, verifyOrgMembership } from './supabase-limits.js'
@@ -117,6 +118,18 @@ export async function registerExportRoutes(app: FastifyInstance) {
           })
         }
         return reply.status(403).send({ error: 'org_forbidden' })
+      }
+
+      const entitlements = getEntitlementEngine(cfg)
+      const limits = await entitlements.getLimits(orgId)
+      if (!canUseComplianceExport(limits)) {
+        sendPlanFeatureRequired(
+          reply,
+          limits,
+          'compliance_export',
+          'Full org export is available on the Team plan and above.',
+        )
+        return
       }
 
       // Rate limit: one export per hour per org (best-effort — skip if table slow/missing)
@@ -626,6 +639,14 @@ export async function registerExportRoutes(app: FastifyInstance) {
       notification_webhook_url: z.string().url().nullable().optional(),
       quota_warning_pct: z.number().int().min(50).max(100).optional(),
     }).parse(req.body)
+
+    if (body.slack_webhook_url !== undefined || body.notification_webhook_url !== undefined) {
+      const limits = await getEntitlementEngine(cfg).getLimits(orgId)
+      if (!hasPlanFeature(limits, 'webhooks')) {
+        sendPlanFeatureRequired(reply, limits, 'webhooks', 'Slack and notification webhooks require Operator or higher.')
+        return
+      }
+    }
 
     const admin = createSupabaseAdmin(cfg)
     const { data, error } = await admin

@@ -4,6 +4,12 @@ import { getSupabaseAuthConfig } from './auth.js'
 import { AlertStore } from './alert-store.js'
 import { ControlPlaneStore } from './control-plane-store.js'
 import { isProduction } from './security.js'
+import { getEntitlementEngine } from './entitlements.js'
+import {
+  canUseAlertChannels,
+  canUseAlertRules,
+  sendPlanFeatureRequired,
+} from './entitlements-gate.js'
 
 type SanctumReq = FastifyRequest & {
   sanctumUser?: { id: string; email?: string }
@@ -67,6 +73,7 @@ export async function registerAlertRoutes(app: FastifyInstance): Promise<void> {
 
   const alerts = new AlertStore(cfg)
   const cp = new ControlPlaneStore(cfg)
+  const entitlements = getEntitlementEngine(cfg)
 
   // ── Alerts ──────────────────────────────────────────────────────────────────
 
@@ -169,6 +176,16 @@ export async function registerAlertRoutes(app: FastifyInstance): Promise<void> {
       })
       .parse(req.body)
 
+    const limits = await entitlements.getLimits(orgId)
+    if (!canUseAlertRules(limits)) {
+      sendPlanFeatureRequired(reply, limits, 'alerts', 'Alert rules require Personal (email) or Operator+.')
+      return
+    }
+    if (!canUseAlertChannels(limits, body.channels)) {
+      sendPlanFeatureRequired(reply, limits, 'webhooks', 'Slack and webhook alert channels require Operator or higher.')
+      return
+    }
+
     try {
       const rule = await alerts.createRule({ org_id: orgId, ...body })
       return reply.status(201).send({ rule })
@@ -192,6 +209,16 @@ export async function registerAlertRoutes(app: FastifyInstance): Promise<void> {
         is_active: z.boolean().optional(),
       })
       .parse(req.body)
+
+    const limits = await entitlements.getLimits(orgId)
+    if (!canUseAlertRules(limits)) {
+      sendPlanFeatureRequired(reply, limits, 'alerts')
+      return
+    }
+    if (body.channels && !canUseAlertChannels(limits, body.channels)) {
+      sendPlanFeatureRequired(reply, limits, 'webhooks')
+      return
+    }
 
     try {
       const rule = await alerts.updateRule(ruleId, orgId, body)

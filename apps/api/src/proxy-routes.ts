@@ -14,6 +14,12 @@ import { getPlatformSecret } from './platform-credentials.js'
 import { getConnectSettings } from './connect-settings.js'
 import { extractToolsFromChatBody, upsertConnectTool } from './connect-tool-registry.js'
 import { recordUsage, UsageMetrics } from './usage-store.js'
+import { getEntitlementEngine } from './entitlements.js'
+import {
+  assertGovernedQuotaForReply,
+  assertObserveQuotaForReply,
+  canUseConnectGate,
+} from './entitlements-gate.js'
 import type { RuntimeEngine } from '@sanctum/runtime-engine'
 import {
   filterBlockedToolCallsFromBody,
@@ -181,8 +187,23 @@ export function registerProxyRoutes(app: FastifyInstance, runtime: RuntimeEngine
         const agentName = agentRow?.name ?? agentId.slice(0, 8)
 
         const connectSettings = await getConnectSettings(cfg, orgId)
+        const entitlements = getEntitlementEngine(cfg)
+        const planLimits = await entitlements.getLimits(orgId)
         const proxyMode = resolveProxyMode(req, connectSettings)
-        const gateEnabled = proxyGateEnabledFromMode(proxyMode)
+        const gateRequested = proxyGateEnabledFromMode(proxyMode)
+        const gateEnabled = gateRequested && canUseConnectGate(planLimits)
+        if (gateRequested && !gateEnabled) {
+          return reply.code(402).send({
+            error: 'plan_feature_required',
+            feature: 'light_gates',
+            currentPlan: planLimits.planId,
+            message:
+              'Connect gate mode requires Personal or higher. Use observe mode on Observer, or upgrade at /billing.',
+          })
+        }
+        if (gateEnabled) {
+          if (!(await assertGovernedQuotaForReply(entitlements, orgId, reply))) return
+        } else if (!(await assertObserveQuotaForReply(entitlements, orgId, reply))) return
         const waitVerification = proxyWaitVerification(req, connectSettings)
         const waitTimeoutMs = connectSettings.wait_timeout_ms
         const gateToolResults = connectSettings.gate_tool_results

@@ -15,6 +15,14 @@ import { issueAgentToken, verifyAgentToken } from './agent-tokens.js'
 import { gateProxyToolCall } from './proxy-gate.js'
 import { listPlatformCredentials } from './platform-credentials.js'
 import { UsageStore } from './usage-store.js'
+import { getEntitlementEngine } from './entitlements.js'
+import {
+  canUseConnectGate,
+  canUseShieldPresets,
+  governedQuotaBlock,
+  hasPlanFeature,
+  sendPlanFeatureRequired,
+} from './entitlements-gate.js'
 import { policyStorageKey } from './scoped-policy-audit.js'
 
 type SanctumReq = import('fastify').FastifyRequest & {
@@ -138,6 +146,22 @@ export async function registerConnectRoutes(
       })
       .parse(req.body)
 
+    const entitlements = getEntitlementEngine(cfg)
+    const limits = await entitlements.getLimits(orgId)
+    if (body.proxy_mode === 'gate' && !canUseConnectGate(limits)) {
+      sendPlanFeatureRequired(
+        reply,
+        limits,
+        'light_gates',
+        'Gate mode requires the Personal plan or higher.',
+      )
+      return
+    }
+    if (body.connect_webhook_url && !hasPlanFeature(limits, 'webhooks')) {
+      sendPlanFeatureRequired(reply, limits, 'webhooks', 'Outbound Connect webhooks require Operator or higher.')
+      return
+    }
+
     return upsertConnectSettings(cfg, orgId, body)
   })
 
@@ -167,6 +191,12 @@ export async function registerConnectRoutes(
 
     const preset = getConnectPreset(presetId)
     if (!preset) return reply.status(404).send({ error: 'preset_not_found' })
+
+    const limits = await getEntitlementEngine(cfg).getLimits(orgId)
+    if (preset.proxy_mode === 'gate' && !canUseConnectGate(limits)) {
+      sendPlanFeatureRequired(reply, limits, 'light_gates')
+      return
+    }
 
     const engine = runtime.getPolicyEngine()
     for (const [action, policy] of Object.entries(preset.policies)) {
@@ -252,6 +282,11 @@ export async function registerConnectRoutes(
     if (!(await requireRole(cfg, orgId, user.id, 'member', reply))) return
 
     const body = z.object({ mode: z.enum(['verify', 'block', 'approve']) }).parse(req.body)
+    const limits = await getEntitlementEngine(cfg).getLimits(orgId)
+    if (body.mode !== 'approve' && !hasPlanFeature(limits, 'light_gates')) {
+      sendPlanFeatureRequired(reply, limits, 'light_gates', 'Per-tool verify/block policies require Personal or higher.')
+      return
+    }
     const key = policyStorageKey(action, orgId, [orgId])
     const patch =
       body.mode === 'block'
@@ -281,8 +316,18 @@ export async function registerConnectRoutes(
     const bundle = getConnectShieldPreset(presetId)
     if (!bundle) return reply.status(404).send({ error: 'shield_preset_not_found' })
 
+    const limits = await getEntitlementEngine(cfg).getLimits(orgId)
+    if (!canUseShieldPresets(limits)) {
+      sendPlanFeatureRequired(reply, limits, 'light_gates', 'Shield presets require Personal or higher.')
+      return
+    }
+
     const policyPreset = getConnectPreset(bundle.policy_preset_id)
     if (policyPreset) {
+      if (policyPreset.proxy_mode === 'gate' && !canUseConnectGate(limits)) {
+        sendPlanFeatureRequired(reply, limits, 'light_gates')
+        return
+      }
       const engine = runtime.getPolicyEngine()
       try {
         for (const [action, policy] of Object.entries(policyPreset.policies)) {
@@ -355,6 +400,11 @@ export async function registerConnectRoutes(
     if (!user) return reply.status(403).send({ error: 'dashboard_auth_required' })
     const { orgId } = req.params as { orgId: string }
     if (!(await requireRole(cfg, orgId, user.id, 'member', reply))) return
+    const limits = await getEntitlementEngine(cfg).getLimits(orgId)
+    if (!canUseConnectGate(limits)) {
+      sendPlanFeatureRequired(reply, limits, 'light_gates')
+      return
+    }
     return upsertConnectSettings(cfg, orgId, { proxy_mode: 'gate', wait_verification: true })
   })
 
@@ -403,6 +453,24 @@ export async function registerConnectRoutes(
       .maybeSingle()
     const agentName = agentRow?.name ?? claims.id.slice(0, 8)
     const settings = await getConnectSettings(cfg, claims.orgId)
+    const entitlements = getEntitlementEngine(cfg)
+    const limits = await entitlements.getLimits(claims.orgId)
+    if (!canUseConnectGate(limits)) {
+      sendPlanFeatureRequired(reply, limits, 'light_gates', 'Local execution verify requires gate-capable plans (Personal+).')
+      return
+    }
+    const quotaBlocked = await governedQuotaBlock(entitlements, claims.orgId, {
+      actor: agentName,
+      action: body.action,
+      context: { org_id: claims.orgId, platform: body.platform ?? 'connect' },
+    })
+    if (quotaBlocked) {
+      return reply.status(403).send({
+        error: 'quota_exceeded',
+        decision: quotaBlocked.decision,
+        reasoning: quotaBlocked.reasoning,
+      })
+    }
 
     const toolCall = {
       id: body.tool_call_id ?? `exec-${Date.now()}`,

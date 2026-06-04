@@ -18,6 +18,8 @@ import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { createSupabaseAdmin, getSupabaseAuthConfig } from './auth.js'
 import { ControlPlaneStore } from './control-plane-store.js'
+import { getEntitlementEngine } from './entitlements.js'
+import { canUseCustomShield, sendPlanFeatureRequired } from './entitlements-gate.js'
 import { logger } from './logger.js'
 
 const log = logger.child({ module: 'shield-routes' })
@@ -72,6 +74,14 @@ export function registerShieldRoutes(app: FastifyInstance): void {
   if (!cfg) return // Shield rules require Supabase; no-op in standalone mode
 
   const store = new ControlPlaneStore(cfg)
+  const entitlements = getEntitlementEngine(cfg)
+
+  async function requireCustomShield(orgId: string, reply: import('fastify').FastifyReply): Promise<boolean> {
+    const limits = await entitlements.getLimits(orgId)
+    if (canUseCustomShield(limits)) return true
+    sendPlanFeatureRequired(reply, limits, 'shield_rules')
+    return false
+  }
 
   // ── GET /v1/shield/rules ─────────────────────────────────────────────────
   app.get('/v1/shield/rules', async (req, reply) => {
@@ -96,6 +106,7 @@ export function registerShieldRoutes(app: FastifyInstance): void {
   app.post('/v1/shield/rules', async (req, reply) => {
     const orgId = await resolveOrgId(req as SanctumReq, store)
     if (!orgId) return reply.code(401).send({ error: 'Unauthorized' })
+    if (!(await requireCustomShield(orgId, reply))) return
 
     const parsed = ShieldRuleBodySchema.safeParse(req.body)
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() })
@@ -130,6 +141,7 @@ export function registerShieldRoutes(app: FastifyInstance): void {
   app.patch('/v1/shield/rules/:id', async (req, reply) => {
     const orgId = await resolveOrgId(req as SanctumReq, store)
     if (!orgId) return reply.code(401).send({ error: 'Unauthorized' })
+    if (!(await requireCustomShield(orgId, reply))) return
 
     const { id } = req.params as { id: string }
     const parsed = ShieldRuleBodySchema.partial().safeParse(req.body)
@@ -165,6 +177,7 @@ export function registerShieldRoutes(app: FastifyInstance): void {
   app.delete('/v1/shield/rules/:id', async (req, reply) => {
     const orgId = await resolveOrgId(req as SanctumReq, store)
     if (!orgId) return reply.code(401).send({ error: 'Unauthorized' })
+    if (!(await requireCustomShield(orgId, reply))) return
 
     const { id } = req.params as { id: string }
     const admin = createSupabaseAdmin(cfg)

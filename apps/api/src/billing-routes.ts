@@ -140,6 +140,19 @@ async function handleCreemWebhook(
     return reply.status(200).send({ ok: true, note: 'no org_id in Creem metadata — skipped' })
   }
 
+  if (update.grantFailed) {
+    app.log.error(
+      { orgId: update.orgId, eventType, eventId },
+      '[billing/webhook] grant event missing plan — set CREEM_PRODUCT_* or pass metadata.plan',
+    )
+    return reply.status(500).send({
+      error: 'grant_plan_unresolved',
+      orgId: update.orgId,
+      eventType,
+      hint: 'Webhook must include metadata.plan or a mapped Creem product id (CREEM_PRODUCT_* env).',
+    })
+  }
+
   const admin = createSupabaseAdmin(cfg)
 
   if (update.shouldUpsertPlan && update.planId) {
@@ -232,33 +245,17 @@ export async function registerBillingRoutes(app: FastifyInstance) {
     const orgId = await resolveOrgId(req as SanctumReq, store, q.org_id)
     if (!orgId) return reply.status(400).send({ error: 'org_id_required' })
 
-    const [limits, usageSummary, governedUsed, observeUsed] = await Promise.all([
-      entitlements.getLimits(orgId),
-      usage.summary(orgId, 30),
-      entitlements.getMonthlyGovernedCount(orgId),
-      entitlements.getMonthlyObserveCount(orgId),
-    ])
+    const [limits, usageSummary, governedUsed, observeUsed, runtimesConnected, agentsActive] =
+      await Promise.all([
+        entitlements.getLimits(orgId),
+        usage.summary(orgId, 30),
+        entitlements.getMonthlyGovernedCount(orgId),
+        entitlements.getMonthlyObserveCount(orgId),
+        entitlements.getActiveRuntimeCount(orgId),
+        entitlements.getActiveAgentCount(orgId),
+      ])
 
     const runtimeHoursThisMonth = Math.round((usageSummary.totals['runtime.hours'] ?? 0) * 10) / 10
-    const runtimesConnected = await entitlements.getActiveRuntimeCount(orgId)
-
-    let agentsActive = 0
-    try {
-      const admin = createSupabaseAdmin(cfg)
-      const { data: runtimeRows } = await admin
-        .from('registered_runtimes')
-        .select('id')
-        .eq('org_id', orgId)
-      const runtimeIds = (runtimeRows ?? []).map((r) => r.id as string)
-      if (runtimeIds.length > 0) {
-        const { count } = await admin
-          .from('registered_agents')
-          .select('id', { count: 'exact', head: true })
-          .in('runtime_id', runtimeIds)
-          .eq('status', 'active')
-        agentsActive = count ?? 0
-      }
-    } catch { /* ignore */ }
 
     let creemCustomerId: string | null = null
     let billingCycleAnchor: string | null = null
@@ -278,6 +275,7 @@ export async function registerBillingRoutes(app: FastifyInstance) {
     const governedLimit = limits.maxGovernedActionsPerMonth
     const observeLimit = limits.maxObserveEventsPerMonth
     const runtimesLimit = limits.maxRuntimes
+    const agentsLimit = limits.maxAgents
 
     return {
       plan: {
@@ -322,6 +320,11 @@ export async function registerBillingRoutes(app: FastifyInstance) {
           used: runtimesConnected,
           limit: runtimesLimit,
           pct: runtimesLimit ? Math.round((runtimesConnected / runtimesLimit) * 100) : null,
+        },
+        agents: {
+          used: agentsActive,
+          limit: agentsLimit,
+          pct: agentsLimit ? Math.round((agentsActive / agentsLimit) * 100) : null,
         },
       },
       billing: {

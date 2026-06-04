@@ -10,6 +10,8 @@ import type { SupabaseAuthConfig } from './auth.js'
 import { createSupabaseAdmin } from './auth.js'
 import { ControlPlaneStore } from './control-plane-store.js'
 import { logger as rootLogger } from './logger.js'
+import { getEntitlementEngine } from './entitlements.js'
+import { canUseGovernanceWorkflows, sendPlanFeatureRequired } from './entitlements-gate.js'
 
 const log = rootLogger.child({ module: 'governance' })
 
@@ -397,6 +399,14 @@ export async function registerGovernanceRoutes(
 ): Promise<void> {
   const admin = createSupabaseAdmin(cfg)
   const store = new ControlPlaneStore(cfg)
+  const entitlements = getEntitlementEngine(cfg)
+
+  async function requireGovernancePlan(orgId: string, reply: import('fastify').FastifyReply): Promise<boolean> {
+    const limits = await entitlements.getLimits(orgId)
+    if (canUseGovernanceWorkflows(limits)) return true
+    sendPlanFeatureRequired(reply, limits, 'holds_approve', 'Approval workflows require Operator or higher.')
+    return false
+  }
 
   // ── Authorization helpers ──────────────────────────────────────────────────
 
@@ -471,6 +481,7 @@ export async function registerGovernanceRoutes(
     const { orgId } = req.params as { orgId: string }
     const access = await requireAdmin(req as SanctumReq, orgId)
     if (!access.ok) return reply.status(403).send({ error: 'admin_required' })
+    if (!(await requireGovernancePlan(orgId, reply))) return
 
     const body = workflowCreateSchema.parse(req.body)
     const now = new Date().toISOString()
@@ -490,6 +501,7 @@ export async function registerGovernanceRoutes(
     const { orgId, workflowId } = req.params as { orgId: string; workflowId: string }
     const access = await requireAdmin(req as SanctumReq, orgId)
     if (!access.ok) return reply.status(403).send({ error: 'admin_required' })
+    if (!(await requireGovernancePlan(orgId, reply))) return
 
     const body = workflowPatchSchema.parse(req.body)
 
@@ -511,6 +523,7 @@ export async function registerGovernanceRoutes(
     const { orgId, workflowId } = req.params as { orgId: string; workflowId: string }
     const access = await requireAdmin(req as SanctumReq, orgId)
     if (!access.ok) return reply.status(403).send({ error: 'admin_required' })
+    if (!(await requireGovernancePlan(orgId, reply))) return
 
     const { error, count } = await admin
       .from('approval_workflows')
@@ -576,6 +589,7 @@ export async function registerGovernanceRoutes(
     if (!access.userId) {
       return reply.status(403).send({ error: 'user_identity_required', hint: 'Use Bearer JWT to decide approvals' })
     }
+    if (!(await requireGovernancePlan(orgId, reply))) return
 
     const body = decideSchema.parse(req.body)
 

@@ -207,6 +207,26 @@ export class EntitlementEngine {
     return { allowed: used < limits.maxRuntimes, used, limit: limits.maxRuntimes }
   }
 
+  async getActiveAgentCount(orgId: string): Promise<number> {
+    try {
+      const { count } = await this.admin()
+        .from('agent_registrations')
+        .select('id', { count: 'exact', head: true })
+        .eq('org_id', orgId)
+        .is('revoked_at', null)
+      return count ?? 0
+    } catch {
+      return 0
+    }
+  }
+
+  async checkAgentSlot(orgId: string): Promise<{ allowed: boolean; used: number; limit: number | null }> {
+    const limits = await this.getLimits(orgId)
+    if (limits.maxAgents === null) return { allowed: true, used: 0, limit: null }
+    const used = await this.getActiveAgentCount(orgId)
+    return { allowed: used < limits.maxAgents, used, limit: limits.maxAgents }
+  }
+
   async getMonthlyMetricSum(orgId: string, metric: string): Promise<number> {
     try {
       const from = new Date()

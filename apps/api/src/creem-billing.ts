@@ -123,6 +123,8 @@ export function resolveCreemPlanUpdate(event: CreemWebhookEvent): {
   revoke: boolean
   paymentFailed: boolean
   shouldUpsertPlan: boolean
+  /** Grant event received but plan could not be resolved (missing metadata + product map). */
+  grantFailed: boolean
 } {
   const eventType = event.eventType ?? ''
   const obj = normalizeCreemWebhookObject(event)
@@ -131,6 +133,13 @@ export function resolveCreemPlanUpdate(event: CreemWebhookEvent): {
   const productId = productIdFromObject(obj)
 
   const planId = planIdFromCreemMetadata(meta) ?? planIdFromCreemProduct(productId)
+  const grantEvents = new Set(['checkout.completed', 'subscription.paid'])
+  const revokeEvents = new Set([
+    'subscription.canceled',
+    'subscription.cancelled',
+    'subscription.expired',
+    'subscription.paused',
+  ])
 
   const customer = obj.customer
   const customerId =
@@ -150,17 +159,6 @@ export function resolveCreemPlanUpdate(event: CreemWebhookEvent): {
           ? obj.id
           : null
 
-  const grantEvents = new Set([
-    'checkout.completed',
-    'subscription.paid',
-  ])
-  const revokeEvents = new Set([
-    'subscription.canceled',
-    'subscription.cancelled',
-    'subscription.expired',
-    'subscription.paused',
-  ])
-
   if (revokeEvents.has(eventType)) {
     return {
       orgId,
@@ -169,7 +167,8 @@ export function resolveCreemPlanUpdate(event: CreemWebhookEvent): {
       subscriptionId,
       revoke: true,
       paymentFailed: false,
-      shouldUpsertPlan: true,
+      shouldUpsertPlan: Boolean(orgId),
+      grantFailed: false,
     }
   }
 
@@ -182,10 +181,35 @@ export function resolveCreemPlanUpdate(event: CreemWebhookEvent): {
       revoke: false,
       paymentFailed: true,
       shouldUpsertPlan: false,
+      grantFailed: false,
     }
   }
 
-  if (grantEvents.has(eventType) && planId) {
+  if (grantEvents.has(eventType)) {
+    if (!orgId) {
+      return {
+        orgId: null,
+        planId: null,
+        customerId,
+        subscriptionId,
+        revoke: false,
+        paymentFailed: false,
+        shouldUpsertPlan: false,
+        grantFailed: false,
+      }
+    }
+    if (!planId) {
+      return {
+        orgId,
+        planId: null,
+        customerId,
+        subscriptionId,
+        revoke: false,
+        paymentFailed: false,
+        shouldUpsertPlan: false,
+        grantFailed: true,
+      }
+    }
     return {
       orgId,
       planId,
@@ -194,6 +218,7 @@ export function resolveCreemPlanUpdate(event: CreemWebhookEvent): {
       revoke: false,
       paymentFailed: false,
       shouldUpsertPlan: true,
+      grantFailed: false,
     }
   }
 
@@ -205,5 +230,6 @@ export function resolveCreemPlanUpdate(event: CreemWebhookEvent): {
     revoke: false,
     paymentFailed: false,
     shouldUpsertPlan: false,
+    grantFailed: false,
   }
 }

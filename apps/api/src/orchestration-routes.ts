@@ -4,6 +4,8 @@ import { getSupabaseAuthConfig } from './auth.js'
 import { ControlPlaneStore } from './control-plane-store.js'
 import { OrchestrationStore } from './orchestration-store.js'
 import { assertOrgAllowed, resolveOrgScope, type SanctumReq } from './org-scope.js'
+import { getEntitlementEngine } from './entitlements.js'
+import { canUseOrchestration, sendPlanFeatureRequired } from './entitlements-gate.js'
 
 export async function registerOrchestrationRoutes(app: FastifyInstance) {
   const cfg = getSupabaseAuthConfig()
@@ -11,6 +13,7 @@ export async function registerOrchestrationRoutes(app: FastifyInstance) {
 
   const store = new ControlPlaneStore(cfg)
   const orch = new OrchestrationStore(cfg)
+  const entitlements = getEntitlementEngine(cfg)
 
   app.get('/v1/deployment-groups', async (req, reply) => {
     const orgId = (req.query as { org_id?: string }).org_id
@@ -33,6 +36,12 @@ export async function registerOrchestrationRoutes(app: FastifyInstance) {
 
     const scope = await resolveOrgScope(req as SanctumReq, store)
     if (!assertOrgAllowed(scope, body.organizationId, reply)) return
+
+    const limits = await entitlements.getLimits(body.organizationId)
+    if (!canUseOrchestration(limits)) {
+      sendPlanFeatureRequired(reply, limits, 'advanced_fleet', 'Deployment groups require the Team plan.')
+      return
+    }
 
     await store.ensureOrg(body.organizationId)
     const group = await orch.createDeploymentGroup({
@@ -78,6 +87,12 @@ export async function registerOrchestrationRoutes(app: FastifyInstance) {
 
     const scope = await resolveOrgScope(req as SanctumReq, store)
     if (!assertOrgAllowed(scope, body.organizationId, reply)) return
+
+    const limits = await entitlements.getLimits(body.organizationId)
+    if (!canUseOrchestration(limits)) {
+      sendPlanFeatureRequired(reply, limits, 'advanced_fleet', 'Fleet dispatch requires the Team plan.')
+      return
+    }
 
     try {
       const result = await orch.dispatchCommand({

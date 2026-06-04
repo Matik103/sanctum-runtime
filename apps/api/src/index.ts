@@ -33,6 +33,15 @@ import { riskModelBreaker } from './circuit-breaker.js'
 import { traced } from './telemetry.js'
 import { sendNotificationDeduped, initDedupCache } from './notifications.js'
 import { getEntitlementEngine } from './entitlements.js'
+import {
+  canApproveHolds,
+  canEvaluateShieldRules,
+  canUseConnectGate,
+  canUseCustomShield,
+  canUseFleetControls,
+  governedQuotaBlock,
+  sendPlanFeatureRequired,
+} from './entitlements-gate.js'
 import { recordUsage, UsageMetrics } from './usage-store.js'
 import { registerRuntimeWsRoutes } from './runtime-ws-routes.js'
 import { runtimeWsHub } from './runtime-ws-hub.js'
@@ -760,6 +769,14 @@ app.post('/v1/actions/token/verify', async (req, reply) => {
   return { valid: true, payload }
 })
 
+async function requireOrgPolicyEdit(orgId: string, reply: import('fastify').FastifyReply): Promise<boolean> {
+  if (!supabaseAuth) return true
+  const limits = await getEntitlementEngine(supabaseAuth).getLimits(orgId)
+  if (canUseConnectGate(limits) || canUseCustomShield(limits)) return true
+  sendPlanFeatureRequired(reply, limits, 'light_gates', 'Policy changes require Personal or higher.')
+  return false
+}
+
 app.post('/v1/policies', async (req, reply) => {
   const scope = await resolveRouteOrgScope(req as SanctumReq, supabaseAuth)
   const body = z
@@ -772,6 +789,7 @@ app.post('/v1/policies', async (req, reply) => {
   const picked = pickScopedOrgs(scope, body.org_id, { requireSingle: true })
   if ('status' in picked) return reply.status(picked.status).send(picked.body)
   const orgId = picked.orgIds[0]
+  if (!(await requireOrgPolicyEdit(orgId, reply))) return
   const { action, org_id: _org, ...patch } = body
   const key = policyStorageKey(action, orgId, scope)
   return runtime.getPolicyEngine().createPolicy(key, patch)
@@ -784,6 +802,7 @@ app.patch('/v1/policies/:action', async (req, reply) => {
   const body = policyPatchSchema.parse(req.body)
   const picked = pickScopedOrgs(scope, q.org_id, { requireSingle: true })
   if ('status' in picked) return reply.status(picked.status).send(picked.body)
+  if (!(await requireOrgPolicyEdit(picked.orgIds[0], reply))) return
   const key = policyStorageKey(action, picked.orgIds[0], scope)
   return await runtime.getPolicyEngine().updatePolicy(key, body)
 })
@@ -794,6 +813,7 @@ app.delete('/v1/policies/:action', async (req, reply) => {
   const q = req.query as { org_id?: string }
   const picked = pickScopedOrgs(scope, q.org_id, { requireSingle: true })
   if ('status' in picked) return reply.status(picked.status).send(picked.body)
+  if (!(await requireOrgPolicyEdit(picked.orgIds[0], reply))) return
   const key = policyStorageKey(action, picked.orgIds[0], scope)
   if (key.includes(':')) {
     await runtime.removePolicyKeys([key])
@@ -830,6 +850,7 @@ app.post('/v1/policies/import.yaml', async (req, reply) => {
   const picked = pickScopedOrgs(scope, body.org_id, { requireSingle: true })
   if ('status' in picked) return reply.status(picked.status).send(picked.body)
   const orgId = picked.orgIds[0]
+  if (!(await requireOrgPolicyEdit(orgId, reply))) return
   const imported = policiesFromYaml(body.yaml)
   const validatedPolicies = Object.entries(imported).map(
     ([action, policy]) => [policyActionSchema.parse(action), policy] as const,
@@ -919,6 +940,14 @@ app.post('/v1/audit/:id/resolve', {
   const entryOrgId =
     entry && typeof entry.context?.org_id === 'string' ? entry.context.org_id : undefined
   if (!assertAuditEntryScope(scope, entryOrgId, reply)) return
+
+  if (entryOrgId && supabaseAuth) {
+    const limits = await getEntitlementEngine(supabaseAuth).getLimits(entryOrgId)
+    if (!canApproveHolds(limits)) {
+      sendPlanFeatureRequired(reply, limits, 'holds_approve', 'Approving held actions requires Personal or higher.')
+      return
+    }
+  }
 
   const result = await runtime.resolveAuditEntry(id, body)
   if (!result) {
@@ -1095,6 +1124,18 @@ app.post('/v1/actions/verify', {
     context: orgId ? { ...body.context, org_id: orgId } : body.context,
   })
 
+  // Plan quota: block governed actions when monthly limit is exhausted
+  if (orgId && supabaseAuth) {
+    const entEngine = getEntitlementEngine(supabaseAuth)
+    const quotaBlocked = await governedQuotaBlock(entEngine, orgId, {
+      actor: body.actor,
+      action: body.action,
+      context: request.context ?? {},
+      correlationId: body.correlationId,
+    })
+    if (quotaBlocked) return reply.status(200).send(quotaBlocked)
+  }
+
   // Fleet kill-switch: if the org has paused all agent actions, block immediately
   if (orgId && supabaseAuth) {
     try {
@@ -1131,6 +1172,8 @@ app.post('/v1/actions/verify', {
   let customRuleLabel: string | null = null
   if (orgId && supabaseAuth) {
     try {
+      const limits = await getEntitlementEngine(supabaseAuth).getLimits(orgId)
+      if (canEvaluateShieldRules(limits)) {
       const shieldRules = await loadShieldRules(orgId)
       if (shieldRules.length > 0) {
         const match = evaluateShieldRules(shieldRules, body.action, body.context ?? {})
@@ -1173,6 +1216,7 @@ app.post('/v1/actions/verify', {
             return reply.status(200).send(blockResult)
           }
         }
+      }
       }
     } catch { /* non-fatal — custom rules are best-effort */ }
   }
@@ -1557,6 +1601,11 @@ app.post('/v1/fleet/pause', async (req, reply) => {
   const picked = pickScopedOrgs(scope, body.org_id, { requireSingle: true })
   if ('status' in picked) return reply.status(picked.status).send(picked.body)
   const orgId = picked.orgIds[0]
+  const limits = await getEntitlementEngine(supabaseAuth).getLimits(orgId)
+  if (!canUseFleetControls(limits)) {
+    sendPlanFeatureRequired(reply, limits, 'holds_approve', 'Fleet pause requires Operator or higher.')
+    return
+  }
   const admin = createSupabaseAdmin(supabaseAuth)
   const { error } = await admin
     .from('organizations')
@@ -1577,6 +1626,11 @@ app.post('/v1/fleet/resume', async (req, reply) => {
   const picked = pickScopedOrgs(scope, body.org_id, { requireSingle: true })
   if ('status' in picked) return reply.status(picked.status).send(picked.body)
   const orgId = picked.orgIds[0]
+  const limits = await getEntitlementEngine(supabaseAuth).getLimits(orgId)
+  if (!canUseFleetControls(limits)) {
+    sendPlanFeatureRequired(reply, limits, 'holds_approve', 'Fleet resume requires Operator or higher.')
+    return
+  }
   const admin = createSupabaseAdmin(supabaseAuth)
   const { error } = await admin
     .from('organizations')
