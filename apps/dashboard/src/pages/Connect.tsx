@@ -31,6 +31,7 @@ import {
   type PlatformId,
 } from '../lib/platform-credentials'
 import type { PageId } from '../layout/Sidebar'
+import { PlanGateAlert } from '../components/PlanGateAlert'
 
 const PLATFORMS: { id: PlatformId; name: string; flag: string }[] = [
   { id: 'openai', name: 'OpenAI', flag: '🤖' },
@@ -567,9 +568,7 @@ export function Connect({ orgId, onPage }: Props) {
       </div>
 
       {error && (
-        <div className="alert alert--error" style={{ marginBottom: '1rem' }}>
-          <div className="alert__body">{error}</div>
-        </div>
+        <PlanGateAlert message={error} onDismiss={() => setError(null)} style={{ marginBottom: '1rem' }} />
       )}
 
       {staleCredentials.length > 0 && (

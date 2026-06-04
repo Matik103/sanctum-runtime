@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { CreditCard, Eye, Loader2, LockKeyhole, RefreshCw, Zap } from 'lucide-react'
 import { Alert } from '../components/ui/Alert'
+import { PlanGateAlert } from '../components/PlanGateAlert'
 import { fetchMyOrgs, type FleetOrg } from '../lib/fleet'
 import { fetchOperatorContext } from '../lib/marketplace'
 import {
@@ -256,7 +257,7 @@ export function Billing() {
         </div>
       </header>
 
-      {error && <Alert variant="error" onDismiss={() => setError(null)}>{error}</Alert>}
+      {error && <PlanGateAlert message={error} onDismiss={() => setError(null)} />}
       {checkoutMsg && <Alert variant="info" onDismiss={() => setCheckoutMsg(null)}>{checkoutMsg}</Alert>}
 
       {plan && governedQuota && governedQuota.pct !== null && governedQuota.pct >= 80 && (

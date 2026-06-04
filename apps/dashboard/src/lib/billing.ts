@@ -1,4 +1,5 @@
 import { getAccessToken } from './supabase'
+import { throwResponseError } from './sanitize-error'
 
 import { apiBaseUrl as apiBase } from './api-url'
 
@@ -49,7 +50,7 @@ export async function fetchBillingPlan(orgId: string): Promise<BillingPlan> {
     `${apiBase}/v1/billing/plan?org_id=${encodeURIComponent(orgId)}`,
     { headers },
   )
-  if (!res.ok) throw new Error(`billing_plan_error: ${res.status}`)
+  if (!res.ok) await throwResponseError(res, 'Could not load billing info')
   return res.json() as Promise<BillingPlan>
 }
 
@@ -68,7 +69,7 @@ export async function createCheckout(
     headers,
     body: JSON.stringify({ org_id: orgId, plan_id: planId }),
   })
-  if (!res.ok) throw new Error(`checkout_error: ${res.status}`)
+  if (!res.ok) await throwResponseError(res, 'Could not open checkout')
   return res.json()
 }
 

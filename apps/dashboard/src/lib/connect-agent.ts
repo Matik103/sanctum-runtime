@@ -1,5 +1,5 @@
 import { apiBaseUrl } from './api-url'
-import { sanitizeApiError } from './sanitize-error'
+import { responseError } from './sanitize-error'
 import { getAccessToken } from './supabase'
 
 export type ConnectOrgSettings = {
@@ -198,15 +198,7 @@ await runGatedToolCalls(toolCalls, executors, {
 }
 
 async function safeResponseError(res: Response, fallback: string): Promise<Error> {
-  let detail = `${fallback} (${res.status})`
-  try {
-    const body = (await res.json()) as { error?: unknown; message?: unknown }
-    const raw = [body.error, body.message].find((value): value is string => typeof value === 'string' && value.length > 0)
-    if (raw && import.meta.env.DEV) detail = `${fallback} (${res.status}): ${raw}`
-  } catch {
-    /* non-JSON response */
-  }
-  return new Error(sanitizeApiError(new Error(detail), fallback))
+  return responseError(res, fallback)
 }
 
 export function executionSnippet(platform: string, lang: 'python' | 'typescript'): string {

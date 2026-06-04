@@ -1,4 +1,5 @@
 import { getAccessToken, getSupabase } from './supabase'
+import { throwResponseError } from './sanitize-error'
 
 import { apiBaseUrl as apiBase } from './api-url'
 
@@ -97,14 +98,14 @@ export async function fetchRuntimes(orgId?: string): Promise<FleetRuntime[]> {
   const res = await fetch(`${apiBase}/v1/runtimes${orgQuery(orgId)}`, {
     headers: await fleetHeaders(),
   })
-  if (!res.ok) throw new Error(`Runtimes: ${res.status}`)
+  if (!res.ok) await throwResponseError(res, 'Could not load runtimes')
   return res.json() as Promise<FleetRuntime[]>
 }
 
 export async function fetchFleetAgents(orgId?: string): Promise<FleetAgent[]> {
   const q = orgId ? `?org_id=${encodeURIComponent(orgId)}` : ''
   const res = await fetch(`${apiBase}/v1/agents${q}`, { headers: await fleetHeaders() })
-  if (!res.ok) throw new Error(`Agents: ${res.status}`)
+  if (!res.ok) await throwResponseError(res, 'Could not load agents')
   return res.json() as Promise<FleetAgent[]>
 }
 
@@ -130,7 +131,7 @@ export async function fetchFleetMap(orgId: string): Promise<FleetMap> {
   const res = await fetch(`${apiBase}/v1/fleet/map?org_id=${encodeURIComponent(orgId)}`, {
     headers: await fleetHeaders(),
   })
-  if (!res.ok) throw new Error(`Fleet map: ${res.status}`)
+  if (!res.ok) await throwResponseError(res, 'Fleet map is unavailable')
   return res.json() as Promise<FleetMap>
 }
 
@@ -148,7 +149,7 @@ export async function fetchDeploymentGroups(orgId: string): Promise<DeploymentGr
     `${apiBase}/v1/deployment-groups?org_id=${encodeURIComponent(orgId)}`,
     { headers: await fleetHeaders() },
   )
-  if (!res.ok) throw new Error(`Deployment groups: ${res.status}`)
+  if (!res.ok) await throwResponseError(res, 'Deployment groups are unavailable')
   return res.json() as Promise<DeploymentGroup[]>
 }
 
@@ -168,7 +169,7 @@ export async function createDeploymentGroup(input: {
       description: input.description,
     }),
   })
-  if (!res.ok) throw new Error(`Create group: ${res.status}`)
+  if (!res.ok) await throwResponseError(res, 'Could not create deployment group')
   const data = (await res.json()) as { group: DeploymentGroup }
   return data.group
 }
@@ -185,7 +186,7 @@ export async function updateRuntimePlacement(
       region: patch.region,
     }),
   })
-  if (!res.ok) throw new Error(`Placement: ${res.status}`)
+  if (!res.ok) await throwResponseError(res, 'Could not update runtime placement')
 }
 
 export async function dispatchFleetCommand(input: {
@@ -208,7 +209,7 @@ export async function dispatchFleetCommand(input: {
       runtimeId: input.runtimeId,
     }),
   })
-  if (!res.ok) throw new Error(`Dispatch: ${res.status}`)
+  if (!res.ok) await throwResponseError(res, 'Could not dispatch fleet command')
   return res.json() as Promise<{ commandIds: string[]; targetCount: number; wsDelivered?: number }>
 }
 
@@ -217,6 +218,6 @@ export async function fetchFleetEvents(limit = 50, orgId?: string): Promise<Flee
   const res = await fetch(`${apiBase}/v1/events?limit=${limit}${org}`, {
     headers: await fleetHeaders(),
   })
-  if (!res.ok) throw new Error(`Events: ${res.status}`)
+  if (!res.ok) await throwResponseError(res, 'Could not load fleet events')
   return res.json() as Promise<FleetEvent[]>
 }

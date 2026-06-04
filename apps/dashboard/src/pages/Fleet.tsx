@@ -3,6 +3,7 @@ import { RefreshCw, PauseCircle, PlayCircle } from 'lucide-react'
 import { getFleetStatus, fleetPause, fleetResume, type FleetPauseStatus } from '../lib/api'
 import { timeAgo } from '../lib/format'
 import { Alert } from '../components/ui/Alert'
+import { PlanGateAlert } from '../components/PlanGateAlert'
 import { EmptyState } from '../components/ui/EmptyState'
 import { PageActions } from '../components/ui/PageActions'
 import { TabBar } from '../components/ui/TabBar'
@@ -24,6 +25,7 @@ import {
   type FleetRuntime,
 } from '../lib/fleet'
 import { fetchOperatorContext } from '../lib/marketplace'
+import { looksLikeUpgradeMessage } from '../lib/sanitize-error'
 
 function statusBadge(status: string) {
   if (status === 'online') return 'success'
@@ -270,20 +272,24 @@ export function Fleet() {
       )}
 
       {error && (
-        <Alert variant="error" onDismiss={() => setError(null)}>
-          {error}
-          <p style={{ marginTop: '0.5rem', fontSize: '0.8rem', opacity: 0.9 }}>
-            Connect a runtime with <code className="inline-code">runtime.connect()</code> — see{' '}
-            <a
-              href="https://github.com/Matik103/sanctum-runtime/blob/main/docs/CONTROL_PLANE.md"
-              target="_blank"
-              rel="noreferrer"
-              style={{ color: '#93b4ff' }}
-            >
-              CONTROL_PLANE.md
-            </a>
-          </p>
-        </Alert>
+        looksLikeUpgradeMessage(error) ? (
+          <PlanGateAlert message={error} onDismiss={() => setError(null)} />
+        ) : (
+          <Alert variant="error" onDismiss={() => setError(null)}>
+            {error}
+            <p style={{ marginTop: '0.5rem', fontSize: '0.8rem', opacity: 0.9 }}>
+              Connect a runtime with <code className="inline-code">runtime.connect()</code> — see{' '}
+              <a
+                href="https://github.com/Matik103/sanctum-runtime/blob/main/docs/CONTROL_PLANE.md"
+                target="_blank"
+                rel="noreferrer"
+                style={{ color: '#93b4ff' }}
+              >
+                CONTROL_PLANE.md
+              </a>
+            </p>
+          </Alert>
+        )
       )}
 
       <TabBar tabs={tabs} active={tab} onChange={setTab} />

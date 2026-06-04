@@ -1,4 +1,5 @@
 import { getAccessToken } from './supabase'
+import { throwResponseError } from './sanitize-error'
 
 import { apiBaseUrl as apiBase } from './api-url'
 
@@ -29,20 +30,8 @@ async function authHeaders(json = false): Promise<HeadersInit> {
 
 export async function listApiKeys(): Promise<ApiKeyRecord[]> {
   const res = await fetch(`${apiBase}/v1/api-keys`, { headers: await authHeaders() })
-  if (!res.ok) throw new Error(`Failed to list API keys: ${res.status}`)
+  if (!res.ok) await throwResponseError(res, 'Could not load API keys')
   return res.json() as Promise<ApiKeyRecord[]>
-}
-
-async function parseApiError(res: Response, fallback: string): Promise<never> {
-  let detail = `${fallback} (${res.status})`
-  try {
-    const body = (await res.json()) as { detail?: string; error?: string }
-    if (body.detail) detail = body.detail
-    else if (body.error) detail = body.error.replace(/_/g, ' ')
-  } catch {
-    /* ignore */
-  }
-  throw new Error(detail)
 }
 
 export async function createApiKey(name: string): Promise<CreateApiKeyResult> {
@@ -51,7 +40,7 @@ export async function createApiKey(name: string): Promise<CreateApiKeyResult> {
     headers: await authHeaders(true),
     body: JSON.stringify({ name }),
   })
-  if (!res.ok) await parseApiError(res, 'Could not create API key')
+  if (!res.ok) await throwResponseError(res, 'Could not create API key')
   return res.json() as Promise<CreateApiKeyResult>
 }
 
@@ -60,7 +49,7 @@ export async function deleteApiKey(id: string): Promise<void> {
     method: 'DELETE',
     headers: await authHeaders(),
   })
-  if (!res.ok) await parseApiError(res, 'Could not delete API key')
+  if (!res.ok) await throwResponseError(res, 'Could not delete API key')
 }
 
 /** @deprecated use deleteApiKey */
@@ -71,6 +60,6 @@ export async function rotateApiKey(id: string): Promise<CreateApiKeyResult> {
     method: 'POST',
     headers: await authHeaders(),
   })
-  if (!res.ok) await parseApiError(res, 'Could not rotate API key')
+  if (!res.ok) await throwResponseError(res, 'Could not rotate API key')
   return res.json() as Promise<CreateApiKeyResult>
 }

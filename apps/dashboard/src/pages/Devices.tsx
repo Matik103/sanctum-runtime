@@ -3,6 +3,7 @@ import { timeAgo } from '../lib/format'
 import { KeyRound, Monitor, RefreshCw, RotateCcw, Server, Trash2 } from 'lucide-react'
 import type { RuntimeStatus } from '@sanctum-runtime/sdk/browser'
 import { Alert } from '../components/ui/Alert'
+import { PlanGateAlert } from '../components/PlanGateAlert'
 import { CopyField } from '../components/ui/CopyField'
 import { EmptyState } from '../components/ui/EmptyState'
 import { PageActions } from '../components/ui/PageActions'
@@ -228,9 +229,7 @@ export function Devices({ status }: Props) {
       </header>
 
       {error && (
-        <Alert variant="error" onDismiss={() => setError(null)}>
-          {error}
-        </Alert>
+        <PlanGateAlert message={error} onDismiss={() => setError(null)} />
       )}
 
       <section className="section">

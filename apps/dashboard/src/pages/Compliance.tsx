@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Download, ShieldCheck, BarChart3, FileText, BookOpen } from 'lucide-react'
 import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
-import { Alert } from '../components/ui/Alert'
+import { PlanGateAlert } from '../components/PlanGateAlert'
 import { TabBar } from '../components/ui/TabBar'
 import { fetchMyOrgs, type FleetOrg } from '../lib/fleet'
 
@@ -143,7 +143,7 @@ export function Compliance() {
         </select>
       )}
 
-      {error && <Alert variant="error" onDismiss={() => setError(null)} style={{ marginBottom: '1rem' }}>{error}</Alert>}
+      {error && <PlanGateAlert message={error} onDismiss={() => setError(null)} style={{ marginBottom: '1rem' }} />}
 
       {!report && !loading && (
         <div className="card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--muted)' }}>
