@@ -92,6 +92,7 @@
     "data:reset": "node scripts/reset-sanctum-data.mjs",
     "plans:verify": "node scripts/verify-plans-alignment.mjs",
     "test:signup-forms": "node scripts/test-signup-forms.mjs",
+    "test:accounts-e2e": "node scripts/test-accounts-e2e.mjs",
     "predev:runtime": "node scripts/ensure-env.mjs && npm run build:sdk",
     "predev": "node scripts/ensure-env.mjs",
     "presmoke": "node scripts/ensure-env.mjs",

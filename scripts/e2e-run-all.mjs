@@ -62,9 +62,23 @@ async function main() {
   section('Unit tests')
   try {
     await run('npm', ['test'])
-    ok('vitest (158 tests)')
+    ok('vitest')
   } catch (e) {
     bad('vitest', e.message)
+  }
+
+  section('Accounts E2E (signup + profile + SSO domains)')
+  try {
+    await run('npm', ['run', 'test:signup-forms'])
+    ok('test:signup-forms')
+  } catch (e) {
+    bad('test:signup-forms', e.message)
+  }
+  try {
+    await run('npm', ['run', 'test:accounts-e2e'])
+    ok('test:accounts-e2e')
+  } catch (e) {
+    bad('test:accounts-e2e', e.message)
   }
 
   section('Local API smoke')

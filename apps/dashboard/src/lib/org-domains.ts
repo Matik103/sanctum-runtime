@@ -54,7 +54,7 @@ export async function addOrgDomain(
 export async function verifyOrgDomain(orgId: string, domain: string): Promise<OrgDomain> {
   const res = await fetch(
     `${apiBase}/v1/orgs/${encodeURIComponent(orgId)}/domains/${encodeURIComponent(domain)}/verify`,
-    { method: 'POST', headers: await authHeaders(true) },
+    { method: 'POST', headers: await authHeaders(true), body: '{}' },
   )
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as {
