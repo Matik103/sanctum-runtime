@@ -5,13 +5,17 @@ import { ControlPlaneStore } from './control-plane-store.js'
 import { getEntitlementEngine, PLAN_DEFAULTS, type PlanId } from './entitlements.js'
 import { getUsageStore } from './usage-store.js'
 import { sendNotificationDeduped } from './notifications.js'
+import type { SupabaseAuthConfig } from './auth.js'
 import {
   verifyCreemSignature,
   resolveCreemPlanUpdate,
+  resolveCreemPlanFromObject,
+  customerEmailFromCreemObject,
   type CreemWebhookEvent,
 } from './creem-billing.js'
 import {
   creemCreateCheckoutSession,
+  creemGetCheckout,
   creemHostedPaymentUrl,
   creemProductIdForPlan,
   creemPublicConfig,
@@ -97,6 +101,112 @@ function staticCreemCheckoutUrl(
   return checkout.toString()
 }
 
+type CreemPlanPatch = {
+  orgId: string
+  planId?: PlanId | null
+  customerId?: string | null
+  subscriptionId?: string | null
+  subscriptionStatus?: string | null
+  billingStatus?: 'active' | 'payment_failed' | 'canceled' | null
+  revoke?: boolean
+}
+
+async function resolveOrgIdForCreemBilling(
+  admin: ReturnType<typeof createSupabaseAdmin>,
+  hint: {
+    orgId: string | null
+    customerId: string | null
+    customerEmail: string | null
+  },
+): Promise<string | null> {
+  if (hint.orgId) return hint.orgId
+
+  if (hint.customerId) {
+    const { data } = await admin
+      .from('org_plans')
+      .select('org_id')
+      .eq('creem_customer_id', hint.customerId)
+      .maybeSingle()
+    if (data?.org_id) return data.org_id as string
+  }
+
+  if (hint.customerEmail) {
+    const email = hint.customerEmail.trim().toLowerCase()
+    const { data: profile } = await admin
+      .from('profiles')
+      .select('id')
+      .ilike('email', email)
+      .maybeSingle()
+    if (profile?.id) {
+      const { data: memberships } = await admin
+        .from('organization_members')
+        .select('org_id, role')
+        .eq('user_id', profile.id)
+      const preferred =
+        memberships?.find((m) => !String(m.org_id).startsWith('personal-') && m.role === 'owner')
+        ?? memberships?.find((m) => !String(m.org_id).startsWith('personal-'))
+        ?? memberships?.[0]
+      if (preferred?.org_id) return preferred.org_id as string
+    }
+  }
+
+  return null
+}
+
+async function upsertOrgPlanFromCreem(
+  admin: ReturnType<typeof createSupabaseAdmin>,
+  entitlements: ReturnType<typeof getEntitlementEngine>,
+  patch: CreemPlanPatch,
+): Promise<{ error: string | null }> {
+  await entitlements.ensureOrgPlan(patch.orgId)
+
+  const row: Record<string, unknown> = {
+    org_id: patch.orgId,
+    updated_at: new Date().toISOString(),
+  }
+  if (patch.planId) row.plan_id = patch.planId
+  if (patch.customerId) row.creem_customer_id = patch.customerId
+  if (patch.subscriptionId) row.creem_subscription_id = patch.subscriptionId
+  if (patch.subscriptionStatus) row.creem_subscription_status = patch.subscriptionStatus
+  if (patch.billingStatus) row.billing_status = patch.billingStatus
+  if (patch.planId && !patch.revoke) {
+    row.billing_cycle_anchor = new Date().toISOString()
+  }
+
+  const { error } = await admin.from('org_plans').upsert(row, { onConflict: 'org_id' })
+  return { error: error?.message ?? null }
+}
+
+async function applyCreemGrantFromCheckoutObject(
+  cfg: SupabaseAuthConfig,
+  entitlements: ReturnType<typeof getEntitlementEngine>,
+  checkoutObj: Record<string, unknown>,
+  orgIdHint: string | null,
+): Promise<{ ok: boolean; orgId: string | null; planId: PlanId | null; error?: string }> {
+  const resolved = resolveCreemPlanFromObject(checkoutObj, { grant: true })
+  const admin = createSupabaseAdmin(cfg)
+  const orgId = await resolveOrgIdForCreemBilling(admin, {
+    orgId: orgIdHint ?? resolved.orgId,
+    customerId: resolved.customerId,
+    customerEmail: customerEmailFromCreemObject(checkoutObj),
+  })
+  if (!orgId) return { ok: false, orgId: null, planId: null, error: 'org_unresolved' }
+  if (!resolved.planId || resolved.grantFailed) {
+    return { ok: false, orgId, planId: null, error: 'plan_unresolved' }
+  }
+
+  const { error } = await upsertOrgPlanFromCreem(admin, entitlements, {
+    orgId,
+    planId: resolved.planId,
+    customerId: resolved.customerId,
+    subscriptionId: resolved.subscriptionId,
+    subscriptionStatus: resolved.subscriptionStatus ?? 'active',
+    billingStatus: 'active',
+  })
+  if (error) return { ok: false, orgId, planId: resolved.planId, error }
+  return { ok: true, orgId, planId: resolved.planId }
+}
+
 async function handleCreemWebhook(
   app: FastifyInstance,
   cfg: NonNullable<ReturnType<typeof getSupabaseAuthConfig>>,
@@ -135,50 +245,74 @@ async function handleCreemWebhook(
   app.log.info({ eventId, eventType }, '[billing/webhook] Creem event received')
 
   const update = resolveCreemPlanUpdate(event)
-  if (!update.orgId) {
+  const admin = createSupabaseAdmin(cfg)
+  const orgId = await resolveOrgIdForCreemBilling(admin, {
+    orgId: update.orgId,
+    customerId: update.customerId,
+    customerEmail: update.customerEmail,
+  })
+
+  const grantEvents = new Set([
+    'checkout.completed',
+    'subscription.paid',
+    'subscription.active',
+    'subscription.trialing',
+  ])
+
+  if (!orgId && grantEvents.has(eventType ?? '')) {
+    app.log.error(
+      { eventType, eventId, customerEmail: update.customerEmail, customerId: update.customerId },
+      '[billing/webhook] grant event could not resolve org — add org_id metadata to checkout or CREEM_PRODUCT_* on API',
+    )
+    return reply.status(500).send({
+      error: 'org_unresolved',
+      eventType,
+      hint:
+        'Checkout must include metadata.org_id (use dashboard Billing → Upgrade) or match customer email to a Sanctum owner.',
+    })
+  }
+
+  if (!orgId) {
     markEventProcessed(eventId)
-    return reply.status(200).send({ ok: true, note: 'no org_id in Creem metadata — skipped' })
+    return reply.status(200).send({ ok: true, note: 'no org resolved — skipped' })
   }
 
   if (update.grantFailed) {
     app.log.error(
-      { orgId: update.orgId, eventType, eventId },
+      { orgId, eventType, eventId },
       '[billing/webhook] grant event missing plan — set CREEM_PRODUCT_* or pass metadata.plan',
     )
     return reply.status(500).send({
       error: 'grant_plan_unresolved',
-      orgId: update.orgId,
+      orgId,
       eventType,
-      hint: 'Webhook must include metadata.plan or a mapped Creem product id (CREEM_PRODUCT_* env).',
+      hint: 'Set CREEM_PRODUCT_PERSONAL/OPERATOR/TEAM on Render to your Creem prod_* ids.',
     })
   }
 
-  const admin = createSupabaseAdmin(cfg)
-
   if (update.shouldUpsertPlan && update.planId) {
-    const { error } = await admin
-      .from('org_plans')
-      .upsert({
-        org_id: update.orgId,
-        plan_id: update.planId,
-        creem_subscription_id: update.subscriptionId ?? null,
-        creem_customer_id: update.customerId ?? null,
-        billing_cycle_anchor: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'org_id' })
+    const { error } = await upsertOrgPlanFromCreem(admin, entitlements, {
+      orgId,
+      planId: update.planId,
+      customerId: update.customerId,
+      subscriptionId: update.subscriptionId,
+      subscriptionStatus: update.subscriptionStatus,
+      billingStatus: update.billingStatus ?? 'active',
+      revoke: update.revoke,
+    })
 
     if (error) {
       app.log.error({ err: error }, '[billing/webhook] upsert failed')
       return reply.status(500).send({ error: 'db_error' })
     }
 
-    app.log.info({ orgId: update.orgId, planId: update.planId, revoke: update.revoke }, '[billing/webhook] plan updated')
+    app.log.info({ orgId, planId: update.planId, revoke: update.revoke }, '[billing/webhook] plan updated')
 
-    void entitlements.getNotificationPrefs(update.orgId).then((prefs) => {
+    void entitlements.getNotificationPrefs(orgId).then((prefs) => {
       sendNotificationDeduped(
         {
           type: 'billing.plan_changed',
-          orgId: update.orgId!,
+          orgId,
           title: `Plan updated: ${update.planId}`,
           body: update.revoke
             ? 'Your Sanctum subscription ended. You are on the Observer plan (observe-only).'
@@ -194,14 +328,27 @@ async function handleCreemWebhook(
         86_400_000,
       )
     }).catch(() => {})
+  } else if (update.shouldSyncStatusOnly) {
+    const { error } = await upsertOrgPlanFromCreem(admin, entitlements, {
+      orgId,
+      customerId: update.customerId,
+      subscriptionId: update.subscriptionId,
+      subscriptionStatus: update.subscriptionStatus,
+      billingStatus: update.billingStatus ?? undefined,
+    })
+    if (error) {
+      app.log.error({ err: error }, '[billing/webhook] status sync failed')
+      return reply.status(500).send({ error: 'db_error' })
+    }
+    app.log.info({ orgId, subscriptionStatus: update.subscriptionStatus }, '[billing/webhook] status synced')
   }
 
   if (update.paymentFailed) {
-    void entitlements.getNotificationPrefs(update.orgId).then((prefs) => {
+    void entitlements.getNotificationPrefs(orgId).then((prefs) => {
       sendNotificationDeduped(
         {
           type: 'billing.payment_failed',
-          orgId: update.orgId!,
+          orgId,
           title: 'Payment failed',
           body: 'A Creem payment for your Sanctum subscription failed. Update your payment method to avoid losing governed actions.',
           severity: 'critical',
@@ -218,7 +365,7 @@ async function handleCreemWebhook(
   }
 
   markEventProcessed(eventId)
-  return reply.status(200).send({ ok: true, eventType, orgId: update.orgId, planId: update.planId })
+  return reply.status(200).send({ ok: true, eventType, orgId, planId: update.planId })
 }
 
 export async function registerBillingRoutes(app: FastifyInstance) {
@@ -260,15 +407,21 @@ export async function registerBillingRoutes(app: FastifyInstance) {
     let creemCustomerId: string | null = null
     let billingCycleAnchor: string | null = null
     let creemSubscriptionId: string | null = null
+    let creemSubscriptionStatus: string | null = null
+    let billingStatus: string | null = null
     try {
       const admin = createSupabaseAdmin(cfg)
       const { data } = await admin
         .from('org_plans')
-        .select('creem_customer_id, creem_subscription_id, billing_cycle_anchor')
+        .select(
+          'creem_customer_id, creem_subscription_id, creem_subscription_status, billing_status, billing_cycle_anchor',
+        )
         .eq('org_id', orgId)
         .maybeSingle()
       creemCustomerId = data?.creem_customer_id ?? null
       creemSubscriptionId = data?.creem_subscription_id ?? null
+      creemSubscriptionStatus = data?.creem_subscription_status ?? null
+      billingStatus = data?.billing_status ?? null
       billingCycleAnchor = data?.billing_cycle_anchor ?? null
     } catch { /* ignore */ }
 
@@ -331,9 +484,61 @@ export async function registerBillingRoutes(app: FastifyInstance) {
         billingProvider: creemSubscriptionId || creemCustomerId ? 'creem' : null,
         creemCustomerId,
         creemSubscriptionId,
+        creemSubscriptionStatus,
+        billingStatus,
         billingCycleAnchor,
         creem: creemPublicConfig(),
       },
+    }
+  })
+
+  app.post('/v1/billing/sync', async (req, reply) => {
+    const body = z
+      .object({
+        org_id: z.string().min(1),
+        checkout_id: z.string().min(1).optional(),
+      })
+      .parse(req.body)
+
+    const orgId = await resolveOrgId(req as SanctumReq, store, body.org_id)
+    if (!orgId) return reply.status(403).send({ error: 'org_forbidden' })
+
+    if (body.checkout_id && getCreemConfig()) {
+      const checkout = await creemGetCheckout(body.checkout_id)
+      if (checkout) {
+        const result = await applyCreemGrantFromCheckoutObject(cfg, entitlements, checkout, orgId)
+        if (result.ok) {
+          return {
+            ok: true,
+            synced: true,
+            orgId: result.orgId,
+            planId: result.planId,
+            source: 'creem_checkout',
+          }
+        }
+        app.log.warn({ orgId, checkoutId: body.checkout_id, error: result.error }, '[billing/sync] checkout reconcile failed')
+      }
+    }
+
+    await entitlements.ensureOrgPlan(orgId)
+    const admin = createSupabaseAdmin(cfg)
+    const { data } = await admin
+      .from('org_plans')
+      .select('plan_id, creem_subscription_id, creem_subscription_status, billing_status')
+      .eq('org_id', orgId)
+      .maybeSingle()
+
+    return {
+      ok: true,
+      synced: false,
+      orgId,
+      planId: data?.plan_id ?? 'observer',
+      creemSubscriptionId: data?.creem_subscription_id ?? null,
+      creemSubscriptionStatus: data?.creem_subscription_status ?? null,
+      billingStatus: data?.billing_status ?? null,
+      note: body.checkout_id
+        ? 'Webhook may still be processing; refresh again in a few seconds.'
+        : 'No checkout_id provided; returned current org_plans row.',
     }
   })
 
@@ -382,6 +587,7 @@ export async function registerBillingRoutes(app: FastifyInstance) {
           checkoutUrl: session.checkoutUrl,
           billingProvider: 'creem',
           checkoutMode: session.mode,
+          checkoutId: session.checkoutId ?? null,
           planId,
           planName: PLAN_DEFAULTS[planId].planName,
           priceMonthlyUsd: PLAN_DEFAULTS[planId].priceMonthlyUsd,

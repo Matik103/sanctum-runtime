@@ -40,8 +40,37 @@ export interface BillingPlan {
     billingProvider?: string | null
     creemCustomerId?: string | null
     creemSubscriptionId?: string | null
+    creemSubscriptionStatus?: string | null
+    billingStatus?: string | null
     billingCycleAnchor: string | null
   }
+}
+
+export async function syncBillingAfterCheckout(
+  orgId: string,
+  checkoutId?: string,
+): Promise<{
+  ok: boolean
+  synced: boolean
+  planId?: string
+  note?: string
+}> {
+  const headers = { ...await authHeaders(), 'Content-Type': 'application/json' }
+  const res = await fetch(`${apiBase}/v1/billing/sync`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      org_id: orgId,
+      ...(checkoutId ? { checkout_id: checkoutId } : {}),
+    }),
+  })
+  if (!res.ok) await throwResponseError(res, 'Could not sync billing')
+  return res.json() as Promise<{
+    ok: boolean
+    synced: boolean
+    planId?: string
+    note?: string
+  }>
 }
 
 export async function fetchBillingPlan(orgId: string): Promise<BillingPlan> {

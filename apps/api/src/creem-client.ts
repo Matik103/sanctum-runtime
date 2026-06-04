@@ -129,11 +129,39 @@ export async function creemCreateCheckoutSession(input: {
   }
 }
 
-export function defaultBillingReturnUrls(dashboardBase: string): { successUrl: string; cancelUrl: string } {
+/** GET /v1/checkouts/:id — reconcile plan after redirect if webhook was delayed. */
+export async function creemGetCheckout(checkoutId: string): Promise<Record<string, unknown> | null> {
+  const cfg = getCreemConfig()
+  if (!cfg) return null
+  const id = checkoutId.trim()
+  if (!id) return null
+
+  const res = await fetch(`${cfg.baseUrl}/v1/checkouts/${encodeURIComponent(id)}`, {
+    headers: { 'x-api-key': cfg.apiKey },
+  })
+  if (!res.ok) return null
+  try {
+    return (await res.json()) as Record<string, unknown>
+  } catch {
+    return null
+  }
+}
+
+export function defaultBillingReturnUrls(
+  dashboardBase: string,
+  opts?: { checkoutId?: string },
+): { successUrl: string; cancelUrl: string } {
   const base = dashboardBase.replace(/\/$/, '')
+  const success = new URL(`${base}/`)
+  success.searchParams.set('page', 'billing')
+  success.searchParams.set('checkout', 'success')
+  if (opts?.checkoutId) success.searchParams.set('checkout_id', opts.checkoutId)
+  const cancel = new URL(`${base}/`)
+  cancel.searchParams.set('page', 'billing')
+  cancel.searchParams.set('checkout', 'cancelled')
   return {
-    successUrl: `${base}/?page=billing&checkout=success`,
-    cancelUrl: `${base}/?page=billing&checkout=cancelled`,
+    successUrl: success.toString(),
+    cancelUrl: cancel.toString(),
   }
 }
 

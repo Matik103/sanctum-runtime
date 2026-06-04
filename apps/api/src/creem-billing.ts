@@ -62,6 +62,11 @@ function metadataFromObject(obj: Record<string, unknown>): Record<string, unknow
   if (direct && typeof direct === 'object' && !Array.isArray(direct)) {
     layers.push(direct as Record<string, unknown>)
   }
+  const order = obj.order
+  if (order && typeof order === 'object' && !Array.isArray(order)) {
+    const orderMeta = (order as { metadata?: Record<string, unknown> }).metadata
+    if (orderMeta && typeof orderMeta === 'object') layers.push(orderMeta)
+  }
   const subscription = obj.subscription
   if (subscription && typeof subscription === 'object' && !Array.isArray(subscription)) {
     const subMeta = (subscription as { metadata?: Record<string, unknown> }).metadata
@@ -74,18 +79,95 @@ function metadataFromObject(obj: Record<string, unknown>): Record<string, unknow
   return merged
 }
 
+export function customerEmailFromCreemObject(obj: Record<string, unknown>): string | null {
+  const customer = obj.customer
+  if (customer && typeof customer === 'object' && !Array.isArray(customer)) {
+    const email = (customer as { email?: string }).email
+    if (typeof email === 'string' && email.includes('@')) return email.trim().toLowerCase()
+  }
+  return null
+}
+
+export function customerIdFromCreemObject(obj: Record<string, unknown>): string | null {
+  const customer = obj.customer
+  if (typeof customer === 'string' && customer) return customer
+  if (customer && typeof customer === 'object' && !Array.isArray(customer)) {
+    const id = (customer as { id?: string }).id
+    if (typeof id === 'string' && id) return id
+  }
+  const order = obj.order
+  if (order && typeof order === 'object' && !Array.isArray(order)) {
+    const c = (order as { customer?: string }).customer
+    if (typeof c === 'string' && c) return c
+  }
+  return null
+}
+
+export function subscriptionStatusFromCreemObject(obj: Record<string, unknown>): string | null {
+  const status = obj.status
+  if (typeof status === 'string' && status.trim()) return status.trim()
+  const subscription = obj.subscription
+  if (subscription && typeof subscription === 'object' && !Array.isArray(subscription)) {
+    const subStatus = (subscription as { status?: string }).status
+    if (typeof subStatus === 'string' && subStatus.trim()) return subStatus.trim()
+  }
+  return null
+}
+
 export function orgIdFromCreemObject(obj: Record<string, unknown>): string | null {
   const meta = metadataFromObject(obj)
   const candidates = [
     meta.org_id,
     meta.orgId,
     meta.referenceId,
+    meta.reference_id,
+    meta.internal_customer_id,
     obj.request_id,
+    obj.reference_id,
+    obj.referenceId,
   ]
   for (const c of candidates) {
     if (typeof c === 'string' && c.trim().length > 0) return c.trim()
   }
   return null
+}
+
+/** Build plan update from a Creem checkout or subscription object (API sync + webhooks). */
+export function resolveCreemPlanFromObject(
+  obj: Record<string, unknown>,
+  opts: { grant?: boolean; revoke?: boolean } = {},
+): {
+  orgId: string | null
+  planId: PlanId | null
+  customerId: string | null
+  subscriptionId: string | null
+  subscriptionStatus: string | null
+  grantFailed: boolean
+} {
+  const meta = metadataFromObject(obj)
+  const productId = productIdFromObject(obj)
+  const planId = planIdFromCreemMetadata(meta) ?? planIdFromCreemProduct(productId)
+  const orgId = orgIdFromCreemObject(obj)
+  const customerId = customerIdFromCreemObject(obj)
+  const subscription = obj.subscription
+  const subscriptionId =
+    typeof subscription === 'string'
+      ? subscription
+      : subscription && typeof subscription === 'object'
+        ? String((subscription as { id?: string }).id ?? '') || null
+        : obj.object === 'subscription' && typeof obj.id === 'string'
+          ? obj.id
+          : null
+  const subscriptionStatus = subscriptionStatusFromCreemObject(obj)
+  const grantFailed = Boolean(opts.grant && orgId && !planId)
+  return {
+    orgId,
+    planId: opts.revoke ? 'observer' : planId,
+    customerId,
+    subscriptionId,
+    subscriptionStatus,
+    grantFailed,
+  }
 }
 
 export function planIdFromCreemProduct(productId: string | null): PlanId | null {
@@ -120,116 +202,148 @@ export function resolveCreemPlanUpdate(event: CreemWebhookEvent): {
   planId: PlanId | null
   customerId: string | null
   subscriptionId: string | null
+  subscriptionStatus: string | null
+  customerEmail: string | null
   revoke: boolean
   paymentFailed: boolean
   shouldUpsertPlan: boolean
+  shouldSyncStatusOnly: boolean
+  billingStatus: 'active' | 'payment_failed' | 'canceled' | null
   /** Grant event received but plan could not be resolved (missing metadata + product map). */
   grantFailed: boolean
 } {
   const eventType = event.eventType ?? ''
   const obj = normalizeCreemWebhookObject(event)
-  const orgId = orgIdFromCreemObject(obj)
-  const meta = metadataFromObject(obj)
-  const productId = productIdFromObject(obj)
-
-  const planId = planIdFromCreemMetadata(meta) ?? planIdFromCreemProduct(productId)
-  const grantEvents = new Set(['checkout.completed', 'subscription.paid'])
+  const grantEvents = new Set([
+    'checkout.completed',
+    'subscription.paid',
+    'subscription.active',
+    'subscription.trialing',
+  ])
   const revokeEvents = new Set([
     'subscription.canceled',
     'subscription.cancelled',
     'subscription.expired',
     'subscription.paused',
   ])
+  const statusOnlyEvents = new Set(['subscription.scheduled_cancel'])
 
-  const customer = obj.customer
-  const customerId =
-    typeof customer === 'string'
-      ? customer
-      : customer && typeof customer === 'object'
-        ? String((customer as { id?: string }).id ?? '') || null
-        : null
-
-  const subscription = obj.subscription
-  const subscriptionId =
-    typeof subscription === 'string'
-      ? subscription
-      : subscription && typeof subscription === 'object'
-        ? String((subscription as { id?: string }).id ?? '') || null
-        : obj.object === 'subscription' && typeof obj.id === 'string'
-          ? obj.id
-          : null
+  const base = resolveCreemPlanFromObject(obj)
+  const customerEmail = customerEmailFromCreemObject(obj)
 
   if (revokeEvents.has(eventType)) {
     return {
-      orgId,
+      orgId: base.orgId,
       planId: 'observer',
-      customerId,
-      subscriptionId,
+      customerId: base.customerId,
+      subscriptionId: base.subscriptionId,
+      subscriptionStatus: base.subscriptionStatus ?? 'canceled',
+      customerEmail,
       revoke: true,
       paymentFailed: false,
-      shouldUpsertPlan: Boolean(orgId),
+      shouldUpsertPlan: Boolean(base.orgId),
+      shouldSyncStatusOnly: false,
+      billingStatus: 'canceled',
       grantFailed: false,
     }
   }
 
   if (eventType === 'subscription.past_due') {
     return {
-      orgId,
-      planId,
-      customerId,
-      subscriptionId,
+      orgId: base.orgId,
+      planId: base.planId,
+      customerId: base.customerId,
+      subscriptionId: base.subscriptionId,
+      subscriptionStatus: 'past_due',
+      customerEmail,
       revoke: false,
       paymentFailed: true,
       shouldUpsertPlan: false,
+      shouldSyncStatusOnly: Boolean(base.orgId),
+      billingStatus: 'payment_failed',
+      grantFailed: false,
+    }
+  }
+
+  if (statusOnlyEvents.has(eventType)) {
+    return {
+      orgId: base.orgId,
+      planId: base.planId,
+      customerId: base.customerId,
+      subscriptionId: base.subscriptionId,
+      subscriptionStatus: base.subscriptionStatus ?? 'scheduled_cancel',
+      customerEmail,
+      revoke: false,
+      paymentFailed: false,
+      shouldUpsertPlan: false,
+      shouldSyncStatusOnly: Boolean(base.orgId),
+      billingStatus: 'active',
       grantFailed: false,
     }
   }
 
   if (grantEvents.has(eventType)) {
-    if (!orgId) {
+    const resolved = resolveCreemPlanFromObject(obj, { grant: true })
+    if (!resolved.orgId) {
       return {
         orgId: null,
         planId: null,
-        customerId,
-        subscriptionId,
+        customerId: resolved.customerId,
+        subscriptionId: resolved.subscriptionId,
+        subscriptionStatus: resolved.subscriptionStatus,
+        customerEmail,
         revoke: false,
         paymentFailed: false,
         shouldUpsertPlan: false,
+        shouldSyncStatusOnly: false,
+        billingStatus: null,
         grantFailed: false,
       }
     }
-    if (!planId) {
+    if (resolved.grantFailed || !resolved.planId) {
       return {
-        orgId,
+        orgId: resolved.orgId,
         planId: null,
-        customerId,
-        subscriptionId,
+        customerId: resolved.customerId,
+        subscriptionId: resolved.subscriptionId,
+        subscriptionStatus: resolved.subscriptionStatus,
+        customerEmail,
         revoke: false,
         paymentFailed: false,
         shouldUpsertPlan: false,
+        shouldSyncStatusOnly: false,
+        billingStatus: null,
         grantFailed: true,
       }
     }
     return {
-      orgId,
-      planId,
-      customerId,
-      subscriptionId,
+      orgId: resolved.orgId,
+      planId: resolved.planId,
+      customerId: resolved.customerId,
+      subscriptionId: resolved.subscriptionId,
+      subscriptionStatus: resolved.subscriptionStatus ?? 'active',
+      customerEmail,
       revoke: false,
       paymentFailed: false,
       shouldUpsertPlan: true,
+      shouldSyncStatusOnly: false,
+      billingStatus: 'active',
       grantFailed: false,
     }
   }
 
   return {
-    orgId,
-    planId: null,
-    customerId,
-    subscriptionId,
+    orgId: base.orgId,
+    planId: base.planId,
+    customerId: base.customerId,
+    subscriptionId: base.subscriptionId,
+    subscriptionStatus: base.subscriptionStatus,
+    customerEmail,
     revoke: false,
     paymentFailed: false,
     shouldUpsertPlan: false,
+    shouldSyncStatusOnly: Boolean(base.orgId && base.subscriptionStatus),
+    billingStatus: null,
     grantFailed: false,
   }
 }

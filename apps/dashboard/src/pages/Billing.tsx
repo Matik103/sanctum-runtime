@@ -10,6 +10,7 @@ import {
   formatLimit,
   formatNumber,
   PLAN_ORDER,
+  syncBillingAfterCheckout,
   type BillingPlan,
   type PlanId,
 } from '../lib/billing'
@@ -142,8 +143,9 @@ export function Billing() {
   const [plan, setPlan] = useState<BillingPlan | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [checkoutBusy, setCheckoutBusy] = useState<PaidPlanId | null>(null)
+  const [checkoutBusy, setCheckoutBusy] = useState<PlanId | null>(null)
   const [checkoutMsg, setCheckoutMsg] = useState<string | null>(null)
+  const [pendingCheckoutSync, setPendingCheckoutSync] = useState<{ checkoutId?: string } | null>(null)
 
   useEffect(() => {
     void (async () => {
@@ -180,20 +182,44 @@ export function Billing() {
     const params = new URLSearchParams(window.location.search)
     const checkout = params.get('checkout')
     if (checkout === 'success') {
-      setCheckoutMsg('Payment received. Your plan will update when Creem sends the webhook (usually within a minute).')
+      setPendingCheckoutSync({ checkoutId: params.get('checkout_id') ?? undefined })
+      setCheckoutMsg('Payment received. Syncing your plan…')
       params.delete('checkout')
+      params.delete('checkout_id')
       const qs = params.toString()
-      const next = `${window.location.pathname}${qs ? `?${qs}` : ''}`
-      window.history.replaceState(null, '', next)
+      window.history.replaceState(null, '', `${window.location.pathname}${qs ? `?${qs}` : ''}`)
     } else if (checkout === 'cancelled') {
       setCheckoutMsg('Checkout cancelled. No charge was made.')
       params.delete('checkout')
+      params.delete('checkout_id')
       const qs = params.toString()
       window.history.replaceState(null, '', `${window.location.pathname}${qs ? `?${qs}` : ''}`)
     }
   }, [])
 
-  const handleUpgrade = async (planId: PaidPlanId) => {
+  useEffect(() => {
+    if (!orgId || !pendingCheckoutSync) return
+    const sync = pendingCheckoutSync
+    setPendingCheckoutSync(null)
+    void syncBillingAfterCheckout(orgId, sync.checkoutId)
+      .then((r) => {
+        if (r.synced && r.planId) {
+          setCheckoutMsg(`Plan updated to ${r.planId}.`)
+        } else {
+          setCheckoutMsg(
+            r.note ?? 'Payment received. If your plan does not update within a minute, click Refresh.',
+          )
+        }
+        return load(orgId)
+      })
+      .catch(() => {
+        setCheckoutMsg(
+          'Payment received. Your plan should update when Creem sends the webhook — click Refresh in a moment.',
+        )
+      })
+  }, [orgId, pendingCheckoutSync])
+
+  const handleUpgrade = async (planId: PaidPlanId | 'enterprise') => {
     if (!orgId) return
     setCheckoutBusy(planId)
     setCheckoutMsg(null)
@@ -299,7 +325,14 @@ export function Billing() {
                   {plan.billing.billingProvider === 'creem' && (
                     <p style={{ margin: '0.35rem 0 0', fontSize: '0.78rem', color: 'var(--muted)' }}>
                       Subscription managed via Creem
-                      {plan.billing.creemSubscriptionId ? ' (active)' : ''}
+                      {plan.billing.creemSubscriptionStatus
+                        ? ` · ${plan.billing.creemSubscriptionStatus}`
+                        : plan.billing.creemSubscriptionId
+                          ? ' · active'
+                          : ''}
+                      {plan.billing.billingStatus && plan.billing.billingStatus !== 'active'
+                        ? ` · billing ${plan.billing.billingStatus}`
+                        : ''}
                     </p>
                   )}
                 </div>
@@ -378,9 +411,13 @@ export function Billing() {
               <div className="policy-grid">
                 {PLAN_CARDS.map((pc) => {
                   const isCurrent = pc.id === currentPlanId
-                  const isUpgrade = PLAN_ORDER.indexOf(pc.id) > currentPlanIdx
+                  const targetIdx = PLAN_ORDER.indexOf(pc.id)
+                  const isUpgrade = targetIdx > currentPlanIdx
+                  const isDowngrade =
+                    targetIdx < currentPlanIdx && pc.id !== 'observer' && currentPlanId !== 'observer'
+                  const isChange = isUpgrade || isDowngrade
                   const busy = checkoutBusy === pc.id
-                  const canCheckout = pc.id !== 'observer' && isUpgrade
+                  const canCheckout = pc.id !== 'observer' && pc.id !== 'enterprise' && isChange
                   return (
                     <article
                       key={pc.id}
@@ -417,15 +454,31 @@ export function Billing() {
                               <Loader2 size={13} style={{ marginRight: '0.3rem', verticalAlign: 'middle' }} className="spin" />
                               Opening Creem checkout…
                             </>
-                          ) : pc.id === 'enterprise' ? (
-                            'Contact sales'
+                          ) : isDowngrade ? (
+                            `Downgrade to ${pc.label}`
                           ) : (
                             `Upgrade to ${pc.label}`
                           )}
                         </button>
                       )}
+                      {pc.id === 'enterprise' && !isCurrent && (
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          style={{ width: '100%', marginTop: canCheckout ? '0.35rem' : 0 }}
+                          disabled={busy}
+                          onClick={() => void handleUpgrade('enterprise' as PaidPlanId)}
+                        >
+                          Contact sales
+                        </button>
+                      )}
                       {isCurrent && (
                         <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--muted)' }}>Your active plan</p>
+                      )}
+                      {isDowngrade && !canCheckout && currentPlanId !== 'observer' && (
+                        <p style={{ margin: '0.35rem 0 0', fontSize: '0.78rem', color: 'var(--muted)' }}>
+                          Cancel in Creem to return to Observer, or pick a lower paid tier below.
+                        </p>
                       )}
                     </article>
                   )

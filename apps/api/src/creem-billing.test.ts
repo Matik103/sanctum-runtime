@@ -61,17 +61,28 @@ describe('creem-billing', () => {
     expect(update.shouldUpsertPlan).toBe(true)
   })
 
-  it('does not grant on subscription.active (sync only)', () => {
+  it('grants on subscription.active when org and plan are present', () => {
     const update = resolveCreemPlanUpdate({
       eventType: 'subscription.active',
       object: {
         object: 'subscription',
         id: 'sub_1',
+        status: 'active',
         metadata: { org_id: 'org_2', plan: 'operator' },
         product: { id: 'prod_op' },
       },
     })
-    expect(update.shouldUpsertPlan).toBe(false)
+    expect(update.shouldUpsertPlan).toBe(true)
+    expect(update.planId).toBe('operator')
+  })
+
+  it('resolves org from customer email fallback path fields', () => {
+    expect(
+      orgIdFromCreemObject({
+        request_id: 'personal-abc123',
+        metadata: { referenceId: 'personal-abc123' },
+      }),
+    ).toBe('personal-abc123')
   })
 
   it('revokes on subscription.canceled', () => {

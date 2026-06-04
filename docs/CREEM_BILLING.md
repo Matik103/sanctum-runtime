@@ -57,10 +57,20 @@ Success redirect: `{DASHBOARD_URL}/?page=billing&checkout=success`
 |-------|--------|
 | `checkout.completed` | Grant plan from metadata / product id |
 | `subscription.paid` | Grant plan (authoritative for renewals) |
+| `subscription.active` / `subscription.trialing` | Grant plan (fallback when dashboard enables these events) |
 | `subscription.canceled` / `expired` / `paused` | Downgrade to **Observer** |
-| `subscription.past_due` | Notify; do not change plan yet |
+| `subscription.scheduled_cancel` | Update status only; plan stays until period end |
+| `subscription.past_due` | Set `billing_status=payment_failed`; notify |
 
-We intentionally **do not** grant on `subscription.active` (Creem recommends `subscription.paid` for access).
+**Org resolution:** `metadata.org_id` / `request_id` from dashboard checkout, else match `creem_customer_id`, else owner email on the Creem customer.
+
+**Render (sanctum-api):** set `CREEM_WEBHOOK_SECRET` to the Creem signing secret and map each product:
+
+```bash
+CREEM_PRODUCT_PERSONAL=prod_EhijX22KgQHQ1XZLG6fYY   # example test product id
+```
+
+Webhooks are handled only on the API (not Supabase Edge). After payment, dashboard calls `POST /v1/billing/sync` as a backup.
 
 If a grant event arrives with `org_id` but the plan cannot be resolved (no `metadata.plan` and no `CREEM_PRODUCT_*` match), the API returns **500** `grant_plan_unresolved` so Creem retries after you fix product env vars.
 
