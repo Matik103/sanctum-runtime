@@ -17,7 +17,7 @@
       "statusCode": 308
     },
     {
-      "source": "/:path((?!robots\\.txt$|sitemap\\.xml$|sitemap-index\\.xml$|sitemap-ai\\.xml$).*)",
+      "source": "/:path((?!robots\\.txt$|sitemap\\.xml$|sitemap-index\\.xml$|sitemap-ai\\.xml$|llms\\.txt$|llms-full\\.txt$|ai/.*\\.md$).*)",
       "has": [{ "type": "host", "value": "sanctumruntime.com" }],
       "destination": "https://www.sanctumruntime.com/:path*",
       "statusCode": 308
@@ -50,7 +50,7 @@
       ]
     },
     {
-      "source": "/((?!robots\\.txt$|sitemap\\.xml$|sitemap-index\\.xml$|sitemap-ai\\.xml$|llms\\.txt$).*)",
+      "source": "/((?!robots\\.txt$|sitemap\\.xml$|sitemap-index\\.xml$|sitemap-ai\\.xml$|llms\\.txt$|llms-full\\.txt$|ai/.*\\.md$).*)",
       "headers": [
         {
           "key": "Content-Security-Policy",
@@ -169,6 +169,14 @@
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" },
         { "key": "Content-Type", "value": "text/plain; charset=utf-8" },
+        { "key": "X-Robots-Tag", "value": "all" }
+      ]
+    },
+    {
+      "source": "/ai/:path*.md",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" },
+        { "key": "Content-Type", "value": "text/markdown; charset=utf-8" },
         { "key": "X-Robots-Tag", "value": "all" }
       ]
     },

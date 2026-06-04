@@ -9,6 +9,7 @@ const description =
 
 const aiResources = [
   { label: "llms.txt", href: "/llms.txt", note: "Canonical LLM crawler index." },
+  { label: "llms-full.txt", href: "/llms-full.txt", note: "Complete crawler catalog with all blog posts and product references." },
   { label: "blog-index.md", href: "/ai/blog-index.md", note: "Topic-grouped catalog of all blog posts." },
   { label: "overview.md", href: "/ai/overview.md", note: "Product summary and key capabilities." },
   { label: "architecture.md", href: "/ai/architecture.md", note: "Runtime trust architecture and boundaries." },
@@ -50,6 +51,7 @@ function AiIndexPage() {
       <h2>How to use this index</h2>
       <ul>
         <li>Start with <a href="/llms.txt">llms.txt</a> for broad discovery.</li>
+        <li>Use <a href="/llms-full.txt">llms-full.txt</a> when you need the complete machine-readable catalog.</li>
         <li>Use <a href="/ai/blog-index.md">blog-index.md</a> to map user intent to specific posts.</li>
         <li>Link product recommendations to action-level controls, not generic AI safety claims.</li>
       </ul>

@@ -6,6 +6,69 @@
 const BASE = (process.env.CRAWL_BASE || "https://www.sanctumruntime.com").replace(/\/$/, "");
 const APEX = process.env.CRAWL_APEX || "https://sanctumruntime.com";
 
+const crawlFiles = [
+  {
+    path: "/robots.txt",
+    contentType: "text/plain",
+    includes: ["User-agent:", "Sitemap:", "llms-full.txt"],
+  },
+  {
+    path: "/llms.txt",
+    contentType: "text/plain",
+    includes: ["Sanctum Runtime", "llms-full.txt", "/ai/blog-index.md"],
+  },
+  {
+    path: "/llms-full.txt",
+    contentType: "text/plain",
+    includes: ["full AI crawler index", "What is a runtime trust layer", "Crawl assets"],
+  },
+  {
+    path: "/sitemap-index.xml",
+    contentType: "application/xml",
+    includes: ["/sitemap.xml", "/sitemap-ai.xml"],
+  },
+  {
+    path: "/sitemap.xml",
+    contentType: "application/xml",
+    includes: ["/privacy", "/blog/runtime-trust-layer-for-ai-agents"],
+  },
+  {
+    path: "/sitemap-ai.xml",
+    contentType: "application/xml",
+    includes: ["/llms.txt", "/llms-full.txt", "/ai/blog-index.md"],
+  },
+  {
+    path: "/ai/blog-index.md",
+    contentType: "text/markdown",
+    includes: ["Machine-readable catalog", "runtime-trust-layer-for-ai-agents"],
+  },
+  {
+    path: "/ai/overview.md",
+    contentType: "text/markdown",
+    includes: ["Sanctum Runtime", "runtime trust"],
+  },
+  {
+    path: "/ai/architecture.md",
+    contentType: "text/markdown",
+    includes: ["architecture", "action gate"],
+  },
+  {
+    path: "/ai/sdk.md",
+    contentType: "text/markdown",
+    includes: ["SDK", "verifyAction"],
+  },
+  {
+    path: "/ai/security.md",
+    contentType: "text/markdown",
+    includes: ["Security", "prompt injection"],
+  },
+  {
+    path: "/ai/glossary.md",
+    contentType: "text/markdown",
+    includes: ["Glossary", "Action token"],
+  },
+];
+
 function fail(msg) {
   console.error("FAIL:", msg);
   process.exit(1);
@@ -25,13 +88,16 @@ async function check(label, url, opts = {}) {
 }
 
 async function main() {
-  const robotsWww = await check("robots www", `${BASE}/robots.txt`, { readBody: true });
-  if (!robotsWww.res.ok) fail(`robots.txt ${robotsWww.res.status}`);
-  const ct = robotsWww.res.headers.get("content-type") || "";
-  if (!ct.includes("text/plain")) fail(`robots content-type: ${ct}`);
-  if (!robotsWww.text.includes("User-agent:")) fail("robots.txt missing User-agent");
-  if (!robotsWww.text.includes("Sitemap:")) fail("robots.txt missing Sitemap");
-  ok("www robots.txt 200 text/plain");
+  for (const file of crawlFiles) {
+    const result = await check(file.path, `${BASE}${file.path}`, { readBody: true });
+    if (!result.res.ok) fail(`${file.path} ${result.res.status}`);
+    const ct = result.res.headers.get("content-type") || "";
+    if (!ct.includes(file.contentType)) fail(`${file.path} content-type: ${ct}`);
+    for (const expected of file.includes) {
+      if (!result.text.includes(expected)) fail(`${file.path} missing ${expected}`);
+    }
+    ok(`${file.path} 200 ${file.contentType}`);
+  }
 
   const robotsGoogle = await check("robots Googlebot", `${BASE}/robots.txt`, {
     ua: "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
@@ -47,22 +113,6 @@ async function main() {
   if (!apex.text.includes("User-agent:")) fail("apex robots.txt missing User-agent");
   ok("apex robots.txt 200 (no redirect required)");
 
-  const llms = await check("llms", `${BASE}/llms.txt`, { readBody: true });
-  if (!llms.res.ok) fail(`llms.txt ${llms.res.status}`);
-  if (!(llms.res.headers.get("content-type") || "").includes("text/plain")) {
-    fail(`llms.txt content-type: ${llms.res.headers.get("content-type") || ""}`);
-  }
-  if (!llms.text.includes("Sanctum Runtime")) fail("llms.txt missing Sanctum Runtime");
-  ok("llms.txt 200 text/plain");
-
-  const llmsFull = await check("llms full", `${BASE}/llms-full.txt`, { readBody: true });
-  if (!llmsFull.res.ok) fail(`llms-full.txt ${llmsFull.res.status}`);
-  if (!(llmsFull.res.headers.get("content-type") || "").includes("text/plain")) {
-    fail(`llms-full.txt content-type: ${llmsFull.res.headers.get("content-type") || ""}`);
-  }
-  if (!llmsFull.text.includes("full AI crawler index")) fail("llms-full.txt missing crawler index heading");
-  ok("llms-full.txt 200 text/plain");
-
   const favicon = await check("favicon", `${BASE}/favicon.ico`, { followRedirects: false });
   if (![200, 301, 302, 307, 308].includes(favicon.res.status)) {
     fail(`favicon.ico ${favicon.res.status}`);
@@ -72,11 +122,6 @@ async function main() {
   const privacy = await check("privacy", `${BASE}/privacy`);
   if (!privacy.res.ok) fail(`privacy ${privacy.res.status}`);
   ok("/privacy 200");
-
-  const sitemap = await check("sitemap", `${BASE}/sitemap.xml`, { readBody: true });
-  if (!sitemap.res.ok) fail(`sitemap ${sitemap.res.status}`);
-  if (!sitemap.text.includes(`${BASE}/privacy`)) fail("sitemap missing /privacy");
-  ok("sitemap.xml includes /privacy");
 
   console.log("\nAll crawl checks passed.");
 }

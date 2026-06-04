@@ -111,6 +111,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       {
         rel: "alternate",
+        type: "text/plain",
+        href: "/llms-full.txt",
+        title: "Full LLM site index (llms-full.txt)",
+      },
+      {
+        rel: "alternate",
         type: "text/markdown",
         href: "/ai/blog-index.md",
         title: "AI blog index (markdown)",

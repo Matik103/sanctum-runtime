@@ -1,5 +1,6 @@
 # Sanctum Runtime marketing site — allow search + AI crawlers
 # LLM index: https://www.sanctumruntime.com/llms.txt
+# Full LLM index: https://www.sanctumruntime.com/llms-full.txt
 # Blog catalog: https://www.sanctumruntime.com/ai/blog-index.md
 
 User-agent: *
