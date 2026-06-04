@@ -32,7 +32,7 @@ async function fetchOperatorOrgs(): Promise<FleetOrg[]> {
 
 export async function fetchMyOrgs(): Promise<FleetOrg[]> {
   const apiOrgs = await fetchOperatorOrgs().catch(() => [])
-  if (apiOrgs.length > 0 || !import.meta.env.DEV) return apiOrgs
+  if (apiOrgs.length > 0) return apiOrgs
 
   const sb = getSupabase()
   if (!sb) return []

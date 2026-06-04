@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import {
   Building2,
+  Briefcase,
   Cpu,
+  Globe,
   Lock,
   Mail,
   Shield,
@@ -11,9 +13,23 @@ import {
   ArrowLeft,
 } from 'lucide-react'
 import { LegalFooter } from '../components/LegalFooter'
+import { SignupTermsField } from '../components/SignupTermsField'
 import { sanitizeApiError } from '../lib/sanitize-error'
-import { getOAuthRedirectUrl, markOauthIntent, type OauthProvider } from '../lib/oauth'
+import {
+  getOAuthRedirectUrl,
+  markOauthIntent,
+  oauthSignupMetadata,
+  type OauthPortal,
+  type OauthProvider,
+} from '../lib/oauth'
 import { getSupabase } from '../lib/supabase'
+import {
+  COMPANY_SIZE_OPTIONS,
+  COUNTRY_OPTIONS,
+  INDUSTRY_OPTIONS,
+  type CompanySize,
+  type Industry,
+} from '../lib/signup-fields'
 import { signupMetadata, validateSignupForm, type AccountKind } from '../lib/signup'
 import '../styles/auth.css'
 
@@ -30,13 +46,22 @@ export function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [organizationName, setOrganizationName] = useState('')
+  const [fullName, setFullName] = useState('')
+  const [countryCode, setCountryCode] = useState('')
+  const [legalName, setLegalName] = useState('')
+  const [website, setWebsite] = useState('')
+  const [orgCountryCode, setOrgCountryCode] = useState('')
+  const [companySize, setCompanySize] = useState<CompanySize | ''>('')
+  const [industry, setIndustry] = useState<Industry | ''>('')
   const [primaryContactName, setPrimaryContactName] = useState('')
+  const [primaryContactTitle, setPrimaryContactTitle] = useState('')
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   const isCompact = panel === 'signin'
+  const isSignup = panel === 'signup-individual' || panel === 'signup-organization'
 
   const resetFormErrors = () => {
     setError(null)
@@ -46,6 +71,14 @@ export function Login() {
   const goToPanel = (next: AuthPanel) => {
     setPanel(next)
     resetFormErrors()
+    if (next === 'signin') setAcceptedTerms(false)
+  }
+
+  const requireTermsForOauth = (): string | null => {
+    if (panel === 'signup-individual' && !acceptedTerms) {
+      return 'Accept the Terms of Service and Privacy Policy to continue.'
+    }
+    return null
   }
 
   const submitCredentials = async (e: React.FormEvent) => {
@@ -57,7 +90,6 @@ export function Login() {
       return
     }
 
-    const isSignup = panel === 'signup-individual' || panel === 'signup-organization'
     const accountKind: AccountKind =
       panel === 'signup-organization' ? 'organization' : 'individual'
 
@@ -67,8 +99,23 @@ export function Login() {
         email,
         password,
         confirmPassword,
-        organizationName,
-        primaryContactName,
+        individual:
+          accountKind === 'individual'
+            ? { fullName, countryCode, acceptedTerms }
+            : undefined,
+        organization:
+          accountKind === 'organization'
+            ? {
+                legalName,
+                website,
+                countryCode: orgCountryCode,
+                companySize: companySize as CompanySize,
+                industry: industry as Industry,
+                primaryContactName,
+                primaryContactTitle,
+                acceptedTerms,
+              }
+            : undefined,
       })
       if (validationError) {
         setError(validationError)
@@ -79,10 +126,21 @@ export function Login() {
     setBusy(true)
     try {
       if (isSignup) {
-        const meta =
+        const fields =
           accountKind === 'organization'
-            ? signupMetadata('organization', { organizationName, primaryContactName })
-            : signupMetadata('individual', {})
+            ? {
+                legalName,
+                website,
+                countryCode: orgCountryCode,
+                companySize: companySize as CompanySize,
+                industry: industry as Industry,
+                primaryContactName,
+                primaryContactTitle,
+                acceptedTerms,
+              }
+            : { fullName, countryCode, acceptedTerms }
+
+        const meta = signupMetadata(accountKind, email, fields)
 
         const { error: err } = await sb.auth.signUp({
           email: email.trim(),
@@ -92,11 +150,12 @@ export function Login() {
         if (err) throw err
         setMessage(
           accountKind === 'organization'
-            ? 'Organization account created. Confirm your email if required, then sign in.'
+            ? 'Organization registered. Confirm your email if required, then sign in to your workspace.'
             : 'Account created. Confirm your email if required, then sign in.',
         )
         setPassword('')
         setConfirmPassword('')
+        setAcceptedTerms(false)
         goToPanel('signin')
       } else {
         const { error: err } = await sb.auth.signInWithPassword({
@@ -112,21 +171,31 @@ export function Login() {
     }
   }
 
-  const signInWithSso = async (provider: OauthProvider) => {
+  const signInWithSso = async (provider: OauthProvider, portal: OauthPortal) => {
     setError(null)
+    const termsErr = portal === 'operator' ? requireTermsForOauth() : null
+    if (termsErr) {
+      setError(termsErr)
+      return
+    }
+
     const sb = getSupabase()
     if (!sb) {
       setError('Authentication is not configured on this deployment.')
       return
     }
 
+    const termsAt =
+      panel === 'signup-individual' && acceptedTerms ? new Date().toISOString() : undefined
+
     setBusy(true)
     try {
-      markOauthIntent('enterprise', provider)
+      markOauthIntent(portal, provider, termsAt)
       const { error: err } = await sb.auth.signInWithOAuth({
         provider,
         options: {
           redirectTo: getOAuthRedirectUrl(),
+          data: oauthSignupMetadata(portal, provider, termsAt),
           ...(provider === 'google'
             ? { queryParams: { prompt: 'select_account' } }
             : { scopes: 'read:user user:email' }),
@@ -134,7 +203,14 @@ export function Login() {
       })
       if (err) throw err
     } catch (err) {
-      setError(sanitizeApiError(err, 'SSO sign-in failed. Contact your administrator.'))
+      setError(
+        sanitizeApiError(
+          err,
+          portal === 'enterprise'
+            ? 'SSO sign-in failed. Contact your administrator.'
+            : 'Sign-in failed. Try again or use email and password.',
+        ),
+      )
     } finally {
       setBusy(false)
     }
@@ -153,9 +229,9 @@ export function Login() {
     panel === 'signin'
       ? 'Access the control plane to review verifications, policies, and audit logs.'
       : panel === 'signup-individual'
-        ? 'Personal workspace for solo operators and developers.'
+        ? 'Personal workspace for solo operators. We collect standard identity fields for security and compliance.'
         : panel === 'signup-organization'
-          ? 'You will be the account owner (primary contact).'
+          ? 'Business workspace for teams. You will be the account owner and primary contact for audits and billing.'
           : 'Sign in with Google or GitHub when your admin mapped your email domain.'
 
   const submitLabel =
@@ -248,6 +324,10 @@ export function Login() {
 
             {panel === 'sso' ? (
               <div className="auth-sso-panel">
+                <p className="auth-form-hint">
+                  Use your work identity provider. Your email domain must be verified by your
+                  organization administrator.
+                </p>
                 <div className="auth-sso-grid">
                   {SSO_PROVIDERS.map((p) => (
                     <button
@@ -256,7 +336,7 @@ export function Login() {
                       className="auth-sso-btn"
                       disabled={busy}
                       title={p.hint}
-                      onClick={() => void signInWithSso(p.id)}
+                      onClick={() => void signInWithSso(p.id, 'enterprise')}
                     >
                       <Shield size={16} />
                       Continue with {p.label}
@@ -267,27 +347,110 @@ export function Login() {
             ) : (
               <form onSubmit={submitCredentials}>
                 {panel === 'signup-organization' && (
-                  <>
+                  <fieldset className="auth-fieldset">
+                    <legend>Organization</legend>
                     <div className="auth-field">
-                      <label htmlFor="auth-org-name">Organization name</label>
+                      <label htmlFor="auth-legal-name">Legal business name</label>
                       <div className="auth-input-wrap">
                         <Building2 size={16} />
                         <input
-                          id="auth-org-name"
+                          id="auth-legal-name"
                           className="auth-input"
                           type="text"
                           autoComplete="organization"
                           required
                           minLength={2}
-                          maxLength={120}
+                          maxLength={160}
                           placeholder="Acme Robotics Inc."
-                          value={organizationName}
-                          onChange={(e) => setOrganizationName(e.target.value)}
+                          value={legalName}
+                          onChange={(e) => setLegalName(e.target.value)}
                         />
                       </div>
                     </div>
                     <div className="auth-field">
-                      <label htmlFor="auth-primary-contact">Primary contact (account owner)</label>
+                      <label htmlFor="auth-website">Company website</label>
+                      <div className="auth-input-wrap">
+                        <Globe size={16} />
+                        <input
+                          id="auth-website"
+                          className="auth-input"
+                          type="url"
+                          inputMode="url"
+                          autoComplete="url"
+                          required
+                          placeholder="https://acme.com"
+                          value={website}
+                          onChange={(e) => setWebsite(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="auth-field-row">
+                      <div className="auth-field">
+                        <label htmlFor="auth-org-country">Country or region</label>
+                        <select
+                          id="auth-org-country"
+                          className="auth-select"
+                          required
+                          value={orgCountryCode}
+                          onChange={(e) => setOrgCountryCode(e.target.value)}
+                        >
+                          <option value="" disabled>
+                            Select country
+                          </option>
+                          {COUNTRY_OPTIONS.map((c) => (
+                            <option key={c.value} value={c.value}>
+                              {c.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="auth-field">
+                        <label htmlFor="auth-company-size">Company size</label>
+                        <select
+                          id="auth-company-size"
+                          className="auth-select"
+                          required
+                          value={companySize}
+                          onChange={(e) => setCompanySize(e.target.value as CompanySize)}
+                        >
+                          <option value="" disabled>
+                            Select size
+                          </option>
+                          {COMPANY_SIZE_OPTIONS.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="auth-field">
+                      <label htmlFor="auth-industry">Industry</label>
+                      <select
+                        id="auth-industry"
+                        className="auth-select"
+                        required
+                        value={industry}
+                        onChange={(e) => setIndustry(e.target.value as Industry)}
+                      >
+                        <option value="" disabled>
+                          Select industry
+                        </option>
+                        {INDUSTRY_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </fieldset>
+                )}
+
+                {panel === 'signup-organization' && (
+                  <fieldset className="auth-fieldset">
+                    <legend>Primary contact (account owner)</legend>
+                    <div className="auth-field">
+                      <label htmlFor="auth-primary-contact">Full name</label>
                       <div className="auth-input-wrap">
                         <UserCircle size={16} />
                         <input
@@ -298,72 +461,169 @@ export function Login() {
                           required
                           minLength={2}
                           maxLength={120}
-                          placeholder="Full name of person in charge"
+                          placeholder="Jane Doe"
                           value={primaryContactName}
                           onChange={(e) => setPrimaryContactName(e.target.value)}
                         />
                       </div>
                     </div>
-                  </>
+                    <div className="auth-field">
+                      <label htmlFor="auth-primary-title">Job title</label>
+                      <div className="auth-input-wrap">
+                        <Briefcase size={16} />
+                        <input
+                          id="auth-primary-title"
+                          className="auth-input"
+                          type="text"
+                          autoComplete="organization-title"
+                          required
+                          minLength={2}
+                          maxLength={80}
+                          placeholder="Head of Platform Engineering"
+                          value={primaryContactTitle}
+                          onChange={(e) => setPrimaryContactTitle(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </fieldset>
                 )}
 
-                <div className="auth-field">
-                  <label htmlFor="auth-email">Email</label>
-                  <div className="auth-input-wrap">
-                    <Mail size={16} />
-                    <input
-                      id="auth-email"
-                      className="auth-input"
-                      type="email"
-                      autoComplete="email"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="auth-field">
-                  <label htmlFor="auth-password">Password</label>
-                  <div className="auth-input-wrap">
-                    <Lock size={16} />
-                    <input
-                      id="auth-password"
-                      className="auth-input"
-                      type="password"
-                      autoComplete={
-                        panel === 'signin' ? 'current-password' : 'new-password'
-                      }
-                      required
-                      minLength={panel === 'signin' ? 6 : 8}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                {panel !== 'signin' && (
-                  <div className="auth-field">
-                    <label htmlFor="auth-confirm-password">Confirm password</label>
-                    <div className="auth-input-wrap">
-                      <Lock size={16} />
-                      <input
-                        id="auth-confirm-password"
-                        className="auth-input"
-                        type="password"
-                        autoComplete="new-password"
+                {panel === 'signup-individual' && (
+                  <fieldset className="auth-fieldset">
+                    <legend>Your profile</legend>
+                    <div className="auth-field">
+                      <label htmlFor="auth-full-name">Full legal name</label>
+                      <div className="auth-input-wrap">
+                        <UserCircle size={16} />
+                        <input
+                          id="auth-full-name"
+                          className="auth-input"
+                          type="text"
+                          autoComplete="name"
+                          required
+                          minLength={2}
+                          maxLength={120}
+                          placeholder="Jane Doe"
+                          value={fullName}
+                          onChange={(e) => setFullName(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="auth-field">
+                      <label htmlFor="auth-country">Country or region</label>
+                      <select
+                        id="auth-country"
+                        className="auth-select"
                         required
-                        minLength={8}
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        value={countryCode}
+                        onChange={(e) => setCountryCode(e.target.value)}
+                      >
+                        <option value="" disabled>
+                          Select country
+                        </option>
+                        {COUNTRY_OPTIONS.map((c) => (
+                          <option key={c.value} value={c.value}>
+                            {c.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </fieldset>
+                )}
+
+                <fieldset className="auth-fieldset auth-fieldset--credentials">
+                  <legend>{isSignup ? 'Sign-in credentials' : 'Credentials'}</legend>
+                  <div className="auth-field">
+                    <label htmlFor="auth-email">
+                      {panel === 'signup-organization' ? 'Work email (account owner)' : 'Email'}
+                    </label>
+                    <div className="auth-input-wrap">
+                      <Mail size={16} />
+                      <input
+                        id="auth-email"
+                        className="auth-input"
+                        type="email"
+                        autoComplete="email"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
                       />
                     </div>
                   </div>
+
+                  <div className="auth-field">
+                    <label htmlFor="auth-password">Password</label>
+                    <div className="auth-input-wrap">
+                      <Lock size={16} />
+                      <input
+                        id="auth-password"
+                        className="auth-input"
+                        type="password"
+                        autoComplete={
+                          panel === 'signin' ? 'current-password' : 'new-password'
+                        }
+                        required
+                        minLength={panel === 'signin' ? 6 : 8}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  {panel !== 'signin' && (
+                    <div className="auth-field">
+                      <label htmlFor="auth-confirm-password">Confirm password</label>
+                      <div className="auth-input-wrap">
+                        <Lock size={16} />
+                        <input
+                          id="auth-confirm-password"
+                          className="auth-input"
+                          type="password"
+                          autoComplete="new-password"
+                          required
+                          minLength={8}
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </fieldset>
+
+                {isSignup && (
+                  <SignupTermsField
+                    id="auth-terms"
+                    checked={acceptedTerms}
+                    onChange={setAcceptedTerms}
+                    disabled={busy}
+                  />
                 )}
 
                 <button type="submit" className="auth-submit" disabled={busy}>
                   {submitLabel}
                 </button>
+
+                {(panel === 'signin' || panel === 'signup-individual') && (
+                  <>
+                    <div className="auth-divider" role="separator">
+                      <span>or continue with</span>
+                    </div>
+                    <div className="auth-sso-grid auth-sso-grid--inline">
+                      {SSO_PROVIDERS.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          className="auth-sso-btn auth-sso-btn--compact"
+                          disabled={busy}
+                          title={p.hint}
+                          onClick={() => void signInWithSso(p.id, 'operator')}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </form>
             )}
 

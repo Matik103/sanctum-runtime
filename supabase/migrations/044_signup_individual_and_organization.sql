@@ -103,7 +103,7 @@ declare
   display text;
   signup text;
   org_name text;
-  org_id text;
+  v_org_id text;
   contact_name text;
   meta jsonb;
 begin
@@ -128,14 +128,14 @@ begin
   if signup = 'organization' then
     org_name := coalesce(nullif(trim(meta->>'organization_name'), ''), 'Organization');
     contact_name := coalesce(nullif(trim(meta->>'primary_contact_name'), ''), display);
-    org_id := public.make_org_id_from_name(org_name);
+    v_org_id := public.make_org_id_from_name(org_name);
 
     insert into public.organizations (id, name, primary_contact_name)
-    values (org_id, org_name, contact_name)
+    values (v_org_id, org_name, contact_name)
     on conflict (id) do nothing;
 
     insert into public.organization_members (org_id, user_id, role)
-    values (org_id, new.id, 'owner')
+    values (v_org_id, new.id, 'owner')
     on conflict (org_id, user_id) do nothing;
 
     return new;
