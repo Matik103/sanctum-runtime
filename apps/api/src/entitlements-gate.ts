@@ -60,6 +60,10 @@ export function canUseFleetControls(limits: PlanLimits): boolean {
   return canUseGovernanceWorkflows(limits) || hasPlanFeature(limits, 'api_access')
 }
 
+export function canUseApiAccess(limits: PlanLimits): boolean {
+  return hasPlanFeature(limits, 'api_access') || hasPlanFeature(limits, 'advanced_fleet')
+}
+
 export function canUseOrchestration(limits: PlanLimits): boolean {
   return hasPlanFeature(limits, 'advanced_fleet')
 }
@@ -74,6 +78,14 @@ export function canUseAgentMemory(limits: PlanLimits): boolean {
 
 export function canUseAuditReplay(limits: PlanLimits): boolean {
   return canUseConnectGate(limits) || canUseComplianceExport(limits)
+}
+
+export function canUsePolicyVersioning(limits: PlanLimits): boolean {
+  return canUseConnectGate(limits) || canUseComplianceExport(limits)
+}
+
+export function canUseDelegations(limits: PlanLimits): boolean {
+  return canUseGovernanceWorkflows(limits)
 }
 
 export function canUseMarketplaceInstalls(limits: PlanLimits): boolean {
@@ -108,9 +120,9 @@ export function upgradePlanHint(current: PlanId, feature: string): string {
   const need =
     feature === 'light_gates' || feature === 'connect'
       ? 'personal'
-      : feature === 'shield_rules' || feature === 'holds_approve' || feature === 'webhooks'
+      : feature === 'shield_rules' || feature === 'holds_approve' || feature === 'webhooks' || feature === 'api_access' || feature === 'cloud_sync'
         ? 'operator'
-        : feature === 'compliance_export' || feature === 'sso' || feature === 'advanced_fleet'
+        : feature === 'compliance_export' || feature === 'sso' || feature === 'advanced_fleet' || feature === 'rbac'
           ? 'team'
           : 'operator'
   const idx = order.indexOf(current)

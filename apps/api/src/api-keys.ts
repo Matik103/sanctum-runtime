@@ -9,6 +9,8 @@ import {
 } from './api-key-crypto.js'
 import { createSupabaseAdmin, type SupabaseAuthConfig } from './auth.js'
 import { ControlPlaneStore } from './control-plane-store.js'
+import { getEntitlementEngine } from './entitlements.js'
+import { canUseApiAccess, sendPlanFeatureRequired } from './entitlements-gate.js'
 
 export type ApiKeyRow = {
   id: string
@@ -28,6 +30,19 @@ export async function registerApiKeyRoutes(
   supabase: SupabaseAuthConfig,
 ) {
   const admin = createSupabaseAdmin(supabase)
+  const entitlements = getEntitlementEngine(supabase)
+
+  async function requireApiAccess(orgId: string, reply: import('fastify').FastifyReply): Promise<boolean> {
+    const limits = await entitlements.getLimits(orgId)
+    if (canUseApiAccess(limits)) return true
+    sendPlanFeatureRequired(
+      reply,
+      limits,
+      'api_access',
+      'Dashboard API keys require the Operator plan or higher.',
+    )
+    return false
+  }
 
   app.get('/v1/api-keys', async (req, reply) => {
     const user = (req as { sanctumUser?: { id: string } }).sanctumUser
@@ -80,6 +95,10 @@ export async function registerApiKeyRoutes(
         return reply.status(403).send({ error: 'org_forbidden' })
       }
       const orgId = parsed.data.org_id ?? userOrgIds[0] ?? null
+      if (!orgId) {
+        return reply.status(400).send({ error: 'org_required' })
+      }
+      if (!(await requireApiAccess(orgId, reply))) return
 
       const { data, error } = await admin
         .from('api_keys')
@@ -133,6 +152,22 @@ export async function registerApiKeyRoutes(
       }
       const id = parsed.data
 
+      const { data: existing, error: lookupError } = await admin
+        .from('api_keys')
+        .select('id, org_id')
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (lookupError) {
+        req.log.error({ err: lookupError, keyId: id }, 'api_keys_delete_lookup_failed')
+        return reply.status(500).send({ error: 'api_keys_delete_failed', detail: lookupError.message })
+      }
+      if (!existing) return reply.status(404).send({ error: 'api_key_not_found' })
+      const orgId = (existing.org_id as string | null) ?? null
+      if (!orgId) return reply.status(400).send({ error: 'org_required' })
+      if (!(await requireApiAccess(orgId, reply))) return
+
       const { data, error } = await admin
         .from('api_keys')
         .delete()
@@ -165,6 +200,23 @@ export async function registerApiKeyRoutes(
       const parsed = z.string().uuid().safeParse(rawId)
       if (!parsed.success) return reply.status(400).send({ error: 'invalid_id' })
       const id = parsed.data
+
+      const { data: existing, error: lookupError } = await admin
+        .from('api_keys')
+        .select('id, org_id')
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .is('revoked_at', null)
+        .maybeSingle()
+
+      if (lookupError) {
+        req.log.error({ err: lookupError, keyId: id }, 'api_keys_rotate_lookup_failed')
+        return reply.status(500).send({ error: 'rotate_failed' })
+      }
+      if (!existing) return reply.status(404).send({ error: 'api_key_not_found' })
+      const orgId = (existing.org_id as string | null) ?? null
+      if (!orgId) return reply.status(400).send({ error: 'org_required' })
+      if (!(await requireApiAccess(orgId, reply))) return
 
       const secret = generateApiKeySecret()
       const { prefix, suffix } = keyDisplayParts(secret)

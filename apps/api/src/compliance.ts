@@ -18,6 +18,8 @@ import type { FastifyInstance, FastifyRequest } from 'fastify'
 import type { SupabaseAuthConfig } from './auth.js'
 import { createSupabaseAdmin } from './auth.js'
 import { ControlPlaneStore } from './control-plane-store.js'
+import { getEntitlementEngine } from './entitlements.js'
+import { canUseComplianceExport, sendPlanFeatureRequired } from './entitlements-gate.js'
 import { logger as rootLogger } from './logger.js'
 import { queryWithTimeout, SUPABASE_ROW_LIMITS } from './supabase-limits.js'
 
@@ -471,6 +473,7 @@ export async function registerComplianceRoutes(
   cfg: SupabaseAuthConfig,
 ): Promise<void> {
   const store = new ControlPlaneStore(cfg)
+  const entitlements = getEntitlementEngine(cfg)
 
   async function resolveOrgAccess(
     req: SanctumReq,
@@ -508,6 +511,18 @@ export async function registerComplianceRoutes(
     return { allowed: false, isAdmin: false }
   }
 
+  async function requireComplianceExport(orgId: string, reply: import('fastify').FastifyReply): Promise<boolean> {
+    const limits = await entitlements.getLimits(orgId)
+    if (canUseComplianceExport(limits)) return true
+    sendPlanFeatureRequired(
+      reply,
+      limits,
+      'compliance_export',
+      'Compliance reports and evidence timelines require the Team plan or higher.',
+    )
+    return false
+  }
+
   // Helper: parse a date range from query params; defaults to last 30 days.
   function parseDateRange(q: Record<string, unknown>): { start: Date; end: Date } {
     const end = q.end ? new Date(q.end as string) : new Date()
@@ -523,6 +538,7 @@ export async function registerComplianceRoutes(
     const access = await resolveOrgAccess(req as SanctumReq, orgId)
     if (!access.allowed) return reply.status(403).send({ error: 'org_forbidden' })
     if (!access.isAdmin) return reply.status(403).send({ error: 'admin_required', hint: 'Compliance reports require admin or owner role' })
+    if (!(await requireComplianceExport(orgId, reply))) return
 
     const { start, end } = parseDateRange(req.query as Record<string, unknown>)
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
@@ -543,6 +559,7 @@ export async function registerComplianceRoutes(
     const access = await resolveOrgAccess(req as SanctumReq, orgId)
     if (!access.allowed) return reply.status(403).send({ error: 'org_forbidden' })
     if (!access.isAdmin) return reply.status(403).send({ error: 'admin_required' })
+    if (!(await requireComplianceExport(orgId, reply))) return
 
     const { start, end } = parseDateRange(req.query as Record<string, unknown>)
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
@@ -564,6 +581,7 @@ export async function registerComplianceRoutes(
     const access = await resolveOrgAccess(req as SanctumReq, orgId)
     if (!access.allowed) return reply.status(403).send({ error: 'org_forbidden' })
     if (!access.isAdmin) return reply.status(403).send({ error: 'admin_required' })
+    if (!(await requireComplianceExport(orgId, reply))) return
 
     const { start, end } = parseDateRange(req.query as Record<string, unknown>)
     const report = await generateSoc2Report(cfg, orgId, start, end)
@@ -575,6 +593,7 @@ export async function registerComplianceRoutes(
     const { orgId } = req.params as { orgId: string }
     const access = await resolveOrgAccess(req as SanctumReq, orgId)
     if (!access.allowed) return reply.status(403).send({ error: 'org_forbidden' })
+    if (!(await requireComplianceExport(orgId, reply))) return
 
     const q = req.query as { days?: string }
     const days = Math.min(365, Math.max(1, Number(q.days ?? 30) || 30))

@@ -87,6 +87,7 @@ export function registerShieldRoutes(app: FastifyInstance): void {
   app.get('/v1/shield/rules', async (req, reply) => {
     const orgId = await resolveOrgId(req as SanctumReq, store)
     if (!orgId) return reply.code(401).send({ error: 'Unauthorized' })
+    if (!(await requireCustomShield(orgId, reply))) return
 
     const admin = createSupabaseAdmin(cfg)
     const { data, error } = await admin
@@ -201,6 +202,7 @@ export function registerShieldRoutes(app: FastifyInstance): void {
   app.get('/v1/shield/containment', async (req, reply) => {
     const orgId = await resolveOrgId(req as SanctumReq, store)
     if (!orgId) return reply.code(401).send({ error: 'Unauthorized' })
+    if (!(await requireCustomShield(orgId, reply))) return
 
     const parsed = ContainmentQuerySchema.safeParse(req.query)
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() })
@@ -229,6 +231,7 @@ export function registerShieldRoutes(app: FastifyInstance): void {
   app.post('/v1/shield/containment/:id/resolve', async (req, reply) => {
     const orgId = await resolveOrgId(req as SanctumReq, store)
     if (!orgId) return reply.code(401).send({ error: 'Unauthorized' })
+    if (!(await requireCustomShield(orgId, reply))) return
 
     const { id } = req.params as { id: string }
     const body = req.body as { note?: string } | null
@@ -260,6 +263,7 @@ export function registerShieldRoutes(app: FastifyInstance): void {
   app.get('/v1/shield/status', async (req, reply) => {
     const orgId = await resolveOrgId(req as SanctumReq, store)
     if (!orgId) return reply.code(401).send({ error: 'Unauthorized' })
+    if (!(await requireCustomShield(orgId, reply))) return
 
     const admin = createSupabaseAdmin(cfg)
     const [orgRes, unresolvedRes] = await Promise.all([

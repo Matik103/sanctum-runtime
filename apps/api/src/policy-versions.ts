@@ -3,6 +3,8 @@ import { z } from 'zod'
 import { createSupabaseAdmin, type SupabaseAuthConfig } from './auth.js'
 import { ControlPlaneStore } from './control-plane-store.js'
 import { assertOrgRole, type OrgRole } from './rbac.js'
+import { getEntitlementEngine } from './entitlements.js'
+import { canUsePolicyVersioning, sendPlanFeatureRequired } from './entitlements-gate.js'
 
 export type PolicyMap = Record<string, unknown>
 
@@ -112,6 +114,7 @@ export async function registerPolicyVersionRoutes(
   cfg: SupabaseAuthConfig,
 ): Promise<void> {
   const store = new ControlPlaneStore(cfg)
+  const entitlements = getEntitlementEngine(cfg)
   const orgIdSchema = z.string().min(1).max(128)
   const snapshotIdSchema = z.string().uuid()
 
@@ -142,11 +145,24 @@ export async function registerPolicyVersionRoutes(
     return { ok: false }
   }
 
+  async function requirePolicyVersioning(orgId: string, reply: import('fastify').FastifyReply): Promise<boolean> {
+    const limits = await entitlements.getLimits(orgId)
+    if (canUsePolicyVersioning(limits)) return true
+    sendPlanFeatureRequired(
+      reply,
+      limits,
+      'light_gates',
+      'Policy snapshots and restores require the Personal plan or higher.',
+    )
+    return false
+  }
+
   // GET /v1/orgs/:orgId/policy-snapshots
   app.get('/v1/orgs/:orgId/policy-snapshots', async (req, reply) => {
     const orgId = orgIdSchema.parse((req.params as { orgId: string }).orgId)
     const access = await resolveAccess(req as SanctumReq, orgId, 'member')
     if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
+    if (!(await requirePolicyVersioning(orgId, reply))) return
 
     const q = req.query as { limit?: string }
     const limit = Math.min(200, Math.max(1, Number(q.limit ?? 50) || 50))
@@ -159,6 +175,7 @@ export async function registerPolicyVersionRoutes(
     const orgId = orgIdSchema.parse((req.params as { orgId: string }).orgId)
     const access = await resolveAccess(req as SanctumReq, orgId, 'admin')
     if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
+    if (!(await requirePolicyVersioning(orgId, reply))) return
 
     const body = z.object({
       label: z.string().max(256).optional(),
@@ -202,6 +219,7 @@ export async function registerPolicyVersionRoutes(
 
     const access = await resolveAccess(req as SanctumReq, orgId, 'member')
     if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
+    if (!(await requirePolicyVersioning(orgId, reply))) return
 
     const snapshot = await getPolicySnapshot(cfg, snapshotId, orgId)
     if (!snapshot) return reply.status(404).send({ error: 'snapshot_not_found' })
@@ -216,6 +234,7 @@ export async function registerPolicyVersionRoutes(
 
     const access = await resolveAccess(req as SanctumReq, orgId, 'admin')
     if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
+    if (!(await requirePolicyVersioning(orgId, reply))) return
 
     const snapshot = await getPolicySnapshot(cfg, snapshotId, orgId)
     if (!snapshot) return reply.status(404).send({ error: 'snapshot_not_found' })

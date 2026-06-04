@@ -5,7 +5,7 @@ import { createSupabaseAdmin, type SupabaseAuthConfig } from './auth.js'
 import { ControlPlaneStore } from './control-plane-store.js'
 import { assertOrgRole } from './rbac.js'
 import { getEntitlementEngine } from './entitlements.js'
-import { sendAgentLimitReached } from './entitlements-gate.js'
+import { canApproveHolds, sendAgentLimitReached, sendPlanFeatureRequired } from './entitlements-gate.js'
 
 type SanctumReq = import('fastify').FastifyRequest & {
   sanctumUser?: { id: string; email?: string }
@@ -322,6 +322,18 @@ export async function registerAgentTokenRoutes(
     orgIdSchema.parse(orgId)
     const access = await resolveUser(req as SanctumReq, orgId, 'admin')
     if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
+
+    const entitlements = getEntitlementEngine(cfg)
+    const limits = await entitlements.getLimits(orgId)
+    if (!canApproveHolds(limits)) {
+      sendPlanFeatureRequired(
+        reply,
+        limits,
+        'light_gates',
+        'Temporary agent grants require the Personal plan or higher.',
+      )
+      return
+    }
 
     const body = z.object({
       action: z.string().min(1).max(200),

@@ -282,6 +282,17 @@ export async function registerExportRoutes(app: FastifyInstance) {
     const resolvedOrg = await resolveOrgId(req as SanctumReq, orgId)
     if (!resolvedOrg) return reply.status(403).send({ error: 'org_forbidden' })
 
+    const limits = await entitlements.getLimits(orgId)
+    if (!canUseComplianceExport(limits)) {
+      sendPlanFeatureRequired(
+        reply,
+        limits,
+        'compliance_export',
+        'Export history is available on the Team plan and above.',
+      )
+      return
+    }
+
     const admin = createSupabaseAdmin(cfg)
     const { data } = await admin
       .from('export_audit')
@@ -301,13 +312,9 @@ export async function registerExportRoutes(app: FastifyInstance) {
     if (!resolvedOrg) return reply.status(403).send({ error: 'org_forbidden' })
 
     const limits = await entitlements.getLimits(orgId)
-    if (!entitlements.hasFeature(limits, 'sso')) {
-      return reply.status(402).send({
-        error: 'enterprise_feature',
-        feature: 'sso',
-        message: 'SSO/OIDC is available on the Enterprise plan. Contact billing@sanctumruntime.com to upgrade.',
-        currentPlan: limits.planId,
-      })
+    if (!hasPlanFeature(limits, 'sso')) {
+      sendPlanFeatureRequired(reply, limits, 'sso', 'SSO/OIDC is available on the Team plan and above.')
+      return
     }
 
     const admin = createSupabaseAdmin(cfg)
@@ -327,13 +334,9 @@ export async function registerExportRoutes(app: FastifyInstance) {
     if (!resolvedOrg) return reply.status(403).send({ error: 'org_forbidden' })
 
     const limits = await entitlements.getLimits(orgId)
-    if (!entitlements.hasFeature(limits, 'sso')) {
-      return reply.status(402).send({
-        error: 'enterprise_feature',
-        feature: 'sso',
-        message: 'SSO/OIDC requires the Enterprise plan.',
-        currentPlan: limits.planId,
-      })
+    if (!hasPlanFeature(limits, 'sso')) {
+      sendPlanFeatureRequired(reply, limits, 'sso', 'SSO/OIDC requires the Team plan or higher.')
+      return
     }
 
     const body = z.object({

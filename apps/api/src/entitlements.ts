@@ -356,7 +356,12 @@ export class EntitlementEngine {
   }
 
   hasFeature(limits: PlanLimits, feature: string): boolean {
-    return limits.features.includes('everything') || limits.features.includes(feature)
+    if (limits.features.includes('everything') || limits.features.includes(feature)) return true
+    const planIndex = PLAN_ORDER.indexOf(limits.planId)
+    if (planIndex < 0) return false
+    return PLAN_ORDER.slice(0, planIndex + 1).some((planId) =>
+      PLAN_DEFAULTS[planId].features.includes(feature),
+    )
   }
 }
 

@@ -13,6 +13,8 @@ import { assertOrgRole, type OrgRole } from './rbac.js'
 import { ControlPlaneStore } from './control-plane-store.js'
 import { headerKey, type SanctumReq } from './org-scope.js'
 import { isProduction } from './security.js'
+import { getEntitlementEngine } from './entitlements.js'
+import { canUseDelegations, sendPlanFeatureRequired } from './entitlements-gate.js'
 
 async function requireOrgAccess(
   req: SanctumReq,
@@ -248,10 +250,25 @@ const ValidateSchema = z.object({
 })
 
 export function registerDelegationRoutes(app: FastifyInstance, cfg: SupabaseAuthConfig) {
+  const entitlements = getEntitlementEngine(cfg)
+
+  async function requireDelegations(orgId: string, reply: import('fastify').FastifyReply): Promise<boolean> {
+    const limits = await entitlements.getLimits(orgId)
+    if (canUseDelegations(limits)) return true
+    sendPlanFeatureRequired(
+      reply,
+      limits,
+      'holds_approve',
+      'Agent delegation and trust-chain validation require the Operator plan or higher.',
+    )
+    return false
+  }
+
   app.get('/v1/orgs/:orgId/delegations', async (req, reply) => {
     const { orgId } = req.params as { orgId: string }
     const access = await requireOrgAccess(req as SanctumReq, cfg, orgId, 'member')
     if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
+    if (!(await requireDelegations(orgId, reply))) return
 
     const admin = createSupabaseAdmin(cfg)
     const { data, error } = await admin
@@ -274,6 +291,7 @@ export function registerDelegationRoutes(app: FastifyInstance, cfg: SupabaseAuth
     const { orgId } = req.params as { orgId: string }
     const access = await requireOrgAccess(req as SanctumReq, cfg, orgId, 'admin')
     if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
+    if (!(await requireDelegations(orgId, reply))) return
 
     const parsed = GrantSchema.safeParse(req.body)
     if (!parsed.success) {
@@ -295,6 +313,7 @@ export function registerDelegationRoutes(app: FastifyInstance, cfg: SupabaseAuth
     const { orgId, delegationId } = req.params as { orgId: string; delegationId: string }
     const access = await requireOrgAccess(req as SanctumReq, cfg, orgId, 'admin')
     if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
+    if (!(await requireDelegations(orgId, reply))) return
 
     await revokeDelegation(cfg, delegationId, orgId)
     return reply.status(204).send()
@@ -304,6 +323,7 @@ export function registerDelegationRoutes(app: FastifyInstance, cfg: SupabaseAuth
     const { orgId } = req.params as { orgId: string }
     const access = await requireOrgAccess(req as SanctumReq, cfg, orgId, 'member')
     if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
+    if (!(await requireDelegations(orgId, reply))) return
 
     const parsed = ValidateSchema.safeParse(req.body)
     if (!parsed.success) {

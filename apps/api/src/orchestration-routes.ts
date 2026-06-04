@@ -20,6 +20,13 @@ export async function registerOrchestrationRoutes(app: FastifyInstance) {
     if (!orgId) return reply.status(400).send({ error: 'org_id_required' })
     const scope = await resolveOrgScope(req as SanctumReq, store)
     if (!assertOrgAllowed(scope, orgId, reply)) return
+
+    const limits = await entitlements.getLimits(orgId)
+    if (!canUseOrchestration(limits)) {
+      sendPlanFeatureRequired(reply, limits, 'advanced_fleet', 'Deployment groups require the Team plan.')
+      return
+    }
+
     return orch.listDeploymentGroups(orgId)
   })
 
@@ -59,6 +66,12 @@ export async function registerOrchestrationRoutes(app: FastifyInstance) {
     if (!orgId) return reply.status(400).send({ error: 'org_id_required' })
     const scope = await resolveOrgScope(req as SanctumReq, store)
     if (!assertOrgAllowed(scope, orgId, reply)) return
+
+    const limits = await entitlements.getLimits(orgId)
+    if (!canUseOrchestration(limits)) {
+      sendPlanFeatureRequired(reply, limits, 'advanced_fleet', 'Fleet maps require the Team plan.')
+      return
+    }
 
     await store.markStaleOffline()
     const runtimes = (await store.listRuntimes(orgId)).filter(
