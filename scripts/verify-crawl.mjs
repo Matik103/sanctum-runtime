@@ -45,27 +45,27 @@ const crawlFiles = [
   {
     path: "/ai/overview.md",
     contentType: "text/markdown",
-    includes: ["Sanctum Runtime", "runtime trust"],
+    includes: ["Sanctum Runtime", "real-world execution", "Action verification"],
   },
   {
     path: "/ai/architecture.md",
     contentType: "text/markdown",
-    includes: ["architecture", "action gate"],
+    includes: ["Architecture", "Policy engine", "POST /v1/actions/verify"],
   },
   {
     path: "/ai/sdk.md",
     contentType: "text/markdown",
-    includes: ["SDK", "verifyAction"],
+    includes: ["SDK", "protectAgent", "SANCTUM_API_KEY"],
   },
   {
     path: "/ai/security.md",
     contentType: "text/markdown",
-    includes: ["Security", "prompt injection"],
+    includes: ["Security", "untrusted proposers", "Policy fail-closed"],
   },
   {
     path: "/ai/glossary.md",
     contentType: "text/markdown",
-    includes: ["Glossary", "Action token"],
+    includes: ["Glossary", "Action verification", "Control plane"],
   },
 ];
 
