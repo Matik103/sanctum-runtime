@@ -234,6 +234,12 @@ export async function registerAlertRoutes(app: FastifyInstance): Promise<void> {
     const scope = await resolveOrgScope(req as SanctumReq, cp)
     if (!assertOrgAllowed(scope, orgId, reply)) return
 
+    const limits = await entitlements.getLimits(orgId)
+    if (!canUseAlertRules(limits)) {
+      sendPlanFeatureRequired(reply, limits, 'alerts', 'Alert rules require Personal (email) or Operator+.')
+      return
+    }
+
     try {
       await alerts.deleteRule(ruleId, orgId)
       return { ok: true }

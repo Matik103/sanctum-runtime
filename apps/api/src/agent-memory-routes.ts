@@ -5,6 +5,8 @@ import { getSupabaseAuthConfig } from './auth.js'
 import { ControlPlaneStore } from './control-plane-store.js'
 import { recordUsage, UsageMetrics } from './usage-store.js'
 import { assertOrgAllowed, resolveOrgScope, type SanctumReq } from './org-scope.js'
+import { getEntitlementEngine } from './entitlements.js'
+import { canUseAgentMemory, sendPlanFeatureRequired } from './entitlements-gate.js'
 
 const memoryKeySchema = z
   .string()
@@ -26,6 +28,7 @@ export async function registerAgentMemoryRoutes(app: FastifyInstance) {
 
   const store = new ControlPlaneStore(cfg)
   const memory = new AgentMemoryStore(cfg)
+  const entitlements = getEntitlementEngine(cfg)
 
   async function resolveRuntime(
     runtimeId: string,
@@ -39,12 +42,20 @@ export async function registerAgentMemoryRoutes(app: FastifyInstance) {
     return orgId
   }
 
+  async function requireAgentMemory(orgId: string, reply: import('fastify').FastifyReply): Promise<boolean> {
+    const limits = await entitlements.getLimits(orgId)
+    if (canUseAgentMemory(limits)) return true
+    sendPlanFeatureRequired(reply, limits, 'cloud_sync', 'Hosted encrypted agent memory requires Operator or higher.')
+    return false
+  }
+
   app.get('/v1/runtimes/:runtimeId/agents/:agentId/memory', async (req, reply) => {
     const { runtimeId, agentId } = req.params as { runtimeId: string; agentId: string }
     const scope = await resolveOrgScope(req as SanctumReq, store)
     const orgId = await resolveRuntime(runtimeId, reply)
     if (!orgId) return
     if (!assertOrgAllowed(scope, orgId, reply)) return
+    if (!(await requireAgentMemory(orgId, reply))) return
 
     const keys = await memory.list(runtimeId, agentId)
     return { agentId, runtimeId, keys }
@@ -57,6 +68,7 @@ export async function registerAgentMemoryRoutes(app: FastifyInstance) {
     const orgId = await resolveRuntime(runtimeId, reply)
     if (!orgId) return
     if (!assertOrgAllowed(scope, orgId, reply)) return
+    if (!(await requireAgentMemory(orgId, reply))) return
 
     const entry = await memory.get(runtimeId, agentId, memoryKey)
     if (!entry) return reply.status(404).send({ error: 'memory_not_found' })
@@ -79,6 +91,7 @@ export async function registerAgentMemoryRoutes(app: FastifyInstance) {
     const orgId = await resolveRuntime(runtimeId, reply)
     if (!orgId) return
     if (!assertOrgAllowed(scope, orgId, reply)) return
+    if (!(await requireAgentMemory(orgId, reply))) return
 
     const entry = await memory.upsert(runtimeId, orgId, agentId, memoryKey, body)
     await store.insertEvent({
@@ -103,6 +116,7 @@ export async function registerAgentMemoryRoutes(app: FastifyInstance) {
     const orgId = await resolveRuntime(runtimeId, reply)
     if (!orgId) return
     if (!assertOrgAllowed(scope, orgId, reply)) return
+    if (!(await requireAgentMemory(orgId, reply))) return
 
     const removed = await memory.delete(runtimeId, agentId, memoryKey)
     if (!removed) return reply.status(404).send({ error: 'memory_not_found' })

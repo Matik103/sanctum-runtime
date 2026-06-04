@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { PLAN_DEFAULTS } from './entitlements.js'
 import {
   canEvaluateShieldRules,
+  canUseAgentMemory,
+  canUseAuditReplay,
   canUseComplianceExport,
   canUseConnectGate,
   canUseCustomShield,
@@ -9,6 +11,8 @@ import {
   canApproveHolds,
   canUseAlertChannels,
   canUseGovernanceWorkflows,
+  canUseMarketplaceInstalls,
+  canUseMarketplacePublishing,
   canUseOrchestration,
 } from './entitlements-gate.js'
 
@@ -22,6 +26,10 @@ describe('entitlements-gate', () => {
     expect(canUseFleetControls(o)).toBe(false)
     expect(canUseOrchestration(o)).toBe(false)
     expect(canUseComplianceExport(o)).toBe(false)
+    expect(canUseAuditReplay(o)).toBe(false)
+    expect(canUseAgentMemory(o)).toBe(false)
+    expect(canUseMarketplaceInstalls(o)).toBe(false)
+    expect(canUseMarketplacePublishing(o)).toBe(false)
   })
 
   it('personal can gate and light shield but not custom shield CRUD', () => {
@@ -33,6 +41,10 @@ describe('entitlements-gate', () => {
     expect(canApproveHolds(p)).toBe(true)
     expect(canUseAlertChannels(p, ['email'])).toBe(true)
     expect(canUseAlertChannels(p, ['webhook'])).toBe(false)
+    expect(canUseAuditReplay(p)).toBe(true)
+    expect(canUseAgentMemory(p)).toBe(false)
+    expect(canUseMarketplaceInstalls(p)).toBe(true)
+    expect(canUseMarketplacePublishing(p)).toBe(false)
   })
 
   it('operator can shield and governance', () => {
@@ -41,11 +53,22 @@ describe('entitlements-gate', () => {
     expect(canUseGovernanceWorkflows(op)).toBe(true)
     expect(canUseFleetControls(op)).toBe(true)
     expect(canUseOrchestration(op)).toBe(false)
+    expect(canUseAgentMemory(op)).toBe(true)
+    expect(canUseMarketplaceInstalls(op)).toBe(true)
+    expect(canUseMarketplacePublishing(op)).toBe(false)
   })
 
   it('team can orchestration and compliance export', () => {
     const t = PLAN_DEFAULTS.team
+    expect(canUseConnectGate(t)).toBe(true)
+    expect(canUseAgentMemory(t)).toBe(true)
+    expect(canUseCustomShield(t)).toBe(true)
+    expect(canUseGovernanceWorkflows(t)).toBe(true)
+    expect(canUseFleetControls(t)).toBe(true)
+    expect(canUseAlertChannels(t, ['webhook'])).toBe(true)
     expect(canUseOrchestration(t)).toBe(true)
     expect(canUseComplianceExport(t)).toBe(true)
+    expect(canUseMarketplaceInstalls(t)).toBe(true)
+    expect(canUseMarketplacePublishing(t)).toBe(true)
   })
 })

@@ -12,6 +12,12 @@ import {
 import { MarketplaceStore } from "./marketplace-store.js";
 import { recordUsage, UsageMetrics } from "./usage-store.js";
 import { assertOrgAllowed, resolveOrgScope, type SanctumReq } from "./org-scope.js";
+import { getEntitlementEngine } from "./entitlements.js";
+import {
+  canUseMarketplaceInstalls,
+  canUseMarketplacePublishing,
+  sendPlanFeatureRequired,
+} from "./entitlements-gate.js";
 
 const slugSchema = z
   .string()
@@ -25,6 +31,31 @@ export async function registerMarketplaceRoutes(app: FastifyInstance, runtime: R
 
   const store = new ControlPlaneStore(cfg);
   const market = new MarketplaceStore(cfg);
+  const entitlements = getEntitlementEngine(cfg);
+
+  async function requireMarketplaceInstall(orgId: string, reply: FastifyReply): Promise<boolean> {
+    const limits = await entitlements.getLimits(orgId);
+    if (canUseMarketplaceInstalls(limits)) return true;
+    sendPlanFeatureRequired(
+      reply,
+      limits,
+      "light_gates",
+      "Installing or removing policy templates requires Personal or higher.",
+    );
+    return false;
+  }
+
+  async function requireMarketplacePublishing(orgId: string, reply: FastifyReply): Promise<boolean> {
+    const limits = await entitlements.getLimits(orgId);
+    if (canUseMarketplacePublishing(limits)) return true;
+    sendPlanFeatureRequired(
+      reply,
+      limits,
+      "rbac",
+      "Publishing marketplace packages requires the Team plan.",
+    );
+    return false;
+  }
 
   app.get("/v1/marketplace/packages", async (req, reply) => {
     const orgId = (req.query as { org_id?: string }).org_id;
@@ -64,6 +95,7 @@ export async function registerMarketplaceRoutes(app: FastifyInstance, runtime: R
 
     const scope = await resolveOrgScope(req as SanctumReq, store);
     if (!assertOrgAllowed(scope, body.organizationId, reply)) return;
+    if (!(await requireMarketplacePublishing(body.organizationId, reply))) return;
     await store.ensureOrg(body.organizationId);
 
     try {
@@ -98,6 +130,7 @@ export async function registerMarketplaceRoutes(app: FastifyInstance, runtime: R
 
     const scope = await resolveOrgScope(req as SanctumReq, store);
     if (!assertOrgAllowed(scope, body.organizationId, reply)) return;
+    if (!(await requireMarketplaceInstall(body.organizationId, reply))) return;
     await store.ensureOrg(body.organizationId);
 
     try {
@@ -169,6 +202,7 @@ export async function registerMarketplaceRoutes(app: FastifyInstance, runtime: R
     if (!orgId) return reply.status(400).send({ error: "org_id_required" });
     const scope = await resolveOrgScope(req as SanctumReq, store);
     if (!assertOrgAllowed(scope, orgId, reply)) return;
+    if (!(await requireMarketplaceInstall(orgId, reply))) return;
 
     let installRow: Awaited<ReturnType<typeof market.getInstallRecord>>;
     try {

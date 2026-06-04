@@ -7,8 +7,29 @@ export const BILLING_CONTACT = 'billing@sanctumruntime.com'
 
 export type QuotaKind = 'governed' | 'observe'
 
+const PLAN_FEATURES_WITH_INHERITANCE: Record<PlanId, string[]> = {
+  observer: PLAN_DEFAULTS.observer.features,
+  personal: [
+    ...PLAN_DEFAULTS.observer.features,
+    ...PLAN_DEFAULTS.personal.features,
+  ],
+  operator: [
+    ...PLAN_DEFAULTS.observer.features,
+    ...PLAN_DEFAULTS.personal.features,
+    ...PLAN_DEFAULTS.operator.features,
+  ],
+  team: [
+    ...PLAN_DEFAULTS.observer.features,
+    ...PLAN_DEFAULTS.personal.features,
+    ...PLAN_DEFAULTS.operator.features,
+    ...PLAN_DEFAULTS.team.features,
+  ],
+  enterprise: ['everything'],
+}
+
 export function hasPlanFeature(limits: PlanLimits, feature: string): boolean {
-  return limits.features.includes('everything') || limits.features.includes(feature)
+  if (limits.features.includes('everything') || limits.features.includes(feature)) return true
+  return PLAN_FEATURES_WITH_INHERITANCE[limits.planId]?.includes(feature) ?? false
 }
 
 export function canUseConnectGate(limits: PlanLimits): boolean {
@@ -45,6 +66,22 @@ export function canUseOrchestration(limits: PlanLimits): boolean {
 
 export function canUseComplianceExport(limits: PlanLimits): boolean {
   return hasPlanFeature(limits, 'compliance_export') || hasPlanFeature(limits, 'compliance')
+}
+
+export function canUseAgentMemory(limits: PlanLimits): boolean {
+  return hasPlanFeature(limits, 'cloud_sync') || hasPlanFeature(limits, 'advanced_fleet')
+}
+
+export function canUseAuditReplay(limits: PlanLimits): boolean {
+  return canUseConnectGate(limits) || canUseComplianceExport(limits)
+}
+
+export function canUseMarketplaceInstalls(limits: PlanLimits): boolean {
+  return canUseConnectGate(limits) || canUseCustomShield(limits)
+}
+
+export function canUseMarketplacePublishing(limits: PlanLimits): boolean {
+  return hasPlanFeature(limits, 'rbac') || canUseComplianceExport(limits)
 }
 
 export function canUseOrgWebhooks(limits: PlanLimits): boolean {

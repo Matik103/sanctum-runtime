@@ -37,6 +37,8 @@ import { sendNotificationDeduped, initDedupCache } from './notifications.js'
 import { getEntitlementEngine } from './entitlements.js'
 import {
   canApproveHolds,
+  canUseAuditReplay,
+  canUseComplianceExport,
   canEvaluateShieldRules,
   canUseConnectGate,
   canUseCustomShield,
@@ -754,6 +756,13 @@ app.get('/v1/audit/replay', async (req, reply) => {
   const picked = pickScopedOrgs(scope, q.org_id)
   if ('status' in picked) return reply.status(picked.status).send(picked.body)
   const orgId = picked.orgIds.length === 1 ? picked.orgIds[0] : undefined
+  if (supabaseAuth && orgId) {
+    const limits = await getEntitlementEngine(supabaseAuth).getLimits(orgId)
+    if (!canUseAuditReplay(limits)) {
+      sendPlanFeatureRequired(reply, limits, 'light_gates', 'Audit replay requires Personal or higher.')
+      return
+    }
+  }
   return runtime.replayAudit(limit, orgId)
 })
 
@@ -765,6 +774,13 @@ app.get('/v1/evidence/summary', async (req, reply) => {
   const picked = pickScopedOrgs(scope, q.org_id)
   if ('status' in picked) return reply.status(picked.status).send(picked.body)
   const orgId = picked.orgIds.length === 1 ? picked.orgIds[0] : undefined
+  if (supabaseAuth && orgId) {
+    const limits = await getEntitlementEngine(supabaseAuth).getLimits(orgId)
+    if (!canUseComplianceExport(limits)) {
+      sendPlanFeatureRequired(reply, limits, 'compliance_export', 'Compliance evidence summary requires the Team plan.')
+      return
+    }
+  }
   return runtime.evidenceSummary(limit, orgId)
 })
 

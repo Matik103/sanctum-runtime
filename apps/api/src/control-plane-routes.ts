@@ -6,6 +6,11 @@ import { OrchestrationStore } from './orchestration-store.js'
 import { runtimeWsHub } from './runtime-ws-hub.js'
 import { recordUsage, UsageMetrics } from './usage-store.js'
 import { getEntitlementEngine } from './entitlements.js'
+import {
+  canUseFleetControls,
+  canUseOrchestration,
+  sendPlanFeatureRequired,
+} from './entitlements-gate.js'
 import { sendNotificationDeduped, type NotificationEvent } from './notifications.js'
 import { logDataAccess } from './data-access-log.js'
 import {
@@ -433,6 +438,11 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
     const orgId = await store.getRuntimeOrgId(runtimeId)
     if (!orgId) return reply.status(404).send({ error: 'runtime_not_found' })
     if (!assertOrgAllowed(scope, orgId, reply)) return
+    const limits = await entitlements.getLimits(orgId)
+    if (!canUseOrchestration(limits)) {
+      sendPlanFeatureRequired(reply, limits, 'advanced_fleet', 'Runtime placement requires the Team plan.')
+      return
+    }
 
     const runtime = await store.updateRuntimePlacement(runtimeId, {
       deploymentGroupId: body.deploymentGroupId,
@@ -530,6 +540,11 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
     const orgId = await store.getRuntimeOrgId(runtimeId)
     if (!orgId) return reply.status(404).send({ error: 'runtime_not_found' })
     if (!assertOrgAllowed(scope, orgId, reply)) return
+    const limits = await entitlements.getLimits(orgId)
+    if (!canUseFleetControls(limits)) {
+      sendPlanFeatureRequired(reply, limits, 'holds_approve', 'Deleting connected runtimes requires Operator or higher.')
+      return
+    }
     await store.deleteRuntime(runtimeId)
     await store.insertEvent({
       orgId,
@@ -546,6 +561,11 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
     const orgId = await store.getRuntimeOrgId(runtimeId)
     if (!orgId) return reply.status(404).send({ error: 'runtime_not_found' })
     if (!assertOrgAllowed(scope, orgId, reply)) return
+    const limits = await entitlements.getLimits(orgId)
+    if (!canUseFleetControls(limits)) {
+      sendPlanFeatureRequired(reply, limits, 'holds_approve', 'Deleting runtime agents requires Operator or higher.')
+      return
+    }
     await store.deleteAgent(runtimeId, agentId)
     await store.insertEvent({
       orgId,
