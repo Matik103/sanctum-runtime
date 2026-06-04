@@ -7,7 +7,16 @@ function reportServerError(label: string, error: unknown): void {
     console.error(`[site:${label}]`, error);
     return;
   }
-  console.error(`[site:${label}] request failed`);
+
+  if (error instanceof Error) {
+    const firstStackLine = error.stack?.split("\n").slice(0, 3).join(" | ");
+    console.error(
+      `[site:${label}] ${error.name}: ${error.message}${firstStackLine ? ` | ${firstStackLine}` : ""}`,
+    );
+    return;
+  }
+
+  console.error(`[site:${label}] request failed: ${String(error)}`);
 }
 
 const errorMiddleware = createMiddleware().server(async ({ next }) => {
