@@ -89,7 +89,7 @@ Link project: `supabase link` (if not already).
 | `SANCTUM_OFFLINE_MODE` | optional | `true` if no OpenAI/Ollama on host |
 | `SANCTUM_RISK_PROVIDER` | optional | `none` \| `openai` |
 | Legacy `SANCTUM_API_KEY` | optional | Hex key for scripts; prefer dashboard `sk_sanctum_*` |
-| `PADDLE_VENDOR_ID`, `PADDLE_PRODUCT_*`, `PADDLE_WEBHOOK_SECRET` | optional | Paid checkout + webhook → updates `org_plans` |
+| `CREEM_WEBHOOK_SECRET`, `CREEM_CHECKOUT_*_URL`, `CREEM_PRODUCT_*` | optional | Creem checkout + webhook → updates `org_plans` |
 | `RESEND_API_KEY`, `NOTIFICATION_FROM_EMAIL` | optional | Quota/anomaly email alerts |
 | `SLACK_WEBHOOK_URL` / per-org prefs in Settings | optional | Slack alerts |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | optional | Distributed tracing |

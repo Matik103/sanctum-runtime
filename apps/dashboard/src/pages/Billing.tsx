@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CreditCard, Loader2, RefreshCw, Zap } from 'lucide-react'
+import { CreditCard, Eye, Loader2, LockKeyhole, RefreshCw, Zap } from 'lucide-react'
 import { Alert } from '../components/ui/Alert'
 import { fetchMyOrgs, type FleetOrg } from '../lib/fleet'
 import { fetchOperatorContext } from '../lib/marketplace'
@@ -13,12 +13,13 @@ import {
   type PlanId,
 } from '../lib/billing'
 
-function UsageMeter({ label, used, limit, pct, unit = '' }: {
+function UsageMeter({ label, used, limit, pct, unit = '', hint }: {
   label: string
   used: number
   limit: number | null
   pct: number | null
   unit?: string
+  hint?: string
 }) {
   const pctVal = pct ?? 0
   const color = pctVal >= 90 ? 'var(--danger)' : pctVal >= 70 ? 'var(--warning)' : 'var(--success)'
@@ -44,21 +45,94 @@ function UsageMeter({ label, used, limit, pct, unit = '' }: {
           <div style={{ height: '100%', width: '100%', background: 'var(--success)', opacity: 0.3, borderRadius: 3 }} />
         )}
       </div>
+      {hint && (
+        <p style={{ margin: '0.25rem 0 0', fontSize: '0.73rem', color: 'var(--muted)' }}>{hint}</p>
+      )}
       {limit !== null && pctVal >= 80 && (
         <p style={{ margin: '0.25rem 0 0', fontSize: '0.73rem', color }}>
-          {pctVal >= 100 ? 'Quota reached - upgrade to continue' : `${pctVal}% used`}
+          {pctVal >= 100 ? 'Quota reached — upgrade to continue' : `${pctVal}% used`}
         </p>
       )}
     </div>
   )
 }
 
-const PLAN_CARDS: { id: PlanId; label: string; price: string; runtimes: string; governed: string; agents: string; highlight?: boolean }[] = [
-  { id: 'observer',   label: 'Observer',   price: 'Free',        runtimes: '3',    governed: '50/mo',    agents: '2' },
-  { id: 'personal',   label: 'Personal',   price: '$12/mo',      runtimes: '5',    governed: '500/mo',   agents: '5' },
-  { id: 'operator',   label: 'Operator',   price: '$59/mo',      runtimes: '25',   governed: '500k/mo',  agents: '10',  highlight: true },
-  { id: 'team',       label: 'Team',       price: '$299/mo',     runtimes: '250',  governed: '10M/mo',   agents: '50' },
-  { id: 'enterprise', label: 'Enterprise', price: 'Custom',      runtimes: 'Unlimited', governed: 'Unlimited', agents: 'Unlimited' },
+type PaidPlanId = Exclude<PlanId, 'observer'>
+
+const PLAN_CARDS: {
+  id: PlanId
+  label: string
+  headline: string
+  price: string
+  promise: string
+  runtimes: string
+  governed: string
+  observe: string
+  agents: string
+  retention: string
+  highlight?: boolean
+}[] = [
+  {
+    id: 'observer',
+    label: 'Observer',
+    headline: 'See every payment and email',
+    price: 'Free',
+    promise: 'Connect agents and watch side effects in Live Feed.',
+    runtimes: '3',
+    governed: '50/mo',
+    observe: 'Unlimited',
+    agents: '2',
+    retention: '7 days',
+  },
+  {
+    id: 'personal',
+    label: 'Personal',
+    headline: 'Remember and nudge',
+    price: '$12/mo',
+    promise: '30-day history, alerts, and light gates for solo builders.',
+    runtimes: '5',
+    governed: '500/mo',
+    observe: 'Unlimited',
+    agents: '5',
+    retention: '30 days',
+  },
+  {
+    id: 'operator',
+    label: 'Operator',
+    headline: 'Stop them before they run',
+    price: '$59/mo',
+    promise: 'Approve, block, and Shield production side effects.',
+    runtimes: '25',
+    governed: '500k/mo',
+    observe: 'Unlimited',
+    agents: '10',
+    retention: '30 days',
+    highlight: true,
+  },
+  {
+    id: 'team',
+    label: 'Team',
+    headline: 'Govern the fleet',
+    price: '$299/mo',
+    promise: 'SSO, RBAC, compliance export, and org-wide policy.',
+    runtimes: '250',
+    governed: '10M/mo',
+    observe: 'Unlimited',
+    agents: '50',
+    retention: '30 days',
+  },
+  {
+    id: 'enterprise',
+    label: 'Enterprise',
+    headline: 'Contractual scale',
+    price: 'Custom',
+    promise: 'Air-gap, private cloud, SLA, and dedicated support.',
+    runtimes: 'Unlimited',
+    governed: 'Unlimited',
+    observe: 'Unlimited',
+    agents: 'Unlimited',
+    retention: '90+ days',
+  },
 ]
 
 export function Billing() {
@@ -67,7 +141,7 @@ export function Billing() {
   const [plan, setPlan] = useState<BillingPlan | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [checkoutBusy, setCheckoutBusy] = useState<PlanId | null>(null)
+  const [checkoutBusy, setCheckoutBusy] = useState<PaidPlanId | null>(null)
   const [checkoutMsg, setCheckoutMsg] = useState<string | null>(null)
 
   useEffect(() => {
@@ -101,7 +175,24 @@ export function Billing() {
     if (orgId) void load(orgId)
   }, [orgId])
 
-  const handleUpgrade = async (planId: PlanId) => {
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const checkout = params.get('checkout')
+    if (checkout === 'success') {
+      setCheckoutMsg('Payment received. Your plan will update when Creem sends the webhook (usually within a minute).')
+      params.delete('checkout')
+      const qs = params.toString()
+      const next = `${window.location.pathname}${qs ? `?${qs}` : ''}`
+      window.history.replaceState(null, '', next)
+    } else if (checkout === 'cancelled') {
+      setCheckoutMsg('Checkout cancelled. No charge was made.')
+      params.delete('checkout')
+      const qs = params.toString()
+      window.history.replaceState(null, '', `${window.location.pathname}${qs ? `?${qs}` : ''}`)
+    }
+  }, [])
+
+  const handleUpgrade = async (planId: PaidPlanId) => {
     if (!orgId) return
     setCheckoutBusy(planId)
     setCheckoutMsg(null)
@@ -109,8 +200,12 @@ export function Billing() {
       const result = await createCheckout(orgId, planId)
       if (result.checkoutUrl) {
         window.open(result.checkoutUrl, '_blank', 'noopener,noreferrer')
+        setCheckoutMsg('Checkout opened in a new tab (Creem). Your plan updates after payment completes.')
       } else {
-        setCheckoutMsg(result.message ?? `Contact ${result.contactEmail ?? 'billing@sanctumruntime.com'} for ${planId} pricing`)
+        setCheckoutMsg(
+          result.message
+            ?? `Contact ${result.contactEmail ?? 'billing@sanctumruntime.com'} for ${planId} pricing`,
+        )
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Checkout failed')
@@ -121,12 +216,18 @@ export function Billing() {
 
   const currentPlanId = plan?.plan.id ?? 'observer'
   const currentPlanIdx = Math.max(0, PLAN_ORDER.indexOf(currentPlanId))
+  const governedQuota = plan?.quotas.governed ?? plan?.quotas.events
+  const observeUsed = plan?.usage.observeEventsThisMonth ?? 0
+  const governedUsed = plan?.usage.governedActionsThisMonth ?? plan?.usage.eventsThisMonth ?? 0
+  const governedLimit =
+    plan?.limits.maxGovernedActionsPerMonth ?? plan?.limits.maxEventsPerMonth ?? null
+  const observeLimit = plan?.limits.maxObserveEventsPerMonth ?? null
 
   return (
     <>
       <header className="page-header">
         <div>
-          <h1>Billing & Usage</h1>
+          <h1>Billing &amp; Usage</h1>
           <p>Watch agents for free. Pay when Sanctum governs real-world actions.</p>
         </div>
         <div className="responsive-action-row">
@@ -158,54 +259,79 @@ export function Billing() {
       {error && <Alert variant="error" onDismiss={() => setError(null)}>{error}</Alert>}
       {checkoutMsg && <Alert variant="info" onDismiss={() => setCheckoutMsg(null)}>{checkoutMsg}</Alert>}
 
-      {plan && plan.quotas.events.pct !== null && plan.quotas.events.pct >= 80 && (
+      {plan && governedQuota && governedQuota.pct !== null && governedQuota.pct >= 80 && (
         <Alert variant="warn">
-          <strong>Governed action quota at {plan.quotas.events.pct}%</strong> -{' '}
-          {plan.quotas.events.pct >= 100
-            ? 'Quota reached. New gated actions may be held or blocked until you upgrade.'
-            : `You've used ${formatNumber(plan.usage.eventsThisMonth)} of ${formatLimit(plan.limits.maxEventsPerMonth)} governed actions this month.`}
-        </Alert>
-      )}
-      {plan && plan.quotas.runtimes.pct !== null && plan.quotas.runtimes.pct >= 80 && (
-        <Alert variant="warn">
-          <strong>Runtime slots at {plan.quotas.runtimes.pct}%</strong> -{' '}
-          {plan.quotas.runtimes.used} of {plan.quotas.runtimes.limit} slots used. Upgrade to connect more runtimes.
+          <strong>Governed action quota at {governedQuota.pct}%</strong>
+          {' — '}
+          {governedQuota.pct >= 100
+            ? 'New gated actions may be held or blocked until you upgrade.'
+            : `You have used ${formatNumber(governedUsed)} of ${formatLimit(governedLimit)} governed actions this month.`}
         </Alert>
       )}
 
       {loading && !plan ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '2rem 0', color: 'var(--muted)' }}>
           <Loader2 size={18} className="spin" />
-          <span>Loading billing info...</span>
+          <span>Loading billing info…</span>
         </div>
       ) : plan ? (
         <>
-          {/* Current plan summary */}
           <section className="section" style={{ marginBottom: '1.5rem' }}>
             <div className="section__body">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                <CreditCard size={20} style={{ opacity: 0.6 }} />
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                <CreditCard size={20} style={{ opacity: 0.6, marginTop: 2 }} />
                 <div>
-                  <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current plan</p>
-                  <p style={{ margin: 0, fontWeight: 700, fontSize: '1.1rem' }}>
+                  <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Current plan
+                  </p>
+                  <p style={{ margin: '0.15rem 0 0', fontWeight: 700, fontSize: '1.1rem' }}>
                     {plan.plan.name}
                     {plan.plan.priceMonthlyUsd != null && (
                       <span style={{ fontWeight: 400, color: 'var(--muted)', fontSize: '0.9rem', marginLeft: '0.5rem' }}>
                         ${plan.plan.priceMonthlyUsd}/mo
                       </span>
                     )}
-                    {plan.plan.priceMonthlyUsd == null && plan.plan.id !== 'observer' && (
-                      <span style={{ fontWeight: 400, color: 'var(--muted)', fontSize: '0.9rem', marginLeft: '0.5rem' }}>Custom pricing</span>
-                    )}
                   </p>
+                  <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: 'var(--muted)', maxWidth: '36rem' }}>
+                    {PLAN_CARDS.find((p) => p.id === currentPlanId)?.promise}
+                  </p>
+                  {plan.billing.billingProvider === 'creem' && (
+                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.78rem', color: 'var(--muted)' }}>
+                      Subscription managed via Creem
+                      {plan.billing.creemSubscriptionId ? ' (active)' : ''}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gap: '0.5rem', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', marginBottom: '1.25rem' }}>
+                <div className="stat-tile" style={{ padding: '0.65rem 0.85rem' }}>
+                  <Eye size={14} style={{ opacity: 0.55 }} />
+                  <span style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>Observe</span>
+                  <strong style={{ fontSize: '0.95rem' }}>Not metered</strong>
+                </div>
+                <div className="stat-tile" style={{ padding: '0.65rem 0.85rem' }}>
+                  <LockKeyhole size={14} style={{ opacity: 0.55 }} />
+                  <span style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>Governed</span>
+                  <strong style={{ fontSize: '0.95rem' }}>
+                    {formatNumber(governedUsed)} / {formatLimit(governedLimit)}
+                  </strong>
                 </div>
               </div>
 
               <UsageMeter
-                label="Governed actions this month"
-                used={plan.usage.eventsThisMonth}
-                limit={plan.limits.maxEventsPerMonth}
-                pct={plan.quotas.events.pct}
+                label="Observe events (Connect live feed)"
+                used={observeUsed}
+                limit={observeLimit}
+                pct={plan.quotas.observe?.pct ?? null}
+                hint="Watching payments, email, and tool calls does not count toward governed quota."
+              />
+              <UsageMeter
+                label="Governed actions (verify, gate, approve)"
+                used={governedUsed}
+                limit={governedLimit}
+                pct={governedQuota?.pct ?? null}
+                hint="Blocks, holds, and proxy gates bill here — not curiosity."
               />
               <UsageMeter
                 label="Connected runtimes"
@@ -230,17 +356,22 @@ export function Billing() {
               <p style={{ margin: '0.5rem 0 0', fontSize: '0.78rem', color: 'var(--muted)' }}>
                 Audit retention: {plan.limits.retentionDays} days
                 {plan.billing.billingCycleAnchor && (
-                  <> | Cycle started {new Date(plan.billing.billingCycleAnchor).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</>
+                  <>
+                    {' '}| Billing cycle started{' '}
+                    {new Date(plan.billing.billingCycleAnchor).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                  </>
                 )}
               </p>
             </div>
           </section>
 
-          {/* Plan upgrade cards */}
           <section className="section">
             <div className="section__header">
-              <h2><Zap size={18} style={{ verticalAlign: 'middle', marginRight: '0.4rem' }} />Plans</h2>
-              <p>Observe generously. Upgrade when you need block, approve, Shield, and audit control.</p>
+              <h2>
+                <Zap size={18} style={{ verticalAlign: 'middle', marginRight: '0.4rem' }} />
+                Plans
+              </h2>
+              <p>We do not charge you to watch your agents. Upgrade when you need to stop or approve real-world actions.</p>
             </div>
             <div className="section__body">
               <div className="policy-grid">
@@ -248,34 +379,48 @@ export function Billing() {
                   const isCurrent = pc.id === currentPlanId
                   const isUpgrade = PLAN_ORDER.indexOf(pc.id) > currentPlanIdx
                   const busy = checkoutBusy === pc.id
+                  const canCheckout = pc.id !== 'observer' && isUpgrade
                   return (
                     <article
                       key={pc.id}
                       className={`policy-card ${isCurrent ? 'marketplace-card--installed' : ''}`}
                       style={{ position: 'relative' }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.35rem' }}>
                         <h3 style={{ margin: 0 }}>{pc.label}</h3>
                         {isCurrent && <span className="badge success">Current</span>}
                         {pc.highlight && !isCurrent && <span className="badge warning">Popular</span>}
                       </div>
+                      <p style={{ margin: '0 0 0.25rem', fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary)' }}>
+                        {pc.headline}
+                      </p>
                       <p style={{ margin: '0 0 0.5rem', fontWeight: 700, fontSize: '1rem' }}>{pc.price}</p>
+                      <p style={{ margin: '0 0 0.65rem', fontSize: '0.78rem', color: 'var(--muted)', lineHeight: 1.45 }}>
+                        {pc.promise}
+                      </p>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', fontSize: '0.8rem', color: 'var(--muted)', marginBottom: '0.75rem' }}>
-                        <span>{pc.runtimes} runtimes</span>
-                        <span>{pc.governed} governed actions</span>
-                        <span>{pc.agents} agents</span>
+                        <span>{pc.agents} agents · {pc.runtimes} runtimes</span>
+                        <span>{pc.observe} observe · {pc.governed} governed</span>
+                        <span>{pc.retention} retention</span>
                       </div>
-                      {isUpgrade && (
+                      {canCheckout && (
                         <button
                           type="button"
                           className="btn btn-primary btn-sm"
                           disabled={busy}
-                          onClick={() => void handleUpgrade(pc.id)}
+                          onClick={() => void handleUpgrade(pc.id as PaidPlanId)}
                           style={{ width: '100%' }}
                         >
                           {busy ? (
-                            <><Loader2 size={13} style={{ marginRight: '0.3rem', verticalAlign: 'middle' }} className="spin" />Opening checkout...</>
-                          ) : pc.id === 'enterprise' ? 'Contact sales' : `Upgrade to ${pc.label}`}
+                            <>
+                              <Loader2 size={13} style={{ marginRight: '0.3rem', verticalAlign: 'middle' }} className="spin" />
+                              Opening Creem checkout…
+                            </>
+                          ) : pc.id === 'enterprise' ? (
+                            'Contact sales'
+                          ) : (
+                            `Upgrade to ${pc.label}`
+                          )}
                         </button>
                       )}
                       {isCurrent && (
@@ -287,7 +432,11 @@ export function Billing() {
               </div>
 
               <p className="hint-line" style={{ marginTop: '1.25rem' }}>
-                Observer includes unlimited observe events with fair-use protection. Paid plans are processed through Creem or another authorized payment provider.
+                Paid plans checkout through{' '}
+                <a href="https://creem.io" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                  Creem
+                </a>
+                . Configure checkout links with <code>org_id</code> and <code>plan</code> metadata so webhooks map to your workspace.
                 Enterprise adds air-gapped deployments, SSO, compliance exports, and SLA.
               </p>
             </div>

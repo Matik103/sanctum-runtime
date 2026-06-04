@@ -97,22 +97,32 @@ spec:
               value: {{ .Values.ollama.url | quote }}
             {{- end }}
 
-            # ── Paddle billing (optional) ──────────────────────────────────
-            - name: PADDLE_SANDBOX
-              value: {{ .Values.api.env.PADDLE_SANDBOX | quote }}
-            - name: PADDLE_VENDOR_ID
-              value: {{ .Values.api.env.PADDLE_VENDOR_ID | quote }}
-            - name: PADDLE_PRODUCT_OPERATOR
-              value: {{ .Values.api.env.PADDLE_PRODUCT_OPERATOR | quote }}
-            - name: PADDLE_PRODUCT_TEAM
-              value: {{ .Values.api.env.PADDLE_PRODUCT_TEAM | quote }}
-            - name: PADDLE_PRODUCT_ENTERPRISE
-              value: {{ .Values.api.env.PADDLE_PRODUCT_ENTERPRISE | quote }}
-            - name: PADDLE_WEBHOOK_SECRET
+            # ── Creem billing (optional) ───────────────────────────────────
+            - name: CREEM_API_KEY
+              value: {{ .Values.api.env.CREEM_API_KEY | quote }}
+            - name: CREEM_API_BASE_URL
+              value: {{ .Values.api.env.CREEM_API_BASE_URL | quote }}
+            - name: CREEM_CHECKOUT_PERSONAL_URL
+              value: {{ .Values.api.env.CREEM_CHECKOUT_PERSONAL_URL | quote }}
+            - name: CREEM_CHECKOUT_OPERATOR_URL
+              value: {{ .Values.api.env.CREEM_CHECKOUT_OPERATOR_URL | quote }}
+            - name: CREEM_CHECKOUT_TEAM_URL
+              value: {{ .Values.api.env.CREEM_CHECKOUT_TEAM_URL | quote }}
+            - name: CREEM_CHECKOUT_ENTERPRISE_URL
+              value: {{ .Values.api.env.CREEM_CHECKOUT_ENTERPRISE_URL | quote }}
+            - name: CREEM_PRODUCT_PERSONAL
+              value: {{ .Values.api.env.CREEM_PRODUCT_PERSONAL | quote }}
+            - name: CREEM_PRODUCT_OPERATOR
+              value: {{ .Values.api.env.CREEM_PRODUCT_OPERATOR | quote }}
+            - name: CREEM_PRODUCT_TEAM
+              value: {{ .Values.api.env.CREEM_PRODUCT_TEAM | quote }}
+            - name: CREEM_PRODUCT_ENTERPRISE
+              value: {{ .Values.api.env.CREEM_PRODUCT_ENTERPRISE | quote }}
+            - name: CREEM_WEBHOOK_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ include "sanctum-runtime.secretName" . }}
-                  key: paddle-webhook-secret
+                  key: creem-webhook-secret
 
           livenessProbe:
             httpGet:

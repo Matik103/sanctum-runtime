@@ -54,20 +54,29 @@ services:
         sync: false
       - key: NOTIFICATION_FROM_EMAIL
         value: "Sanctum Runtime Alerts <alerts@sanctumruntime.com>"
-      # Paddle billing (Paddle Billing v2 — checkout.paddle.com).
-      # PADDLE_SANDBOX=true for sandbox-checkout.paddle.com during testing.
-      - key: PADDLE_VENDOR_ID
+      # Creem billing — https://docs.creem.io/code/webhooks (see docs/CREEM_BILLING.md)
+      - key: CREEM_API_KEY
         sync: false
-      - key: PADDLE_WEBHOOK_SECRET
+      - key: CREEM_API_BASE_URL
         sync: false
-      - key: PADDLE_PRODUCT_OPERATOR
+      - key: CREEM_WEBHOOK_SECRET
         sync: false
-      - key: PADDLE_PRODUCT_TEAM
+      - key: CREEM_CHECKOUT_PERSONAL_URL
         sync: false
-      - key: PADDLE_PRODUCT_ENTERPRISE
+      - key: CREEM_CHECKOUT_OPERATOR_URL
         sync: false
-      - key: PADDLE_SANDBOX
-        value: "false"
+      - key: CREEM_CHECKOUT_TEAM_URL
+        sync: false
+      - key: CREEM_CHECKOUT_ENTERPRISE_URL
+        sync: false
+      - key: CREEM_PRODUCT_PERSONAL
+        sync: false
+      - key: CREEM_PRODUCT_OPERATOR
+        sync: false
+      - key: CREEM_PRODUCT_TEAM
+        sync: false
+      - key: CREEM_PRODUCT_ENTERPRISE
+        sync: false
       - key: DASHBOARD_URL
         value: https://console.sanctumruntime.com
       - key: SANCTUM_PUBLIC_API_URL

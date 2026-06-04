@@ -44,6 +44,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:webhook": "node scripts/test-render-webhook.mjs",
+    "test:creem-webhook": "node scripts/test-creem-webhook.mjs",
     "monitor": "tsx scripts/live-monitor.ts",
     "premonitor": "node scripts/ensure-env.mjs",
     "demo:console": "tsx scripts/console-intercept-demo.ts",

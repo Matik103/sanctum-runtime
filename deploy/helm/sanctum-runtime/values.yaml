@@ -33,12 +33,17 @@ api:
     SANCTUM_DOCS_URL: "https://www.sanctumruntime.com/docs"
     # Comma-separated — extend via your values override
     SANCTUM_CORS_ORIGINS: "https://dashboard.example.com"
-    # Paddle (optional billing)
-    PADDLE_SANDBOX: "false"
-    PADDLE_VENDOR_ID: ""
-    PADDLE_PRODUCT_OPERATOR: ""
-    PADDLE_PRODUCT_TEAM: ""
-    PADDLE_PRODUCT_ENTERPRISE: ""
+    # Creem (optional billing) — https://docs.creem.io — docs/CREEM_BILLING.md
+    CREEM_API_KEY: ""
+    CREEM_API_BASE_URL: ""
+    CREEM_CHECKOUT_PERSONAL_URL: ""
+    CREEM_CHECKOUT_OPERATOR_URL: ""
+    CREEM_CHECKOUT_TEAM_URL: ""
+    CREEM_CHECKOUT_ENTERPRISE_URL: ""
+    CREEM_PRODUCT_PERSONAL: ""
+    CREEM_PRODUCT_OPERATOR: ""
+    CREEM_PRODUCT_TEAM: ""
+    CREEM_PRODUCT_ENTERPRISE: ""
 
 # ---------------------------------------------------------------------------
 # Dashboard (Nginx serving pre-built SPA)
@@ -110,9 +115,9 @@ ollama:
   url: "http://ollama:11434"
 
 # ---------------------------------------------------------------------------
-# Paddle billing (optional)
+# Creem billing (optional)
 # ---------------------------------------------------------------------------
-paddleWebhookSecret: ""
+creemWebhookSecret: ""
 
 # ---------------------------------------------------------------------------
 # Horizontal Pod Autoscaler

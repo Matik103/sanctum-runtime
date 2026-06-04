@@ -1,0 +1,86 @@
+# Creem billing (test + production)
+
+Sanctum uses [Creem](https://creem.io) as Merchant of Record for Personal, Operator, and Team plans. See [Getting started](https://docs.creem.io/getting-started/introduction) and [Webhooks](https://docs.creem.io/code/webhooks).
+
+## Test environment
+
+1. Sign up at [creem.io](https://creem.io) and open the dashboard.
+2. Copy your **test API key** (`creem_test_...`) from Developers.
+3. Create three recurring products (Personal $12, Operator $59, Team $299) or use the CLI:
+
+```bash
+brew tap armitage-labs/creem && brew install creem
+creem login --api-key creem_test_YOUR_KEY
+creem products create --name "Sanctum Personal" --price 1200 --currency USD --billing-type recurring --billing-period every-month
+```
+
+4. Set API env (local `.env` or Render):
+
+```bash
+CREEM_API_KEY=creem_test_...
+# Optional override (defaults to test-api when key is creem_test_*)
+CREEM_API_BASE_URL=https://test-api.creem.io
+CREEM_WEBHOOK_SECRET=whsec_...   # Developers → Webhooks
+
+CREEM_PRODUCT_PERSONAL=prod_...
+CREEM_PRODUCT_OPERATOR=prod_...
+CREEM_PRODUCT_TEAM=prod_...
+```
+
+5. Register webhook URL (use ngrok for local dev):
+
+```text
+https://YOUR_API_HOST/v1/billing/webhook
+```
+
+Creem signs payloads with `creem-signature` (HMAC-SHA256 of raw body). Our handler verifies before updating `org_plans`.
+
+## Checkout flow
+
+**Preferred:** Checkout API (`POST /v1/checkouts` on Creem) when `CREEM_API_KEY` + `CREEM_PRODUCT_*` are set. The API passes metadata:
+
+```json
+{
+  "org_id": "<workspace org id>",
+  "plan": "personal|operator|team",
+  "referenceId": "<same org id>"
+}
+```
+
+**Fallback:** Static checkout links (`CREEM_CHECKOUT_PERSONAL_URL`, etc.) with `org_id`, `plan`, and `request_id` query params.
+
+Success redirect: `{DASHBOARD_URL}/?page=billing&checkout=success`
+
+## Webhook events
+
+| Event | Action |
+|-------|--------|
+| `checkout.completed` | Grant plan from metadata / product id |
+| `subscription.paid` | Grant plan (authoritative for renewals) |
+| `subscription.canceled` / `expired` / `paused` | Downgrade to **Observer** |
+| `subscription.past_due` | Notify; do not change plan yet |
+
+We intentionally **do not** grant on `subscription.active` (Creem recommends `subscription.paid` for access).
+
+## Supabase
+
+Run migrations:
+
+- `058_pricing_observer_personal.sql` — plan tiers
+- `059_creem_billing_columns.sql` — `creem_customer_id`, `creem_subscription_id`
+
+## Verify setup
+
+```bash
+# Config (no secrets returned)
+curl -s "$SANCTUM_API_URL/v1/billing/creem/config" -H "Authorization: Bearer $TOKEN"
+
+# Signed webhook dry-run
+CREEM_WEBHOOK_SECRET=whsec_... node scripts/test-creem-webhook.mjs
+```
+
+## Production
+
+- Swap to live API key (no `creem_test_` prefix) → `https://api.creem.io`
+- Register production webhook URL on the live Creem dashboard
+- Set the same `CREEM_PRODUCT_*` ids from live products

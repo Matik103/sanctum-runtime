@@ -14,42 +14,53 @@ export interface BillingPlan {
   limits: {
     maxRuntimes: number | null
     maxEventsPerMonth: number | null
-    maxGovernedActionsPerMonth?: number | null
-    maxObserveEventsPerMonth?: number | null
+    maxGovernedActionsPerMonth: number | null
+    maxObserveEventsPerMonth: number | null
     maxAgents: number | null
     retentionDays: number
     features: string[]
   }
   usage: {
     eventsThisMonth: number
+    governedActionsThisMonth?: number
+    observeEventsThisMonth?: number
     runtimesConnected: number
     agentsActive: number
     runtimeHoursThisMonth: number
   }
   quotas: {
     events: { used: number; limit: number | null; pct: number | null }
+    governed?: { used: number; limit: number | null; pct: number | null }
+    observe?: { used: number; limit: number | null; pct: number | null }
     runtimes: { used: number; limit: number | null; pct: number | null }
   }
   billing: {
     billingProvider?: string | null
-    paddleCustomerId?: string | null
-    paddleSubscriptionId?: string | null
+    creemCustomerId?: string | null
+    creemSubscriptionId?: string | null
     billingCycleAnchor: string | null
   }
 }
 
 export async function fetchBillingPlan(orgId: string): Promise<BillingPlan> {
-  void orgId
   const headers = await authHeaders()
-  const res = await fetch(`${apiBase}/v1/billing/plan`, { headers })
+  const res = await fetch(
+    `${apiBase}/v1/billing/plan?org_id=${encodeURIComponent(orgId)}`,
+    { headers },
+  )
   if (!res.ok) throw new Error(`billing_plan_error: ${res.status}`)
   return res.json() as Promise<BillingPlan>
 }
 
 export async function createCheckout(
   orgId: string,
-  planId: PlanId,
-): Promise<{ checkoutUrl: string | null; billingProvider?: string | null; message: string | null; contactEmail?: string }> {
+  planId: Exclude<PlanId, 'observer'>,
+): Promise<{
+  checkoutUrl: string | null
+  billingProvider?: string | null
+  message: string | null
+  contactEmail?: string
+}> {
   const headers = { ...await authHeaders(), 'Content-Type': 'application/json' }
   const res = await fetch(`${apiBase}/v1/billing/checkout`, {
     method: 'POST',

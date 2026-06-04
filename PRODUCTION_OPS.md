@@ -40,12 +40,13 @@ See [RENDER.md](./RENDER.md) for the full API checklist.
 | `VAPID_SUBJECT` | `mailto:ops@sanctumruntime.com` | Required by Web Push spec |
 | `RESEND_API_KEY` | `re_…` | **Secret** — transactional email (alerts, verifications) |
 | `NOTIFICATION_FROM_EMAIL` | `Sanctum Runtime Alerts <alerts@sanctumruntime.com>` | Must be a verified Resend sender domain |
-| `PADDLE_VENDOR_ID` | From Paddle dashboard | Billing integration |
-| `PADDLE_WEBHOOK_SECRET` | **Secret** — from Paddle | Required to verify billing webhooks |
-| `PADDLE_PRODUCT_OPERATOR` | Paddle product/price ID | Operator plan |
-| `PADDLE_PRODUCT_TEAM` | Paddle product/price ID | Team plan |
-| `PADDLE_PRODUCT_ENTERPRISE` | Paddle product/price ID | Enterprise plan |
-| `PADDLE_SANDBOX` | `false` | Set `true` during testing; `false` in production |
+| `CREEM_API_KEY` | `creem_test_...` (sandbox) or live key | Checkout API — preferred over static links |
+| `CREEM_API_BASE_URL` | `https://test-api.creem.io` or `https://api.creem.io` | Auto-detected from test key if omitted |
+| `CREEM_WEBHOOK_SECRET` | **Secret** — Creem Developers → Webhooks | Required to verify billing webhooks |
+| `CREEM_CHECKOUT_PERSONAL_URL` | Creem checkout link | Personal plan ($12/mo) |
+| `CREEM_CHECKOUT_OPERATOR_URL` | Creem checkout link | Operator plan ($59/mo) |
+| `CREEM_CHECKOUT_TEAM_URL` | Creem checkout link | Team plan ($299/mo) |
+| `CREEM_PRODUCT_*` | Creem product IDs | Map webhook `product.id` → plan tier |
 | `SANCTUM_PUBLIC_API_URL` | `https://api.sanctumruntime.com` | Shown in action-token emails |
 
 > **Tip:** `npm run gen:vapid` prints the VAPID key pair ready to paste.  
@@ -62,7 +63,7 @@ See [RENDER.md](./RENDER.md) for the full API checklist.
   Supabase      : url=✓  service-role=✓  jwt-auth=✓
   Email (Resend): ✓
   Push (VAPID)  : ✓
-  Billing Paddle: ✓  sandbox=false
+  Billing Creem  : webhook=✓  checkout=✓
   Auth          : Supabase JWT + X-Sanctum-Key
   API key pepper: SANCTUM_API_KEY_PEPPER  ✓
   CORS origins  : https://console.sanctumruntime.com + 1 more

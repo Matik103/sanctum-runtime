@@ -151,9 +151,9 @@ helm upgrade sanctum-runtime deploy/helm/sanctum-runtime \
 | `SANCTUM_OFFLINE_MODE` | Disable external risk calls (`true`/`false`) | No (default `false`) |
 | `SANCTUM_RISK_PROVIDER` | Risk model: `none` \| `ollama` | No (default `none`) |
 | `OLLAMA_BASE_URL` | Ollama endpoint (used when `SANCTUM_RISK_PROVIDER=ollama`) | No |
-| `PADDLE_WEBHOOK_SECRET` | Paddle billing webhook signature secret | No |
-| `PADDLE_VENDOR_ID` | Paddle vendor ID | No |
-| `PADDLE_SANDBOX` | Use Paddle sandbox (`true`/`false`) | No |
+| `CREEM_WEBHOOK_SECRET` | Creem webhook HMAC secret (Developers → Webhooks) | No |
+| `CREEM_CHECKOUT_*_URL` | Hosted Creem checkout URLs per plan | No |
+| `CREEM_PRODUCT_*` | Creem product IDs for webhook plan mapping | No |
 
 ---
 

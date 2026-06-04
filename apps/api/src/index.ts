@@ -1752,8 +1752,13 @@ function logStartupSummary({ host, port }: { host: string; port: number }): void
   // ── Optional integrations ─────────────────────────────────────────────────
   const hasResend     = !!process.env.RESEND_API_KEY?.trim()
   const hasVapid      = !!process.env.VAPID_PUBLIC_KEY?.trim() && !!process.env.VAPID_PRIVATE_KEY?.trim()
-  const hasPaddle     = !!process.env.PADDLE_WEBHOOK_SECRET?.trim()
-  const paddleSandbox = process.env.PADDLE_SANDBOX === 'true'
+  const hasCreemWebhook = !!process.env.CREEM_WEBHOOK_SECRET?.trim()
+  const hasCreemApi     = !!process.env.CREEM_API_KEY?.trim()
+  const hasCreemCheckout = !!(
+    hasCreemApi
+    || process.env.CREEM_CHECKOUT_PERSONAL_URL?.trim()
+    || process.env.CREEM_CHECKOUT_OPERATOR_URL?.trim()
+  )
 
   // ── CORS ──────────────────────────────────────────────────────────────────
   const origins = Array.from(corsOrigins)
@@ -1776,7 +1781,7 @@ function logStartupSummary({ host, port }: { host: string; port: number }): void
     pad(`Supabase      : url=${ok(hasSupabaseJwt)}  service-role=${ok(hasServiceRole)}  jwt-auth=${ok(hasSupabaseJwt)}`),
     pad(`Email (Resend): ${ok(hasResend)}`),
     pad(`Push (VAPID)  : ${ok(hasVapid)}`),
-    pad(`Billing Paddle: ${ok(hasPaddle)}${hasPaddle ? `  sandbox=${paddleSandbox}` : ''}`),
+    pad(`Billing Creem  : api=${ok(hasCreemApi)}  webhook=${ok(hasCreemWebhook)}  checkout=${ok(hasCreemCheckout)}`),
     pad(`Auth          : ${[hasSupabaseJwt ? 'Supabase JWT' : '', hasApiKey ? 'X-Sanctum-Key' : ''].filter(Boolean).join(' + ') || 'none (open)'}`),
     pad(`API key pepper: ${pepperState}`),
     pad(`CORS origins  : ${corsDisplay}`),
@@ -1793,8 +1798,10 @@ function logStartupSummary({ host, port }: { host: string; port: number }): void
       bootLog.warn('RESEND_API_KEY not set — alert emails will not be delivered')
     if (!hasVapid)
       bootLog.warn('VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY not set — push notifications disabled')
-    if (!hasPaddle)
-      bootLog.warn('PADDLE_WEBHOOK_SECRET not set — billing webhooks will be rejected')
+    if (!hasCreemWebhook)
+      bootLog.warn('CREEM_WEBHOOK_SECRET not set — Creem billing webhooks will be rejected')
+    if (!hasCreemApi && !hasCreemCheckout)
+      bootLog.warn('CREEM_API_KEY / CREEM_CHECKOUT_* not set — paid checkout disabled')
     if (!hasOpenAI && riskProvider === 'openai' && !offlineMode)
       bootLog.warn('OPENAI_API_KEY not set but SANCTUM_RISK_PROVIDER=openai — will run offline')
     if (!pepper || pepper.length < 16)
