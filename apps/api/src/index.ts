@@ -20,6 +20,7 @@ import { registerHardwareAttestationRoutes } from './hardware-attestation-routes
 import { registerUsageRoutes } from './usage-routes.js'
 import { registerBillingRoutes } from './billing-routes.js'
 import { registerExportRoutes } from './export-routes.js'
+import { registerOrgProfileRoutes } from './org-profile-routes.js'
 import { registerGovernanceRoutes } from './governance.js'
 import { registerComplianceRoutes } from './compliance.js'
 import { registerPolicyVersionRoutes } from './policy-versions.js'
@@ -502,6 +503,8 @@ app.get('/', async () => {
       billing: 'GET /v1/billing/plan · POST /v1/billing/checkout · POST /v1/billing/webhook',
       export: 'GET /v1/orgs/:orgId/export.json · GET /v1/orgs/:orgId/export/history',
       notifications: 'GET|PATCH /v1/orgs/:orgId/notifications',
+      accountProfile: 'GET|PATCH /v1/account/profile',
+      orgProfile: 'GET|PATCH /v1/orgs/:orgId/profile',
       sso: 'GET|PUT /v1/orgs/:orgId/sso · GET /v1/sso/:orgId/login',
       analyze: 'POST /analyze-action',
     },
@@ -518,6 +521,7 @@ if (supabaseAuth) {
   await registerUsageRoutes(app)
   await registerBillingRoutes(app)
   await registerExportRoutes(app)
+  await registerOrgProfileRoutes(app)
   await registerHardwareAttestationRoutes(app)
   await registerPolicyVersionRoutes(app, supabaseAuth)
   await registerGovernanceRoutes(app, supabaseAuth)

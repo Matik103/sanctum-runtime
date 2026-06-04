@@ -3,6 +3,7 @@ import { BarChart3, Bell, Download, Settings2 } from 'lucide-react'
 import type { RuntimeStatus } from '@sanctum-runtime/sdk/browser'
 import { Alert } from '../components/ui/Alert'
 import { AIModelCard } from '../components/AIModelCard'
+import { ProfileSettingsSections } from '../components/settings/ProfileSettingsSections'
 import { fetchMyOrgs, type FleetOrg } from '../lib/fleet'
 import { fetchOperatorContext } from '../lib/marketplace'
 import { riskModelMetaLine } from '../lib/risk-label'
@@ -223,7 +224,7 @@ export function Settings({ status }: Props) {
       <header className="page-header">
         <div>
           <h1>Settings</h1>
-          <p>Runtime configuration, alerts, and data export</p>
+          <p>Account, organization profile, alerts, and data export</p>
         </div>
       </header>
 
@@ -261,6 +262,31 @@ export function Settings({ status }: Props) {
 
       {orgs.length > 0 && (
         <>
+          {orgs.length > 1 && (
+            <section className="section">
+              <div className="section__body">
+                <label className="settings-label">Active organization</label>
+                <select
+                  className="input"
+                  value={orgId}
+                  onChange={(e) => setOrgId(e.target.value)}
+                  style={{ maxWidth: '20rem' }}
+                >
+                  {orgs.map((o) => (
+                    <option key={o.org_id} value={o.org_id}>
+                      {o.org_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </section>
+          )}
+
+          <ProfileSettingsSections
+            orgId={orgId}
+            orgRole={orgs.find((o) => o.org_id === orgId)?.role}
+          />
+
           <section className="section" id="notifications">
             <div className="section__header">
               <h2>
