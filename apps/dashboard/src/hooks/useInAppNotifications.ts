@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiBaseUrl } from '../lib/api-url'
+import { fetchMyOrgs } from '../lib/fleet'
+import { fetchOperatorContext } from '../lib/marketplace'
 import { getAccessToken, getSupabase } from '../lib/supabase'
 
 export type InAppNotification = {
@@ -15,6 +17,8 @@ export type InAppNotification = {
 }
 
 const SEEN_KEY = 'sanctum-seen-notification-ids'
+let cachedAlertsOrgId: string | null | undefined
+let alertsOrgIdPromise: Promise<string | null> | null = null
 
 function loadSeen(): Set<string> {
   try {
@@ -31,13 +35,40 @@ function saveSeen(ids: Set<string>) {
   localStorage.setItem(SEEN_KEY, JSON.stringify(trimmed))
 }
 
-async function fetchRecentAlerts(): Promise<InAppNotification[]> {
+async function resolveAlertsOrgId(explicitOrgId?: string | null): Promise<string | null> {
+  if (explicitOrgId) {
+    cachedAlertsOrgId = explicitOrgId
+    return explicitOrgId
+  }
+  if (cachedAlertsOrgId !== undefined) return cachedAlertsOrgId
+
+  alertsOrgIdPromise ??= (async () => {
+    const orgs = await fetchMyOrgs().catch(() => [])
+    const orgId = orgs[0]?.org_id
+    if (orgId) return orgId
+
+    const ctx = await fetchOperatorContext().catch(() => null)
+    return ctx?.defaultOrganizationId ?? null
+  })()
+
+  try {
+    cachedAlertsOrgId = await alertsOrgIdPromise
+    return cachedAlertsOrgId
+  } finally {
+    alertsOrgIdPromise = null
+  }
+}
+
+async function fetchRecentAlerts(orgId?: string | null): Promise<InAppNotification[]> {
+  const resolvedOrgId = await resolveAlertsOrgId(orgId)
+  if (!resolvedOrgId) return []
+
   const token = await getAccessToken()
   const headers: Record<string, string> = {}
   if (token) headers['Authorization'] = `Bearer ${token}`
 
   const res = await fetch(
-    `${apiBaseUrl}/v1/alerts?status=open&limit=20`,
+    `${apiBaseUrl}/v1/orgs/${encodeURIComponent(resolvedOrgId)}/alerts?status=open&limit=20`,
     { headers },
   )
   if (!res.ok) return []
@@ -68,10 +99,10 @@ export function useInAppNotifications(orgId: string | null | undefined) {
   }, [])
 
   const load = useCallback(async () => {
-    const items = await fetchRecentAlerts().catch(() => [])
+    const items = await fetchRecentAlerts(orgId).catch(() => [])
     setNotifications(items)
     recalcUnread(items)
-  }, [recalcUnread])
+  }, [orgId, recalcUnread])
 
   // Initial load + polling every 30s
   useEffect(() => {

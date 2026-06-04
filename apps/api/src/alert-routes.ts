@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { getSupabaseAuthConfig } from './auth.js'
 import { AlertStore } from './alert-store.js'
 import { ControlPlaneStore } from './control-plane-store.js'
+import { isProduction } from './security.js'
 
 type SanctumReq = FastifyRequest & {
   sanctumUser?: { id: string; email?: string }
@@ -20,9 +21,13 @@ async function resolveOrgScope(req: SanctumReq, store: ControlPlaneStore): Promi
   const key = headerKey(req)
   if (key?.startsWith('sk_sanctum_')) {
     const orgId = await store.getApiKeyOrgId(key)
-    return orgId ? [orgId] : null
+    return orgId ? [orgId] : []
   }
-  return null
+
+  if (!isProduction()) return null
+
+  const bound = process.env.SANCTUM_LEGACY_KEY_ORG_ID?.trim()
+  return bound ? [bound] : []
 }
 
 function assertOrgAllowed(
@@ -38,6 +43,21 @@ function assertOrgAllowed(
   return true
 }
 
+async function resolveDefaultOrgId(
+  req: SanctumReq,
+  store: ControlPlaneStore,
+  qOrgId?: string,
+): Promise<string | null> {
+  const scope = await resolveOrgScope(req, store)
+  if (qOrgId) return assertScopeContains(scope, qOrgId) ? qOrgId : null
+  if (scope === null) return null
+  return scope[0] ?? null
+}
+
+function assertScopeContains(scope: string[] | null, orgId: string): boolean {
+  return scope === null || scope.includes(orgId)
+}
+
 const severityEnum = z.enum(['info', 'warning', 'critical', 'emergency'])
 const channelEnum = z.enum(['email', 'slack', 'webhook', 'dashboard', 'push'])
 
@@ -49,6 +69,27 @@ export async function registerAlertRoutes(app: FastifyInstance): Promise<void> {
   const cp = new ControlPlaneStore(cfg)
 
   // ── Alerts ──────────────────────────────────────────────────────────────────
+
+  app.get('/v1/alerts', async (req, reply) => {
+    const q = req.query as {
+      org_id?: string
+      status?: string
+      severity?: string
+      limit?: string
+      offset?: string
+    }
+    const orgId = await resolveDefaultOrgId(req as SanctumReq, cp, q.org_id)
+    if (!orgId) return reply.status(400).send({ error: 'org_id_required' })
+
+    return {
+      alerts: await alerts.listAlerts(orgId, {
+        status: (q.status as 'open' | 'acknowledged' | 'resolved' | 'all') ?? 'all',
+        severity: q.severity as 'info' | 'warning' | 'critical' | 'emergency' | undefined,
+        limit: q.limit ? Math.min(Number(q.limit), 500) : 100,
+        offset: q.offset ? Number(q.offset) : 0,
+      }),
+    }
+  })
 
   app.get('/v1/orgs/:orgId/alerts', async (req, reply) => {
     const { orgId } = req.params as { orgId: string }
