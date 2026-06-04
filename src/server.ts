@@ -83,6 +83,13 @@ function redirectApexToWww(request: Request): Response | null {
   return Response.redirect(url.toString(), 308);
 }
 
+function redirectFavicon(request: Request): Response | null {
+  const url = new URL(request.url);
+  if (url.pathname !== "/favicon.ico") return null;
+  url.pathname = "/favicon.png";
+  return Response.redirect(url.toString(), 308);
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     const url = new URL(request.url);
@@ -97,6 +104,9 @@ export default {
         return body;
       }
     }
+
+    const faviconRedirect = redirectFavicon(request);
+    if (faviconRedirect) return faviconRedirect;
 
     const apexRedirect = redirectApexToWww(request);
     if (apexRedirect) return apexRedirect;

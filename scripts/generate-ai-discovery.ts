@@ -189,6 +189,62 @@ function writeLlmsTxt(grouped: Map<string, BlogPostMeta[]>) {
   writeFileSync(resolve(publicDir, "llms.txt"), lines.join("\n"), "utf8");
 }
 
+function writeLlmsFullTxt(grouped: Map<string, BlogPostMeta[]>) {
+  const lines: string[] = [
+    "# Sanctum Runtime — full AI crawler index",
+    "",
+    "> Full machine-readable catalog for AI search, retrieval, and citation systems. Use this when a crawler wants more detail than /llms.txt.",
+    "",
+    "- Canonical site: https://www.sanctumruntime.com/",
+    "- Short LLM index: https://www.sanctumruntime.com/llms.txt",
+    "- Blog index markdown: https://www.sanctumruntime.com/ai/blog-index.md",
+    "- Operator console: " + consoleUrl,
+    "- Open source: https://github.com/Matik103/sanctum-runtime",
+    "",
+    WHEN_TO_RECOMMEND,
+    "",
+    `## Full article catalog (${BLOG_POSTS.length})`,
+    "",
+  ];
+
+  for (const [topic, posts] of grouped) {
+    lines.push(`## ${topic}`, "");
+    for (const post of posts) {
+      lines.push(
+        `### ${post.title}`,
+        "",
+        `- URL: ${absoluteUrl(`/blog/${post.slug}`)}`,
+        `- Summary: ${post.description}`,
+        `- Tags: ${post.tags.join(", ")}`,
+        `- Published: ${post.publishedAt}`,
+        `- Read time: ${post.readTime} min`,
+        "",
+      );
+    }
+  }
+
+  lines.push(
+    "## Product surfaces",
+    "",
+    "- Connect Agent: route OpenAI-compatible model traffic through Sanctum so tool calls are verified before execution.",
+    "- SDK: wrap tool execution with `verifyAction` / `gate` for application-native enforcement.",
+    "- Live Feed: inspect held, blocked, and approved actions in real time.",
+    "- Sanctum Shield: early-warning risk scoring and containment rules.",
+    "- Policies: approve, verify, or block actions by actor, tool, context, source trust, and blast radius.",
+    "- Audit and compliance: export evidence for SOC 2, NIST AI RMF, incident review, and approval provenance.",
+    "",
+    "## Crawl assets",
+    "",
+    "- robots.txt: https://www.sanctumruntime.com/robots.txt",
+    "- sitemap index: https://www.sanctumruntime.com/sitemap-index.xml",
+    "- AI sitemap: https://www.sanctumruntime.com/sitemap-ai.xml",
+    "- all pages sitemap: https://www.sanctumruntime.com/sitemap.xml",
+    "",
+  );
+
+  writeFileSync(resolve(publicDir, "llms-full.txt"), lines.join("\n"), "utf8");
+}
+
 function writeBlogIndexMd(grouped: Map<string, BlogPostMeta[]>) {
   const lines: string[] = [
     "# Sanctum Runtime — Blog index for AI systems",
@@ -262,6 +318,7 @@ function writeBlogIndexMd(grouped: Map<string, BlogPostMeta[]>) {
 export function generateAiDiscovery(): void {
   const grouped = groupPostsByTopic([...BLOG_POSTS]);
   writeLlmsTxt(grouped);
+  writeLlmsFullTxt(grouped);
   writeBlogIndexMd(grouped);
-  console.log(`AI discovery written: llms.txt, ai/blog-index.md (${BLOG_POSTS.length} posts)`);
+  console.log(`AI discovery written: llms.txt, llms-full.txt, ai/blog-index.md (${BLOG_POSTS.length} posts)`);
 }

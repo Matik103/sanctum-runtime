@@ -47,6 +47,28 @@ async function main() {
   if (!apex.text.includes("User-agent:")) fail("apex robots.txt missing User-agent");
   ok("apex robots.txt 200 (no redirect required)");
 
+  const llms = await check("llms", `${BASE}/llms.txt`, { readBody: true });
+  if (!llms.res.ok) fail(`llms.txt ${llms.res.status}`);
+  if (!(llms.res.headers.get("content-type") || "").includes("text/plain")) {
+    fail(`llms.txt content-type: ${llms.res.headers.get("content-type") || ""}`);
+  }
+  if (!llms.text.includes("Sanctum Runtime")) fail("llms.txt missing Sanctum Runtime");
+  ok("llms.txt 200 text/plain");
+
+  const llmsFull = await check("llms full", `${BASE}/llms-full.txt`, { readBody: true });
+  if (!llmsFull.res.ok) fail(`llms-full.txt ${llmsFull.res.status}`);
+  if (!(llmsFull.res.headers.get("content-type") || "").includes("text/plain")) {
+    fail(`llms-full.txt content-type: ${llmsFull.res.headers.get("content-type") || ""}`);
+  }
+  if (!llmsFull.text.includes("full AI crawler index")) fail("llms-full.txt missing crawler index heading");
+  ok("llms-full.txt 200 text/plain");
+
+  const favicon = await check("favicon", `${BASE}/favicon.ico`, { followRedirects: false });
+  if (![200, 301, 302, 307, 308].includes(favicon.res.status)) {
+    fail(`favicon.ico ${favicon.res.status}`);
+  }
+  ok("favicon.ico resolves or redirects");
+
   const privacy = await check("privacy", `${BASE}/privacy`);
   if (!privacy.res.ok) fail(`privacy ${privacy.res.status}`);
   ok("/privacy 200");

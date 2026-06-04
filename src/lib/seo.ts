@@ -59,6 +59,7 @@ export const sitemapPages: ReadonlyArray<{
 /** Static AI / crawler files under public/ */
 export const sitemapAiPaths = [
   "/llms.txt",
+  "/llms-full.txt",
   "/ai/blog-index.md",
   "/ai/overview.md",
   "/ai/architecture.md",
