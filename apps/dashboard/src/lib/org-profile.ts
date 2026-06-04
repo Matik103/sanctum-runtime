@@ -14,6 +14,8 @@ export type AccountProfile = {
   terms_version: string | null
   created_at: string
   updated_at: string
+  complete?: boolean
+  missing?: string[]
 }
 
 export type OrgProfile = {
@@ -50,7 +52,9 @@ export async function fetchAccountProfile(): Promise<AccountProfile | null> {
 }
 
 export async function updateAccountProfile(
-  patch: Partial<Pick<AccountProfile, 'display_name' | 'job_title' | 'country_code'>>,
+  patch: Partial<Pick<AccountProfile, 'display_name' | 'job_title' | 'country_code'>> & {
+    accept_terms?: boolean
+  },
 ): Promise<AccountProfile> {
   const res = await fetch(`${apiBase}/v1/account/profile`, {
     method: 'PATCH',

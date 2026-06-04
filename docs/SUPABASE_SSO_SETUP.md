@@ -77,21 +77,25 @@ In Supabase → **Authentication** → **Providers** → **GitHub**:
 
 ---
 
-## 4. Enterprise domain auto-join (optional)
+## 4. Company SSO domain verification (recommended)
 
-To attach `@yourcompany.com` users to an org on first SSO sign-in:
+**Team plan+** — verify domain ownership in the console (industry-standard DNS TXT proof):
+
+1. **Settings → Company SSO domains**
+2. Add your work domain (e.g. `yourcompany.com` — not gmail.com / outlook.com).
+3. Create a **TXT** record at your DNS host:
+   - **Host:** `_sanctum.yourcompany.com`
+   - **Value:** `sanctum-domain-verification=<token shown in UI>`
+4. Click **Verify DNS record** (propagation may take minutes to 48 hours).
+5. Employees use **Company SSO** with `@yourcompany.com` Google/GitHub accounts.
+
+Manual SQL (break-glass / support only):
 
 ```sql
-insert into public.organizations (id, name)
-values ('your-org-id', 'Your Company')
-on conflict (id) do nothing;
-
-insert into public.organization_domains (domain, org_id, verified)
-values ('yourcompany.com', 'your-org-id', true)
+insert into public.organization_domains (domain, org_id, verified, verification_method, verified_at)
+values ('yourcompany.com', 'your-org-id', true, 'manual', now())
 on conflict (domain) do nothing;
 ```
-
-Users must sign in via **Enterprise** → Google or GitHub so `portal_type` is `enterprise` (set automatically by the console).
 
 ---
 
@@ -101,7 +105,7 @@ Users must sign in via **Enterprise** → Google or GitHub so `portal_type` is `
 |------|------|-------------|
 | **Individual** | Email, password, confirm | Personal workspace `personal-…` (owner) |
 | **Organization** | Org name, primary contact, email, password, confirm | Named company org (signup user = **owner**) |
-| **Company SSO** | Sign in only → Google/GitHub | Joins existing org via `organization_domains` |
+| **Company SSO** | Sign in only → Google/GitHub | Joins org when domain is **verified** in Settings |
 
 ## 6. Database migrations
 
@@ -142,7 +146,7 @@ https://YOUR_SUPABASE_PROJECT_REF.supabase.co/auth/v1/callback
 
 If redirect fails, re-check **Redirect URLs** in Supabase and the callback URL in Google/GitHub.
 
-If you see **No organization access**, your domain is not in `organization_domains` or `verified` is false — fix in SQL and click **Retry**.
+If you see **No organization access**, an admin must add and **verify** your domain under **Settings → Company SSO domains**, then click **Retry**.
 
 ---
 

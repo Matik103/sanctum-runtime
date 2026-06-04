@@ -9,6 +9,7 @@ import {
 } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { EnterpriseOrgGate } from '../components/EnterpriseOrgGate'
+import { ProfileCompletionGate } from '../components/ProfileCompletionGate'
 import { getSupabase, isSupabaseConfigured } from '../lib/supabase'
 import { Login } from '../pages/Login'
 import '../styles/auth.css'
@@ -107,7 +108,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={value}>
-      <EnterpriseOrgGate>{children}</EnterpriseOrgGate>
+      <EnterpriseOrgGate>
+        <ProfileCompletionGate>{children}</ProfileCompletionGate>
+      </EnterpriseOrgGate>
     </AuthContext.Provider>
   )
 }

@@ -111,11 +111,12 @@ export function EnterpriseOrgGate({ children }: Props) {
             lineHeight: 1.5,
           }}
         >
-          You signed in with Enterprise SSO
+          You signed in with Company SSO
           {email ? ` as ${email}` : ''}, but your email domain
-          {domain ? ` (@${domain})` : ''} is not linked to a Sanctum organization yet. Ask your
-          administrator to add your domain in <code className="inline-code">organization_domains</code>,
-          or use <strong>Operator</strong> sign-up if you need a personal workspace.
+          {domain ? ` (@${domain})` : ''} is not verified for your organization yet. Ask an
+          administrator to add and verify the domain under{' '}
+          <strong>Settings → Company SSO domains</strong>, or use individual sign-up for a personal
+          workspace.
         </p>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
           <button type="button" className="btn btn-primary" onClick={() => window.location.reload()}>

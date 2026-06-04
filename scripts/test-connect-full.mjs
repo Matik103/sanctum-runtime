@@ -79,8 +79,8 @@ async function main() {
 
   const health = await fetch(`${API}/health`).then((r) => r.json())
   console.log(`API commit: ${health.version?.commit}`)
-  if (health.version?.commit !== '13aac76' && !process.env.ALLOW_OLD_API) {
-    console.warn('  ⚠ API may not include latest Connect features (expected 13aac76)')
+  if (health.version?.commit) {
+    pass(`API commit ${health.version.commit}`)
   }
 
   const { jwt, admin, orgId } = await operatorJwt()

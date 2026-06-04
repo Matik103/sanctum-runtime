@@ -21,6 +21,7 @@ import { registerUsageRoutes } from './usage-routes.js'
 import { registerBillingRoutes } from './billing-routes.js'
 import { registerExportRoutes } from './export-routes.js'
 import { registerOrgProfileRoutes } from './org-profile-routes.js'
+import { registerOrgDomainsRoutes } from './org-domains-routes.js'
 import { registerGovernanceRoutes } from './governance.js'
 import { registerComplianceRoutes } from './compliance.js'
 import { registerPolicyVersionRoutes } from './policy-versions.js'
@@ -504,7 +505,8 @@ app.get('/', async () => {
       export: 'GET /v1/orgs/:orgId/export.json · GET /v1/orgs/:orgId/export/history',
       notifications: 'GET|PATCH /v1/orgs/:orgId/notifications',
       accountProfile: 'GET|PATCH /v1/account/profile',
-      orgProfile: 'GET|PATCH /v1/orgs/:orgId/profile',
+      orgProfile: 'GET|PATCH /v1/account/profile, GET|PATCH /v1/orgs/:orgId/profile',
+      orgDomains: 'GET|POST /v1/orgs/:orgId/domains, POST verify, DELETE',
       sso: 'GET|PUT /v1/orgs/:orgId/sso · GET /v1/sso/:orgId/login',
       analyze: 'POST /analyze-action',
     },
@@ -522,6 +524,7 @@ if (supabaseAuth) {
   await registerBillingRoutes(app)
   await registerExportRoutes(app)
   await registerOrgProfileRoutes(app)
+  await registerOrgDomainsRoutes(app)
   await registerHardwareAttestationRoutes(app)
   await registerPolicyVersionRoutes(app, supabaseAuth)
   await registerGovernanceRoutes(app, supabaseAuth)

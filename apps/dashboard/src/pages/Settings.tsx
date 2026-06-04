@@ -3,6 +3,7 @@ import { BarChart3, Bell, Download, Settings2 } from 'lucide-react'
 import type { RuntimeStatus } from '@sanctum-runtime/sdk/browser'
 import { Alert } from '../components/ui/Alert'
 import { AIModelCard } from '../components/AIModelCard'
+import { DomainVerificationSection } from '../components/settings/DomainVerificationSection'
 import { ProfileSettingsSections } from '../components/settings/ProfileSettingsSections'
 import { fetchMyOrgs, type FleetOrg } from '../lib/fleet'
 import { fetchOperatorContext } from '../lib/marketplace'
@@ -285,6 +286,12 @@ export function Settings({ status }: Props) {
           <ProfileSettingsSections
             orgId={orgId}
             orgRole={orgs.find((o) => o.org_id === orgId)?.role}
+          />
+
+          <DomainVerificationSection
+            orgId={orgId}
+            editable={['owner', 'admin'].includes(orgs.find((o) => o.org_id === orgId)?.role ?? '')}
+            isPersonalWorkspace={orgId.startsWith('personal-')}
           />
 
           <section className="section" id="notifications">

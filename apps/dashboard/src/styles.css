@@ -2256,6 +2256,86 @@ table.data td .badge + .badge {
   grid-column: 1 / -1;
 }
 
+.domain-plan-callout {
+  padding: 1rem 1.1rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(79, 124, 255, 0.08);
+  margin-bottom: 1rem;
+}
+
+.domain-plan-callout p {
+  margin: 0 0 0.75rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.domain-dns-card {
+  padding: 1rem 1.1rem;
+  border-radius: 10px;
+  border: 1px solid rgba(79, 124, 255, 0.35);
+  background: rgba(0, 0, 0, 0.25);
+  margin-bottom: 1.25rem;
+}
+
+.domain-dns-card__title {
+  margin: 0 0 0.5rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.domain-dns-dl {
+  margin: 0.75rem 0 1rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.domain-dns-dl dt {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 0.2rem;
+}
+
+.domain-dns-dl dd {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.domain-dns-dl__value {
+  word-break: break-all;
+}
+
+.domain-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.domain-table th,
+.domain-table td {
+  padding: 0.55rem 0.65rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.domain-table th {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.auth-shell--centered {
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
 @media (max-width: 640px) {
   .settings-form-grid {
     grid-template-columns: 1fr;

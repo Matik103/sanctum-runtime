@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { z } from 'zod'
+import { actorLabel, diffFields, logAdminAuditEvent } from './audit-admin-events.js'
 import { createSupabaseAdmin, getSupabaseAuthConfig } from './auth.js'
 import { ControlPlaneStore } from './control-plane-store.js'
 import { assertOrgRole, checkOrgRole } from './rbac.js'
@@ -47,6 +48,28 @@ export function isPersonalWorkspaceOrgId(orgId: string): boolean {
   return orgId.startsWith('personal-')
 }
 
+export function isAccountProfileComplete(profile: {
+  display_name: string | null
+  country_code: string | null
+  accepted_terms_at: string | null
+}): { complete: boolean; missing: string[] } {
+  const missing: string[] = []
+  if (!profile.display_name?.trim() || profile.display_name.trim().length < 2) {
+    missing.push('display_name')
+  }
+  if (!profile.country_code?.trim()) missing.push('country_code')
+  if (!profile.accepted_terms_at) missing.push('accepted_terms')
+  return { complete: missing.length === 0, missing }
+}
+
+async function primaryOrgIdForUser(
+  store: ControlPlaneStore,
+  userId: string,
+): Promise<string | null> {
+  const orgs = await store.getUserOrgIds(userId)
+  return orgs[0] ?? null
+}
+
 export async function registerOrgProfileRoutes(app: FastifyInstance): Promise<void> {
   const cfg = getSupabaseAuthConfig()
   if (!cfg) return
@@ -81,7 +104,8 @@ export async function registerOrgProfileRoutes(app: FastifyInstance): Promise<vo
       })
     }
     if (!data) return reply.status(404).send({ error: 'profile_not_found' })
-    return data
+    const completion = isAccountProfileComplete(data)
+    return { ...data, ...completion }
   })
 
   app.patch('/v1/account/profile', async (req, reply) => {
@@ -93,13 +117,31 @@ export async function registerOrgProfileRoutes(app: FastifyInstance): Promise<vo
         display_name: z.string().trim().min(2).max(120).optional(),
         job_title: z.string().trim().min(2).max(80).nullable().optional(),
         country_code: countrySchema.optional(),
+        accept_terms: z.boolean().optional(),
       })
       .parse(req.body)
 
+    const patch: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    }
+    if (body.display_name !== undefined) patch.display_name = body.display_name
+    if (body.job_title !== undefined) patch.job_title = body.job_title
+    if (body.country_code !== undefined) patch.country_code = body.country_code
+    if (body.accept_terms) {
+      patch.accepted_terms_at = new Date().toISOString()
+      patch.terms_version = '2025-05'
+    }
+
     const admin = createSupabaseAdmin(cfg)
+    const { data: before } = await admin
+      .from('profiles')
+      .select('display_name, job_title, country_code, accepted_terms_at')
+      .eq('id', user.id)
+      .maybeSingle()
+
     const { data, error } = await admin
       .from('profiles')
-      .update({ ...body, updated_at: new Date().toISOString() })
+      .update(patch)
       .eq('id', user.id)
       .select(
         'id, email, display_name, job_title, country_code, portal_type, auth_provider, accepted_terms_at, terms_version, created_at, updated_at',
@@ -112,7 +154,21 @@ export async function registerOrgProfileRoutes(app: FastifyInstance): Promise<vo
         ...(!isProduction() && { detail: error.message }),
       })
     }
-    return data
+
+    const changes = before
+      ? diffFields(before, data, ['display_name', 'job_title', 'country_code'])
+      : undefined
+    if (changes) {
+      logAdminAuditEvent(cfg, {
+        orgId: await primaryOrgIdForUser(store, user.id),
+        actor: actorLabel(req as SanctumReq),
+        action: 'account.profile.updated',
+        reasoning: 'Account holder updated profile fields in Settings.',
+        changes,
+      })
+    }
+
+    return { ...data, ...isAccountProfileComplete(data) }
   })
 
   app.get('/v1/orgs/:orgId/profile', async (req, reply) => {
@@ -174,6 +230,12 @@ export async function registerOrgProfileRoutes(app: FastifyInstance): Promise<vo
         .parse(req.body)
 
       const admin = createSupabaseAdmin(cfg)
+      const { data: before } = await admin
+        .from('organizations')
+        .select('name')
+        .eq('id', orgId)
+        .maybeSingle()
+
       const { data, error } = await admin
         .from('organizations')
         .update({ name: body.workspace_name, updated_at: new Date().toISOString() })
@@ -185,6 +247,17 @@ export async function registerOrgProfileRoutes(app: FastifyInstance): Promise<vo
         return reply.status(500).send({
           error: 'org_profile_update_failed',
           ...(!isProduction() && { detail: error.message }),
+        })
+      }
+
+      const changes = before ? diffFields(before, data, ['name']) : undefined
+      if (changes) {
+        logAdminAuditEvent(cfg, {
+          orgId,
+          actor: actorLabel(req as SanctumReq),
+          action: 'organization.profile.updated',
+          reasoning: 'Workspace display name updated.',
+          changes,
         })
       }
 
@@ -226,6 +299,14 @@ export async function registerOrgProfileRoutes(app: FastifyInstance): Promise<vo
     if (body.primary_contact_title !== undefined) patch.primary_contact_title = body.primary_contact_title
 
     const admin = createSupabaseAdmin(cfg)
+    const { data: before } = await admin
+      .from('organizations')
+      .select(
+        'name, legal_name, website, country_code, company_size, industry, primary_contact_name, primary_contact_email, primary_contact_title',
+      )
+      .eq('id', orgId)
+      .maybeSingle()
+
     const { data, error } = await admin
       .from('organizations')
       .update(patch)
@@ -239,6 +320,18 @@ export async function registerOrgProfileRoutes(app: FastifyInstance): Promise<vo
       return reply.status(500).send({
         error: 'org_profile_update_failed',
         ...(!isProduction() && { detail: error.message }),
+      })
+    }
+
+    const changeKeys = Object.keys(patch).filter((k) => k !== 'updated_at') as (keyof typeof before)[]
+    const changes = before ? diffFields(before, data, changeKeys) : undefined
+    if (changes) {
+      logAdminAuditEvent(cfg, {
+        orgId,
+        actor: actorLabel(req as SanctumReq),
+        action: 'organization.profile.updated',
+        reasoning: 'Organization vendor/compliance profile updated in Settings.',
+        changes,
       })
     }
 
