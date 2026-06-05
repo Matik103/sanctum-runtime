@@ -8,38 +8,44 @@ import {
   dashboardBillingSuccessUrl,
   productIdForPlan,
 } from '../_shared/creem.ts'
+import { handleCorsPreflight, jsonWithCors } from '../_shared/cors.ts'
 
 const PAID_PLANS = new Set(['personal', 'operator', 'team'])
 
 Deno.serve(async (req) => {
-  if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 })
+  const preflight = handleCorsPreflight(req)
+  if (preflight) return preflight
+
+  if (req.method !== 'POST') {
+    return jsonWithCors(req, { error: 'method_not_allowed' }, { status: 405 })
+  }
 
   const apiKey = Deno.env.get('CREEM_API_KEY')?.trim()
   if (!apiKey) {
-    return Response.json({ error: 'creem_api_key_not_configured' }, { status: 503 })
+    return jsonWithCors(req, { error: 'creem_api_key_not_configured' }, { status: 503 })
   }
 
   const authHeader = req.headers.get('Authorization')
   if (!authHeader?.startsWith('Bearer ')) {
-    return Response.json({ error: 'unauthorized' }, { status: 401 })
+    return jsonWithCors(req, { error: 'unauthorized' }, { status: 401 })
   }
 
   let body: { org_id?: string; plan_id?: string; success_url?: string; cancel_url?: string }
   try {
     body = await req.json()
   } catch {
-    return Response.json({ error: 'invalid_json' }, { status: 400 })
+    return jsonWithCors(req, { error: 'invalid_json' }, { status: 400 })
   }
 
   const orgId = body.org_id?.trim()
   const planId = body.plan_id?.trim()
   if (!orgId || !planId || !PAID_PLANS.has(planId)) {
-    return Response.json({ error: 'org_id_and_plan_id_required' }, { status: 400 })
+    return jsonWithCors(req, { error: 'org_id_and_plan_id_required' }, { status: 400 })
   }
 
   const productId = productIdForPlan(planId)
   if (!productId) {
-    return Response.json({
+    return jsonWithCors(req, {
       error: 'product_not_configured',
       hint: `Set CREEM_PRODUCT_${planId.toUpperCase()} in Supabase Edge Function secrets`,
     }, { status: 503 })
@@ -54,7 +60,7 @@ Deno.serve(async (req) => {
     auth: { persistSession: false },
   })
   const { data: { user }, error: userErr } = await userClient.auth.getUser()
-  if (userErr || !user) return Response.json({ error: 'unauthorized' }, { status: 401 })
+  if (userErr || !user) return jsonWithCors(req, { error: 'unauthorized' }, { status: 401 })
 
   const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
   const { data: member } = await admin
@@ -64,7 +70,7 @@ Deno.serve(async (req) => {
     .eq('user_id', user.id)
     .maybeSingle()
 
-  if (!member) return Response.json({ error: 'org_forbidden' }, { status: 403 })
+  if (!member) return jsonWithCors(req, { error: 'org_forbidden' }, { status: 403 })
 
   await admin.from('profiles').update({
     billing_org_id: orgId,
@@ -97,14 +103,14 @@ Deno.serve(async (req) => {
 
   const text = await res.text()
   if (!res.ok) {
-    return Response.json({ error: 'creem_checkout_failed', detail: text.slice(0, 300) }, { status: 502 })
+    return jsonWithCors(req, { error: 'creem_checkout_failed', detail: text.slice(0, 300) }, { status: 502 })
   }
 
   let data: Record<string, unknown>
   try {
     data = JSON.parse(text)
   } catch {
-    return Response.json({ error: 'creem_invalid_response' }, { status: 502 })
+    return jsonWithCors(req, { error: 'creem_invalid_response' }, { status: 502 })
   }
 
   const checkoutUrl =
@@ -112,9 +118,9 @@ Deno.serve(async (req) => {
     || (typeof data.checkoutUrl === 'string' && data.checkoutUrl)
     || null
 
-  if (!checkoutUrl) return Response.json({ error: 'creem_missing_checkout_url' }, { status: 502 })
+  if (!checkoutUrl) return jsonWithCors(req, { error: 'creem_missing_checkout_url' }, { status: 502 })
 
-  return Response.json({
+  return jsonWithCors(req, {
     checkoutUrl,
     checkoutId: typeof data.id === 'string' ? data.id : null,
     billingProvider: 'creem',
