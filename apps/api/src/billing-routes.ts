@@ -673,8 +673,9 @@ export async function registerBillingRoutes(app: FastifyInstance) {
       checkoutMode: null,
       contactEmail: 'billing@sanctumruntime.com',
       message:
-        `Creem checkout is not configured. Missing on sanctum-api: ${missing.join(', ') || 'unknown'}. `
-        + 'See docs/CREEM_BILLING.md.',
+        'Creem checkout runs on Supabase Edge Functions (creem-checkout), not sanctum-api. '
+        + `Set ${missing.join(', ') || 'CREEM_API_KEY and CREEM_PRODUCT_*'} in Supabase Edge Function secrets. `
+        + 'See docs/CREEM_SUPABASE.md.',
       planId,
       planName: PLAN_DEFAULTS[planId].planName,
       priceMonthlyUsd: PLAN_DEFAULTS[planId].priceMonthlyUsd,
