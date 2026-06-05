@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { CreditCard, Eye, Loader2, LockKeyhole, RefreshCw, Zap } from 'lucide-react'
 import { Alert } from '../components/ui/Alert'
 import { PlanGateAlert } from '../components/PlanGateAlert'
-import { fetchMyOrgs, type FleetOrg } from '../lib/fleet'
-import { fetchOperatorContext } from '../lib/marketplace'
+import type { FleetOrg } from '../lib/fleet'
+import { resolveDefaultWorkspaceOrg } from '../lib/workspace-org'
 import {
   createCheckout,
   fetchBillingPlan,
@@ -149,15 +149,11 @@ export function Billing() {
 
   useEffect(() => {
     void (async () => {
-      let list = await fetchMyOrgs()
-      if (list.length === 0) {
-        const ctx = await fetchOperatorContext()
-        if (ctx?.defaultOrganizationId) {
-          list = [{ org_id: ctx.defaultOrganizationId, org_name: 'Workspace', role: 'owner' }]
-        }
-      }
+      const params = new URLSearchParams(window.location.search)
+      const urlOrg = params.get('org_id')
+      const { orgId: defaultOrg, orgs: list } = await resolveDefaultWorkspaceOrg()
       setOrgs(list)
-      if (list[0]) setOrgId((prev) => prev || list[0].org_id)
+      setOrgId(urlOrg && list.some((o) => o.org_id === urlOrg) ? urlOrg : defaultOrg)
     })()
   }, [])
 
@@ -181,17 +177,21 @@ export function Billing() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const checkout = params.get('checkout')
+    const urlOrg = params.get('org_id')
+    if (urlOrg) setOrgId(urlOrg)
     if (checkout === 'success') {
       setPendingCheckoutSync({ checkoutId: params.get('checkout_id') ?? undefined })
       setCheckoutMsg('Payment received. Syncing your plan…')
       params.delete('checkout')
       params.delete('checkout_id')
+      params.delete('org_id')
       const qs = params.toString()
       window.history.replaceState(null, '', `${window.location.pathname}${qs ? `?${qs}` : ''}`)
     } else if (checkout === 'cancelled') {
       setCheckoutMsg('Checkout cancelled. No charge was made.')
       params.delete('checkout')
       params.delete('checkout_id')
+      params.delete('org_id')
       const qs = params.toString()
       window.history.replaceState(null, '', `${window.location.pathname}${qs ? `?${qs}` : ''}`)
     }

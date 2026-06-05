@@ -5,8 +5,8 @@ import { Alert } from '../components/ui/Alert'
 import { AIModelCard } from '../components/AIModelCard'
 import { DomainVerificationSection } from '../components/settings/DomainVerificationSection'
 import { ProfileSettingsSections } from '../components/settings/ProfileSettingsSections'
-import { fetchMyOrgs, type FleetOrg } from '../lib/fleet'
-import { fetchOperatorContext } from '../lib/marketplace'
+import type { FleetOrg } from '../lib/fleet'
+import { resolveDefaultWorkspaceOrg } from '../lib/workspace-org'
 import { riskModelMetaLine } from '../lib/risk-label'
 import { fetchUsage, usageMetricLabel, type UsageSummary } from '../lib/usage'
 import { apiBaseUrl as apiBase } from '../lib/api-url'
@@ -47,15 +47,9 @@ export function Settings({ status }: Props) {
 
   useEffect(() => {
     void (async () => {
-      let list = await fetchMyOrgs()
-      if (list.length === 0) {
-        const ctx = await fetchOperatorContext()
-        if (ctx?.defaultOrganizationId) {
-          list = [{ org_id: ctx.defaultOrganizationId, org_name: 'Workspace', role: 'owner' }]
-        }
-      }
+      const { orgId: defaultOrg, orgs: list } = await resolveDefaultWorkspaceOrg()
       setOrgs(list)
-      if (list[0]) setOrgId(list[0].org_id)
+      setOrgId(defaultOrg)
     })()
   }, [])
 

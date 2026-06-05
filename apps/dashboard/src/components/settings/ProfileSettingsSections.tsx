@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Building2, UserCircle } from 'lucide-react'
+import { Building2, CreditCard, UserCircle } from 'lucide-react'
 import { Alert } from '../ui/Alert'
 import {
   fetchAccountProfile,
@@ -153,6 +153,50 @@ export function ProfileSettingsSections({ orgId, orgRole }: Props) {
             >
               {accountMsg}
             </Alert>
+          )}
+          {account?.billing && (
+            <div
+              className="stat-tile"
+              style={{
+                marginBottom: '1rem',
+                padding: '0.85rem 1rem',
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '0.75rem',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <CreditCard size={18} style={{ opacity: 0.7 }} />
+                <div>
+                  <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--muted)', textTransform: 'uppercase' }}>
+                    Subscription
+                  </p>
+                  <p style={{ margin: '0.1rem 0 0', fontWeight: 600 }}>
+                    {account.billing.plan_name}
+                    {account.billing.price_monthly_usd != null && (
+                      <span style={{ fontWeight: 400, color: 'var(--muted)', marginLeft: '0.35rem' }}>
+                        ${account.billing.price_monthly_usd}/mo
+                      </span>
+                    )}
+                  </p>
+                  <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', color: 'var(--muted)' }}>
+                    {account.billing.creem_subscription_status
+                      ? `Creem · ${account.billing.creem_subscription_status}`
+                      : account.billing.plan_id === 'observer'
+                        ? 'Free tier — upgrade on Billing for governed actions'
+                        : 'Active'}
+                    {account.billing.billing_status && account.billing.billing_status !== 'active'
+                      ? ` · ${account.billing.billing_status}`
+                      : ''}
+                  </p>
+                </div>
+              </div>
+              <a href="?page=billing" className="btn btn-ghost btn-sm" style={{ textDecoration: 'none' }}>
+                Manage plan
+              </a>
+            </div>
           )}
           <div className="settings-form-grid">
             <div>

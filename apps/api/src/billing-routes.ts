@@ -24,6 +24,11 @@ import {
   type PaidPlanId,
 } from './creem-client.js'
 import { resolveDashboardUrl } from '../../../scripts/env.ts'
+import {
+  loadProfileBillingStatus,
+  resolveBillingOrgId,
+  setProfileBillingOrg,
+} from './billing-org.js'
 
 const PROCESSED_EVENT_TTL_MS = 24 * 60 * 60 * 1000
 const PROCESSED_EVENT_MAX = 5000
@@ -71,8 +76,8 @@ async function resolveOrgId(req: SanctumReq, store: ControlPlaneStore, qOrgId?: 
     return qOrgId
   }
   if (req.sanctumUser) {
-    const orgs = await store.getUserOrgIds(req.sanctumUser.id)
-    return orgs?.[0] ?? null
+    const admin = createSupabaseAdmin(cfg)
+    return resolveBillingOrgId(store, admin, req.sanctumUser.id, qOrgId)
   }
   if (req.sanctumApiKeyScope !== undefined) return req.sanctumApiKeyScope[0] ?? null
   const key = headerKey(req)
@@ -134,17 +139,28 @@ async function resolveOrgIdForCreemBilling(
     const email = hint.customerEmail.trim().toLowerCase()
     const { data: profile } = await admin
       .from('profiles')
-      .select('id')
+      .select('id, billing_org_id')
       .ilike('email', email)
       .maybeSingle()
+    if (profile?.billing_org_id) {
+      const linked = profile.billing_org_id as string
+      const { data: mem } = await admin
+        .from('organization_members')
+        .select('org_id')
+        .eq('user_id', profile.id)
+        .eq('org_id', linked)
+        .maybeSingle()
+      if (mem?.org_id) return linked
+    }
     if (profile?.id) {
       const { data: memberships } = await admin
         .from('organization_members')
         .select('org_id, role')
         .eq('user_id', profile.id)
       const preferred =
-        memberships?.find((m) => !String(m.org_id).startsWith('personal-') && m.role === 'owner')
-        ?? memberships?.find((m) => !String(m.org_id).startsWith('personal-'))
+        memberships?.find((m) => m.org_id === profile.billing_org_id)
+        ?? memberships?.find((m) => !String(m.org_id).startsWith('personal-') && m.role === 'owner')
+        ?? memberships?.find((m) => m.org_id.startsWith('personal-'))
         ?? memberships?.[0]
       if (preferred?.org_id) return preferred.org_id as string
     }
@@ -204,6 +220,10 @@ async function applyCreemGrantFromCheckoutObject(
     billingStatus: 'active',
   })
   if (error) return { ok: false, orgId, planId: resolved.planId, error }
+
+  await setProfileBillingOrg(admin, orgId, {
+    customerEmail: customerEmailFromCreemObject(checkoutObj) ?? undefined,
+  })
   return { ok: true, orgId, planId: resolved.planId }
 }
 
@@ -307,6 +327,8 @@ async function handleCreemWebhook(
     }
 
     app.log.info({ orgId, planId: update.planId, revoke: update.revoke }, '[billing/webhook] plan updated')
+
+    await setProfileBillingOrg(admin, orgId, { customerEmail: update.customerEmail ?? undefined })
 
     void entitlements.getNotificationPrefs(orgId).then((prefs) => {
       sendNotificationDeduped(
@@ -567,9 +589,17 @@ export async function registerBillingRoutes(app: FastifyInstance) {
     }
 
     const planId = body.plan_id as PaidPlanId
-    const defaults = defaultBillingReturnUrls(resolveDashboardUrl())
-    const successUrl = body.success_url ?? defaults.successUrl
+    const dashboard = resolveDashboardUrl()
+    const defaults = defaultBillingReturnUrls(dashboard)
+    const successBase = new URL(defaults.successUrl)
+    successBase.searchParams.set('org_id', orgId)
+    const successUrl = body.success_url ?? successBase.toString()
     const cancelUrl = body.cancel_url ?? defaults.cancelUrl
+
+    if (req.sanctumUser) {
+      const admin = createSupabaseAdmin(cfg)
+      await setProfileBillingOrg(admin, orgId, { userId: req.sanctumUser.id })
+    }
     const customerEmail = (req as SanctumReq).sanctumUser?.email
 
     const productId = creemProductIdForPlan(planId)

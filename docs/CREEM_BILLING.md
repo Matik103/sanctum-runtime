@@ -76,6 +76,8 @@ If a grant event arrives with `org_id` but the plan cannot be resolved (no `meta
 
 **Entitlements:** `org_plans.plan_id` is read on every gated request via `EntitlementEngine.getLimits()` — limits come from code (`PLAN_DEFAULTS`), not the `plans` table row. After webhook upsert, new limits apply immediately (no cache).
 
+**Profile linkage:** Each user has `profiles.billing_org_id` pointing at the workspace that owns Creem billing. Set on checkout start and webhooks; shown on **Settings → Your account** and in the `my_profile` view (`subscription_plan_id`, `creem_subscription_status`). Plan rows live in `org_plans`, not on `profiles`.
+
 ## Supabase
 
 Run migrations:

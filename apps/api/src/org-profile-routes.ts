@@ -5,6 +5,7 @@ import { createSupabaseAdmin, getSupabaseAuthConfig } from './auth.js'
 import { ControlPlaneStore } from './control-plane-store.js'
 import { assertOrgRole, checkOrgRole } from './rbac.js'
 import { isProduction } from './security.js'
+import { loadProfileBillingStatus, resolveBillingOrgId } from './billing-org.js'
 
 type SanctumReq = FastifyRequest & {
   sanctumUser?: { id: string; email?: string }
@@ -64,10 +65,11 @@ export function isAccountProfileComplete(profile: {
 
 async function primaryOrgIdForUser(
   store: ControlPlaneStore,
+  cfg: NonNullable<ReturnType<typeof getSupabaseAuthConfig>>,
   userId: string,
 ): Promise<string | null> {
-  const orgs = await store.getUserOrgIds(userId)
-  return orgs[0] ?? null
+  const admin = createSupabaseAdmin(cfg)
+  return resolveBillingOrgId(store, admin, userId)
 }
 
 export async function registerOrgProfileRoutes(app: FastifyInstance): Promise<void> {
@@ -105,7 +107,8 @@ export async function registerOrgProfileRoutes(app: FastifyInstance): Promise<vo
     }
     if (!data) return reply.status(404).send({ error: 'profile_not_found' })
     const completion = isAccountProfileComplete(data)
-    return { ...data, ...completion }
+    const billing = await loadProfileBillingStatus(admin, store, user.id)
+    return { ...data, ...completion, billing }
   })
 
   app.patch('/v1/account/profile', async (req, reply) => {
@@ -160,7 +163,7 @@ export async function registerOrgProfileRoutes(app: FastifyInstance): Promise<vo
       : undefined
     if (changes) {
       logAdminAuditEvent(cfg, {
-        orgId: await primaryOrgIdForUser(store, user.id),
+        orgId: await primaryOrgIdForUser(store, cfg, user.id),
         actor: actorLabel(req as SanctumReq),
         action: 'account.profile.updated',
         reasoning: 'Account holder updated profile fields in Settings.',

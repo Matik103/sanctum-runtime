@@ -2,6 +2,16 @@ import { apiBaseUrl as apiBase } from './api-url'
 import { getAccessToken } from './supabase'
 import type { CompanySize, Industry } from './signup-fields'
 
+export type AccountBillingStatus = {
+  billing_org_id: string | null
+  plan_id: string
+  plan_name: string
+  price_monthly_usd: number | null
+  creem_subscription_id: string | null
+  creem_subscription_status: string | null
+  billing_status: string | null
+}
+
 export type AccountProfile = {
   id: string
   email: string | null
@@ -16,6 +26,7 @@ export type AccountProfile = {
   updated_at: string
   complete?: boolean
   missing?: string[]
+  billing?: AccountBillingStatus | null
 }
 
 export type OrgProfile = {
