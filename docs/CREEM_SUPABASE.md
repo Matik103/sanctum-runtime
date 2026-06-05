@@ -69,6 +69,36 @@ You can **remove** from Render (`sanctum-api`):
 
 Keep Render for agent/runtime APIs only.
 
+## Troubleshooting
+
+### `creem_checkout_failed` / `{"error":"unauthorized"}`
+
+Creem rejected `CREEM_API_KEY`. Test and live are **isolated** — keys, base URL, and product IDs must match:
+
+| Mode | API key prefix | `CREEM_API_BASE_URL` | Product IDs from |
+|------|----------------|----------------------|------------------|
+| Test | `creem_test_*` | `https://test-api.creem.io` (or omit; auto-detected) | Creem dashboard with **Test mode** on |
+| Live | `creem_*` (not `creem_test_`) | `https://api.creem.io` (or omit) | Creem dashboard with **Test mode** off |
+
+Common mistake after moving secrets off Render: `CREEM_API_BASE_URL` still points to test-api while the key or `CREEM_PRODUCT_OPERATOR` is from live (or the reverse).
+
+Re-set secrets as a matched set:
+
+```bash
+# Test example
+supabase secrets set CREEM_API_KEY=creem_test_xxxxxxxx
+supabase secrets set CREEM_API_BASE_URL=https://test-api.creem.io
+supabase secrets set CREEM_PRODUCT_OPERATOR=prod_...   # from test-mode Products tab
+
+# Live example — remove test base URL or set production explicitly
+supabase secrets set CREEM_API_KEY=creem_xxxxxxxx
+supabase secrets unset CREEM_API_BASE_URL
+# or: supabase secrets set CREEM_API_BASE_URL=https://api.creem.io
+supabase secrets set CREEM_PRODUCT_OPERATOR=prod_...   # from live Products tab
+```
+
+Copy keys from **Creem → Developers** (toggle test/live in the sidebar bottom).
+
 ## Verify
 
 ```bash

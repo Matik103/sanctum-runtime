@@ -4,9 +4,12 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js'
 import {
   creemApiBase,
+  creemApiErrorHint,
   dashboardBillingCancelUrl,
   dashboardBillingSuccessUrl,
+  normalizeCreemApiKey,
   productIdForPlan,
+  validateCreemEnvironment,
 } from '../_shared/creem.ts'
 import { handleCorsPreflight, jsonWithCors } from '../_shared/cors.ts'
 
@@ -20,9 +23,18 @@ Deno.serve(async (req) => {
     return jsonWithCors(req, { error: 'method_not_allowed' }, { status: 405 })
   }
 
-  const apiKey = Deno.env.get('CREEM_API_KEY')?.trim()
+  const apiKey = normalizeCreemApiKey(Deno.env.get('CREEM_API_KEY'))
   if (!apiKey) {
     return jsonWithCors(req, { error: 'creem_api_key_not_configured' }, { status: 503 })
+  }
+
+  const envError = validateCreemEnvironment(apiKey)
+  if (envError) {
+    return jsonWithCors(req, {
+      error: 'creem_env_mismatch',
+      hint: envError,
+      creemApiBase: creemApiBase(),
+    }, { status: 503 })
   }
 
   const authHeader = req.headers.get('Authorization')
@@ -103,7 +115,19 @@ Deno.serve(async (req) => {
 
   const text = await res.text()
   if (!res.ok) {
-    return jsonWithCors(req, { error: 'creem_checkout_failed', detail: text.slice(0, 300) }, { status: 502 })
+    let creemError: string | undefined
+    try {
+      const parsed = JSON.parse(text) as { error?: string }
+      creemError = parsed.error
+    } catch {
+      /* plain-text body */
+    }
+    return jsonWithCors(req, {
+      error: 'creem_checkout_failed',
+      hint: creemApiErrorHint(res.status, creemError, planId),
+      creemApiBase: creemApiBase(),
+      detail: text.slice(0, 300),
+    }, { status: 502 })
   }
 
   let data: Record<string, unknown>

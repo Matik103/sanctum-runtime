@@ -180,7 +180,9 @@ export async function createCheckout(
     const hint = body.hint?.trim()
       || (body.error === 'product_not_configured' || body.error === 'creem_api_key_not_configured'
         ? `Set ${body.error === 'creem_api_key_not_configured' ? 'CREEM_API_KEY' : secretName} in Supabase Edge Function secrets (docs/CREEM_SUPABASE.md).`
-        : '')
+        : body.error === 'creem_checkout_failed' && body.detail?.includes('unauthorized')
+          ? 'Creem rejected the API key. Ensure CREEM_API_KEY, CREEM_API_BASE_URL, and product IDs are all from the same Creem mode (test or live).'
+          : '')
     const detail = body.detail?.trim()
     const errCode = body.error ?? `http_${res.status}`
 
@@ -188,10 +190,9 @@ export async function createCheckout(
       checkoutUrl: null,
       billingProvider: null,
       message: hint
-        ? `Creem checkout is not configured. ${hint}`
-        : detail
+        || (detail && !detail.startsWith('{')
           ? `Creem checkout failed (${errCode}): ${detail}`
-          : `Creem checkout failed (${errCode}). Configure CREEM_API_KEY and CREEM_PRODUCT_* in Supabase Edge Function secrets. See docs/CREEM_SUPABASE.md.`,
+          : `Creem checkout failed (${errCode}). Configure CREEM_API_KEY and CREEM_PRODUCT_* in Supabase Edge Function secrets. See docs/CREEM_SUPABASE.md.`),
       contactEmail: 'billing@sanctumruntime.com',
     }
   }
