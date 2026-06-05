@@ -2,7 +2,7 @@
 
 Sanctum uses [Creem](https://creem.io) as Merchant of Record for Personal, Operator, and Team plans.
 
-**Recommended:** [Creem → Supabase webhook](./CREEM_SUPABASE_WEBHOOK.md) (Edge Function writes `org_plans` directly). Use Render API for checkout only.
+**Recommended:** [Creem on Supabase](./CREEM_SUPABASE.md) — all secrets (`CREEM_API_KEY`, product IDs, webhook secret) on Edge Functions. Render not required for billing.
 
 See [Getting started](https://docs.creem.io/getting-started/introduction) and [Webhooks](https://docs.creem.io/code/webhooks).
 

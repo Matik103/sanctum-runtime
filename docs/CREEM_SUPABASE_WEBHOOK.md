@@ -1,5 +1,7 @@
 # Creem billing via Supabase (recommended)
 
+> **Full secret list (API key + product IDs):** [CREEM_SUPABASE.md](./CREEM_SUPABASE.md)
+
 Use this **instead of** pointing Creem at the Render API. One webhook → one database update.
 
 ## Flow
@@ -12,17 +14,16 @@ User pays on Creem
     → Console reads plan from Supabase (RLS)
 ```
 
-Render API is only needed for **checkout session creation** (`POST /v1/billing/checkout`), not for webhooks.
+Checkout uses **`creem-checkout`** Edge Function (`CREEM_API_KEY` + product IDs in Supabase secrets). Render is not required for billing.
 
 ## 1. Deploy the Edge Function
 
 ```bash
-supabase secrets set CREEM_WEBHOOK_SECRET=whsec_...
-supabase secrets set CREEM_PRODUCT_PERSONAL=prod_EhijX22KgQHQ1XZLG6fYY
-supabase secrets set CREEM_PRODUCT_OPERATOR=prod_...
-supabase secrets set CREEM_PRODUCT_TEAM=prod_...
+./scripts/set-creem-supabase-secrets.sh
+# or set manually — see CREEM_SUPABASE.md
 
 supabase functions deploy creem-webhook --no-verify-jwt
+supabase functions deploy creem-checkout
 ```
 
 Webhook URL (replace project ref):

@@ -23,6 +23,9 @@ additional_redirect_urls = [
 [studio]
 enabled = true
 
-# Creem billing webhooks (no JWT — verified via creem-signature HMAC)
+# Creem billing — secrets in Supabase (docs/CREEM_SUPABASE.md), not Render
 [functions.creem-webhook]
 verify_jwt = false
+
+[functions.creem-checkout]
+verify_jwt = true

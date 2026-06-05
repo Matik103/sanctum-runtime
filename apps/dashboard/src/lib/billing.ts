@@ -131,6 +131,12 @@ export async function fetchBillingPlan(orgId: string): Promise<BillingPlan> {
   throw new Error('Could not load billing info')
 }
 
+function supabaseFunctionsBase(): string | null {
+  const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
+  if (!url?.trim()) return null
+  return `${url.replace(/\/$/, '')}/functions/v1`
+}
+
 export async function createCheckout(
   orgId: string,
   planId: Exclude<PlanId, 'observer'>,
@@ -140,6 +146,29 @@ export async function createCheckout(
   message: string | null
   contactEmail?: string
 }> {
+  const fnBase = supabaseFunctionsBase()
+  const token = await getAccessToken()
+  if (fnBase && token) {
+    const res = await fetch(`${fnBase}/creem-checkout`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ org_id: orgId, plan_id: planId }),
+    })
+    if (res.ok) {
+      return res.json() as Promise<{
+        checkoutUrl: string | null
+        billingProvider?: string | null
+        message: string | null
+      }>
+    }
+    if (res.status !== 503 && res.status !== 502) {
+      await throwResponseError(res, 'Could not open checkout (Supabase)')
+    }
+  }
+
   const headers = { ...await authHeaders(), 'Content-Type': 'application/json' }
   const res = await fetch(`${apiBase}/v1/billing/checkout`, {
     method: 'POST',

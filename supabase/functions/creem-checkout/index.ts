@@ -1,0 +1,125 @@
+/**
+ * Authenticated Creem checkout — uses CREEM_API_KEY + CREEM_PRODUCT_* from Supabase secrets.
+ */
+import { createClient } from 'https://esm.sh/@supabase/supabase-js'
+import {
+  creemApiBase,
+  dashboardBillingCancelUrl,
+  dashboardBillingSuccessUrl,
+  productIdForPlan,
+} from '../_shared/creem.ts'
+
+const PAID_PLANS = new Set(['personal', 'operator', 'team'])
+
+Deno.serve(async (req) => {
+  if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 })
+
+  const apiKey = Deno.env.get('CREEM_API_KEY')?.trim()
+  if (!apiKey) {
+    return Response.json({ error: 'creem_api_key_not_configured' }, { status: 503 })
+  }
+
+  const authHeader = req.headers.get('Authorization')
+  if (!authHeader?.startsWith('Bearer ')) {
+    return Response.json({ error: 'unauthorized' }, { status: 401 })
+  }
+
+  let body: { org_id?: string; plan_id?: string; success_url?: string; cancel_url?: string }
+  try {
+    body = await req.json()
+  } catch {
+    return Response.json({ error: 'invalid_json' }, { status: 400 })
+  }
+
+  const orgId = body.org_id?.trim()
+  const planId = body.plan_id?.trim()
+  if (!orgId || !planId || !PAID_PLANS.has(planId)) {
+    return Response.json({ error: 'org_id_and_plan_id_required' }, { status: 400 })
+  }
+
+  const productId = productIdForPlan(planId)
+  if (!productId) {
+    return Response.json({
+      error: 'product_not_configured',
+      hint: `Set CREEM_PRODUCT_${planId.toUpperCase()} in Supabase Edge Function secrets`,
+    }, { status: 503 })
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+
+  const userClient = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: authHeader } },
+    auth: { persistSession: false },
+  })
+  const { data: { user }, error: userErr } = await userClient.auth.getUser()
+  if (userErr || !user) return Response.json({ error: 'unauthorized' }, { status: 401 })
+
+  const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
+  const { data: member } = await admin
+    .from('organization_members')
+    .select('role')
+    .eq('org_id', orgId)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (!member) return Response.json({ error: 'org_forbidden' }, { status: 403 })
+
+  await admin.from('profiles').update({
+    billing_org_id: orgId,
+    updated_at: new Date().toISOString(),
+  }).eq('id', user.id)
+
+  const successUrl = body.success_url ?? dashboardBillingSuccessUrl(orgId)
+  const cancelUrl = body.cancel_url ?? dashboardBillingCancelUrl()
+
+  const creemBody = {
+    product_id: productId,
+    request_id: orgId,
+    metadata: {
+      org_id: orgId,
+      orgId,
+      plan: planId,
+      plan_id: planId,
+      referenceId: orgId,
+    },
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+    customer: user.email ? { email: user.email } : undefined,
+  }
+
+  const res = await fetch(`${creemApiBase()}/v1/checkouts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+    body: JSON.stringify(creemBody),
+  })
+
+  const text = await res.text()
+  if (!res.ok) {
+    return Response.json({ error: 'creem_checkout_failed', detail: text.slice(0, 300) }, { status: 502 })
+  }
+
+  let data: Record<string, unknown>
+  try {
+    data = JSON.parse(text)
+  } catch {
+    return Response.json({ error: 'creem_invalid_response' }, { status: 502 })
+  }
+
+  const checkoutUrl =
+    (typeof data.checkout_url === 'string' && data.checkout_url)
+    || (typeof data.checkoutUrl === 'string' && data.checkoutUrl)
+    || null
+
+  if (!checkoutUrl) return Response.json({ error: 'creem_missing_checkout_url' }, { status: 502 })
+
+  return Response.json({
+    checkoutUrl,
+    checkoutId: typeof data.id === 'string' ? data.id : null,
+    billingProvider: 'creem',
+    checkoutMode: 'api',
+    planId,
+    message: null,
+  })
+})

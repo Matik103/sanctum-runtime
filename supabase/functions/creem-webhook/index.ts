@@ -1,10 +1,8 @@
 /**
- * Creem → Supabase (direct). Point Creem webhook URL here instead of Render API.
- *
- * Secrets (Supabase Dashboard → Edge Functions → creem-webhook):
- *   CREEM_WEBHOOK_SECRET, CREEM_PRODUCT_PERSONAL, CREEM_PRODUCT_OPERATOR, CREEM_PRODUCT_TEAM
+ * Creem → Supabase (direct). Secrets: docs/CREEM_SUPABASE.md
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { productMap } from '../_shared/creem.ts'
 
 const GRANT_EVENTS = new Set([
   'checkout.completed',
@@ -43,20 +41,6 @@ async function verifySignature(raw: string, sig: string | null, secret: string):
   let ok = 0
   for (let i = 0; i < a.length; i++) ok |= a.charCodeAt(i) ^ b.charCodeAt(i)
   return ok === 0
-}
-
-function productMap(): Record<string, string> {
-  const map: Record<string, string> = {}
-  const pairs: [string | undefined, string][] = [
-    [Deno.env.get('CREEM_PRODUCT_PERSONAL'), 'personal'],
-    [Deno.env.get('CREEM_PRODUCT_OPERATOR'), 'operator'],
-    [Deno.env.get('CREEM_PRODUCT_TEAM'), 'team'],
-    [Deno.env.get('CREEM_PRODUCT_ENTERPRISE'), 'enterprise'],
-  ]
-  for (const [id, plan] of pairs) {
-    if (id?.trim()) map[id.trim()] = plan
-  }
-  return map
 }
 
 function metadataLayers(obj: Record<string, unknown>): Record<string, unknown> {
