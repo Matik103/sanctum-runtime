@@ -22,3 +22,7 @@ additional_redirect_urls = [
 
 [studio]
 enabled = true
+
+# Creem billing webhooks (no JWT — verified via creem-signature HMAC)
+[functions.creem-webhook]
+verify_jwt = false

@@ -1,6 +1,10 @@
 # Creem billing (test + production)
 
-Sanctum uses [Creem](https://creem.io) as Merchant of Record for Personal, Operator, and Team plans. See [Getting started](https://docs.creem.io/getting-started/introduction) and [Webhooks](https://docs.creem.io/code/webhooks).
+Sanctum uses [Creem](https://creem.io) as Merchant of Record for Personal, Operator, and Team plans.
+
+**Recommended:** [Creem → Supabase webhook](./CREEM_SUPABASE_WEBHOOK.md) (Edge Function writes `org_plans` directly). Use Render API for checkout only.
+
+See [Getting started](https://docs.creem.io/getting-started/introduction) and [Webhooks](https://docs.creem.io/code/webhooks).
 
 ## Test environment
 

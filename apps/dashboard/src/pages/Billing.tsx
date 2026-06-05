@@ -10,7 +10,6 @@ import {
   formatLimit,
   formatNumber,
   PLAN_ORDER,
-  syncBillingAfterCheckout,
   type BillingPlan,
   type PlanId,
 } from '../lib/billing'
@@ -145,7 +144,6 @@ export function Billing() {
   const [error, setError] = useState<string | null>(null)
   const [checkoutBusy, setCheckoutBusy] = useState<PlanId | null>(null)
   const [checkoutMsg, setCheckoutMsg] = useState<string | null>(null)
-  const [pendingCheckoutSync, setPendingCheckoutSync] = useState<{ checkoutId?: string } | null>(null)
 
   useEffect(() => {
     void (async () => {
@@ -180,13 +178,13 @@ export function Billing() {
     const urlOrg = params.get('org_id')
     if (urlOrg) setOrgId(urlOrg)
     if (checkout === 'success') {
-      setPendingCheckoutSync({ checkoutId: params.get('checkout_id') ?? undefined })
-      setCheckoutMsg('Payment received. Syncing your plan…')
+      setCheckoutMsg('Payment received. Plan updates when Creem hits the Supabase webhook — click Refresh in a few seconds.')
       params.delete('checkout')
       params.delete('checkout_id')
       params.delete('org_id')
       const qs = params.toString()
       window.history.replaceState(null, '', `${window.location.pathname}${qs ? `?${qs}` : ''}`)
+      if (orgId || urlOrg) void load(urlOrg || orgId)
     } else if (checkout === 'cancelled') {
       setCheckoutMsg('Checkout cancelled. No charge was made.')
       params.delete('checkout')
@@ -195,29 +193,7 @@ export function Billing() {
       const qs = params.toString()
       window.history.replaceState(null, '', `${window.location.pathname}${qs ? `?${qs}` : ''}`)
     }
-  }, [])
-
-  useEffect(() => {
-    if (!orgId || !pendingCheckoutSync) return
-    const sync = pendingCheckoutSync
-    setPendingCheckoutSync(null)
-    void syncBillingAfterCheckout(orgId, sync.checkoutId)
-      .then((r) => {
-        if (r.synced && r.planId) {
-          setCheckoutMsg(`Plan updated to ${r.planId}.`)
-        } else {
-          setCheckoutMsg(
-            r.note ?? 'Payment received. If your plan does not update within a minute, click Refresh.',
-          )
-        }
-        return load(orgId)
-      })
-      .catch(() => {
-        setCheckoutMsg(
-          'Payment received. Your plan should update when Creem sends the webhook — click Refresh in a moment.',
-        )
-      })
-  }, [orgId, pendingCheckoutSync])
+  }, [orgId])
 
   const handleUpgrade = async (planId: PaidPlanId | 'enterprise') => {
     if (!orgId) return

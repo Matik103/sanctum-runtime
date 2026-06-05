@@ -9,6 +9,8 @@ import {
   type AccountProfile,
   type OrgProfile,
 } from '../../lib/org-profile'
+import { fetchBillingPlanFromSupabase } from '../../lib/billing-supabase'
+import type { PlanId } from '../../lib/billing'
 import {
   COMPANY_SIZE_OPTIONS,
   COUNTRY_OPTIONS,
@@ -46,6 +48,18 @@ export function ProfileSettingsSections({ orgId, orgRole }: Props) {
   const [contactEmail, setContactEmail] = useState('')
   const [contactTitle, setContactTitle] = useState('')
   const [workspaceName, setWorkspaceName] = useState('')
+  const [dbPlanId, setDbPlanId] = useState<PlanId | null>(null)
+  const [dbPlanStatus, setDbPlanStatus] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!orgId) return
+    void fetchBillingPlanFromSupabase(orgId).then((p) => {
+      if (p?.plan) {
+        setDbPlanId(p.plan.id)
+        setDbPlanStatus(p.billing?.creemSubscriptionStatus ?? p.billing?.billingStatus ?? null)
+      }
+    })
+  }, [orgId])
 
   useEffect(() => {
     void fetchAccountProfile()
@@ -154,7 +168,7 @@ export function ProfileSettingsSections({ orgId, orgRole }: Props) {
               {accountMsg}
             </Alert>
           )}
-          {account?.billing && (
+          {(dbPlanId || account?.billing) && (
             <div
               className="stat-tile"
               style={{
@@ -174,20 +188,31 @@ export function ProfileSettingsSections({ orgId, orgRole }: Props) {
                     Subscription
                   </p>
                   <p style={{ margin: '0.1rem 0 0', fontWeight: 600 }}>
-                    {account.billing.plan_name}
-                    {account.billing.price_monthly_usd != null && (
+                    {account?.billing?.plan_name
+                      ?? (dbPlanId === 'personal'
+                        ? 'Personal'
+                        : dbPlanId === 'operator'
+                          ? 'Operator'
+                          : dbPlanId === 'team'
+                            ? 'Team'
+                            : 'Observer')}
+                    {(account?.billing?.price_monthly_usd != null || dbPlanId === 'personal') && (
                       <span style={{ fontWeight: 400, color: 'var(--muted)', marginLeft: '0.35rem' }}>
-                        ${account.billing.price_monthly_usd}/mo
+                        {account?.billing?.price_monthly_usd != null
+                          ? `$${account.billing.price_monthly_usd}/mo`
+                          : dbPlanId === 'personal'
+                            ? '$12/mo'
+                            : ''}
                       </span>
                     )}
                   </p>
                   <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', color: 'var(--muted)' }}>
-                    {account.billing.creem_subscription_status
-                      ? `Creem · ${account.billing.creem_subscription_status}`
-                      : account.billing.plan_id === 'observer'
+                    {dbPlanStatus || account?.billing?.creem_subscription_status
+                      ? `Creem · ${dbPlanStatus ?? account?.billing?.creem_subscription_status}`
+                      : (dbPlanId ?? account?.billing?.plan_id) === 'observer'
                         ? 'Free tier — upgrade on Billing for governed actions'
-                        : 'Active'}
-                    {account.billing.billing_status && account.billing.billing_status !== 'active'
+                        : 'Active (from Supabase)'}
+                    {account?.billing?.billing_status && account.billing.billing_status !== 'active'
                       ? ` · ${account.billing.billing_status}`
                       : ''}
                   </p>

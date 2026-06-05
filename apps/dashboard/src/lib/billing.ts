@@ -1,5 +1,6 @@
 import { getAccessToken } from './supabase'
 import { throwResponseError } from './sanitize-error'
+import { fetchBillingPlanFromSupabase } from './billing-supabase'
 
 import { apiBaseUrl as apiBase } from './api-url'
 
@@ -74,13 +75,60 @@ export async function syncBillingAfterCheckout(
 }
 
 export async function fetchBillingPlan(orgId: string): Promise<BillingPlan> {
+  const fromDb = await fetchBillingPlanFromSupabase(orgId)
+
   const headers = await authHeaders()
   const res = await fetch(
     `${apiBase}/v1/billing/plan?org_id=${encodeURIComponent(orgId)}`,
     { headers },
   )
-  if (!res.ok) await throwResponseError(res, 'Could not load billing info')
-  return res.json() as Promise<BillingPlan>
+
+  if (res.ok) {
+    const apiPlan = (await res.json()) as BillingPlan
+    if (fromDb?.plan) {
+      apiPlan.plan = fromDb.plan
+      apiPlan.billing = { ...apiPlan.billing, ...fromDb.billing }
+    }
+    return apiPlan
+  }
+
+  if (fromDb?.plan) {
+    const planId = fromDb.plan.id
+    return {
+      plan: fromDb.plan,
+      limits: {
+        maxRuntimes: planId === 'observer' ? 3 : planId === 'personal' ? 5 : planId === 'operator' ? 25 : 250,
+        maxEventsPerMonth: planId === 'observer' ? 50 : planId === 'personal' ? 500 : null,
+        maxGovernedActionsPerMonth: planId === 'observer' ? 50 : planId === 'personal' ? 500 : null,
+        maxObserveEventsPerMonth: null,
+        maxAgents: planId === 'observer' ? 2 : planId === 'personal' ? 5 : 10,
+        retentionDays: planId === 'observer' ? 7 : 30,
+        features: [],
+      },
+      usage: {
+        eventsThisMonth: 0,
+        governedActionsThisMonth: 0,
+        observeEventsThisMonth: 0,
+        runtimesConnected: 0,
+        agentsActive: 0,
+        runtimeHoursThisMonth: 0,
+      },
+      quotas: {
+        events: { used: 0, limit: 50, pct: 0 },
+        governed: { used: 0, limit: 50, pct: 0 },
+        observe: { used: 0, limit: null, pct: null },
+        runtimes: { used: 0, limit: 3, pct: 0 },
+        agents: { used: 0, limit: 2, pct: 0 },
+      },
+      billing: {
+        billingCycleAnchor: fromDb.billing?.billingCycleAnchor ?? null,
+        ...fromDb.billing,
+      },
+    }
+  }
+
+  await throwResponseError(res, 'Could not load billing info')
+  throw new Error('Could not load billing info')
 }
 
 export async function createCheckout(
