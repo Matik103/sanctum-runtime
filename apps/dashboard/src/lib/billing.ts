@@ -123,7 +123,7 @@ export async function fetchBillingPlan(orgId: string): Promise<BillingPlan> {
     const planId = fromDb.plan.id
     // Fallback limits when API is unreachable — must match entitlements.ts PLAN_DEFAULTS
     const limits: Record<string, { runtimes: number; governed: number | null; agents: number; retention: number }> = {
-      observer: { runtimes: 3, governed: 50, agents: 2, retention: 7 },
+      observer: { runtimes: 3, governed: 0, agents: 2, retention: 7 },
       personal: { runtimes: 5, governed: 500, agents: 5, retention: 30 },
       operator: { runtimes: 25, governed: 500_000, agents: 10, retention: 30 },
       team: { runtimes: 250, governed: 10_000_000, agents: 50, retention: 30 },

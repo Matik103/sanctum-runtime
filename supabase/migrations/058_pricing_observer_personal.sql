@@ -21,7 +21,7 @@ insert into public.plans (
 ) values (
   'observer', 'Observer', null,
   3, null, 2, 7,
-  null, 50,
+  null, 0,
   '["connect","live_feed","observe_mode","basic_dashboard","community_support"]'::jsonb
 )
 on conflict (id) do update set

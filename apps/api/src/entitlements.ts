@@ -28,12 +28,12 @@ const PLAN_DEFAULTS: Record<PlanId, PlanLimits> = {
     planName: 'Observer',
     priceMonthlyUsd: null,
     maxRuntimes: 3,
-    maxGovernedActionsPerMonth: 50,
+    maxGovernedActionsPerMonth: 0,
     maxObserveEventsPerMonth: null,
     maxAgents: 2,
     retentionDays: 7,
     features: ['connect', 'live_feed', 'observe_mode', 'basic_dashboard', 'community_support'],
-    maxEventsPerMonth: 50,
+    maxEventsPerMonth: 0,
   },
   personal: {
     planId: 'personal',
@@ -143,12 +143,15 @@ function parseFeatures(raw: unknown): string[] {
 }
 
 function rowToPlanLimits(planId: PlanId, row: Record<string, unknown>): PlanLimits {
-  const governed =
+  const rawGoverned =
     row.max_governed_actions_per_month != null
       ? Number(row.max_governed_actions_per_month)
       : row.max_events_per_month != null
         ? Number(row.max_events_per_month)
         : null
+  // Observer is intentionally observe-only. Clamp stale DB rows so an old
+  // "50 governed actions" seed cannot re-enable verify/approve/block.
+  const governed = planId === 'observer' ? 0 : rawGoverned
   const observe =
     row.max_observe_events_per_month != null ? Number(row.max_observe_events_per_month) : null
   return {

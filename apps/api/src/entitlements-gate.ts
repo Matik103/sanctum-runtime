@@ -203,7 +203,9 @@ export function buildGovernedQuotaBlockedResult(input: {
     context: input.context,
     decision: 'BLOCKED',
     risk: 'high',
-    reasoning: `Monthly governed action quota exceeded (${input.used.toLocaleString()} / ${input.limit.toLocaleString()} on ${input.planName}). Upgrade your plan to continue verifying actions.`,
+    reasoning: input.limit === 0
+      ? `${input.planName} is observe-only. Upgrade to verify, hold, approve, block, or gate agent actions.`
+      : `Monthly governed action quota exceeded (${input.used.toLocaleString()} / ${input.limit.toLocaleString()} on ${input.planName}). Upgrade your plan to continue verifying actions.`,
     policyPath: 'billing:governed_quota',
     policyVersion: 'billing:1',
     anomalyFlags: ['quota_exceeded'],

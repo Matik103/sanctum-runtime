@@ -22,9 +22,12 @@ import {
 describe('entitlements-gate', () => {
   it('observer cannot gate or custom shield', () => {
     const o = PLAN_DEFAULTS.observer
+    expect(o.maxGovernedActionsPerMonth).toBe(0)
+    expect(o.maxEventsPerMonth).toBe(0)
     expect(canUseConnectGate(o)).toBe(false)
     expect(canEvaluateShieldRules(o)).toBe(false)
     expect(canUseCustomShield(o)).toBe(false)
+    expect(canApproveHolds(o)).toBe(false)
     expect(canUseGovernanceWorkflows(o)).toBe(false)
     expect(canUseFleetControls(o)).toBe(false)
     expect(canUseOrchestration(o)).toBe(false)

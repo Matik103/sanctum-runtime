@@ -78,11 +78,11 @@ const PLAN_CARDS: {
   {
     id: 'observer',
     label: 'Observer',
-    headline: 'See every payment and email',
+    headline: 'Watch, do not control',
     price: 'Free',
-    promise: 'Connect agents and watch side effects in Live Feed.',
+    promise: 'Observe-only Live Feed for side effects. No verify, approve, block, or gate controls.',
     runtimes: '3',
-    governed: '50/mo',
+    governed: 'None',
     observe: 'Unlimited',
     agents: '2',
     retention: '7 days',
@@ -455,23 +455,21 @@ export function Billing() {
                   const isCurrent = pc.id === currentPlanId
                   const targetIdx = PLAN_ORDER.indexOf(pc.id)
                   const isUpgrade = targetIdx > currentPlanIdx
-                  const isDowngrade =
-                    targetIdx < currentPlanIdx && pc.id !== 'observer' && currentPlanId !== 'observer'
-                  const isCancelToObserver =
-                    pc.id === 'observer'
-                    && currentPlanId !== 'observer'
-                    && !!plan.billing.creemSubscriptionId
+                  const isDowngrade = targetIdx < currentPlanIdx && currentPlanId !== 'observer'
+                  const isCancelToObserver = pc.id === 'observer' && currentPlanId !== 'observer'
                   const isChange = isUpgrade || isDowngrade || isCancelToObserver
                   const busy = checkoutBusy === pc.id
-                  const canCheckout =
-                    pc.id !== 'enterprise'
-                    && !isCurrent
-                    && (pc.id === 'observer' ? isCancelToObserver : isChange)
+                  const canCheckout = pc.id !== 'enterprise' && !isCurrent && isChange
+                  const actionLabel = pc.id === 'observer'
+                    ? 'Switch to Observer'
+                    : isDowngrade
+                      ? `Downgrade to ${pc.label}`
+                      : `Upgrade to ${pc.label}`
                   return (
                     <article
                       key={pc.id}
                       className={`policy-card ${isCurrent ? 'marketplace-card--installed' : ''}`}
-                      style={{ position: 'relative' }}
+                      style={{ position: 'relative', display: 'flex', flexDirection: 'column', minHeight: '18.5rem' }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.35rem' }}>
                         <h3 style={{ margin: 0 }}>{pc.label}</h3>
@@ -490,42 +488,45 @@ export function Billing() {
                         <span>{pc.observe} observe · {pc.governed} governed</span>
                         <span>{pc.retention} retention</span>
                       </div>
-                      {canBill && canCheckout && (
-                        <button
-                          type="button"
-                          className="btn btn-primary btn-sm"
-                          disabled={busy}
-                          onClick={() => void handlePlanChange(pc.id)}
-                          style={{ width: '100%' }}
-                        >
-                          {busy ? (
-                            <>
-                              <Loader2 size={13} style={{ marginRight: '0.3rem', verticalAlign: 'middle' }} className="spin" />
-                              {isChange && plan?.billing.creemSubscriptionId ? 'Updating plan…' : 'Opening Creem checkout…'}
-                            </>
-                          ) : pc.id === 'observer' ? (
-                            'Cancel subscription'
-                          ) : isDowngrade ? (
-                            `Downgrade to ${pc.label}`
-                          ) : (
-                            `Upgrade to ${pc.label}`
-                          )}
-                        </button>
-                      )}
-                      {canBill && pc.id === 'enterprise' && !isCurrent && (
-                        <button
-                          type="button"
-                          className="btn btn-ghost btn-sm"
-                          style={{ width: '100%', marginTop: canCheckout ? '0.35rem' : 0 }}
-                          disabled={busy}
-                          onClick={() => void handlePlanChange('enterprise')}
-                        >
-                          Contact sales
-                        </button>
-                      )}
-                      {isCurrent && (
-                        <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--muted)' }}>Your active plan</p>
-                      )}
+                      <div style={{ marginTop: 'auto' }}>
+                        {canCheckout && (
+                          <button
+                            type="button"
+                            className={`btn ${canBill ? 'btn-primary' : 'btn-ghost'} btn-sm`}
+                            disabled={busy || !canBill}
+                            onClick={() => void handlePlanChange(pc.id)}
+                            style={{ width: '100%' }}
+                          >
+                            {busy ? (
+                              <>
+                                <Loader2 size={13} style={{ marginRight: '0.3rem', verticalAlign: 'middle' }} className="spin" />
+                                {plan?.billing.creemSubscriptionId ? 'Updating plan…' : 'Opening Creem checkout…'}
+                              </>
+                            ) : (
+                              actionLabel
+                            )}
+                          </button>
+                        )}
+                        {pc.id === 'enterprise' && !isCurrent && (
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-sm"
+                            style={{ width: '100%', marginTop: canCheckout ? '0.35rem' : 0 }}
+                            disabled={busy || !canBill}
+                            onClick={() => void handlePlanChange('enterprise')}
+                          >
+                            Contact sales
+                          </button>
+                        )}
+                        {isCurrent && (
+                          <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--muted)' }}>Your active plan</p>
+                        )}
+                        {!canBill && !isCurrent && (
+                          <p style={{ margin: '0.45rem 0 0', fontSize: '0.74rem', color: 'var(--muted)' }}>
+                            Ask a workspace owner or admin to change billing.
+                          </p>
+                        )}
+                      </div>
                     </article>
                   )
                 })}
