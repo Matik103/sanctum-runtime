@@ -181,11 +181,15 @@ async function main() {
   if (KEY) console.log(`API key: ${isDashboardKey ? 'sk_sanctum_* (dashboard)' : 'legacy SANCTUM_API_KEY'}\n`)
 
   section('Local smoke (npm run smoke)')
-  try {
-    await runNpm('smoke')
-    ok('local smoke script')
-  } catch (e) {
-    bad('local smoke', e.message)
+  if (process.env.SANCTUM_SKIP_LOCAL_SMOKE === 'true') {
+    console.log('○ Local smoke skipped (set SANCTUM_E2E_REQUIRE_LOCAL=true for local API gating)')
+  } else {
+    try {
+      await runNpm('smoke')
+      ok('local smoke script')
+    } catch (e) {
+      bad('local smoke', e.message)
+    }
   }
 
   if (KEY) {

@@ -2,8 +2,8 @@
 /**
  * Prepare E2E credentials: sk_sanctum API key + sync platform credential to prod + local.
  *
- *   node scripts/e2e-bootstrap.mjs
- *   TEST_PLATFORM_KEY=sk-... node scripts/e2e-bootstrap.mjs  # when DB ciphertext cannot be decrypted locally
+ *   npm run e2e:bootstrap
+ *   TEST_PLATFORM_KEY=sk-... npm run e2e:bootstrap  # when DB ciphertext cannot be decrypted locally
  */
 import { config } from 'dotenv'
 import { createClient } from '@supabase/supabase-js'
@@ -14,6 +14,7 @@ import { decryptSecret, getEncryptionKey } from '../apps/api/src/crypto-utils.ts
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 config({ path: resolve(root, '.env') })
+config({ path: resolve(root, '.env.e2e.local'), override: true })
 
 const PROD = 'https://api.sanctumruntime.com'
 const LOCAL = `http://${process.env.HOST || '127.0.0.1'}:${process.env.PORT || 3001}`
@@ -138,6 +139,7 @@ async function main() {
     `SANCTUM_E2E_API_KEY=${dashboardKey}`,
     `SANCTUM_ORG_ID=${orgId}`,
   ]
+  if (EMAIL) lines.push(`TEST_USER_EMAIL=${EMAIL}`)
   if (platformSecret) lines.push(`TEST_PLATFORM_KEY=${platformSecret}`)
   lines.push('')
   writeFileSync(OUT, lines.join('\n'), { mode: 0o600 })

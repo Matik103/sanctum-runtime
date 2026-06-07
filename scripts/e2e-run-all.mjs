@@ -2,7 +2,7 @@
 /**
  * Full E2E matrix — unit tests, smoke, Connect Agent (prod + local), production checks.
  *
- *   node scripts/e2e-bootstrap.mjs   # once, writes .env.e2e.local
+ *   npm run e2e:bootstrap   # once, writes .env.e2e.local
  *   node scripts/e2e-run-all.mjs
  */
 import { spawn } from 'node:child_process'
@@ -16,6 +16,7 @@ loadRepoEnv()
 
 const PROD = 'https://api.sanctumruntime.com'
 const LOCAL = `http://${process.env.HOST || '127.0.0.1'}:${process.env.PORT || 3001}`
+const REQUIRE_LOCAL = process.env.SANCTUM_E2E_REQUIRE_LOCAL === 'true'
 
 let failed = 0
 function ok(m) {
@@ -53,7 +54,7 @@ async function health(url) {
 async function main() {
   if (!existsSync(resolve(root, '.env.e2e.local'))) {
     console.log('Running e2e-bootstrap first…\n')
-    await run('node', ['scripts/e2e-bootstrap.mjs'])
+    await run('npm', ['run', 'e2e:bootstrap'])
     loadRepoEnv()
   }
 
@@ -82,8 +83,11 @@ async function main() {
   }
 
   section('Local API smoke')
-  if (!(await health(LOCAL))) {
+  const localApiUp = await health(LOCAL)
+  if (!localApiUp && REQUIRE_LOCAL) {
     bad('local API', `not reachable at ${LOCAL} — start with: env -u SANCTUM_API_URL HOST=127.0.0.1 PORT=3001 npm run dev:api`)
+  } else if (!localApiUp) {
+    console.log(`○ Local API skipped (${LOCAL} is not running). Set SANCTUM_E2E_REQUIRE_LOCAL=true to make this required.`)
   } else {
     try {
       await run('npm', ['run', 'smoke'], {
@@ -111,8 +115,10 @@ async function main() {
   }
 
   section('Connect Agent — local')
-  if (!(await health(LOCAL))) {
+  if (!localApiUp && REQUIRE_LOCAL) {
     bad('local Connect', 'local API down')
+  } else if (!localApiUp) {
+    console.log('○ Local Connect skipped (local API is not running)')
   } else {
     try {
       await run('node', ['scripts/test-connect-full.mjs'], { SANCTUM_API_URL: LOCAL })
@@ -140,7 +146,10 @@ async function main() {
 
   section('test:all (local smoke + prod auth + public URLs)')
   try {
-    await run('npm', ['run', 'test:all'], { SANCTUM_API_URL: LOCAL })
+    await run('npm', ['run', 'test:all'], {
+      SANCTUM_API_URL: localApiUp ? LOCAL : PROD,
+      SANCTUM_SKIP_LOCAL_SMOKE: localApiUp ? '' : 'true',
+    })
     ok('test:all')
   } catch (e) {
     bad('test:all', e.message)

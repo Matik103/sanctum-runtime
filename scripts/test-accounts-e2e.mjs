@@ -12,6 +12,7 @@ import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 config({ path: resolve(dirname(fileURLToPath(import.meta.url)), '../.env') })
+config({ path: resolve(dirname(fileURLToPath(import.meta.url)), '../.env.e2e.local'), override: true })
 
 const API = (process.env.SANCTUM_API_URL || process.env.SANCTUM_PUBLIC_API_URL || 'https://api.sanctumruntime.com').replace(
   /\/$/,
@@ -57,8 +58,19 @@ async function apiFetch(path, { method = 'GET', jwt, body } = {}) {
 }
 
 async function signUpAndSignIn(auth, admin, email, password, metadata) {
-  const { error: upErr } = await auth.auth.signUp({ email, password, options: { data: metadata } })
-  if (upErr) fail(`signUp ${email}`, upErr.message)
+  if (process.env.SANCTUM_E2E_USE_PUBLIC_SIGNUP === 'true') {
+    const { error: upErr } = await auth.auth.signUp({ email, password, options: { data: metadata } })
+    if (upErr) fail(`signUp ${email}`, upErr.message)
+  } else {
+    const { data: created, error: createErr } = await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: metadata,
+    })
+    if (createErr) fail(`createUser ${email}`, createErr.message)
+    if (!created.user?.id) fail(`createUser ${email}`, 'no user id')
+  }
   const { data: signIn, error: inErr } = await auth.auth.signInWithPassword({ email, password })
   if (inErr) fail(`signIn ${email}`, inErr.message)
   const jwt = signIn.session?.access_token

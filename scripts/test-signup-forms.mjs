@@ -11,6 +11,7 @@ import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 config({ path: resolve(dirname(fileURLToPath(import.meta.url)), '../.env') })
+config({ path: resolve(dirname(fileURLToPath(import.meta.url)), '../.env.e2e.local'), override: true })
 
 const pass = (msg) => console.log(`  ✓ ${msg}`)
 const fail = (msg, detail) => {
@@ -78,6 +79,18 @@ async function waitForProfile(admin, userId, attempts = 8) {
 
 async function signUpLikeForm(admin, anonKey, email, password, metadata) {
   const url = process.env.SUPABASE_URL?.trim()
+  if (process.env.SANCTUM_E2E_USE_PUBLIC_SIGNUP !== 'true') {
+    const { data, error } = await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: metadata,
+    })
+    if (error) fail(`createUser ${email}`, error.message)
+    if (!data.user?.id) fail(`createUser ${email}`, 'no user id')
+    return data.user.id
+  }
+
   const auth = createClient(url, anonKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
