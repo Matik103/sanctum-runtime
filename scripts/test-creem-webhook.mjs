@@ -1,13 +1,25 @@
 #!/usr/bin/env node
 /**
- * Send a signed Creem webhook to local API (test mode).
+ * Send a signed Creem webhook to Supabase Edge Function (test mode).
  *
- *   CREEM_WEBHOOK_SECRET=whsec_... SANCTUM_API_URL=http://127.0.0.1:3001 \
+ *   CREEM_WEBHOOK_SECRET=whsec_... VITE_SUPABASE_URL=https://xxx.supabase.co \
  *     node scripts/test-creem-webhook.mjs --org-id personal-abc --plan personal
  */
 import { createHmac } from 'node:crypto'
 
-const apiBase = (process.env.SANCTUM_API_URL || 'http://127.0.0.1:3001').replace(/\/$/, '')
+const supabaseUrl = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '').replace(/\/$/, '')
+const apiBase = process.env.SANCTUM_API_URL?.replace(/\/$/, '')
+const target = supabaseUrl
+  ? `${supabaseUrl}/functions/v1/creem-webhook`
+  : apiBase
+    ? `${apiBase}/v1/billing/webhook`
+    : null
+
+if (!target) {
+  console.error('Set VITE_SUPABASE_URL or SUPABASE_URL (preferred), or SANCTUM_API_URL for legacy API')
+  process.exit(1)
+}
+
 const secret = process.env.CREEM_WEBHOOK_SECRET?.trim()
 if (!secret) {
   console.error('Set CREEM_WEBHOOK_SECRET (from Creem Developers → Webhooks)')
@@ -50,7 +62,8 @@ const payload = {
 const body = JSON.stringify(payload)
 const signature = createHmac('sha256', secret).update(body).digest('hex')
 
-const res = await fetch(`${apiBase}/v1/billing/webhook`, {
+console.log('POST', target)
+const res = await fetch(target, {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',

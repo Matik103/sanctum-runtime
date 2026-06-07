@@ -56,6 +56,33 @@ export async function syncBillingAfterCheckout(
   planId?: string
   note?: string
 }> {
+  const fnBase = supabaseFunctionsBase()
+  const token = await getAccessToken()
+  if (fnBase && token) {
+    const res = await fetch(`${fnBase}/creem-sync`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        org_id: orgId,
+        ...(checkoutId ? { checkout_id: checkoutId } : {}),
+      }),
+    })
+    if (res.ok) {
+      return res.json() as Promise<{
+        ok: boolean
+        synced: boolean
+        planId?: string
+        note?: string
+      }>
+    }
+    if (res.status !== 503 && res.status !== 502) {
+      await throwResponseError(res, 'Could not sync billing (Supabase)')
+    }
+  }
+
   const headers = { ...await authHeaders(), 'Content-Type': 'application/json' }
   const res = await fetch(`${apiBase}/v1/billing/sync`, {
     method: 'POST',

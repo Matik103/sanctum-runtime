@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.creem-checkout]
 verify_jwt = true
+
+[functions.creem-sync]
+verify_jwt = true

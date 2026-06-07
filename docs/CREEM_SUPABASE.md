@@ -34,8 +34,11 @@ supabase secrets set DASHBOARD_URL=https://console.sanctumruntime.com
 ## Deploy functions
 
 ```bash
+npm run creem:deploy
+# or:
 supabase functions deploy creem-webhook --no-verify-jwt
 supabase functions deploy creem-checkout
+supabase functions deploy creem-sync
 ```
 
 ## URLs
@@ -44,6 +47,7 @@ supabase functions deploy creem-checkout
 |---------|-----|
 | **Creem webhook** (dashboard) | `https://nimvcudvrhanxlcpiizz.supabase.co/functions/v1/creem-webhook` |
 | **Checkout** (console calls) | `https://nimvcudvrhanxlcpiizz.supabase.co/functions/v1/creem-checkout` |
+| **Post-checkout sync** (console) | `https://nimvcudvrhanxlcpiizz.supabase.co/functions/v1/creem-sync` |
 
 Register only the **webhook** URL in Creem Developers → Webhooks.
 
@@ -54,9 +58,12 @@ Upgrade (console)
   → creem-checkout (JWT + CREEM_API_KEY + CREEM_PRODUCT_*)
   → Creem hosted payment
   → creem-webhook (CREEM_WEBHOOK_SECRET + CREEM_PRODUCT_*)
-  → org_plans + profiles.billing_org_id
+  → org_plans + profiles.billing_org_id (idempotent via creem_webhook_events)
+  → On success redirect: creem-sync reconciles checkout_id if webhook is slow
   → Console reads org_plans via Supabase client
 ```
+
+**Render `POST /v1/billing/webhook` returns 410** — register Creem webhooks only on Supabase.
 
 ## Render
 

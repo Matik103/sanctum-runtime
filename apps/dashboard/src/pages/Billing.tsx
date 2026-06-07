@@ -10,6 +10,7 @@ import {
   formatLimit,
   formatNumber,
   PLAN_ORDER,
+  syncBillingAfterCheckout,
   type BillingPlan,
   type PlanId,
 } from '../lib/billing'
@@ -178,13 +179,29 @@ export function Billing() {
     const urlOrg = params.get('org_id')
     if (urlOrg) setOrgId(urlOrg)
     if (checkout === 'success') {
-      setCheckoutMsg('Payment received. Plan updates when Creem hits the Supabase webhook — click Refresh in a few seconds.')
+      const checkoutId = params.get('checkout_id')
+      const targetOrg = urlOrg || orgId
       params.delete('checkout')
       params.delete('checkout_id')
       params.delete('org_id')
       const qs = params.toString()
       window.history.replaceState(null, '', `${window.location.pathname}${qs ? `?${qs}` : ''}`)
-      if (orgId || urlOrg) void load(urlOrg || orgId)
+      if (targetOrg) {
+        void (async () => {
+          setCheckoutMsg('Payment received. Syncing your plan…')
+          try {
+            const sync = await syncBillingAfterCheckout(targetOrg, checkoutId ?? undefined)
+            if (sync.synced && sync.planId) {
+              setCheckoutMsg(`Plan updated to ${sync.planId}.`)
+            } else {
+              setCheckoutMsg(sync.note ?? 'Payment received. Click Refresh if your plan has not updated yet.')
+            }
+          } catch {
+            setCheckoutMsg('Payment received. Plan updates when Creem hits the webhook — click Refresh in a few seconds.')
+          }
+          await load(targetOrg)
+        })()
+      }
     } else if (checkout === 'cancelled') {
       setCheckoutMsg('Checkout cancelled. No charge was made.')
       params.delete('checkout')

@@ -3,6 +3,21 @@
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { productMap } from '../_shared/creem.ts'
+import {
+  claimCreemWebhookEvent,
+  grantOrgPlan,
+  markPaymentFailed,
+  markScheduledCancel,
+  revokeOrgPlan,
+} from '../_shared/creem-org-plan.ts'
+import {
+  customerEmail,
+  customerId,
+  orgIdFrom,
+  planFrom,
+  resolveOrgId,
+  subscriptionId,
+} from '../_shared/creem-parse.ts'
 
 const GRANT_EVENTS = new Set([
   'checkout.completed',
@@ -16,8 +31,6 @@ const REVOKE_EVENTS = new Set([
   'subscription.expired',
   'subscription.paused',
 ])
-
-const PLAN_IDS = new Set(['personal', 'operator', 'team', 'enterprise'])
 
 async function hmacHex(secret: string, message: string): Promise<string> {
   const enc = new TextEncoder()
@@ -43,122 +56,6 @@ async function verifySignature(raw: string, sig: string | null, secret: string):
   return ok === 0
 }
 
-function metadataLayers(obj: Record<string, unknown>): Record<string, unknown> {
-  const layers: Record<string, unknown>[] = []
-  const m = obj.metadata
-  if (m && typeof m === 'object' && !Array.isArray(m)) layers.push(m as Record<string, unknown>)
-  const order = obj.order
-  if (order && typeof order === 'object' && !Array.isArray(order)) {
-    const om = (order as { metadata?: Record<string, unknown> }).metadata
-    if (om && typeof om === 'object') layers.push(om)
-  }
-  const sub = obj.subscription
-  if (sub && typeof sub === 'object' && !Array.isArray(sub)) {
-    const sm = (sub as { metadata?: Record<string, unknown> }).metadata
-    if (sm && typeof sm === 'object') layers.push(sm)
-  }
-  const out: Record<string, unknown> = {}
-  for (const layer of layers.reverse()) Object.assign(out, layer)
-  return out
-}
-
-function orgIdFrom(obj: Record<string, unknown>): string | null {
-  const meta = metadataLayers(obj)
-  for (const c of [meta.org_id, meta.orgId, meta.referenceId, obj.request_id, obj.referenceId]) {
-    if (typeof c === 'string' && c.trim()) return c.trim()
-  }
-  return null
-}
-
-function productIdFrom(obj: Record<string, unknown>): string | null {
-  const p = obj.product
-  if (typeof p === 'string' && p) return p
-  if (p && typeof p === 'object' && 'id' in p) return String((p as { id?: string }).id ?? '') || null
-  const order = obj.order
-  if (order && typeof order === 'object' && 'product' in order) {
-    const op = (order as { product?: string }).product
-    if (op) return op
-  }
-  const sub = obj.subscription
-  if (sub && typeof sub === 'object') {
-    const sp = (sub as { product?: string | { id?: string } }).product
-    if (typeof sp === 'string') return sp
-    if (sp && typeof sp === 'object' && sp.id) return sp.id
-  }
-  return null
-}
-
-function planFrom(obj: Record<string, unknown>, map: Record<string, string>): string | null {
-  const meta = metadataLayers(obj)
-  const plan = meta.plan ?? meta.plan_id
-  if (typeof plan === 'string' && PLAN_IDS.has(plan)) return plan
-  const pid = productIdFrom(obj)
-  return pid && map[pid] ? map[pid] : null
-}
-
-function customerEmail(obj: Record<string, unknown>): string | null {
-  const c = obj.customer
-  if (c && typeof c === 'object' && 'email' in c) {
-    const e = (c as { email?: string }).email
-    if (e?.includes('@')) return e.trim().toLowerCase()
-  }
-  return null
-}
-
-function customerId(obj: Record<string, unknown>): string | null {
-  const c = obj.customer
-  if (typeof c === 'string') return c
-  if (c && typeof c === 'object' && 'id' in c) return String((c as { id?: string }).id ?? '') || null
-  return null
-}
-
-function subscriptionId(obj: Record<string, unknown>): string | null {
-  const sub = obj.subscription
-  if (typeof sub === 'string') return sub
-  if (sub && typeof sub === 'object' && 'id' in sub) return String((sub as { id?: string }).id ?? '') || null
-  if (obj.object === 'subscription' && typeof obj.id === 'string') return obj.id
-  return null
-}
-
-async function resolveOrgId(
-  admin: ReturnType<typeof createClient>,
-  hint: { orgId: string | null; customerId: string | null; email: string | null },
-): Promise<string | null> {
-  if (hint.orgId) return hint.orgId
-  if (hint.customerId) {
-    const { data } = await admin.from('org_plans').select('org_id').eq('creem_customer_id', hint.customerId).maybeSingle()
-    if (data?.org_id) return data.org_id as string
-  }
-  if (hint.email) {
-    const { data: profile } = await admin.from('profiles').select('id, billing_org_id').ilike('email', hint.email).maybeSingle()
-    if (profile?.billing_org_id) return profile.billing_org_id as string
-    if (profile?.id) {
-      const { data: mems } = await admin
-        .from('organization_members')
-        .select('org_id')
-        .eq('user_id', profile.id)
-        .order('org_id')
-      const personal = mems?.find((m) => String(m.org_id).startsWith('personal-'))
-      return (personal?.org_id as string) ?? (mems?.[0]?.org_id as string) ?? null
-    }
-  }
-  return null
-}
-
-async function linkBillingOrg(admin: ReturnType<typeof createClient>, orgId: string, email: string | null) {
-  const ids = new Set<string>()
-  if (email) {
-    const { data: p } = await admin.from('profiles').select('id').ilike('email', email).maybeSingle()
-    if (p?.id) ids.add(p.id as string)
-  }
-  const { data: owners } = await admin.from('organization_members').select('user_id').eq('org_id', orgId).in('role', ['owner', 'admin'])
-  for (const o of owners ?? []) if (o.user_id) ids.add(o.user_id as string)
-  const now = new Date().toISOString()
-  for (const id of ids) {
-    await admin.from('profiles').update({ billing_org_id: orgId, updated_at: now }).eq('id', id)
-  }
-}
-
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 })
 
@@ -178,6 +75,7 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'invalid_json' }, { status: 400 })
   }
 
+  const eventId = event.id
   const eventType = event.eventType ?? ''
   const obj = (event.object ?? {}) as Record<string, unknown>
   const map = productMap()
@@ -197,26 +95,23 @@ Deno.serve(async (req) => {
   }
   if (!orgId) return Response.json({ ok: true, skipped: true })
 
-  const now = new Date().toISOString()
+  const claimed = await claimCreemWebhookEvent(admin, eventId, eventType, orgId)
+  if (!claimed) {
+    return Response.json({ ok: true, duplicate: true, eventId, orgId })
+  }
 
   if (REVOKE_EVENTS.has(eventType)) {
-    await admin.from('org_plans').upsert({
-      org_id: orgId,
-      plan_id: 'observer',
-      creem_subscription_status: 'canceled',
-      billing_status: 'canceled',
-      updated_at: now,
-    }, { onConflict: 'org_id' })
+    await revokeOrgPlan(admin, orgId)
     return Response.json({ ok: true, orgId, planId: 'observer', eventType })
   }
 
   if (eventType === 'subscription.past_due') {
-    await admin.from('org_plans').upsert({
-      org_id: orgId,
-      creem_subscription_status: 'past_due',
-      billing_status: 'payment_failed',
-      updated_at: now,
-    }, { onConflict: 'org_id' })
+    await markPaymentFailed(admin, orgId)
+    return Response.json({ ok: true, orgId, eventType })
+  }
+
+  if (eventType === 'subscription.scheduled_cancel') {
+    await markScheduledCancel(admin, orgId)
     return Response.json({ ok: true, orgId, eventType })
   }
 
@@ -225,17 +120,13 @@ Deno.serve(async (req) => {
     if (!planId) {
       return Response.json({ error: 'plan_unresolved', orgId, eventType }, { status: 500 })
     }
-    await admin.from('org_plans').upsert({
-      org_id: orgId,
-      plan_id: planId,
-      creem_customer_id: customerId(obj),
-      creem_subscription_id: subscriptionId(obj),
-      creem_subscription_status: 'active',
-      billing_status: 'active',
-      billing_cycle_anchor: now,
-      updated_at: now,
-    }, { onConflict: 'org_id' })
-    await linkBillingOrg(admin, orgId, customerEmail(obj))
+    await grantOrgPlan(admin, {
+      orgId,
+      planId,
+      customerId: customerId(obj),
+      subscriptionId: subscriptionId(obj),
+      email: customerEmail(obj),
+    })
     return Response.json({ ok: true, orgId, planId, eventType })
   }
 

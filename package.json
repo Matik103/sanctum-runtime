@@ -94,7 +94,7 @@
     "test:signup-forms": "node scripts/test-signup-forms.mjs",
     "test:accounts-e2e": "node scripts/test-accounts-e2e.mjs",
     "creem:secrets": "bash scripts/set-creem-supabase-secrets.sh",
-    "creem:deploy": "supabase functions deploy creem-webhook --no-verify-jwt && supabase functions deploy creem-checkout",
+    "creem:deploy": "supabase functions deploy creem-webhook --no-verify-jwt && supabase functions deploy creem-checkout && supabase functions deploy creem-sync",
     "predev:runtime": "node scripts/ensure-env.mjs && npm run build:sdk",
     "predev": "node scripts/ensure-env.mjs",
     "presmoke": "node scripts/ensure-env.mjs",

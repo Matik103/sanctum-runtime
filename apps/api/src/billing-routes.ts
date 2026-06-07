@@ -697,8 +697,13 @@ export async function registerBillingRoutes(app: FastifyInstance) {
       },
     )
 
-    webhookScope.post('/v1/billing/webhook', async (req, reply) => {
-      return handleCreemWebhook(app, cfg, entitlements, req, reply)
+    webhookScope.post('/v1/billing/webhook', async (_req, reply) => {
+      return reply.status(410).send({
+        error: 'webhook_deprecated',
+        message:
+          'Register Creem webhooks at your Supabase project: /functions/v1/creem-webhook. '
+          + 'This Render endpoint is no longer active.',
+      })
     })
   })
 }

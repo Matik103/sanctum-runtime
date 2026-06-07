@@ -14,6 +14,7 @@ import {
 import { handleCorsPreflight, jsonWithCors } from '../_shared/cors.ts'
 
 const PAID_PLANS = new Set(['personal', 'operator', 'team'])
+const BILLING_ROLES = new Set(['owner', 'admin'])
 
 Deno.serve(async (req) => {
   const preflight = handleCorsPreflight(req)
@@ -82,7 +83,12 @@ Deno.serve(async (req) => {
     .eq('user_id', user.id)
     .maybeSingle()
 
-  if (!member) return jsonWithCors(req, { error: 'org_forbidden' }, { status: 403 })
+  if (!member?.role || !BILLING_ROLES.has(member.role)) {
+    return jsonWithCors(req, {
+      error: 'org_forbidden',
+      hint: 'Only workspace owners or admins can start checkout.',
+    }, { status: 403 })
+  }
 
   await admin.from('profiles').update({
     billing_org_id: orgId,
