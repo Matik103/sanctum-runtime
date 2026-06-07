@@ -1,5 +1,6 @@
 /**
- * Authenticated Creem checkout — uses CREEM_API_KEY + CREEM_PRODUCT_* from Supabase secrets.
+ * Plan changes: new checkout, subscription upgrade/downgrade, or cancel → Observer.
+ * @see docs/CREEM_BILLING_FLOWS.md
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js'
 import {
@@ -9,11 +10,21 @@ import {
   dashboardBillingSuccessUrl,
   normalizeCreemApiKey,
   productIdForPlan,
+  productMap,
   validateCreemEnvironment,
 } from '../_shared/creem.ts'
+import { grantOrgPlan, markScheduledCancel, revokeOrgPlan } from '../_shared/creem-org-plan.ts'
+import {
+  creemCancelSubscription,
+  creemChangeSubscriptionPlan,
+  hasActiveCreemSubscription,
+  planChangeType,
+  planIdFromSubscription,
+} from '../_shared/creem-subscription.ts'
+import { customerEmail, customerId, subscriptionId } from '../_shared/creem-parse.ts'
 import { handleCorsPreflight, jsonWithCors } from '../_shared/cors.ts'
 
-const PAID_PLANS = new Set(['personal', 'operator', 'team'])
+const CHANGEABLE_PLANS = new Set(['observer', 'personal', 'operator', 'team'])
 const BILLING_ROLES = new Set(['owner', 'admin'])
 
 Deno.serve(async (req) => {
@@ -43,7 +54,13 @@ Deno.serve(async (req) => {
     return jsonWithCors(req, { error: 'unauthorized' }, { status: 401 })
   }
 
-  let body: { org_id?: string; plan_id?: string; success_url?: string; cancel_url?: string }
+  let body: {
+    org_id?: string
+    plan_id?: string
+    success_url?: string
+    cancel_url?: string
+    cancel_mode?: 'scheduled' | 'immediate'
+  }
   try {
     body = await req.json()
   } catch {
@@ -52,16 +69,8 @@ Deno.serve(async (req) => {
 
   const orgId = body.org_id?.trim()
   const planId = body.plan_id?.trim()
-  if (!orgId || !planId || !PAID_PLANS.has(planId)) {
+  if (!orgId || !planId || !CHANGEABLE_PLANS.has(planId)) {
     return jsonWithCors(req, { error: 'org_id_and_plan_id_required' }, { status: 400 })
-  }
-
-  const productId = productIdForPlan(planId)
-  if (!productId) {
-    return jsonWithCors(req, {
-      error: 'product_not_configured',
-      hint: `Set CREEM_PRODUCT_${planId.toUpperCase()} in Supabase Edge Function secrets`,
-    }, { status: 503 })
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -86,7 +95,7 @@ Deno.serve(async (req) => {
   if (!member?.role || !BILLING_ROLES.has(member.role)) {
     return jsonWithCors(req, {
       error: 'org_forbidden',
-      hint: 'Only workspace owners or admins can start checkout.',
+      hint: 'Only workspace owners or admins can change billing.',
     }, { status: 403 })
   }
 
@@ -95,6 +104,117 @@ Deno.serve(async (req) => {
     updated_at: new Date().toISOString(),
   }).eq('id', user.id)
 
+  const { data: orgPlan } = await admin
+    .from('org_plans')
+    .select('plan_id, creem_subscription_id, creem_subscription_status, creem_customer_id')
+    .eq('org_id', orgId)
+    .maybeSingle()
+
+  const currentPlanId = (orgPlan?.plan_id as string | undefined) ?? 'observer'
+  const subId = orgPlan?.creem_subscription_id as string | undefined
+  const subStatus = orgPlan?.creem_subscription_status as string | undefined
+
+  if (currentPlanId === planId) {
+    return jsonWithCors(req, {
+      checkoutUrl: null,
+      changed: false,
+      planId,
+      message: `This workspace is already on the ${planId} plan.`,
+    })
+  }
+
+  // ─── Cancel → Observer (scheduled by default per Creem best practice) ───────
+  if (planId === 'observer') {
+    if (!hasActiveCreemSubscription(currentPlanId, subId, subStatus)) {
+      return jsonWithCors(req, {
+        checkoutUrl: null,
+        changed: false,
+        planId: 'observer',
+        message: 'This workspace is already on the Observer plan.',
+      })
+    }
+
+    const cancelMode = body.cancel_mode === 'immediate' ? 'immediate' : 'scheduled'
+    const canceled = await creemCancelSubscription(apiKey, subId!, cancelMode)
+    if (!canceled.ok) {
+      return jsonWithCors(req, {
+        error: 'creem_cancel_failed',
+        hint: creemApiErrorHint(canceled.status, undefined, 'observer', canceled.text),
+        detail: canceled.text.slice(0, 300),
+      }, { status: 502 })
+    }
+
+    if (cancelMode === 'immediate') {
+      await revokeOrgPlan(admin, orgId)
+      return jsonWithCors(req, {
+        checkoutUrl: null,
+        changed: true,
+        changeType: 'cancel_immediate',
+        planId: 'observer',
+        message: 'Subscription canceled. This workspace is now on the Observer plan.',
+      })
+    }
+
+    await markScheduledCancel(admin, orgId)
+    return jsonWithCors(req, {
+      checkoutUrl: null,
+      changed: true,
+      changeType: 'cancel_scheduled',
+      planId: currentPlanId,
+      message:
+        `Cancellation scheduled. You keep ${currentPlanId} access until the current billing period ends, then move to Observer.`,
+    })
+  }
+
+  const productId = productIdForPlan(planId)
+  if (!productId) {
+    return jsonWithCors(req, {
+      error: 'product_not_configured',
+      hint: `Set CREEM_PRODUCT_${planId.toUpperCase()} in Supabase Edge Function secrets`,
+    }, { status: 503 })
+  }
+
+  // ─── Existing subscriber: upgrade or downgrade via subscription API ─────────
+  if (hasActiveCreemSubscription(currentPlanId, subId, subStatus)) {
+    const change = await creemChangeSubscriptionPlan(apiKey, subId!, productId)
+    if (!change.ok) {
+      return jsonWithCors(req, {
+        error: 'creem_plan_change_failed',
+        hint: creemApiErrorHint(change.status, undefined, planId, change.text),
+        creemApiBase: creemApiBase(),
+        detail: change.text.slice(0, 300),
+      }, { status: 502 })
+    }
+
+    const map = productMap()
+    const resolvedPlan = planIdFromSubscription(change.body, map) ?? planId
+    await grantOrgPlan(admin, {
+      orgId,
+      planId: resolvedPlan,
+      customerId: customerId(change.body) ?? (orgPlan?.creem_customer_id as string | null) ?? null,
+      subscriptionId: subscriptionId(change.body) ?? subId!,
+      email: user.email ?? null,
+    })
+
+    const changeType = planChangeType(currentPlanId, resolvedPlan)
+    const message = changeType === 'upgrade'
+      ? `Plan upgraded to ${resolvedPlan}. Prorated charge applied to your payment method on file.`
+      : changeType === 'downgrade'
+        ? `Plan downgraded to ${resolvedPlan}. Prorated credit applied per Creem billing rules.`
+        : `Plan changed to ${resolvedPlan}.`
+
+    return jsonWithCors(req, {
+      checkoutUrl: null,
+      changed: true,
+      upgraded: true,
+      changeType,
+      checkoutMode: 'subscription_change',
+      planId: resolvedPlan,
+      message,
+    })
+  }
+
+  // ─── New subscription: hosted checkout ────────────────────────────────────
   const successUrl = body.success_url ?? dashboardBillingSuccessUrl(orgId)
   const cancelUrl = body.cancel_url ?? dashboardBillingCancelUrl()
 
@@ -130,7 +250,7 @@ Deno.serve(async (req) => {
     }
     return jsonWithCors(req, {
       error: 'creem_checkout_failed',
-      hint: creemApiErrorHint(res.status, creemError, planId),
+      hint: creemApiErrorHint(res.status, creemError, planId, text),
       creemApiBase: creemApiBase(),
       detail: text.slice(0, 300),
     }, { status: 502 })
@@ -154,7 +274,7 @@ Deno.serve(async (req) => {
     checkoutUrl,
     checkoutId: typeof data.id === 'string' ? data.id : null,
     billingProvider: 'creem',
-    checkoutMode: 'api',
+    checkoutMode: 'checkout',
     planId,
     message: null,
   })

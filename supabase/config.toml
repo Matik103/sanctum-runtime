@@ -32,3 +32,6 @@ verify_jwt = true
 
 [functions.creem-sync]
 verify_jwt = true
+
+[functions.creem-portal]
+verify_jwt = true

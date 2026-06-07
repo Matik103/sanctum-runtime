@@ -1,5 +1,7 @@
 # Creem on Supabase (all secrets here)
 
+Plan change flows (upgrade, downgrade, cancel, portal): **`docs/CREEM_BILLING_FLOWS.md`**
+
 Store **all** Creem configuration as **Supabase Edge Function secrets**. Render only needs Supabase/DB vars for the API runtime — not Creem.
 
 ## Secrets checklist
@@ -56,7 +58,8 @@ Register only the **webhook** URL in Creem Developers → Webhooks.
 ```text
 Upgrade (console)
   → creem-checkout (JWT + CREEM_API_KEY + CREEM_PRODUCT_*)
-  → Creem hosted payment
+  → If workspace already has creem_subscription_id: Creem subscription upgrade API (proration)
+  → Else: Creem hosted checkout
   → creem-webhook (CREEM_WEBHOOK_SECRET + CREEM_PRODUCT_*)
   → org_plans + profiles.billing_org_id (idempotent via creem_webhook_events)
   → On success redirect: creem-sync reconciles checkout_id if webhook is slow

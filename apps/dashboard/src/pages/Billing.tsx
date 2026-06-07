@@ -5,10 +5,11 @@ import { PlanGateAlert } from '../components/PlanGateAlert'
 import type { FleetOrg } from '../lib/fleet'
 import { resolveDefaultWorkspaceOrg } from '../lib/workspace-org'
 import {
-  createCheckout,
+  changePlan,
   fetchBillingPlan,
   formatLimit,
   formatNumber,
+  openCustomerPortal,
   PLAN_ORDER,
   syncBillingAfterCheckout,
   type BillingPlan,
@@ -144,6 +145,7 @@ export function Billing() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [checkoutBusy, setCheckoutBusy] = useState<PlanId | null>(null)
+  const [portalBusy, setPortalBusy] = useState(false)
   const [checkoutMsg, setCheckoutMsg] = useState<string | null>(null)
 
   useEffect(() => {
@@ -212,15 +214,23 @@ export function Billing() {
     }
   }, [orgId])
 
-  const handleUpgrade = async (planId: PaidPlanId | 'enterprise') => {
+  const handlePlanChange = async (planId: PlanId | 'enterprise') => {
     if (!orgId) return
+    if (planId === 'enterprise') {
+      setCheckoutMsg('Contact billing@sanctumruntime.com for Enterprise pricing and custom terms.')
+      return
+    }
+
     setCheckoutBusy(planId)
     setCheckoutMsg(null)
     try {
-      const result = await createCheckout(orgId, planId)
+      const result = await changePlan(orgId, planId)
       if (result.checkoutUrl) {
         window.open(result.checkoutUrl, '_blank', 'noopener,noreferrer')
         setCheckoutMsg('Checkout opened in a new tab (Creem). Your plan updates after payment completes.')
+      } else if (result.changed || result.upgraded) {
+        setCheckoutMsg(result.message ?? `Plan updated to ${result.planId ?? planId}.`)
+        await load(orgId)
       } else {
         setCheckoutMsg(
           result.message
@@ -228,9 +238,28 @@ export function Billing() {
         )
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Checkout failed')
+      setError(e instanceof Error ? e.message : 'Plan change failed')
     } finally {
       setCheckoutBusy(null)
+    }
+  }
+
+  const handleOpenPortal = async () => {
+    if (!orgId) return
+    setPortalBusy(true)
+    setCheckoutMsg(null)
+    try {
+      const { portalUrl, message } = await openCustomerPortal(orgId)
+      if (portalUrl) {
+        window.open(portalUrl, '_blank', 'noopener,noreferrer')
+        setCheckoutMsg('Creem customer portal opened in a new tab.')
+      } else {
+        setCheckoutMsg(message ?? 'Could not open Creem customer portal.')
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not open billing portal')
+    } finally {
+      setPortalBusy(false)
     }
   }
 
@@ -328,6 +357,17 @@ export function Billing() {
                         : ''}
                     </p>
                   )}
+                  {plan.billing.creemCustomerId && (
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      style={{ marginTop: '0.5rem' }}
+                      disabled={portalBusy}
+                      onClick={() => void handleOpenPortal()}
+                    >
+                      {portalBusy ? 'Opening portal…' : 'Manage billing in Creem'}
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -408,9 +448,16 @@ export function Billing() {
                   const isUpgrade = targetIdx > currentPlanIdx
                   const isDowngrade =
                     targetIdx < currentPlanIdx && pc.id !== 'observer' && currentPlanId !== 'observer'
-                  const isChange = isUpgrade || isDowngrade
+                  const isCancelToObserver =
+                    pc.id === 'observer'
+                    && currentPlanId !== 'observer'
+                    && !!plan.billing.creemSubscriptionId
+                  const isChange = isUpgrade || isDowngrade || isCancelToObserver
                   const busy = checkoutBusy === pc.id
-                  const canCheckout = pc.id !== 'observer' && pc.id !== 'enterprise' && isChange
+                  const canCheckout =
+                    pc.id !== 'enterprise'
+                    && !isCurrent
+                    && (pc.id === 'observer' ? isCancelToObserver : isChange)
                   return (
                     <article
                       key={pc.id}
@@ -439,14 +486,16 @@ export function Billing() {
                           type="button"
                           className="btn btn-primary btn-sm"
                           disabled={busy}
-                          onClick={() => void handleUpgrade(pc.id as PaidPlanId)}
+                          onClick={() => void handlePlanChange(pc.id)}
                           style={{ width: '100%' }}
                         >
                           {busy ? (
                             <>
                               <Loader2 size={13} style={{ marginRight: '0.3rem', verticalAlign: 'middle' }} className="spin" />
-                              Opening Creem checkout…
+                              {isChange && plan?.billing.creemSubscriptionId ? 'Updating plan…' : 'Opening Creem checkout…'}
                             </>
+                          ) : pc.id === 'observer' ? (
+                            'Cancel subscription'
                           ) : isDowngrade ? (
                             `Downgrade to ${pc.label}`
                           ) : (
@@ -460,7 +509,7 @@ export function Billing() {
                           className="btn btn-ghost btn-sm"
                           style={{ width: '100%', marginTop: canCheckout ? '0.35rem' : 0 }}
                           disabled={busy}
-                          onClick={() => void handleUpgrade('enterprise' as PaidPlanId)}
+                          onClick={() => void handlePlanChange('enterprise')}
                         >
                           Contact sales
                         </button>
@@ -468,9 +517,9 @@ export function Billing() {
                       {isCurrent && (
                         <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--muted)' }}>Your active plan</p>
                       )}
-                      {isDowngrade && !canCheckout && currentPlanId !== 'observer' && (
+                      {isDowngrade && !canCheckout && currentPlanId !== 'observer' && pc.id !== 'observer' && (
                         <p style={{ margin: '0.35rem 0 0', fontSize: '0.78rem', color: 'var(--muted)' }}>
-                          Cancel in Creem to return to Observer, or pick a lower paid tier below.
+                          Pick a lower paid tier below, or cancel to return to Observer.
                         </p>
                       )}
                     </article>
@@ -479,11 +528,11 @@ export function Billing() {
               </div>
 
               <p className="hint-line" style={{ marginTop: '1.25rem' }}>
-                Paid plans checkout through{' '}
+                Upgrades and downgrades use Creem subscription APIs when you already subscribe; new plans open a{' '}
                 <a href="https://creem.io" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                   Creem
                 </a>
-                . Configure checkout links with <code>org_id</code> and <code>plan</code> metadata so webhooks map to your workspace.
+                {' '}checkout. Cancel returns you to Observer at period end. See <code>docs/CREEM_BILLING_FLOWS.md</code>.
                 Enterprise adds air-gapped deployments, SSO, compliance exports, and SLA.
               </p>
             </div>

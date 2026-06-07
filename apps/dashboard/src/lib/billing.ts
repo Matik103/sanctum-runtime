@@ -164,15 +164,20 @@ function supabaseFunctionsBase(): string | null {
   return `${url.replace(/\/$/, '')}/functions/v1`
 }
 
-export async function createCheckout(
-  orgId: string,
-  planId: Exclude<PlanId, 'observer'>,
-): Promise<{
+export type PlanChangeResult = {
   checkoutUrl: string | null
   billingProvider?: string | null
   message: string | null
   contactEmail?: string
-}> {
+  changed?: boolean
+  upgraded?: boolean
+  changeType?: 'upgrade' | 'downgrade' | 'cancel_scheduled' | 'cancel_immediate' | 'same'
+  planId?: string
+  portalUrl?: string
+}
+
+/** Upgrade, downgrade, cancel to Observer, or new checkout — via Supabase creem-checkout. */
+export async function changePlan(orgId: string, planId: PlanId): Promise<PlanChangeResult> {
   const fnBase = supabaseFunctionsBase()
   const token = await getAccessToken()
   if (fnBase && token) {
@@ -185,11 +190,7 @@ export async function createCheckout(
       body: JSON.stringify({ org_id: orgId, plan_id: planId }),
     })
     if (res.ok) {
-      return res.json() as Promise<{
-        checkoutUrl: string | null
-        billingProvider?: string | null
-        message: string | null
-      }>
+      return res.json() as Promise<PlanChangeResult>
     }
 
     let body: { error?: string; hint?: string; detail?: string } = {}
@@ -200,16 +201,14 @@ export async function createCheckout(
     }
 
     if (res.status === 401 || res.status === 403) {
-      await throwResponseError(res, 'Could not open checkout (Supabase)')
+      await throwResponseError(res, 'Could not change plan (Supabase)')
     }
 
-    const secretName = `CREEM_PRODUCT_${planId.toUpperCase()}`
+    const secretName = planId === 'observer' ? 'CREEM_WEBHOOK_SECRET' : `CREEM_PRODUCT_${planId.toUpperCase()}`
     const hint = body.hint?.trim()
       || (body.error === 'product_not_configured' || body.error === 'creem_api_key_not_configured'
         ? `Set ${body.error === 'creem_api_key_not_configured' ? 'CREEM_API_KEY' : secretName} in Supabase Edge Function secrets (docs/CREEM_SUPABASE.md).`
-        : body.error === 'creem_checkout_failed' && body.detail?.includes('unauthorized')
-          ? 'Creem rejected the API key. Ensure CREEM_API_KEY, CREEM_API_BASE_URL, and product IDs are all from the same Creem mode (test or live).'
-          : '')
+        : '')
     const detail = body.detail?.trim()
     const errCode = body.error ?? `http_${res.status}`
 
@@ -218,8 +217,16 @@ export async function createCheckout(
       billingProvider: null,
       message: hint
         || (detail && !detail.startsWith('{')
-          ? `Creem checkout failed (${errCode}): ${detail}`
-          : `Creem checkout failed (${errCode}). Configure CREEM_API_KEY and CREEM_PRODUCT_* in Supabase Edge Function secrets. See docs/CREEM_SUPABASE.md.`),
+          ? `Billing change failed (${errCode}): ${detail}`
+          : `Billing change failed (${errCode}). See docs/CREEM_BILLING_FLOWS.md.`),
+      contactEmail: 'billing@sanctumruntime.com',
+    }
+  }
+
+  if (planId === 'observer' || planId === 'enterprise') {
+    return {
+      checkoutUrl: null,
+      message: 'Plan changes for Observer or Enterprise require Supabase billing functions.',
       contactEmail: 'billing@sanctumruntime.com',
     }
   }
@@ -231,7 +238,51 @@ export async function createCheckout(
     body: JSON.stringify({ org_id: orgId, plan_id: planId }),
   })
   if (!res.ok) await throwResponseError(res, 'Could not open checkout')
-  return res.json()
+  return res.json() as Promise<PlanChangeResult>
+}
+
+/** @deprecated Use changePlan — kept for callers that exclude observer. */
+export async function createCheckout(
+  orgId: string,
+  planId: Exclude<PlanId, 'observer'>,
+): Promise<PlanChangeResult> {
+  return changePlan(orgId, planId)
+}
+
+export async function openCustomerPortal(orgId: string): Promise<{ portalUrl: string | null; message: string | null }> {
+  const fnBase = supabaseFunctionsBase()
+  const token = await getAccessToken()
+  if (!fnBase || !token) {
+    return { portalUrl: null, message: 'Supabase billing portal is not configured.' }
+  }
+
+  const res = await fetch(`${fnBase}/creem-portal`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ org_id: orgId }),
+  })
+
+  if (res.ok) {
+    const data = await res.json() as { portalUrl?: string; message?: string | null }
+    return { portalUrl: data.portalUrl ?? null, message: data.message ?? null }
+  }
+
+  let body: { hint?: string; error?: string } = {}
+  try {
+    body = await res.json() as typeof body
+  } catch {
+    /* ignore */
+  }
+  if (res.status === 401 || res.status === 403) {
+    await throwResponseError(res, 'Could not open billing portal')
+  }
+  return {
+    portalUrl: null,
+    message: body.hint ?? body.error ?? 'Could not open Creem customer portal.',
+  }
 }
 
 export const PLAN_ORDER: PlanId[] = ['observer', 'personal', 'operator', 'team', 'enterprise']

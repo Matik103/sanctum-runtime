@@ -40,22 +40,44 @@ export function validateCreemEnvironment(apiKey: string): string | null {
   return null
 }
 
+export function formatCreemErrorDetail(raw: string): string {
+  try {
+    const parsed = JSON.parse(raw) as { message?: string | string[]; error?: string; trace_id?: string }
+    const parts: string[] = []
+    if (Array.isArray(parsed.message)) parts.push(...parsed.message.map(String))
+    else if (typeof parsed.message === 'string') parts.push(parsed.message)
+    else if (parsed.error) parts.push(parsed.error)
+    if (parsed.trace_id) parts.push(`trace_id=${parsed.trace_id}`)
+    return parts.join(' · ') || raw.slice(0, 300)
+  } catch {
+    return raw.slice(0, 300)
+  }
+}
+
 export function creemApiErrorHint(
   httpStatus: number,
   creemError: string | undefined,
   planId: string,
+  detail?: string,
 ): string {
   const base = creemApiBase()
   const mode = creemKeyMode(normalizeCreemApiKey(Deno.env.get('CREEM_API_KEY')))
   const secretName = `CREEM_PRODUCT_${planId.toUpperCase()}`
+  const creemDetail = detail ? formatCreemErrorDetail(detail) : ''
 
   if (httpStatus === 401 || httpStatus === 403 || creemError === 'unauthorized') {
     return `Creem rejected the API key (${mode} key → ${base}). In Supabase secrets, use matching test OR live values for CREEM_API_KEY, CREEM_API_BASE_URL, and ${secretName}. Test and live product IDs are not interchangeable.`
   }
   if (httpStatus === 404) {
-    return `${secretName} may be from the wrong Creem environment. Copy the Operator product ID from the same mode (test/live) as your API key.`
+    return `${secretName} may be from the wrong Creem environment. Copy the product ID from the same mode (test/live) as your API key.`
   }
-  return `Creem API returned HTTP ${httpStatus}. Check CREEM_API_KEY and ${secretName} in Supabase secrets (docs/CREEM_SUPABASE.md).`
+  if (httpStatus === 400) {
+    const baseHint = `${secretName} may be invalid or from the wrong Creem mode. Copy the ${planId} product ID from Creem test-mode Products (test key → test-api).`
+    return creemDetail ? `${baseHint} Creem says: ${creemDetail}` : baseHint
+  }
+  return creemDetail
+    ? `Creem API HTTP ${httpStatus}: ${creemDetail}`
+    : `Creem API returned HTTP ${httpStatus}. Check CREEM_API_KEY and ${secretName} in Supabase secrets (docs/CREEM_SUPABASE.md).`
 }
 
 export function productMap(): Record<string, string> {
