@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { CreditCard, Eye, Loader2, LockKeyhole, RefreshCw, Zap } from 'lucide-react'
 import { Alert } from '../components/ui/Alert'
 import { PlanGateAlert } from '../components/PlanGateAlert'
@@ -56,6 +56,50 @@ function UsageMeter({ label, used, limit, pct, unit = '', hint }: {
           {pctVal >= 100 ? 'Quota reached — upgrade to continue' : `${pctVal}% used`}
         </p>
       )}
+    </div>
+  )
+}
+
+function BillingUsageCard({ icon, label, value, hint, tone = 'neutral' }: {
+  icon: ReactNode
+  label: string
+  value: string
+  hint: string
+  tone?: 'neutral' | 'success' | 'warning'
+}) {
+  const borderColor = tone === 'success'
+    ? 'rgba(16, 185, 129, 0.35)'
+    : tone === 'warning'
+      ? 'rgba(245, 158, 11, 0.35)'
+      : 'var(--border)'
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'auto minmax(0, 1fr)',
+        gap: '0.65rem',
+        alignItems: 'start',
+        minWidth: 0,
+        padding: '0.8rem 0.9rem',
+        border: `1px solid ${borderColor}`,
+        borderRadius: 12,
+        background: 'rgba(15, 23, 42, 0.42)',
+      }}
+    >
+      <span style={{ color: tone === 'warning' ? 'var(--warning)' : tone === 'success' ? 'var(--success)' : 'var(--muted)', paddingTop: 2 }}>
+        {icon}
+      </span>
+      <span style={{ minWidth: 0 }}>
+        <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          {label}
+        </span>
+        <strong style={{ display: 'block', marginTop: '0.15rem', fontSize: '1rem', lineHeight: 1.2, overflowWrap: 'anywhere' }}>
+          {value}
+        </strong>
+        <span style={{ display: 'block', marginTop: '0.25rem', fontSize: '0.74rem', color: 'var(--muted)', lineHeight: 1.35 }}>
+          {hint}
+        </span>
+      </span>
     </div>
   )
 }
@@ -280,6 +324,15 @@ export function Billing() {
   const governedLimit =
     plan?.limits.maxGovernedActionsPerMonth ?? plan?.limits.maxEventsPerMonth ?? null
   const observeLimit = plan?.limits.maxObserveEventsPerMonth ?? null
+  const observeSummary = observeLimit === null
+    ? 'Not metered'
+    : `${formatNumber(observeUsed)} / ${formatLimit(observeLimit)}`
+  const governedSummary = governedLimit === 0
+    ? 'Not included'
+    : `${formatNumber(governedUsed)} / ${formatLimit(governedLimit)}`
+  const governedHint = governedLimit === 0
+    ? 'Observer can watch activity only. Upgrade to Personal or higher to verify, hold, approve, block, or gate actions.'
+    : 'Verify, hold, approve, block, and proxy gate actions count here.'
 
   return (
     <>
@@ -380,19 +433,21 @@ export function Billing() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gap: '0.5rem', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', marginBottom: '1.25rem' }}>
-                <div className="stat-tile" style={{ padding: '0.65rem 0.85rem' }}>
-                  <Eye size={14} style={{ opacity: 0.55 }} />
-                  <span style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>Observe</span>
-                  <strong style={{ fontSize: '0.95rem' }}>Not metered</strong>
-                </div>
-                <div className="stat-tile" style={{ padding: '0.65rem 0.85rem' }}>
-                  <LockKeyhole size={14} style={{ opacity: 0.55 }} />
-                  <span style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>Governed</span>
-                  <strong style={{ fontSize: '0.95rem' }}>
-                    {formatNumber(governedUsed)} / {formatLimit(governedLimit)}
-                  </strong>
-                </div>
+              <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', marginBottom: '1.25rem' }}>
+                <BillingUsageCard
+                  icon={<Eye size={16} />}
+                  label="Observe"
+                  value={observeSummary}
+                  hint="Live Feed and audit visibility are for watching what agents touch."
+                  tone="success"
+                />
+                <BillingUsageCard
+                  icon={<LockKeyhole size={16} />}
+                  label="Governed actions"
+                  value={governedSummary}
+                  hint={governedHint}
+                  tone={governedLimit === 0 ? 'warning' : 'neutral'}
+                />
               </div>
 
               <UsageMeter

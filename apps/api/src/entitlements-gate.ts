@@ -7,6 +7,21 @@ export const BILLING_CONTACT = 'billing@sanctumruntime.com'
 
 export type QuotaKind = 'governed' | 'observe'
 
+const FEATURE_LABELS: Record<string, string> = {
+  light_gates: 'Verify, approve, block, and gate controls',
+  holds_approve: 'Approval and block controls',
+  shield_rules: 'Custom Sanctum Shield rules',
+  webhooks: 'Webhook delivery',
+  api_access: 'API access',
+  cloud_sync: 'Hosted cloud sync',
+  compliance_export: 'Compliance exports',
+  sso: 'SSO/OIDC',
+  advanced_fleet: 'Advanced fleet controls',
+  rbac: 'RBAC',
+  alerts: 'Alert rules',
+  audit_logs: 'Audit logs',
+}
+
 const PLAN_FEATURES_WITH_INHERITANCE: Record<PlanId, string[]> = {
   observer: PLAN_DEFAULTS.observer.features,
   personal: [
@@ -131,6 +146,15 @@ export function upgradePlanHint(current: PlanId, feature: string): string {
   return PLAN_DEFAULTS.operator.planName
 }
 
+function featureLabel(feature: string): string {
+  return FEATURE_LABELS[feature] ?? feature.replace(/_/g, ' ')
+}
+
+function planFeatureMessage(limits: PlanLimits, feature: string): string {
+  const neededPlan = upgradePlanHint(limits.planId, feature)
+  return `${featureLabel(feature)} is not included on ${limits.planName}. Upgrade to ${neededPlan} to use this feature.`
+}
+
 export function sendPlanFeatureRequired(
   reply: FastifyReply,
   limits: PlanLimits,
@@ -144,7 +168,7 @@ export function sendPlanFeatureRequired(
     planName: limits.planName,
     message:
       message ??
-      `${feature} is not included on the ${limits.planName} plan. Upgrade to ${upgradePlanHint(limits.planId, feature)} or contact ${BILLING_CONTACT}.`,
+      `${planFeatureMessage(limits, feature)} Contact ${BILLING_CONTACT} if you need help choosing a plan.`,
     upgradeUrl: '/billing',
   })
 }
