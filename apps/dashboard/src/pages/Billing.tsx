@@ -517,7 +517,7 @@ export function Billing() {
                       {isCurrent && (
                         <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--muted)' }}>Your active plan</p>
                       )}
-                      {isDowngrade && !canCheckout && currentPlanId !== 'observer' && pc.id !== 'observer' && (
+                      {isDowngrade && !canCheckout && currentPlanId !== 'observer' && (
                         <p style={{ margin: '0.35rem 0 0', fontSize: '0.78rem', color: 'var(--muted)' }}>
                           Pick a lower paid tier below, or cancel to return to Observer.
                         </p>
