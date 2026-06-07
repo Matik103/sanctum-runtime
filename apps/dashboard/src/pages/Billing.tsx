@@ -272,6 +272,8 @@ export function Billing() {
 
   const currentPlanId = plan?.plan.id ?? 'observer'
   const currentPlanIdx = Math.max(0, PLAN_ORDER.indexOf(currentPlanId))
+  const userRole = orgs.find((o) => o.org_id === orgId)?.role ?? ''
+  const canBill = userRole === 'owner' || userRole === 'admin'
   const governedQuota = plan?.quotas.governed ?? plan?.quotas.events
   const observeUsed = plan?.usage.observeEventsThisMonth ?? 0
   const governedUsed = plan?.usage.governedActionsThisMonth ?? plan?.usage.eventsThisMonth ?? 0
@@ -364,7 +366,7 @@ export function Billing() {
                         : ''}
                     </p>
                   )}
-                  {plan.billing.creemCustomerId && (
+                  {canBill && plan.billing.creemCustomerId && (
                     <button
                       type="button"
                       className="btn btn-ghost btn-sm"
@@ -488,7 +490,7 @@ export function Billing() {
                         <span>{pc.observe} observe · {pc.governed} governed</span>
                         <span>{pc.retention} retention</span>
                       </div>
-                      {canCheckout && (
+                      {canBill && canCheckout && (
                         <button
                           type="button"
                           className="btn btn-primary btn-sm"
@@ -510,7 +512,7 @@ export function Billing() {
                           )}
                         </button>
                       )}
-                      {pc.id === 'enterprise' && !isCurrent && (
+                      {canBill && pc.id === 'enterprise' && !isCurrent && (
                         <button
                           type="button"
                           className="btn btn-ghost btn-sm"
@@ -524,16 +526,16 @@ export function Billing() {
                       {isCurrent && (
                         <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--muted)' }}>Your active plan</p>
                       )}
-                      {isDowngrade && !canCheckout && currentPlanId !== 'observer' && (
-                        <p style={{ margin: '0.35rem 0 0', fontSize: '0.78rem', color: 'var(--muted)' }}>
-                          Pick a lower paid tier below, or cancel to return to Observer.
-                        </p>
-                      )}
                     </article>
                   )
                 })}
               </div>
 
+              {!canBill && userRole && (
+                <p style={{ marginTop: '1rem', fontSize: '0.82rem', color: 'var(--muted)' }}>
+                  Only workspace owners and admins can change plans. Contact your workspace owner to upgrade.
+                </p>
+              )}
               <p className="hint-line" style={{ marginTop: '1.25rem' }}>
                 Upgrades and downgrades use Creem subscription APIs when you already subscribe; new plans open a{' '}
                 <a href="https://creem.io" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
