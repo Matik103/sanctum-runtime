@@ -81,6 +81,8 @@ export async function revokeOrgPlan(admin: Admin, orgId: string): Promise<void> 
   await admin.from('org_plans').upsert({
     org_id: orgId,
     plan_id: 'observer',
+    creem_subscription_id: null,
+    creem_customer_id: null,
     creem_subscription_status: 'canceled',
     billing_status: 'canceled',
     updated_at: now,

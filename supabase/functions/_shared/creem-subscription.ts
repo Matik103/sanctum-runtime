@@ -57,6 +57,7 @@ export async function creemChangeSubscriptionPlan(
         product_id: productId,
         update_behavior: updateBehavior,
       }),
+      signal: AbortSignal.timeout(12_000),
     },
   )
   const text = await res.text()
@@ -80,6 +81,7 @@ export async function creemCancelSubscription(
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
       body: JSON.stringify({ mode }),
+      signal: AbortSignal.timeout(12_000),
     },
   )
   const text = await res.text()
@@ -100,6 +102,7 @@ export async function creemCustomerPortalLink(
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
     body: JSON.stringify({ customer_id: customerId }),
+    signal: AbortSignal.timeout(12_000),
   })
   const text = await res.text()
   if (!res.ok) return { ok: false, status: res.status, text }

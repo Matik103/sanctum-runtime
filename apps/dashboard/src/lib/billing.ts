@@ -121,15 +121,24 @@ export async function fetchBillingPlan(orgId: string): Promise<BillingPlan> {
 
   if (fromDb?.plan) {
     const planId = fromDb.plan.id
+    // Fallback limits when API is unreachable — must match entitlements.ts PLAN_DEFAULTS
+    const limits: Record<string, { runtimes: number; governed: number | null; agents: number; retention: number }> = {
+      observer: { runtimes: 3, governed: 50, agents: 2, retention: 7 },
+      personal: { runtimes: 5, governed: 500, agents: 5, retention: 30 },
+      operator: { runtimes: 25, governed: 500_000, agents: 10, retention: 30 },
+      team: { runtimes: 250, governed: 10_000_000, agents: 50, retention: 30 },
+      enterprise: { runtimes: 0, governed: null, agents: 0, retention: 90 },
+    }
+    const lim = limits[planId] ?? limits.observer
     return {
       plan: fromDb.plan,
       limits: {
-        maxRuntimes: planId === 'observer' ? 3 : planId === 'personal' ? 5 : planId === 'operator' ? 25 : 250,
-        maxEventsPerMonth: planId === 'observer' ? 50 : planId === 'personal' ? 500 : null,
-        maxGovernedActionsPerMonth: planId === 'observer' ? 50 : planId === 'personal' ? 500 : null,
+        maxRuntimes: lim.runtimes || null,
+        maxEventsPerMonth: lim.governed,
+        maxGovernedActionsPerMonth: lim.governed,
         maxObserveEventsPerMonth: null,
-        maxAgents: planId === 'observer' ? 2 : planId === 'personal' ? 5 : 10,
-        retentionDays: planId === 'observer' ? 7 : 30,
+        maxAgents: lim.agents || null,
+        retentionDays: lim.retention,
         features: [],
       },
       usage: {

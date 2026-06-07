@@ -79,11 +79,12 @@ Deno.serve(async (req) => {
     if (!envError) {
       const res = await fetch(`${creemApiBase()}/v1/checkouts/${encodeURIComponent(checkoutId)}`, {
         headers: { 'x-api-key': apiKey },
+        signal: AbortSignal.timeout(12_000),
       })
       if (res.ok) {
         const checkout = await res.json() as Record<string, unknown>
         const status = String(checkout.status ?? '').toLowerCase()
-        const paid = status === 'completed' || status === 'paid' || status === 'active'
+        const paid = status === 'completed' || status === 'paid'
         if (paid) {
           const map = productMap()
           const planId = planFrom(checkout, map)

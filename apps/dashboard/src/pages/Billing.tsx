@@ -192,7 +192,14 @@ export function Billing() {
         void (async () => {
           setCheckoutMsg('Payment received. Syncing your plan…')
           try {
-            const sync = await syncBillingAfterCheckout(targetOrg, checkoutId ?? undefined)
+            let sync = await syncBillingAfterCheckout(targetOrg, checkoutId ?? undefined)
+            // Retry with backoff if webhook hasn't landed yet (up to ~15s total)
+            const delays = [1500, 3000, 5000, 6000]
+            for (const delay of delays) {
+              if (sync.synced) break
+              await new Promise((r) => setTimeout(r, delay))
+              sync = await syncBillingAfterCheckout(targetOrg, checkoutId ?? undefined)
+            }
             if (sync.synced && sync.planId) {
               setCheckoutMsg(`Plan updated to ${sync.planId}.`)
             } else {

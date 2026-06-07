@@ -80,6 +80,10 @@ Deno.serve(async (req) => {
   const obj = (event.object ?? {}) as Record<string, unknown>
   const map = productMap()
 
+  if (!eventId?.trim()) {
+    console.warn(`[creem-webhook] event_id missing — cannot deduplicate. eventType=${eventType}`)
+  }
+
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
@@ -90,10 +94,13 @@ Deno.serve(async (req) => {
     email: customerEmail(obj),
   })
 
-  if (!orgId && GRANT_EVENTS.has(eventType)) {
-    return Response.json({ error: 'org_unresolved', eventType }, { status: 500 })
+  if (!orgId) {
+    if (GRANT_EVENTS.has(eventType) || REVOKE_EVENTS.has(eventType)) {
+      console.error(`[creem-webhook] org_unresolved for actionable event — eventType=${eventType}`)
+      return Response.json({ error: 'org_unresolved', eventType }, { status: 500 })
+    }
+    return Response.json({ ok: true, skipped: true, eventType })
   }
-  if (!orgId) return Response.json({ ok: true, skipped: true })
 
   const claimed = await claimCreemWebhookEvent(admin, eventId, eventType, orgId)
   if (!claimed) {

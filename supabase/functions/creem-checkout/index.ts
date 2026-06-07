@@ -237,6 +237,7 @@ Deno.serve(async (req) => {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
     body: JSON.stringify(creemBody),
+    signal: AbortSignal.timeout(12_000),
   })
 
   const text = await res.text()
