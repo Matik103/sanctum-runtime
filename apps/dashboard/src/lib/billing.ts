@@ -19,6 +19,11 @@ export function normalizePlanId(raw: string | null | undefined): PlanId {
   return 'observer'
 }
 
+/** Match plan tiers across legacy ids (free/developer) and observer/Developer label. */
+export function isSamePlanTier(a: string | null | undefined, b: string | null | undefined): boolean {
+  return normalizePlanId(a) === normalizePlanId(b)
+}
+
 export interface BillingPlan {
   plan: { id: PlanId; name: string; priceMonthlyUsd: number | null }
   limits: {
@@ -130,7 +135,13 @@ export async function fetchBillingPlan(orgId: string): Promise<BillingPlan> {
       if (apiPlan.quotas.governed) apiPlan.quotas.governed.limit = 0
     }
     if (fromDb?.plan) {
-      apiPlan.plan = fromDb.plan
+      const mergedId = normalizePlanId(fromDb.plan.id)
+      apiPlan.plan = {
+        ...fromDb.plan,
+        id: mergedId,
+        name: mergedId === 'observer' ? 'Developer' : fromDb.plan.name,
+        priceMonthlyUsd: mergedId === 'observer' ? null : fromDb.plan.priceMonthlyUsd,
+      }
       apiPlan.billing = { ...apiPlan.billing, ...fromDb.billing }
     }
     return apiPlan
@@ -267,7 +278,6 @@ export async function changePlan(orgId: string, planId: PlanId): Promise<PlanCha
     // static checkout URLs and hosted Creem payment pages as fallbacks.
     const isSetupError =
       res.status === 503
-      || res.status === 502
       || body.error === 'product_not_configured'
       || body.error === 'creem_api_key_not_configured'
       || body.error === 'creem_env_mismatch'
@@ -311,8 +321,18 @@ export async function changePlan(orgId: string, planId: PlanId): Promise<PlanCha
     headers,
     body: JSON.stringify({ org_id: orgId, plan_id: planId }),
   })
-  if (!res.ok) await throwResponseError(res, 'Could not open checkout')
-  return res.json() as Promise<PlanChangeResult>
+  if (res.ok) {
+    const data = await res.json() as PlanChangeResult
+    if (data.checkoutUrl) return data
+    return {
+      ...data,
+      message: data.message
+        ?? 'Checkout is not configured on the API either. Creem billing runs on Supabase — verify live API key and product IDs in Edge Function secrets (docs/CREEM_SUPABASE.md).',
+      contactEmail: data.contactEmail ?? 'billing@sanctumruntime.com',
+    }
+  }
+  await throwResponseError(res, 'Could not open checkout')
+  throw new Error('Could not open checkout')
 }
 
 /** @deprecated Use changePlan — kept for callers that exclude observer. */

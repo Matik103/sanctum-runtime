@@ -9,6 +9,7 @@ import {
   fetchBillingPlan,
   formatLimit,
   formatNumber,
+  isSamePlanTier,
   normalizePlanId,
   openCustomerPortal,
   PLAN_ORDER,
@@ -511,7 +512,8 @@ export function Billing() {
             <div className="section__body">
               <div className="policy-grid">
                 {PLAN_CARDS.map((pc) => {
-                  const isCurrent = pc.id === currentPlanId
+                  const isCurrent = isSamePlanTier(pc.id, currentPlanId)
+                    || (pc.id === 'observer' && plan?.plan.name?.toLowerCase() === 'developer')
                   const targetIdx = PLAN_ORDER.indexOf(pc.id)
                   const isUpgrade = targetIdx > currentPlanIdx
                   const isDowngrade = targetIdx < currentPlanIdx && currentPlanId !== 'observer'

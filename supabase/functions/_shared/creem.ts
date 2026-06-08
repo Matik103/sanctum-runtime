@@ -67,11 +67,16 @@ export function creemApiErrorHint(
     return `Billing provider rejected the checkout configuration (${mode} mode). Contact billing@sanctumruntime.com and we will move the workspace for you.`
   }
   if (httpStatus === 404) {
-    return 'Billing checkout is not ready for this plan yet. Contact billing@sanctumruntime.com and we will move the workspace for you.'
+    const envHint = mode === 'test'
+      ? 'Creem returned 404 — the product ID may be from live mode while CREEM_API_KEY is a test key. Use test product IDs with https://test-api.creem.io.'
+      : 'Creem returned 404 — the product ID may be from test mode while using a live API key. Use live product IDs from Creem production mode.'
+    return creemDetail ? `${envHint} Detail: ${creemDetail}` : envHint
   }
   if (httpStatus === 400) {
-    const baseHint = 'Billing checkout is not ready for this plan yet. Contact billing@sanctumruntime.com and we will move the workspace for you.'
-    return creemDetail ? `${baseHint} Provider detail: ${creemDetail}` : baseHint
+    const envHint = mode === 'test'
+      ? 'Creem rejected checkout (test mode). Confirm CREEM_PRODUCT_* IDs match test products in Creem Dashboard.'
+      : 'Creem rejected checkout (live mode). Confirm CREEM_PRODUCT_* IDs match live products in Creem Dashboard.'
+    return creemDetail ? `${envHint} Detail: ${creemDetail}` : envHint
   }
   return creemDetail
     ? `Creem API HTTP ${httpStatus}: ${creemDetail}`

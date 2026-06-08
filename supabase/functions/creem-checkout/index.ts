@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
   }
 
   const orgId = body.org_id?.trim()
-  const planId = body.plan_id?.trim()
+  const planId = normalizePlanId(body.plan_id?.trim())
   if (!orgId || !planId || !CHANGEABLE_PLANS.has(planId)) {
     return jsonWithCors(req, { error: 'org_id_and_plan_id_required' }, { status: 400 })
   }
@@ -178,9 +178,12 @@ Deno.serve(async (req) => {
 
   const productId = productIdForPlan(targetPlanId)
   if (!productId) {
+    const secretName = `CREEM_PRODUCT_${targetPlanId.toUpperCase()}`
     return jsonWithCors(req, {
       error: 'product_not_configured',
-      hint: 'Billing checkout is not ready for this plan yet. Contact billing@sanctumruntime.com and we will move the workspace for you.',
+      hint: `Missing Supabase secret ${secretName} for the ${targetPlanId} plan. Add it in Supabase → Edge Functions → Secrets (see docs/CREEM_SUPABASE.md), redeploy creem-checkout, then retry.`,
+      planId: targetPlanId,
+      secretName,
     }, { status: 503 })
   }
 
