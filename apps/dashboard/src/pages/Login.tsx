@@ -34,7 +34,12 @@ import { signupMetadata, validateSignupForm, type AccountKind } from '../lib/sig
 import '../styles/auth.css'
 
 /** Default landing: short individual sign-in. Other flows expand the card. */
-type AuthPanel = 'signin' | 'signup-individual' | 'signup-organization' | 'sso'
+type AuthPanel =
+  | 'signin'
+  | 'signup-individual'
+  | 'signup-organization'
+  | 'forgot-password'
+  | 'sso'
 
 const SSO_PROVIDERS: { id: OauthProvider; label: string; hint: string }[] = [
   { id: 'google', label: 'Google', hint: 'Google Cloud / Workspace accounts' },
@@ -68,9 +73,10 @@ export function Login() {
     setMessage(null)
   }
 
-  const goToPanel = (next: AuthPanel) => {
+  const goToPanel = (next: AuthPanel, opts?: { preserveMessage?: boolean }) => {
     setPanel(next)
-    resetFormErrors()
+    setError(null)
+    if (!opts?.preserveMessage) setMessage(null)
     if (next === 'signin') setAcceptedTerms(false)
   }
 
@@ -142,21 +148,25 @@ export function Login() {
 
         const meta = signupMetadata(accountKind, email, fields)
 
+        const confirmedEmail = email.trim()
         const { error: err } = await sb.auth.signUp({
-          email: email.trim(),
+          email: confirmedEmail,
           password,
-          options: { data: meta },
+          options: {
+            data: meta,
+            emailRedirectTo: `${window.location.origin}/?auth=confirmed`,
+          },
         })
         if (err) throw err
+        goToPanel('signin', { preserveMessage: true })
         setMessage(
           accountKind === 'organization'
-            ? 'Organization registered. Confirm your email if required, then sign in to your workspace.'
-            : 'Account created. Confirm your email if required, then sign in.',
+            ? `Organization account created. Check ${confirmedEmail} for the confirmation link, then sign in to your workspace.`
+            : `Account created. Check ${confirmedEmail} for the confirmation link, then sign in.`,
         )
         setPassword('')
         setConfirmPassword('')
         setAcceptedTerms(false)
-        goToPanel('signin')
       } else {
         const { error: err } = await sb.auth.signInWithPassword({
           email: email.trim(),
@@ -166,6 +176,38 @@ export function Login() {
       }
     } catch (err) {
       setError(sanitizeApiError(err, 'Authentication failed'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const submitPasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault()
+    resetFormErrors()
+    const sb = getSupabase()
+    if (!sb) {
+      setError('Authentication is not configured on this deployment.')
+      return
+    }
+
+    const targetEmail = email.trim()
+    if (!targetEmail || !targetEmail.includes('@')) {
+      setError('Enter the email address for your account.')
+      return
+    }
+
+    setBusy(true)
+    try {
+      const { error: err } = await sb.auth.resetPasswordForEmail(targetEmail, {
+        redirectTo: `${window.location.origin}/?auth=recovery`,
+      })
+      if (err) throw err
+      goToPanel('signin', { preserveMessage: true })
+      setMessage(
+        `If an account exists for ${targetEmail}, we sent a password reset link. Check your inbox and spam folder.`,
+      )
+    } catch (err) {
+      setError(sanitizeApiError(err, 'Could not send password reset email'))
     } finally {
       setBusy(false)
     }
@@ -219,6 +261,8 @@ export function Login() {
   const title =
     panel === 'signin'
       ? 'Operator sign in'
+      : panel === 'forgot-password'
+        ? 'Reset your password'
       : panel === 'signup-individual'
         ? 'Create individual account'
         : panel === 'signup-organization'
@@ -228,6 +272,8 @@ export function Login() {
   const subtitle =
     panel === 'signin'
       ? 'Access the control plane to review verifications, policies, and audit logs.'
+      : panel === 'forgot-password'
+        ? 'Enter your account email and we will send a secure reset link.'
       : panel === 'signup-individual'
         ? 'Personal workspace for solo operators. We collect standard identity fields for security and compliance.'
         : panel === 'signup-organization'
@@ -239,6 +285,10 @@ export function Login() {
       ? busy
         ? 'Authenticating…'
         : 'Sign in to control plane'
+      : panel === 'forgot-password'
+        ? busy
+          ? 'Sending reset link…'
+          : 'Send reset link'
       : panel === 'signup-individual'
         ? busy
           ? 'Please wait…'
@@ -345,7 +395,11 @@ export function Login() {
                 </div>
               </div>
             ) : (
-              <form onSubmit={submitCredentials}>
+              <form
+                onSubmit={
+                  panel === 'forgot-password' ? submitPasswordReset : submitCredentials
+                }
+              >
                 {panel === 'signup-organization' && (
                   <fieldset className="auth-fieldset">
                     <legend>Organization</legend>
@@ -532,7 +586,13 @@ export function Login() {
                 )}
 
                 <fieldset className="auth-fieldset auth-fieldset--credentials">
-                  <legend>{isSignup ? 'Sign-in credentials' : 'Credentials'}</legend>
+                  <legend>
+                    {isSignup
+                      ? 'Sign-in credentials'
+                      : panel === 'forgot-password'
+                        ? 'Account recovery'
+                        : 'Credentials'}
+                  </legend>
                   <div className="auth-field">
                     <label htmlFor="auth-email">
                       {panel === 'signup-organization' ? 'Work email (account owner)' : 'Email'}
@@ -551,26 +611,37 @@ export function Login() {
                     </div>
                   </div>
 
-                  <div className="auth-field">
-                    <label htmlFor="auth-password">Password</label>
-                    <div className="auth-input-wrap">
-                      <Lock size={16} />
-                      <input
-                        id="auth-password"
-                        className="auth-input"
-                        type="password"
-                        autoComplete={
-                          panel === 'signin' ? 'current-password' : 'new-password'
-                        }
-                        required
-                        minLength={panel === 'signin' ? 6 : 8}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                      />
+                  {panel !== 'forgot-password' && (
+                    <div className="auth-field">
+                      <label htmlFor="auth-password">Password</label>
+                      <div className="auth-input-wrap">
+                        <Lock size={16} />
+                        <input
+                          id="auth-password"
+                          className="auth-input"
+                          type="password"
+                          autoComplete={
+                            panel === 'signin' ? 'current-password' : 'new-password'
+                          }
+                          required
+                          minLength={panel === 'signin' ? 6 : 8}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                        />
+                      </div>
+                      {panel === 'signin' && (
+                        <button
+                          type="button"
+                          className="auth-inline-link"
+                          onClick={() => goToPanel('forgot-password')}
+                        >
+                          Forgot password?
+                        </button>
+                      )}
                     </div>
-                  </div>
+                  )}
 
-                  {panel !== 'signin' && (
+                  {isSignup && (
                     <div className="auth-field">
                       <label htmlFor="auth-confirm-password">Confirm password</label>
                       <div className="auth-input-wrap">
