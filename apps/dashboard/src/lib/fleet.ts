@@ -31,11 +31,17 @@ async function fetchOperatorOrgs(): Promise<FleetOrg[]> {
   }))
 }
 
-export async function fetchMyOrgs(): Promise<FleetOrg[]> {
+/** Membership from Supabase only — no API side effects (use before enterprise gate). */
+export async function fetchMyOrgsFromDb(): Promise<FleetOrg[]> {
   const sb = getSupabase()
-  const rpcOrgs: FleetOrg[] = sb
-    ? (((await sb.rpc('get_my_orgs')).data ?? []) as FleetOrg[])
-    : []
+  if (!sb) return []
+  const { data, error } = await sb.rpc('get_my_orgs')
+  if (error) return []
+  return (data ?? []) as FleetOrg[]
+}
+
+export async function fetchMyOrgs(): Promise<FleetOrg[]> {
+  const rpcOrgs = await fetchMyOrgsFromDb()
 
   const apiOrgs = await fetchOperatorOrgs().catch(() => [])
   if (apiOrgs.length === 0) return rpcOrgs

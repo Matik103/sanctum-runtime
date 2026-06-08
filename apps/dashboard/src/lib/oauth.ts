@@ -58,7 +58,9 @@ export async function applyOauthIntent(sb: SupabaseClient, user: User): Promise<
   const nextProvider =
     provider ?? (meta.auth_provider as string | undefined) ?? (user.app_metadata?.provider as string | undefined)
 
-  if (meta.portal_type === nextPortal && meta.auth_provider === nextProvider) return
+  const needsTerms = !!termsAt && !meta.terms_accepted_at
+  const needsPortal = meta.portal_type !== nextPortal || meta.auth_provider !== nextProvider
+  if (!needsTerms && !needsPortal) return
 
   const patch: Record<string, string> = {
     portal_type: nextPortal,
@@ -70,6 +72,17 @@ export async function applyOauthIntent(sb: SupabaseClient, user: User): Promise<
   }
 
   await sb.auth.updateUser({ data: patch })
+
+  const profilePatch: Record<string, string> = {
+    portal_type: nextPortal,
+    auth_provider: nextProvider,
+    updated_at: new Date().toISOString(),
+  }
+  if (termsAt) {
+    profilePatch.accepted_terms_at = termsAt
+    profilePatch.terms_version = TERMS_VERSION
+  }
+  await sb.from('profiles').update(profilePatch).eq('id', user.id)
 }
 
 export function getOAuthRedirectUrl(): string {

@@ -1,6 +1,6 @@
 import type { SupabaseClient, User } from '@supabase/supabase-js'
 import { applyOauthIntent } from './oauth'
-import { fetchMyOrgs, type FleetOrg } from './fleet'
+import { fetchMyOrgsFromDb, type FleetOrg } from './fleet'
 
 export type EnterpriseAuthState = {
   portalType: 'operator' | 'enterprise' | null
@@ -31,7 +31,8 @@ export async function completeEnterpriseSignIn(
     (user.user_metadata?.portal_type as 'operator' | 'enterprise' | undefined) ??
     null
 
-  const orgs = await fetchMyOrgs()
+  // Supabase RPC only — avoid operator/context creating a personal workspace before the gate runs.
+  const orgs = await fetchMyOrgsFromDb()
 
   return { portalType, orgs, joinedOrgId }
 }

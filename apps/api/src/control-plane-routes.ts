@@ -387,11 +387,11 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
       const { createSupabaseAdmin } = await import('./auth.js')
       const {
         ensureOrgPlanRow,
-        ensurePersonalWorkspaceForUser,
+        ensureWorkspaceForUser,
         resolveBillingOrgId,
       } = await import('./billing-org.js')
       const admin = createSupabaseAdmin(cfg)
-      await ensurePersonalWorkspaceForUser(admin, user)
+      await ensureWorkspaceForUser(admin, user)
       const organizationIds = await store.getUserOrgIds(user.id)
       const defaultOrganizationId = await resolveBillingOrgId(store, admin, user.id)
       if (defaultOrganizationId) {

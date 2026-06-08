@@ -181,6 +181,16 @@ async function main() {
     const owned = orgMems?.filter((m) => m.role === 'owner') ?? []
     if (owned.length !== 1) fail('organization owner membership count', owned.length)
     const orgId = owned[0].org_id
+    const personalLeak = orgMems?.some((m) => m.org_id.startsWith('personal-'))
+    if (personalLeak) fail('organization signup must not create personal workspace', orgMems)
+
+    const { data: orgPlan } = await admin
+      .from('org_plans')
+      .select('plan_id')
+      .eq('org_id', orgId)
+      .maybeSingle()
+    if (orgPlan?.plan_id !== 'observer') fail('organization plan', orgPlan?.plan_id)
+    pass('organization org on observer (Developer) plan')
 
     const { data: orgRow, error: orgRowErr } = await admin
       .from('organizations')

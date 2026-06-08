@@ -15,7 +15,7 @@ export function EnterpriseOrgGate({ children }: Props) {
   const [checkError, setCheckError] = useState<string | null>(null)
   const [retryAttempt, setRetryAttempt] = useState(0)
   const [portalType, setPortalType] = useState<'operator' | 'enterprise' | null>(null)
-  const [orgCount, setOrgCount] = useState(0)
+  const [hasTenantAccess, setHasTenantAccess] = useState(false)
   const [email, setEmail] = useState<string | null>(null)
 
   useEffect(() => {
@@ -43,7 +43,10 @@ export function EnterpriseOrgGate({ children }: Props) {
         ])
         if (cancelled) return
         setPortalType(state.portalType)
-        setOrgCount(state.orgs.length)
+        setHasTenantAccess(
+          !!state.joinedOrgId
+          || state.orgs.some((o) => !o.org_id.startsWith('personal-')),
+        )
         setEmail(user.email ?? null)
       } catch {
         if (!cancelled) {
@@ -96,7 +99,7 @@ export function EnterpriseOrgGate({ children }: Props) {
     )
   }
 
-  if (portalType === 'enterprise' && orgCount === 0) {
+  if (portalType === 'enterprise' && !hasTenantAccess) {
     const domain = email?.includes('@') ? email.split('@')[1] : null
     return (
       <div className="auth-loading" style={{ flexDirection: 'column', gap: '1rem', padding: '2rem' }}>

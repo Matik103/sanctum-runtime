@@ -678,14 +678,15 @@ app.get('/v1/orgs', async (req, reply) => {
 
   const store = new ControlPlaneStore(supabaseAuth)
   const admin = createSupabaseAdmin(supabaseAuth)
-  const { ensurePersonalWorkspaceForUser } = await import('./billing-org.js')
+  const { ensureWorkspaceForUser } = await import('./billing-org.js')
 
   let personalOrgId: string
   try {
-    personalOrgId = await ensurePersonalWorkspaceForUser(admin, user)
+    personalOrgId = (await ensureWorkspaceForUser(admin, user))
+      ?? ('personal-' + user.id.replace(/-/g, '').slice(0, 12))
   } catch (err) {
     personalOrgId = 'personal-' + user.id.replace(/-/g, '').slice(0, 12)
-    req.log.warn({ err, personalOrgId }, 'personal workspace ensure failed')
+    req.log.warn({ err, personalOrgId }, 'workspace ensure failed')
   }
 
   const orgIds = await store.getUserOrgIds(user.id)

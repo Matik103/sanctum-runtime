@@ -34,7 +34,35 @@ export async function ensureOrgPlanRow(admin: SupabaseClient, orgId: string): Pr
   }
 }
 
-/** Personal workspace + owner membership + Developer plan row (signup / API safety net). */
+type MemberRow = { org_id: string; role: string }
+
+async function loadMemberships(admin: SupabaseClient, userId: string): Promise<MemberRow[]> {
+  const { data } = await admin
+    .from('organization_members')
+    .select('org_id, role')
+    .eq('user_id', userId)
+  return (data ?? []) as MemberRow[]
+}
+
+/** Enterprise SSO and org-signup owners must not get a shadow personal workspace. */
+export async function shouldProvisionPersonalWorkspace(
+  admin: SupabaseClient,
+  userId: string,
+): Promise<boolean> {
+  const { data: profile } = await admin
+    .from('profiles')
+    .select('portal_type')
+    .eq('id', userId)
+    .maybeSingle()
+  if (profile?.portal_type === 'enterprise') return false
+
+  const members = await loadMemberships(admin, userId)
+  return !members.some(
+    (m) => (m.role === 'owner' || m.role === 'admin') && !m.org_id.startsWith('personal-'),
+  )
+}
+
+/** Personal workspace + owner membership + Developer plan row (individual operator accounts). */
 export async function ensurePersonalWorkspaceForUser(
   admin: SupabaseClient,
   user: { id: string; email?: string | null },
@@ -55,6 +83,36 @@ export async function ensurePersonalWorkspaceForUser(
   )
   await ensureOrgPlanRow(admin, personalOrgId)
   return personalOrgId
+}
+
+/**
+ * Idempotent workspace bootstrap for authenticated users.
+ * - Ensures org_plans on every membership
+ * - Personal workspace only for individual operator accounts
+ */
+export async function ensureWorkspaceForUser(
+  admin: SupabaseClient,
+  user: { id: string; email?: string | null },
+): Promise<string | null> {
+  const members = await loadMemberships(admin, user.id)
+  for (const m of members) {
+    await ensureOrgPlanRow(admin, m.org_id)
+  }
+
+  const ownedBusiness = members.find(
+    (m) => (m.role === 'owner' || m.role === 'admin') && !m.org_id.startsWith('personal-'),
+  )
+  if (ownedBusiness) return ownedBusiness.org_id
+
+  if (!(await shouldProvisionPersonalWorkspace(admin, user.id))) {
+    return members[0]?.org_id ?? null
+  }
+
+  if (members.some((m) => m.org_id.startsWith('personal-'))) {
+    return members.find((m) => m.org_id.startsWith('personal-'))!.org_id
+  }
+
+  return ensurePersonalWorkspaceForUser(admin, user)
 }
 
 /** Workspace that owns billing for this user (explicit org > profile link > paid org > personal). */
@@ -89,6 +147,19 @@ export async function resolveBillingOrgId(
     if (withCreem?.org_id) return withCreem.org_id as string
     if (bestPaid?.org_id) return bestPaid.org_id as string
   }
+
+  const { data: memberships } = await admin
+    .from('organization_members')
+    .select('org_id, role')
+    .eq('user_id', userId)
+
+  const ownedBusiness = (memberships ?? []).find(
+    (m) =>
+      (m.role === 'owner' || m.role === 'admin')
+      && orgs.includes(m.org_id as string)
+      && !String(m.org_id).startsWith('personal-'),
+  )
+  if (ownedBusiness?.org_id) return ownedBusiness.org_id as string
 
   const personal = orgs.find((o) => o.startsWith('personal-'))
   return personal ?? orgs[0] ?? null
