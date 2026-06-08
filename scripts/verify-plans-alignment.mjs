@@ -20,7 +20,7 @@ const CODE = {
   observer: {
     price: null,
     runtimes: 3,
-    governed: 50,
+    governed: 0,
     observe: null,
     agents: 2,
     retention: 7,
@@ -149,13 +149,12 @@ async function main() {
     operator: process.env.CREEM_PRODUCT_OPERATOR?.trim(),
     team: process.env.CREEM_PRODUCT_TEAM?.trim(),
   }
-  console.log('\n=== Creem env (local .env — set same on Render sanctum-api) ===')
+  console.log('\n=== Creem env (local .env, optional — production checkout runs on Supabase Edge Functions) ===')
   for (const [plan, id] of Object.entries(creem)) {
     console.log(`  ${plan}: ${id ? id : 'MISSING'}`)
-    if (!id) failed += 1
   }
-  console.log(`  CREEM_API_KEY: ${process.env.CREEM_API_KEY?.trim() ? 'set' : 'MISSING'}`)
-  console.log(`  CREEM_WEBHOOK_SECRET: ${process.env.CREEM_WEBHOOK_SECRET?.trim() ? 'set' : 'MISSING'}`)
+  console.log(`  CREEM_API_KEY: ${process.env.CREEM_API_KEY?.trim() ? 'set' : 'MISSING'} (expected on Supabase Edge Functions)`)
+  console.log(`  CREEM_WEBHOOK_SECRET: ${process.env.CREEM_WEBHOOK_SECRET?.trim() ? 'set' : 'MISSING'} (expected on Supabase Edge Functions)`)
 
   console.log(failed === 0 ? '\nAll checks passed.\n' : `\n${failed} check group(s) need attention.\n`)
   process.exit(failed === 0 ? 0 : 1)

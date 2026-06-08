@@ -9,6 +9,7 @@ import {
   fetchBillingPlan,
   formatLimit,
   formatNumber,
+  normalizePlanId,
   openCustomerPortal,
   PLAN_ORDER,
   syncBillingAfterCheckout,
@@ -104,8 +105,6 @@ function BillingUsageCard({ icon, label, value, hint, tone = 'neutral' }: {
   )
 }
 
-type PaidPlanId = Exclude<PlanId, 'observer'>
-
 const PLAN_CARDS: {
   id: PlanId
   label: string
@@ -121,10 +120,10 @@ const PLAN_CARDS: {
 }[] = [
   {
     id: 'observer',
-    label: 'Observer',
-    headline: 'Watch, do not control',
+    label: 'Developer',
+    headline: 'Build and observe',
     price: 'Free',
-    promise: 'Observe-only Live Feed for side effects. No verify, approve, block, or gate controls.',
+    promise: 'Connect agents and watch side effects in Live Feed. No verify, approve, block, or gate controls.',
     runtimes: '3',
     governed: 'None',
     observe: 'Unlimited',
@@ -275,6 +274,11 @@ export function Billing() {
     setCheckoutBusy(planId)
     setCheckoutMsg(null)
     try {
+      const current = normalizePlanId(plan?.plan.id)
+      if (normalizePlanId(planId) === current) {
+        setCheckoutMsg(`This workspace is already on the ${PLAN_CARDS.find((p) => p.id === current)?.label ?? 'selected'} plan.`)
+        return
+      }
       const result = await changePlan(orgId, planId)
       if (result.checkoutUrl) {
         window.open(result.checkoutUrl, '_blank', 'noopener,noreferrer')
@@ -314,7 +318,7 @@ export function Billing() {
     }
   }
 
-  const currentPlanId = plan?.plan.id ?? 'observer'
+  const currentPlanId = normalizePlanId(plan?.plan.id)
   const currentPlanIdx = Math.max(0, PLAN_ORDER.indexOf(currentPlanId))
   const userRole = orgs.find((o) => o.org_id === orgId)?.role ?? ''
   const canBill = userRole === 'owner' || userRole === 'admin' || userRole === 'operator'
@@ -331,7 +335,7 @@ export function Billing() {
     ? 'Not included'
     : `${formatNumber(governedUsed)} / ${formatLimit(governedLimit)}`
   const governedHint = governedLimit === 0
-    ? 'Observer can watch activity only. Upgrade to Personal or higher to verify, hold, approve, block, or gate actions.'
+    ? 'Developer can watch activity only. Upgrade to Personal or higher to verify, hold, approve, block, or gate actions.'
     : 'Verify, hold, approve, block, and proxy gate actions count here.'
 
   return (
@@ -516,7 +520,7 @@ export function Billing() {
                   const busy = checkoutBusy === pc.id
                   const canCheckout = pc.id !== 'enterprise' && !isCurrent && isChange
                   const actionLabel = pc.id === 'observer'
-                    ? 'Switch to Observer'
+                    ? 'Switch to Developer'
                     : isDowngrade
                       ? `Downgrade to ${pc.label}`
                       : `Upgrade to ${pc.label}`

@@ -1,4 +1,4 @@
-/** Shared Creem env helpers for Supabase Edge Functions. Set via `supabase secrets set`. */
+/** Shared Creem env helpers for Supabase Edge Functions. */
 
 export function normalizeCreemApiKey(raw: string | undefined): string {
   return (raw ?? '').trim().replace(/^["']|["']$/g, '')
@@ -20,7 +20,7 @@ export function creemApiBase(): string {
   return 'https://api.creem.io'
 }
 
-/** Returns a user-facing hint when key/base URL modes disagree or key format looks wrong. */
+/** Returns an internal setup hint when key/base URL modes disagree or key format looks wrong. */
 export function validateCreemEnvironment(apiKey: string): string | null {
   if (!apiKey) return 'CREEM_API_KEY is not set in Supabase Edge Function secrets.'
   if (!apiKey.startsWith('creem_')) {
@@ -57,27 +57,25 @@ export function formatCreemErrorDetail(raw: string): string {
 export function creemApiErrorHint(
   httpStatus: number,
   creemError: string | undefined,
-  planId: string,
+  _planId: string,
   detail?: string,
 ): string {
-  const base = creemApiBase()
   const mode = creemKeyMode(normalizeCreemApiKey(Deno.env.get('CREEM_API_KEY')))
-  const secretName = `CREEM_PRODUCT_${planId.toUpperCase()}`
   const creemDetail = detail ? formatCreemErrorDetail(detail) : ''
 
   if (httpStatus === 401 || httpStatus === 403 || creemError === 'unauthorized') {
-    return `Creem rejected the API key (${mode} key → ${base}). In Supabase secrets, use matching test OR live values for CREEM_API_KEY, CREEM_API_BASE_URL, and ${secretName}. Test and live product IDs are not interchangeable.`
+    return `Billing provider rejected the checkout configuration (${mode} mode). Contact billing@sanctumruntime.com and we will move the workspace for you.`
   }
   if (httpStatus === 404) {
-    return `${secretName} may be from the wrong Creem environment. Copy the product ID from the same mode (test/live) as your API key.`
+    return 'Billing checkout is not ready for this plan yet. Contact billing@sanctumruntime.com and we will move the workspace for you.'
   }
   if (httpStatus === 400) {
-    const baseHint = `${secretName} may be invalid or from the wrong Creem mode. Copy the ${planId} product ID from Creem test-mode Products (test key → test-api).`
-    return creemDetail ? `${baseHint} Creem says: ${creemDetail}` : baseHint
+    const baseHint = 'Billing checkout is not ready for this plan yet. Contact billing@sanctumruntime.com and we will move the workspace for you.'
+    return creemDetail ? `${baseHint} Provider detail: ${creemDetail}` : baseHint
   }
   return creemDetail
     ? `Creem API HTTP ${httpStatus}: ${creemDetail}`
-    : `Creem API returned HTTP ${httpStatus}. Check CREEM_API_KEY and ${secretName} in Supabase secrets (docs/CREEM_SUPABASE.md).`
+    : `Creem API returned HTTP ${httpStatus}. Contact billing@sanctumruntime.com and we will move the workspace for you.`
 }
 
 export function productMap(): Record<string, string> {

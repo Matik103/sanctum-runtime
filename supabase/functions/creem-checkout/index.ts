@@ -1,6 +1,6 @@
 /**
- * Plan changes: new checkout, subscription upgrade/downgrade, or cancel → Observer.
- * @see docs/CREEM_BILLING_FLOWS.md
+ * Plan changes: new checkout, subscription upgrade/downgrade, or cancel to
+ * the free Developer tier (entitlement id: observer).
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js'
 import {
@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
         checkoutUrl: null,
         changed: false,
         planId: 'observer',
-        message: 'This workspace is already on the Observer plan.',
+        message: 'This workspace is already on the Developer plan.',
       })
     }
 
@@ -151,7 +151,7 @@ Deno.serve(async (req) => {
         changed: true,
         changeType: 'cancel_immediate',
         planId: 'observer',
-        message: 'Subscription canceled. This workspace is now on the Observer plan.',
+        message: 'Subscription canceled. This workspace is now on the Developer plan.',
       })
     }
 
@@ -162,7 +162,7 @@ Deno.serve(async (req) => {
       changeType: 'cancel_scheduled',
       planId: currentPlanId,
       message:
-        `Cancellation scheduled. You keep ${currentPlanId} access until the current billing period ends, then move to Observer.`,
+        `Cancellation scheduled. You keep ${currentPlanId} access until the current billing period ends, then move to Developer.`,
     })
   }
 
@@ -170,7 +170,7 @@ Deno.serve(async (req) => {
   if (!productId) {
     return jsonWithCors(req, {
       error: 'product_not_configured',
-      hint: `Set CREEM_PRODUCT_${planId.toUpperCase()} in Supabase Edge Function secrets`,
+      hint: 'Billing checkout is not ready for this plan yet. Contact billing@sanctumruntime.com and we will move the workspace for you.',
     }, { status: 503 })
   }
 

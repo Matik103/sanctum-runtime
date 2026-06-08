@@ -195,7 +195,7 @@ export function ProfileSettingsSections({ orgId, orgRole }: Props) {
                           ? 'Operator'
                           : dbPlanId === 'team'
                             ? 'Team'
-                            : 'Observer')}
+                            : 'Developer')}
                     {(account?.billing?.price_monthly_usd != null || dbPlanId === 'personal') && (
                       <span style={{ fontWeight: 400, color: 'var(--muted)', marginLeft: '0.35rem' }}>
                         {account?.billing?.price_monthly_usd != null

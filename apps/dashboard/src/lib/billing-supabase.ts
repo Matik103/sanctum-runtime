@@ -1,8 +1,8 @@
 import { getSupabase } from './supabase'
-import type { BillingPlan, PlanId } from './billing'
+import { normalizePlanId, type BillingPlan, type PlanId } from './billing'
 
 const PLAN_NAMES: Record<PlanId, { name: string; price: number | null }> = {
-  observer: { name: 'Observer', price: null },
+  observer: { name: 'Developer', price: null },
   personal: { name: 'Personal', price: 12 },
   operator: { name: 'Operator', price: 59 },
   team: { name: 'Team', price: 299 },
@@ -24,7 +24,7 @@ export async function fetchBillingPlanFromSupabase(orgId: string): Promise<Parti
 
   if (error || !row) return null
 
-  const planId = (row.plan_id as PlanId) ?? 'observer'
+  const planId = normalizePlanId(row.plan_id as string | undefined)
   const meta = PLAN_NAMES[planId] ?? PLAN_NAMES.observer
 
   return {

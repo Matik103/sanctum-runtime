@@ -25,7 +25,7 @@ describe('sanitizeApiError (dev mode)', () => {
         error: 'plan_feature_required',
         feature: 'api_access',
         currentPlan: 'observer',
-        planName: 'Observer',
+        planName: 'Developer',
         message: 'Dashboard API keys require the Operator plan or higher.',
         upgradeUrl: '/billing',
       }), {

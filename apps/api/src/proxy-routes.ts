@@ -198,7 +198,7 @@ export function registerProxyRoutes(app: FastifyInstance, runtime: RuntimeEngine
             feature: 'light_gates',
             currentPlan: planLimits.planId,
             message:
-              'Connect gate mode requires Personal or higher. Use observe mode on Observer, or upgrade at /billing.',
+              'Connect gate mode requires Personal or higher. Use observe mode on Developer, or upgrade at /billing.',
           })
         }
         if (gateEnabled) {

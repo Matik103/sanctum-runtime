@@ -306,7 +306,7 @@ async function handleCreemWebhook(
       error: 'grant_plan_unresolved',
       orgId,
       eventType,
-      hint: 'Set CREEM_PRODUCT_PERSONAL/OPERATOR/TEAM on Render to your Creem prod_* ids.',
+      hint: 'Billing could not match this payment to a plan. Contact billing@sanctumruntime.com and we will reconcile it.',
     })
   }
 
@@ -337,7 +337,7 @@ async function handleCreemWebhook(
           orgId,
           title: `Plan updated: ${update.planId}`,
           body: update.revoke
-            ? 'Your Sanctum subscription ended. You are on the Observer plan (observe-only).'
+            ? 'Your Sanctum subscription ended. You are on the Developer plan (observe-only).'
             : `Your Sanctum plan is now "${update.planId}". Changes take effect immediately.`,
           severity: 'info',
           data: { planId: update.planId, eventType },
@@ -663,19 +663,13 @@ export async function registerBillingRoutes(app: FastifyInstance) {
       }
     }
 
-    const missing: string[] = []
-    if (!getCreemConfig()) missing.push('CREEM_API_KEY')
-    if (!productId) missing.push(`CREEM_PRODUCT_${planId.toUpperCase()}`)
-
     return {
       checkoutUrl: null,
       billingProvider: null,
       checkoutMode: null,
       contactEmail: 'billing@sanctumruntime.com',
       message:
-        'Creem checkout runs on Supabase Edge Functions (creem-checkout), not sanctum-api. '
-        + `Set ${missing.join(', ') || 'CREEM_API_KEY and CREEM_PRODUCT_*'} in Supabase Edge Function secrets. `
-        + 'See docs/CREEM_SUPABASE.md.',
+        'Billing checkout is not ready for this plan yet. Contact billing@sanctumruntime.com and we will move the workspace for you.',
       planId,
       planName: PLAN_DEFAULTS[planId].planName,
       priceMonthlyUsd: PLAN_DEFAULTS[planId].priceMonthlyUsd,

@@ -25,7 +25,7 @@ export interface PlanLimits {
 const PLAN_DEFAULTS: Record<PlanId, PlanLimits> = {
   observer: {
     planId: 'observer',
-    planName: 'Observer',
+    planName: 'Developer',
     priceMonthlyUsd: null,
     maxRuntimes: 3,
     maxGovernedActionsPerMonth: 0,

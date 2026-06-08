@@ -11,6 +11,14 @@ async function authHeaders(): Promise<Record<string, string>> {
 
 export type PlanId = 'observer' | 'personal' | 'operator' | 'team' | 'enterprise'
 
+export function normalizePlanId(raw: string | null | undefined): PlanId {
+  if (raw === 'free' || raw === 'developer' || !raw) return 'observer'
+  if (raw === 'observer' || raw === 'personal' || raw === 'operator' || raw === 'team' || raw === 'enterprise') {
+    return raw
+  }
+  return 'observer'
+}
+
 export interface BillingPlan {
   plan: { id: PlanId; name: string; priceMonthlyUsd: number | null }
   limits: {
@@ -112,6 +120,15 @@ export async function fetchBillingPlan(orgId: string): Promise<BillingPlan> {
 
   if (res.ok) {
     const apiPlan = (await res.json()) as BillingPlan
+    apiPlan.plan.id = normalizePlanId(apiPlan.plan.id)
+    if (apiPlan.plan.id === 'observer') {
+      apiPlan.plan.name = 'Developer'
+      apiPlan.plan.priceMonthlyUsd = null
+      apiPlan.limits.maxEventsPerMonth = 0
+      apiPlan.limits.maxGovernedActionsPerMonth = 0
+      if (apiPlan.quotas.events) apiPlan.quotas.events.limit = 0
+      if (apiPlan.quotas.governed) apiPlan.quotas.governed.limit = 0
+    }
     if (fromDb?.plan) {
       apiPlan.plan = fromDb.plan
       apiPlan.billing = { ...apiPlan.billing, ...fromDb.billing }
@@ -120,7 +137,7 @@ export async function fetchBillingPlan(orgId: string): Promise<BillingPlan> {
   }
 
   if (fromDb?.plan) {
-    const planId = fromDb.plan.id
+    const planId = normalizePlanId(fromDb.plan.id)
     // Fallback limits when API is unreachable — must match entitlements.ts PLAN_DEFAULTS
     const limits: Record<string, { runtimes: number; governed: number | null; agents: number; retention: number }> = {
       observer: { runtimes: 3, governed: 0, agents: 2, retention: 7 },
@@ -150,11 +167,11 @@ export async function fetchBillingPlan(orgId: string): Promise<BillingPlan> {
         runtimeHoursThisMonth: 0,
       },
       quotas: {
-        events: { used: 0, limit: 50, pct: 0 },
-        governed: { used: 0, limit: 50, pct: 0 },
+        events: { used: 0, limit: lim.governed, pct: lim.governed ? 0 : null },
+        governed: { used: 0, limit: lim.governed, pct: lim.governed ? 0 : null },
         observe: { used: 0, limit: null, pct: null },
-        runtimes: { used: 0, limit: 3, pct: 0 },
-        agents: { used: 0, limit: 2, pct: 0 },
+        runtimes: { used: 0, limit: lim.runtimes || null, pct: lim.runtimes ? 0 : null },
+        agents: { used: 0, limit: lim.agents || null, pct: lim.agents ? 0 : null },
       },
       billing: {
         billingCycleAnchor: fromDb.billing?.billingCycleAnchor ?? null,
@@ -213,10 +230,13 @@ export async function changePlan(orgId: string, planId: PlanId): Promise<PlanCha
       await throwResponseError(res, 'Could not change plan (Supabase)')
     }
 
-    const hint = body.hint?.trim()
-      || (body.error === 'product_not_configured' || body.error === 'creem_api_key_not_configured'
-        ? `Billing is not fully configured for this plan. Contact billing@sanctumruntime.com.`
-        : '')
+    const setupError =
+      body.error === 'product_not_configured'
+      || body.error === 'creem_api_key_not_configured'
+      || body.error === 'creem_env_mismatch'
+    const hint = setupError
+      ? 'Billing checkout is not ready for this plan yet. Contact billing@sanctumruntime.com and we will move the workspace for you.'
+      : body.hint?.trim() || ''
     const detail = body.detail?.trim()
     const errCode = body.error ?? `http_${res.status}`
 
