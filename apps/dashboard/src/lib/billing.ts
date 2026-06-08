@@ -213,10 +213,9 @@ export async function changePlan(orgId: string, planId: PlanId): Promise<PlanCha
       await throwResponseError(res, 'Could not change plan (Supabase)')
     }
 
-    const secretName = planId === 'observer' ? 'CREEM_WEBHOOK_SECRET' : `CREEM_PRODUCT_${planId.toUpperCase()}`
     const hint = body.hint?.trim()
       || (body.error === 'product_not_configured' || body.error === 'creem_api_key_not_configured'
-        ? `Set ${body.error === 'creem_api_key_not_configured' ? 'CREEM_API_KEY' : secretName} in Supabase Edge Function secrets (docs/CREEM_SUPABASE.md).`
+        ? `Billing is not fully configured for this plan. Contact billing@sanctumruntime.com.`
         : '')
     const detail = body.detail?.trim()
     const errCode = body.error ?? `http_${res.status}`
@@ -227,7 +226,7 @@ export async function changePlan(orgId: string, planId: PlanId): Promise<PlanCha
       message: hint
         || (detail && !detail.startsWith('{')
           ? `Billing change failed (${errCode}): ${detail}`
-          : `Billing change failed (${errCode}). See docs/CREEM_BILLING_FLOWS.md.`),
+          : `Billing change failed (${errCode}). Contact billing@sanctumruntime.com.`),
       contactEmail: 'billing@sanctumruntime.com',
     }
   }
@@ -235,7 +234,7 @@ export async function changePlan(orgId: string, planId: PlanId): Promise<PlanCha
   if (planId === 'observer' || planId === 'enterprise') {
     return {
       checkoutUrl: null,
-      message: 'Plan changes for Observer or Enterprise require Supabase billing functions.',
+      message: 'This plan change is not available from the console. Contact billing@sanctumruntime.com.',
       contactEmail: 'billing@sanctumruntime.com',
     }
   }

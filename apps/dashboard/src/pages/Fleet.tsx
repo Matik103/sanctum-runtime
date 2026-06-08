@@ -278,15 +278,7 @@ export function Fleet() {
           <Alert variant="error" onDismiss={() => setError(null)}>
             {error}
             <p style={{ marginTop: '0.5rem', fontSize: '0.8rem', opacity: 0.9 }}>
-              Connect a runtime with <code className="inline-code">runtime.connect()</code> — see{' '}
-              <a
-                href="https://github.com/Matik103/sanctum-runtime/blob/main/docs/CONTROL_PLANE.md"
-                target="_blank"
-                rel="noreferrer"
-                style={{ color: '#93b4ff' }}
-              >
-                CONTROL_PLANE.md
-              </a>
+              Connect a runtime from Devices or use the Connect Agent guide to bring this fleet online.
             </p>
           </Alert>
         )

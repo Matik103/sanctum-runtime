@@ -593,12 +593,13 @@ export function Billing() {
                 </p>
               )}
               <p className="hint-line" style={{ marginTop: '1.25rem' }}>
-                Upgrades and downgrades use Creem subscription APIs when you already subscribe; new plans open a{' '}
+                Plans are managed through secure{' '}
                 <a href="https://creem.io" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                   Creem
                 </a>
-                {' '}checkout. Cancel returns you to Observer at period end. See <code>docs/CREEM_BILLING_FLOWS.md</code>.
-                Enterprise adds air-gapped deployments, SSO, compliance exports, and SLA.
+                {' '}checkout. Downgrades keep your current access until the end of the billing period unless your
+                workspace owner changes it immediately. Enterprise adds air-gapped deployments, SSO,
+                compliance exports, and SLA.
               </p>
             </div>
           </section>

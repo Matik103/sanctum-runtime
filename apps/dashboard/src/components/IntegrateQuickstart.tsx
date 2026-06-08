@@ -42,16 +42,14 @@ const result = await sanctum.verifyAction({
 })`}
       </pre>
       <p style={{ margin: '0.65rem 0 0', fontSize: '0.8rem', color: 'var(--muted)' }}>
-        Python: <code>pip install sanctum-runtime</code> · guides in{' '}
+        Python: <code>pip install sanctum-runtime</code> ·{' '}
         <a
           href="https://github.com/Matik103/sanctum-runtime/tree/main/docs/integrations"
           target="_blank"
           rel="noreferrer"
         >
-          docs/integrations
+          Integration guides
         </a>
-        {' · '}
-        <code>npm run example:agent</code> · <code>npm run smoke</code>
       </p>
     </section>
   )
