@@ -11,7 +11,7 @@
   "dependencies": {
     "@sanctum-runtime/sdk": "*",
     "@supabase/supabase-js": "^2.106.2",
-    "lucide-react": "^1.16.0",
+    "lucide-react": "^1.17.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "vite-plugin-pwa": "^1.3.0",
