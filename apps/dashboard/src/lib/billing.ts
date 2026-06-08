@@ -230,31 +230,44 @@ export async function changePlan(orgId: string, planId: PlanId): Promise<PlanCha
       await throwResponseError(res, 'Could not change plan (Supabase)')
     }
 
-    const setupError =
-      body.error === 'product_not_configured'
+    // Setup/config errors: fall through to the API path which supports
+    // static checkout URLs and hosted Creem payment pages as fallbacks.
+    const isSetupError =
+      res.status === 503
+      || res.status === 502
+      || body.error === 'product_not_configured'
       || body.error === 'creem_api_key_not_configured'
       || body.error === 'creem_env_mismatch'
-    const hint = setupError
-      ? 'Billing checkout is not ready for this plan yet. Contact billing@sanctumruntime.com and we will move the workspace for you.'
-      : body.hint?.trim() || ''
-    const detail = body.detail?.trim()
-    const errCode = body.error ?? `http_${res.status}`
 
+    if (!isSetupError) {
+      const hint = body.hint?.trim() || ''
+      const detail = body.detail?.trim()
+      const errCode = body.error ?? `http_${res.status}`
+      return {
+        checkoutUrl: null,
+        billingProvider: null,
+        message: hint
+          || (detail && !detail.startsWith('{')
+            ? `Billing change failed (${errCode}): ${detail}`
+            : `Billing change failed (${errCode}). Contact billing@sanctumruntime.com.`),
+        contactEmail: 'billing@sanctumruntime.com',
+      }
+    }
+    // Setup error — fall through to API path below
+  }
+
+  if (planId === 'observer') {
     return {
       checkoutUrl: null,
-      billingProvider: null,
-      message: hint
-        || (detail && !detail.startsWith('{')
-          ? `Billing change failed (${errCode}): ${detail}`
-          : `Billing change failed (${errCode}). Contact billing@sanctumruntime.com.`),
+      message: 'To cancel your subscription, contact billing@sanctumruntime.com and we will process it within one business day.',
       contactEmail: 'billing@sanctumruntime.com',
     }
   }
 
-  if (planId === 'observer' || planId === 'enterprise') {
+  if (planId === 'enterprise') {
     return {
       checkoutUrl: null,
-      message: 'This plan change is not available from the console. Contact billing@sanctumruntime.com.',
+      message: 'Contact billing@sanctumruntime.com for Enterprise pricing and custom terms.',
       contactEmail: 'billing@sanctumruntime.com',
     }
   }
