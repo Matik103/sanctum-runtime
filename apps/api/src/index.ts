@@ -678,22 +678,15 @@ app.get('/v1/orgs', async (req, reply) => {
 
   const store = new ControlPlaneStore(supabaseAuth)
   const admin = createSupabaseAdmin(supabaseAuth)
+  const { ensurePersonalWorkspaceForUser } = await import('./billing-org.js')
 
-  // Derive personal org ID from user UUID
-  const personalOrgId = 'personal-' + user.id.replace(/-/g, '').slice(0, 12)
-
-  // Ensure personal org exists (idempotent)
-  const orgUpsert = await admin.from('organizations').upsert(
-    { id: personalOrgId, name: user.email ?? personalOrgId },
-    { onConflict: 'id', ignoreDuplicates: true },
-  )
-  if (orgUpsert.error) req.log.warn({ err: orgUpsert.error, personalOrgId }, 'personal org upsert failed')
-
-  const memberUpsert = await admin.from('organization_members').upsert(
-    { org_id: personalOrgId, user_id: user.id, role: 'owner' },
-    { onConflict: 'org_id,user_id', ignoreDuplicates: true },
-  )
-  if (memberUpsert.error) req.log.warn({ err: memberUpsert.error, personalOrgId }, 'personal org member upsert failed')
+  let personalOrgId: string
+  try {
+    personalOrgId = await ensurePersonalWorkspaceForUser(admin, user)
+  } catch (err) {
+    personalOrgId = 'personal-' + user.id.replace(/-/g, '').slice(0, 12)
+    req.log.warn({ err, personalOrgId }, 'personal workspace ensure failed')
+  }
 
   const orgIds = await store.getUserOrgIds(user.id)
   const { data: orgs } = await admin

@@ -182,20 +182,11 @@ export class EntitlementEngine {
     return this._admin
   }
 
-  /** Ensures every org has an org_plans row (Observer) for billing + Creem webhooks. */
+  /** Ensures every org has an org_plans row (Developer / observer) for billing + Creem webhooks. */
   async ensureOrgPlan(orgId: string): Promise<void> {
     try {
-      const { data } = await this.admin()
-        .from('org_plans')
-        .select('org_id')
-        .eq('org_id', orgId)
-        .maybeSingle()
-      if (data) return
-      await this.admin().from('org_plans').insert({
-        org_id: orgId,
-        plan_id: 'observer',
-        updated_at: new Date().toISOString(),
-      })
+      const { ensureOrgPlanRow } = await import('./billing-org.js')
+      await ensureOrgPlanRow(this.admin(), orgId)
     } catch { /* non-fatal — getPlanId still defaults to observer */ }
   }
 

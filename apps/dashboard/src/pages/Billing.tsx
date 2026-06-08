@@ -321,7 +321,7 @@ export function Billing() {
   const currentPlanId = normalizePlanId(plan?.plan.id)
   const currentPlanIdx = Math.max(0, PLAN_ORDER.indexOf(currentPlanId))
   const userRole = orgs.find((o) => o.org_id === orgId)?.role ?? ''
-  const canBill = userRole === 'owner' || userRole === 'admin' || userRole === 'operator'
+  const canBill = userRole === 'owner' || userRole === 'admin'
   const governedQuota = plan?.quotas.governed ?? plan?.quotas.events
   const observeUsed = plan?.usage.observeEventsThisMonth ?? 0
   const governedUsed = plan?.usage.governedActionsThisMonth ?? plan?.usage.eventsThisMonth ?? 0

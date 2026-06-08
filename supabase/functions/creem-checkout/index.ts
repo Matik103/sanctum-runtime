@@ -13,7 +13,13 @@ import {
   productMap,
   validateCreemEnvironment,
 } from '../_shared/creem.ts'
-import { grantOrgPlan, markScheduledCancel, revokeOrgPlan } from '../_shared/creem-org-plan.ts'
+import {
+  ensureOrgPlan,
+  grantOrgPlan,
+  markScheduledCancel,
+  normalizePlanId,
+  revokeOrgPlan,
+} from '../_shared/creem-org-plan.ts'
 import {
   creemCancelSubscription,
   creemChangeSubscriptionPlan,
@@ -104,27 +110,31 @@ Deno.serve(async (req) => {
     updated_at: new Date().toISOString(),
   }).eq('id', user.id)
 
+  await ensureOrgPlan(admin, orgId)
+
   const { data: orgPlan } = await admin
     .from('org_plans')
     .select('plan_id, creem_subscription_id, creem_subscription_status, creem_customer_id')
     .eq('org_id', orgId)
     .maybeSingle()
 
-  const currentPlanId = (orgPlan?.plan_id as string | undefined) ?? 'observer'
+  const currentPlanId = normalizePlanId(orgPlan?.plan_id as string | undefined)
+  const targetPlanId = normalizePlanId(planId)
   const subId = orgPlan?.creem_subscription_id as string | undefined
   const subStatus = orgPlan?.creem_subscription_status as string | undefined
 
-  if (currentPlanId === planId) {
+  if (currentPlanId === targetPlanId) {
+    const label = targetPlanId === 'observer' ? 'Developer' : targetPlanId
     return jsonWithCors(req, {
       checkoutUrl: null,
       changed: false,
-      planId,
-      message: `This workspace is already on the ${planId} plan.`,
+      planId: targetPlanId,
+      message: `This workspace is already on the ${label} plan.`,
     })
   }
 
-  // ─── Cancel → Observer (scheduled by default per Creem best practice) ───────
-  if (planId === 'observer') {
+  // ─── Cancel → Developer (scheduled by default per Creem best practice) ───────
+  if (targetPlanId === 'observer') {
     if (!hasActiveCreemSubscription(currentPlanId, subId, subStatus)) {
       return jsonWithCors(req, {
         checkoutUrl: null,
@@ -166,7 +176,7 @@ Deno.serve(async (req) => {
     })
   }
 
-  const productId = productIdForPlan(planId)
+  const productId = productIdForPlan(targetPlanId)
   if (!productId) {
     return jsonWithCors(req, {
       error: 'product_not_configured',
@@ -180,14 +190,14 @@ Deno.serve(async (req) => {
     if (!change.ok) {
       return jsonWithCors(req, {
         error: 'creem_plan_change_failed',
-        hint: creemApiErrorHint(change.status, undefined, planId, change.text),
+        hint: creemApiErrorHint(change.status, undefined, targetPlanId, change.text),
         creemApiBase: creemApiBase(),
         detail: change.text.slice(0, 300),
       }, { status: 502 })
     }
 
     const map = productMap()
-    const resolvedPlan = planIdFromSubscription(change.body, map) ?? planId
+    const resolvedPlan = planIdFromSubscription(change.body, map) ?? targetPlanId
     await grantOrgPlan(admin, {
       orgId,
       planId: resolvedPlan,
@@ -224,8 +234,8 @@ Deno.serve(async (req) => {
     metadata: {
       org_id: orgId,
       orgId,
-      plan: planId,
-      plan_id: planId,
+      plan: targetPlanId,
+      plan_id: targetPlanId,
       referenceId: orgId,
     },
     success_url: successUrl,
@@ -251,7 +261,7 @@ Deno.serve(async (req) => {
     }
     return jsonWithCors(req, {
       error: 'creem_checkout_failed',
-      hint: creemApiErrorHint(res.status, creemError, planId, text),
+      hint: creemApiErrorHint(res.status, creemError, targetPlanId, text),
       creemApiBase: creemApiBase(),
       detail: text.slice(0, 300),
     }, { status: 502 })
@@ -276,7 +286,7 @@ Deno.serve(async (req) => {
     checkoutId: typeof data.id === 'string' ? data.id : null,
     billingProvider: 'creem',
     checkoutMode: 'checkout',
-    planId,
+    planId: targetPlanId,
     message: null,
   })
 })

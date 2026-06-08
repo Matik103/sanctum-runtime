@@ -22,7 +22,21 @@ export async function fetchBillingPlanFromSupabase(orgId: string): Promise<Parti
     .eq('org_id', orgId)
     .maybeSingle()
 
-  if (error || !row) return null
+  if (error) return null
+
+  if (!row) {
+    return {
+      plan: { id: 'observer', name: 'Developer', priceMonthlyUsd: null },
+      billing: {
+        billingProvider: null,
+        creemCustomerId: null,
+        creemSubscriptionId: null,
+        creemSubscriptionStatus: null,
+        billingStatus: null,
+        billingCycleAnchor: null,
+      },
+    }
+  }
 
   const planId = normalizePlanId(row.plan_id as string | undefined)
   const meta = PLAN_NAMES[planId] ?? PLAN_NAMES.observer

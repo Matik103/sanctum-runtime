@@ -32,14 +32,24 @@ async function fetchOperatorOrgs(): Promise<FleetOrg[]> {
 }
 
 export async function fetchMyOrgs(): Promise<FleetOrg[]> {
-  const apiOrgs = await fetchOperatorOrgs().catch(() => [])
-  if (apiOrgs.length > 0) return apiOrgs
-
   const sb = getSupabase()
-  if (!sb) return []
-  const { data, error } = await sb.rpc('get_my_orgs')
-  if (error) return []
-  return (data ?? []) as FleetOrg[]
+  const rpcOrgs: FleetOrg[] = sb
+    ? (((await sb.rpc('get_my_orgs')).data ?? []) as FleetOrg[])
+    : []
+
+  const apiOrgs = await fetchOperatorOrgs().catch(() => [])
+  if (apiOrgs.length === 0) return rpcOrgs
+
+  const byId = new Map(rpcOrgs.map((o) => [o.org_id, o]))
+  return apiOrgs.map((o) => {
+    const fromRpc = byId.get(o.org_id)
+    return {
+      org_id: o.org_id,
+      org_name: fromRpc?.org_name ?? o.org_name,
+      // Operator context has no roles — use membership role from Supabase when available.
+      role: fromRpc?.role ?? (o.org_id.startsWith('personal-') ? 'owner' : 'member'),
+    }
+  })
 }
 
 async function fleetHeaders(): Promise<HeadersInit> {

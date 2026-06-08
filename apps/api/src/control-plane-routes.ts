@@ -384,11 +384,19 @@ export async function registerControlPlaneRoutes(app: FastifyInstance) {
   app.get('/v1/operator/context', async (req, reply) => {
     const user = (req as SanctumReq).sanctumUser
     if (user) {
-      const organizationIds = await store.getUserOrgIds(user.id)
       const { createSupabaseAdmin } = await import('./auth.js')
-      const { resolveBillingOrgId } = await import('./billing-org.js')
+      const {
+        ensureOrgPlanRow,
+        ensurePersonalWorkspaceForUser,
+        resolveBillingOrgId,
+      } = await import('./billing-org.js')
       const admin = createSupabaseAdmin(cfg)
+      await ensurePersonalWorkspaceForUser(admin, user)
+      const organizationIds = await store.getUserOrgIds(user.id)
       const defaultOrganizationId = await resolveBillingOrgId(store, admin, user.id)
+      if (defaultOrganizationId) {
+        await ensureOrgPlanRow(admin, defaultOrganizationId)
+      }
       for (const orgId of organizationIds) {
         logDataAccess(cfg, req, { orgId, resource: 'operator_context' })
       }

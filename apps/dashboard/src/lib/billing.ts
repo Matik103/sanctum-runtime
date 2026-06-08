@@ -180,8 +180,41 @@ export async function fetchBillingPlan(orgId: string): Promise<BillingPlan> {
     }
   }
 
-  await throwResponseError(res, 'Could not load billing info')
-  throw new Error('Could not load billing info')
+  // API unreachable but workspace exists — show Developer defaults so new accounts see the free tier.
+  return defaultDeveloperBillingPlan()
+}
+
+function defaultDeveloperBillingPlan(): BillingPlan {
+  return {
+    plan: { id: 'observer', name: 'Developer', priceMonthlyUsd: null },
+    limits: {
+      maxRuntimes: 3,
+      maxEventsPerMonth: 0,
+      maxGovernedActionsPerMonth: 0,
+      maxObserveEventsPerMonth: null,
+      maxAgents: 2,
+      retentionDays: 7,
+      features: [],
+    },
+    usage: {
+      eventsThisMonth: 0,
+      governedActionsThisMonth: 0,
+      observeEventsThisMonth: 0,
+      runtimesConnected: 0,
+      agentsActive: 0,
+      runtimeHoursThisMonth: 0,
+    },
+    quotas: {
+      events: { used: 0, limit: 0, pct: null },
+      governed: { used: 0, limit: 0, pct: null },
+      observe: { used: 0, limit: null, pct: null },
+      runtimes: { used: 0, limit: 3, pct: 0 },
+      agents: { used: 0, limit: 2, pct: 0 },
+    },
+    billing: {
+      billingCycleAnchor: null,
+    },
+  }
 }
 
 function supabaseFunctionsBase(): string | null {

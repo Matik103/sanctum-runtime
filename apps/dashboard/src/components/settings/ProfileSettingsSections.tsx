@@ -54,10 +54,8 @@ export function ProfileSettingsSections({ orgId, orgRole }: Props) {
   useEffect(() => {
     if (!orgId) return
     void fetchBillingPlanFromSupabase(orgId).then((p) => {
-      if (p?.plan) {
-        setDbPlanId(p.plan.id)
-        setDbPlanStatus(p.billing?.creemSubscriptionStatus ?? p.billing?.billingStatus ?? null)
-      }
+      setDbPlanId(p?.plan?.id ?? 'observer')
+      setDbPlanStatus(p?.billing?.creemSubscriptionStatus ?? p?.billing?.billingStatus ?? null)
     })
   }, [orgId])
 

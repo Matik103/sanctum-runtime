@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ControlPlaneStore } from './control-plane-store.js'
-import type { PlanId } from './entitlements.js'
+import { normalizePlanId, type PlanId } from './entitlements.js'
 
 const PLAN_RANK: Record<string, number> = {
   observer: 0,
@@ -13,6 +13,48 @@ const PLAN_RANK: Record<string, number> = {
 
 function planRank(planId: string): number {
   return PLAN_RANK[planId] ?? 0
+}
+
+/** Idempotent: every workspace needs org_plans (Developer / observer) for billing UI + Creem. */
+export async function ensureOrgPlanRow(admin: SupabaseClient, orgId: string): Promise<void> {
+  const { data } = await admin
+    .from('org_plans')
+    .select('org_id')
+    .eq('org_id', orgId)
+    .maybeSingle()
+  if (data) return
+  const now = new Date().toISOString()
+  const { error } = await admin.from('org_plans').insert({
+    org_id: orgId,
+    plan_id: 'observer',
+    updated_at: now,
+  })
+  if (error && error.code !== '23505') {
+    throw new Error(`ensure_org_plan_failed:${error.message}`)
+  }
+}
+
+/** Personal workspace + owner membership + Developer plan row (signup / API safety net). */
+export async function ensurePersonalWorkspaceForUser(
+  admin: SupabaseClient,
+  user: { id: string; email?: string | null },
+): Promise<string> {
+  const personalOrgId = `personal-${user.id.replace(/-/g, '').slice(0, 12)}`
+  const label = user.email?.split('@')[0]?.trim() || 'Workspace'
+  await admin.from('organizations').upsert(
+    {
+      id: personalOrgId,
+      name: `${label}'s workspace`,
+      signup_source: 'dashboard',
+    },
+    { onConflict: 'id', ignoreDuplicates: true },
+  )
+  await admin.from('organization_members').upsert(
+    { org_id: personalOrgId, user_id: user.id, role: 'owner' },
+    { onConflict: 'org_id,user_id', ignoreDuplicates: true },
+  )
+  await ensureOrgPlanRow(admin, personalOrgId)
+  return personalOrgId
 }
 
 /** Workspace that owns billing for this user (explicit org > profile link > paid org > personal). */
@@ -100,13 +142,15 @@ export async function loadProfileBillingStatus(
   const orgId = await resolveBillingOrgId(store, admin, userId)
   if (!orgId) return null
 
+  await ensureOrgPlanRow(admin, orgId)
+
   const { data: row } = await admin
     .from('org_plans')
     .select('plan_id, creem_subscription_id, creem_subscription_status, billing_status')
     .eq('org_id', orgId)
     .maybeSingle()
 
-  const planId = (row?.plan_id as PlanId) ?? 'observer'
+  const planId = normalizePlanId(row?.plan_id as string | undefined)
   const { PLAN_DEFAULTS } = await import('./entitlements.js')
   const defaults = PLAN_DEFAULTS[planId] ?? PLAN_DEFAULTS.observer
 

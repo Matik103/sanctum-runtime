@@ -5,6 +5,30 @@ import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 type Admin = SupabaseClient
 
+/** Map legacy/free ids to observer (product label: Developer). */
+export function normalizePlanId(raw: string | null | undefined): string {
+  if (!raw || raw === 'free' || raw === 'developer') return 'observer'
+  if (raw === 'observer' || raw === 'personal' || raw === 'operator' || raw === 'team' || raw === 'enterprise') {
+    return raw
+  }
+  return 'observer'
+}
+
+/** Every workspace must have org_plans before checkout or billing UI. */
+export async function ensureOrgPlan(admin: Admin, orgId: string): Promise<void> {
+  const { data } = await admin.from('org_plans').select('org_id').eq('org_id', orgId).maybeSingle()
+  if (data) return
+  const now = new Date().toISOString()
+  const { error } = await admin.from('org_plans').insert({
+    org_id: orgId,
+    plan_id: 'observer',
+    updated_at: now,
+  })
+  if (error && error.code !== '23505') {
+    throw new Error(`ensure_org_plan_failed:${error.message}`)
+  }
+}
+
 export async function claimCreemWebhookEvent(
   admin: Admin,
   eventId: string | undefined,
