@@ -18,7 +18,6 @@ import { sanitizeApiError } from '../lib/sanitize-error'
 import {
   getOAuthRedirectUrl,
   markOauthIntent,
-  oauthSignupMetadata,
   type OauthPortal,
   type OauthProvider,
 } from '../lib/oauth'
@@ -233,11 +232,12 @@ export function Login() {
     setBusy(true)
     try {
       markOauthIntent(portal, provider, termsAt)
+      // OAuth cannot carry signup metadata — markOauthIntent stores it in
+      // sessionStorage and applyOauthIntent stamps it after the redirect.
       const { error: err } = await sb.auth.signInWithOAuth({
         provider,
         options: {
           redirectTo: getOAuthRedirectUrl(),
-          data: oauthSignupMetadata(portal, provider, termsAt),
           ...(provider === 'google'
             ? { queryParams: { prompt: 'select_account' } }
             : { scopes: 'read:user user:email' }),

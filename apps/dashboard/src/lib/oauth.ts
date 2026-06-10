@@ -64,8 +64,8 @@ export async function applyOauthIntent(sb: SupabaseClient, user: User): Promise<
 
   const patch: Record<string, string> = {
     portal_type: nextPortal,
-    auth_provider: nextProvider,
   }
+  if (nextProvider) patch.auth_provider = nextProvider
   if (termsAt) {
     patch.terms_accepted_at = termsAt
     patch.terms_version = TERMS_VERSION
@@ -75,9 +75,9 @@ export async function applyOauthIntent(sb: SupabaseClient, user: User): Promise<
 
   const profilePatch: Record<string, string> = {
     portal_type: nextPortal,
-    auth_provider: nextProvider,
     updated_at: new Date().toISOString(),
   }
+  if (nextProvider) profilePatch.auth_provider = nextProvider
   if (termsAt) {
     profilePatch.accepted_terms_at = termsAt
     profilePatch.terms_version = TERMS_VERSION

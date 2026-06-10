@@ -553,7 +553,7 @@ export function Billing() {
                         {canCheckout && (
                           <button
                             type="button"
-                            className={`btn ${canBill ? 'btn-primary' : 'btn-ghost'} btn-sm`}
+                            className={`btn ${canBill && isUpgrade ? 'btn-primary' : 'btn-ghost'} btn-sm`}
                             disabled={busy || !canBill}
                             onClick={() => void handlePlanChange(pc.id)}
                             style={{ width: '100%' }}
