@@ -55,6 +55,13 @@ export function Settings({ status }: Props) {
 
   useEffect(() => {
     if (!orgId) return
+    // Reset edit state immediately so a quick save after switching orgs
+    // cannot write the previous org's values into the new org.
+    setNotifPrefs(null)
+    setEditEmail('')
+    setEditSlack('')
+    setEditWebhook('')
+    setEditPct(80)
     void fetchUsage(orgId, 30)
       .then(setUsage)
       .catch((e) => setUsageError(e instanceof Error ? e.message : 'Usage unavailable'))

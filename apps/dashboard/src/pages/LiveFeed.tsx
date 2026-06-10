@@ -265,10 +265,13 @@ export function LiveFeed({ orgId, onPage }: Props) {
 
   async function handlePolicy(event: ProxyEvent, mode: 'verify' | 'block' | 'approve') {
     if (!orgId) return
+    // Always apply to the org that owns the event, not whatever org the page
+    // happens to be on — guards against mixed-org feeds.
+    const targetOrg = event.org_id || orgId
     setPolicySaving(event.id)
     setPolicyMsg(null)
     try {
-      await applyToolPolicy(orgId, event.action, mode)
+      await applyToolPolicy(targetOrg, event.action, mode)
       setPolicyMsg(`Policy for ${event.action}: ${mode}`)
     } catch (e) {
       setResolveError(e instanceof Error ? e.message : 'Policy save failed')

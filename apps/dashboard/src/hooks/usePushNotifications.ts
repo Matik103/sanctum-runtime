@@ -313,7 +313,14 @@ export function usePushNotifications() {
         })
       }
 
-      await storeSubscription(sub)
+      try {
+        await storeSubscription(sub)
+      } catch (e) {
+        // Server never saw this subscription — drop the browser one so the
+        // device is not left subscribed to pushes nothing will ever send.
+        await sub.unsubscribe().catch(() => {})
+        throw e
+      }
       await refreshStatus()
       setState('subscribed')
     } catch (e) {

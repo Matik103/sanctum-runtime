@@ -73,6 +73,18 @@ export function ProfileSettingsSections({ orgId, orgRole }: Props) {
 
   useEffect(() => {
     if (!orgId) return
+    // Clear the previous org's form values before the new org's profile
+    // loads so a quick save cannot cross-write between workspaces.
+    setOrgProfile(null)
+    setWorkspaceName('')
+    setLegalName('')
+    setWebsite('')
+    setOrgCountry('')
+    setCompanySize('')
+    setIndustry('')
+    setContactName('')
+    setContactEmail('')
+    setContactTitle('')
     void fetchOrgProfile(orgId)
       .then((p) => {
         if (!p) return
@@ -125,7 +137,7 @@ export function ProfileSettingsSections({ orgId, orgRole }: Props) {
         if (!host) throw new Error('Enter a valid company website (e.g. acme.com).')
         const next = await updateOrgProfile(orgId, {
           legal_name: legalName.trim(),
-          website,
+          website: host,
           country_code: orgCountry,
           company_size: companySize,
           industry,

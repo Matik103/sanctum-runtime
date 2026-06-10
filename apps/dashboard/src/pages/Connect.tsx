@@ -97,9 +97,13 @@ function saveConnectPrefs(orgId: string | null | undefined, prefs: ConnectPrefs)
 function CopyButton({ value }: { value: string }) {
   const [copied, setCopied] = useState(false)
   function copy() {
-    void navigator.clipboard.writeText(value).then(() => {
+    navigator.clipboard.writeText(value).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 1800)
+    }).catch(() => {
+      // Clipboard denied (permissions / non-secure context) — fall back to
+      // a manual selection prompt so the user can still grab the value.
+      window.prompt('Copy with Ctrl/Cmd+C:', value)
     })
   }
   return (
@@ -271,21 +275,24 @@ export function Connect({ orgId, onPage }: Props) {
       if (token) headers['Authorization'] = `Bearer ${token}`
 
       const [credRes, agentRes, healthRes, settingsRes, presetRes, shieldRes, suggestRes] = await Promise.all([
-        listPlatformCredentials(orgId),
-        fetch(`${apiBaseUrl}/v1/orgs/${orgId}/agents`, { headers }),
+        listPlatformCredentials(orgId).catch(() => null),
+        fetch(`${apiBaseUrl}/v1/orgs/${orgId}/agents`, { headers }).catch(() => null),
         fetchConnectHealth(orgId).catch(() => null),
         fetchConnectSettings(orgId).catch(() => null),
         fetchConnectPresets(orgId).catch(() => null),
         fetchConnectShieldPresets(orgId).catch(() => null),
         fetchPolicySuggestions(orgId).catch(() => []),
       ])
-      setCredentials(credRes)
+      if (credRes === null) {
+        setError('Could not load saved platform keys — refresh to retry. Other settings are shown below.')
+      }
+      setCredentials(credRes ?? [])
       setHealth(healthRes)
       setSettings(settingsRes)
       if (presetRes) setPresets(presetRes.presets)
       setShieldPresets(shieldRes ?? [])
       setSuggestions(suggestRes)
-      if (agentRes.ok) {
+      if (agentRes?.ok) {
         const list = (await agentRes.json()) as AgentOption[]
         setAgents(list)
       }

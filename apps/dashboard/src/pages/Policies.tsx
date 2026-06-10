@@ -91,6 +91,14 @@ function ConditionsEditor({ action, conditions, onSave }: {
 
   const add = () => {
     if (!draft.field.trim() || draft.value === '') { setErr('Fill in all fields'); return }
+    if (draft.op === 'matches') {
+      try {
+        new RegExp(String(draft.value))
+      } catch {
+        setErr('Invalid regex pattern — fix it before adding this condition.')
+        return
+      }
+    }
     setList((prev) => [...prev, { ...draft }])
     setDraft({ field: 'context.amount', op: 'gt', value: '', result: 'verify' })
     setErr(null)

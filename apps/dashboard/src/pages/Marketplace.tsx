@@ -23,6 +23,8 @@ export function Marketplace() {
   const [busySlug, setBusySlug] = useState<string | null>(null)
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const loadingRef = useRef(false)
+  const orgIdRef = useRef(orgId)
+  orgIdRef.current = orgId
 
   const categories = useMemo(() => {
     const cats = Array.from(new Set(packages.map((p) => p.category).filter(Boolean))).sort()
@@ -86,12 +88,16 @@ export function Marketplace() {
       setSuccess(null)
       return
     }
+    const targetOrg = orgId
+    // Org switched while the request was in flight — drop the stale update.
+    const staleOrg = () => orgIdRef.current !== targetOrg
     setBusySlug(pkg.slug)
     setError(null)
     setSuccess(null)
     try {
       if (pkg.installed) {
-        await uninstallMarketplacePackage(pkg.slug, orgId)
+        await uninstallMarketplacePackage(pkg.slug, targetOrg)
+        if (staleOrg()) return
         setPackages((prev) =>
           prev.map((p) =>
             p.slug === pkg.slug ? { ...p, installed: false, installId: null } : p,
@@ -99,7 +105,8 @@ export function Marketplace() {
         )
         setSuccess(`Removed ${pkg.name} and its org policies from this organization`)
       } else {
-        const result = await installMarketplacePackage(pkg.slug, orgId)
+        const result = await installMarketplacePackage(pkg.slug, targetOrg)
+        if (staleOrg()) return
         setPackages((prev) =>
           prev.map((p) =>
             p.slug === pkg.slug
@@ -117,8 +124,10 @@ export function Marketplace() {
       }
       await refresh()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Action failed')
-      await refresh()
+      if (!staleOrg()) {
+        setError(e instanceof Error ? e.message : 'Action failed')
+        await refresh()
+      }
     } finally {
       setBusySlug(null)
     }

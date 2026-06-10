@@ -68,6 +68,10 @@ export function Compliance() {
 
   const loadReport = useCallback(async () => {
     if (!orgId) return
+    if (startDate > endDate) {
+      setError('Start date must be on or before end date.')
+      return
+    }
     setLoading(true)
     setError(null)
     try {
@@ -90,17 +94,30 @@ export function Compliance() {
 
   const downloadReport = async () => {
     if (!orgId) return
-    const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/compliance/report.pdf?start=${startDate}&end=${endDate}`, {
-      headers: await authHeaders(),
-    })
-    if (!res.ok) return
-    const blob = await res.blob()
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `sanctum-compliance-${orgId}-${startDate}-${endDate}.json`
-    a.click()
-    URL.revokeObjectURL(url)
+    if (startDate > endDate) {
+      setError('Start date must be on or before end date.')
+      return
+    }
+    try {
+      const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/compliance/report.pdf?start=${startDate}&end=${endDate}`, {
+        headers: await authHeaders(),
+      })
+      if (!res.ok) {
+        setError(res.status === 403
+          ? 'Compliance export requires an admin or owner role and a plan with compliance export.'
+          : `Report download failed (HTTP ${res.status}).`)
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `sanctum-compliance-${orgId}-${startDate}-${endDate}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Report download failed.')
+    }
   }
 
   const totalActions = report?.summary.total_actions ?? 0

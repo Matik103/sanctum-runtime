@@ -178,11 +178,18 @@ export function ShieldRules() {
   }, [form, loadRules])
 
   const deleteRule = useCallback(async (id: string) => {
+    if (!confirm('Delete this shield rule? Actions it was blocking or holding will no longer be gated.')) return
     setDeleting(id)
     try {
       const headers = await authHeaders()
-      await fetch(`${API_BASE}/v1/shield/rules/${id}`, { method: 'DELETE', headers })
+      const res = await fetch(`${API_BASE}/v1/shield/rules/${id}`, { method: 'DELETE', headers })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as Record<string, unknown>
+        throw new Error(typeof err.error === 'string' ? err.error : `Failed to delete rule (HTTP ${res.status}).`)
+      }
       setRules((prev) => prev.filter((r) => r.id !== id))
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : 'Failed to delete rule.')
     } finally {
       setDeleting(null)
     }
@@ -197,9 +204,13 @@ export function ShieldRules() {
         headers,
         body: JSON.stringify({ enabled: !rule.enabled }),
       })
-      if (res.ok) {
-        setRules((prev) => prev.map((r) => r.id === rule.id ? { ...r, enabled: !r.enabled } : r))
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as Record<string, unknown>
+        throw new Error(typeof err.error === 'string' ? err.error : `Failed to update rule (HTTP ${res.status}).`)
       }
+      setRules((prev) => prev.map((r) => r.id === rule.id ? { ...r, enabled: !r.enabled } : r))
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : 'Failed to update rule.')
     } finally {
       setToggling(null)
     }
@@ -226,6 +237,20 @@ export function ShieldRules() {
       {successMsg && (
         <div className="alert alert-success" style={{ marginBottom: '1rem' }}>
           {successMsg}
+        </div>
+      )}
+
+      {formError && !showForm && (
+        <div className="alert alert-error" style={{ marginBottom: '1rem', color: 'var(--danger)' }}>
+          {formError}
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            style={{ marginLeft: '0.5rem' }}
+            onClick={() => setFormError(null)}
+          >
+            Dismiss
+          </button>
         </div>
       )}
 

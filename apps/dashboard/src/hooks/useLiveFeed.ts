@@ -86,18 +86,23 @@ function normalizeProxyEvent(raw: Record<string, unknown>): ProxyEvent | null {
   }
 }
 
-async function fetchRecentProxyEvents(limit = 50): Promise<ProxyEvent[]> {
+async function fetchRecentProxyEvents(orgId: string, limit = 50): Promise<ProxyEvent[]> {
   const token = await getAccessToken()
   const headers: Record<string, string> = {}
   if (token) headers['Authorization'] = `Bearer ${token}`
 
-  const res = await fetch(`${apiBaseUrl}/v1/audit?limit=${limit}`, { headers })
+  const res = await fetch(
+    `${apiBaseUrl}/v1/audit?limit=${limit}&org_id=${encodeURIComponent(orgId)}`,
+    { headers },
+  )
   if (!res.ok) return []
   const data = (await res.json()) as ProxyEvent[] | { entries?: ProxyEvent[] }
   const rows = Array.isArray(data) ? data : (data.entries ?? [])
   return rows
     .map((e) => normalizeProxyEvent(e as unknown as Record<string, unknown>))
     .filter((e): e is ProxyEvent => e != null)
+    // Defense in depth — drop anything that is not for the requested org.
+    .filter((e) => !e.org_id || e.org_id === orgId)
 }
 
 export function useLiveFeed(orgId: string | null | undefined) {
@@ -113,7 +118,7 @@ export function useLiveFeed(orgId: string | null | undefined) {
     let cancelled = false
     const load = async (showLoading = false) => {
       if (showLoading) setLoading(true)
-      const recent = await fetchRecentProxyEvents().catch(() => [])
+      const recent = await fetchRecentProxyEvents(orgId).catch(() => [])
       if (cancelled) return
       setEvents(recent)
       if (showLoading) setLoading(false)

@@ -134,7 +134,14 @@ export function Alerts({ onPage }: { onPage?: (p: PageId) => void }) {
   })
 
   useEffect(() => {
-    fetchMyOrgs().then((orgs) => { if (orgs[0]) setOrgId(orgs[0].org_id) }).catch(() => {})
+    fetchMyOrgs()
+      .then((orgs) => {
+        if (orgs[0]) setOrgId(orgs[0].org_id)
+        else setMsg({ text: 'No workspace found for this account — sign out and back in, or contact support.', variant: 'error' })
+      })
+      .catch(() => {
+        setMsg({ text: 'Could not load your workspace. Refresh to retry.', variant: 'error' })
+      })
   }, [])
 
   const loadIncidents = useCallback(async () => {
@@ -237,21 +244,31 @@ export function Alerts({ onPage }: { onPage?: (p: PageId) => void }) {
   }
 
   const toggleRule = async (rule: AlertRule) => {
-    await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/alert-rules/${rule.id}`, {
-      method: 'PATCH',
-      headers: await authHeaders(true),
-      body: JSON.stringify({ is_active: !rule.is_active }),
-    })
-    await loadRules()
+    try {
+      const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/alert-rules/${rule.id}`, {
+        method: 'PATCH',
+        headers: await authHeaders(true),
+        body: JSON.stringify({ is_active: !rule.is_active }),
+      })
+      if (!res.ok) throw new Error(`Could not update rule (HTTP ${res.status})`)
+      await loadRules()
+    } catch (e) {
+      setMsg({ text: e instanceof Error ? e.message : 'Could not update rule', variant: 'error' })
+    }
   }
 
   const deleteRule = async (ruleId: string) => {
     if (!confirm('Delete this alert rule?')) return
-    await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/alert-rules/${ruleId}`, {
-      method: 'DELETE',
-      headers: await authHeaders(),
-    })
-    await loadRules()
+    try {
+      const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/alert-rules/${ruleId}`, {
+        method: 'DELETE',
+        headers: await authHeaders(),
+      })
+      if (!res.ok) throw new Error(`Could not delete rule (HTTP ${res.status})`)
+      await loadRules()
+    } catch (e) {
+      setMsg({ text: e instanceof Error ? e.message : 'Could not delete rule', variant: 'error' })
+    }
   }
 
   return (

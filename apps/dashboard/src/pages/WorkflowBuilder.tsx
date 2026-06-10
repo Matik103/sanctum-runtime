@@ -82,7 +82,7 @@ export function WorkflowBuilder() {
         for (const c of p.conditions) {
           lines.push(`    - field: ${c.field}`);
           lines.push(`      op: ${c.op}`);
-          lines.push(`      value: ${typeof c.value === "string" ? `"${c.value}"` : c.value}`);
+          lines.push(`      value: ${typeof c.value === "string" ? JSON.stringify(c.value) : Number.isFinite(c.value) ? c.value : JSON.stringify(String(c.value))}`);
           lines.push(`      result: ${c.result}`);
         }
       }
