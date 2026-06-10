@@ -266,6 +266,10 @@ export function Governance() {
                   <input className="input" type="number" min={5} max={1440} value={newWf.expiry_minutes ?? 60} onChange={(e) => setNewWf(w => ({ ...w, expiry_minutes: Number(e.target.value) }))} style={{ width: '6rem' }} />
                 </div>
               </div>
+              <p style={{ margin: '0.6rem 0 0', fontSize: '0.78rem', color: 'var(--muted)' }}>
+                Creates a single-step chain: one admin approval required. Multi-step chains
+                (e.g. admin → owner) can be defined via the workflows API.
+              </p>
               <div className="responsive-action-row" style={{ marginTop: '0.75rem' }}>
                 <button type="button" className="btn btn-primary" disabled={busy || !newWf.name || !newWf.action_pattern} onClick={() => void saveWorkflow()}>
                   {busy ? 'Saving…' : 'Save workflow'}
