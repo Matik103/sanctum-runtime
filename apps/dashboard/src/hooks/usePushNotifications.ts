@@ -234,6 +234,18 @@ export function usePushNotifications() {
     }
 
     let active = true
+    let settled = false
+
+    // 'checking' disables the Enable button, so it must never be terminal.
+    // If the passive probe stalls (sleeping API, iOS getSubscription hang),
+    // fall back to 'idle' — subscribe() does the definitive work on tap.
+    const checkTimeout = window.setTimeout(() => {
+      if (active && !settled) {
+        settled = true
+        setState('idle')
+      }
+    }, 10_000)
+
     void (async () => {
       try {
         setState('checking')
@@ -243,12 +255,12 @@ export function usePushNotifications() {
         const reg = await existingPushServiceWorker()
         if (reg) {
           if (!('pushManager' in reg)) {
-            setState('idle')
+            if (!settled) { settled = true; setState('idle') }
             return
           }
           const sub = await reg.pushManager.getSubscription()
           if (sub && subscriptionUsesKey(sub, publicKey)) {
-            setState('subscribed')
+            if (!settled) { settled = true; setState('subscribed') }
             try {
               await storeSubscription(sub)
               await refreshStatus()
@@ -261,15 +273,19 @@ export function usePushNotifications() {
           }
         }
 
-        setState('idle')
+        if (!settled) { settled = true; setState('idle') }
       } catch (e) {
-        if (!active) return
+        if (!active || settled) return
+        settled = true
         setError(e instanceof Error ? e.message : 'Push notifications are unavailable on this device.')
         setState('unavailable')
       }
     })()
 
-    return () => { active = false }
+    return () => {
+      active = false
+      window.clearTimeout(checkTimeout)
+    }
   }, [gating, loadVapidKey, refreshStatus])
 
   const subscribe = useCallback(async () => {

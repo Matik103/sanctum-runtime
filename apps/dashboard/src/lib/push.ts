@@ -26,7 +26,11 @@ export function bundledVapidPublicKey(): string | null {
 /** Prefer live API key; fall back to bundled public key if the fetch fails. */
 export async function fetchVapidPublicKey(apiBase: string): Promise<string> {
   try {
-    const res = await fetch(`${apiBase}/v1/push/vapid-key`)
+    // Timeout matters: a sleeping/cold-starting API would otherwise hang this
+    // fetch forever and leave the Settings push section stuck on "Checking".
+    const res = await fetch(`${apiBase}/v1/push/vapid-key`, {
+      signal: AbortSignal.timeout(8_000),
+    })
     if (res.ok) {
       const data = (await res.json()) as { publicKey?: string | null; vapidConfigured?: boolean }
       if (data.publicKey) return data.publicKey
@@ -36,7 +40,7 @@ export async function fetchVapidPublicKey(apiBase: string): Promise<string> {
     }
   } catch (e) {
     if (e instanceof Error && e.message.includes('VAPID keys missing')) throw e
-    // Network/CORS blip — try bundled key below.
+    // Network/CORS blip or timeout — try bundled key below.
   }
 
   const bundled = bundledVapidPublicKey()

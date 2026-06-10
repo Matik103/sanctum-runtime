@@ -69,7 +69,6 @@ export async function creemCreateCheckoutSession(input: {
   orgId: string
   planId: PaidPlanId
   successUrl: string
-  cancelUrl?: string
   customerEmail?: string
 }): Promise<CreemCheckoutSession> {
   const cfg = getCreemConfig()
@@ -89,7 +88,9 @@ export async function creemCreateCheckoutSession(input: {
     metadata,
     success_url: input.successUrl,
   }
-  if (input.cancelUrl) body.cancel_url = input.cancelUrl
+  // Creem's checkout API rejects unknown properties — cancel_url is not
+  // supported ("property cancel_url should not exist"). Cancel behavior is
+  // configured on the Creem product itself.
   if (input.customerEmail) {
     body.customer = { email: input.customerEmail }
   }

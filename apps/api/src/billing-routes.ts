@@ -610,7 +610,6 @@ export async function registerBillingRoutes(app: FastifyInstance) {
           orgId,
           planId,
           successUrl,
-          cancelUrl,
           customerEmail,
         })
         return {

@@ -6,7 +6,6 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js'
 import {
   creemApiBase,
   creemApiErrorHint,
-  dashboardBillingCancelUrl,
   dashboardBillingSuccessUrl,
   normalizeCreemApiKey,
   productIdForPlan,
@@ -228,8 +227,9 @@ Deno.serve(async (req) => {
   }
 
   // ─── New subscription: hosted checkout ────────────────────────────────────
+  // Creem's checkout API only accepts success_url — sending cancel_url is
+  // rejected with "property cancel_url should not exist".
   const successUrl = body.success_url ?? dashboardBillingSuccessUrl(orgId)
-  const cancelUrl = body.cancel_url ?? dashboardBillingCancelUrl()
 
   const creemBody = {
     product_id: productId,
@@ -242,7 +242,6 @@ Deno.serve(async (req) => {
       referenceId: orgId,
     },
     success_url: successUrl,
-    cancel_url: cancelUrl,
     customer: user.email ? { email: user.email } : undefined,
   }
 
