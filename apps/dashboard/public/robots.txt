@@ -1,25 +1,28 @@
 # Operator console — not for public search indexing.
+# Search engines are ALLOWED to crawl so they can see the
+# X-Robots-Tag: noindex header (set in _headers / render.yaml) and
+# permanently drop these URLs. Blocking them in robots.txt prevented
+# Google from ever seeing the noindex, leaving console URLs stuck in
+# Search Console's "Blocked by robots.txt" report.
 # Product docs and marketing live on https://www.sanctumruntime.com
 # AI crawlers: see https://www.sanctumruntime.com/llms.txt for indexable content.
 
-User-agent: *
-Disallow: /
-
 User-agent: Googlebot
-Disallow: /
+Allow: /
 
 User-agent: Googlebot-Image
-Disallow: /
+Allow: /
 
 User-agent: Bingbot
-Disallow: /
+Allow: /
 
 User-agent: DuckDuckBot
-Disallow: /
+Allow: /
 
 User-agent: Slurp
-Disallow: /
+Allow: /
 
+# AI/training crawlers — nothing useful here; console is auth-gated.
 User-agent: GPTBot
 Disallow: /
 
@@ -43,3 +46,6 @@ Disallow: /
 
 User-agent: Bytespider
 Disallow: /
+
+User-agent: *
+Allow: /
