@@ -2,6 +2,7 @@ import { SanctumClient } from '@sanctum-runtime/sdk/browser'
 import type { ActionPolicy, ActionRequest, ActionResult, Decision, PolicyMap, RiskLevel, RuntimeStatus } from '@sanctum-runtime/sdk/browser'
 import { apiBaseUrl } from './api-url'
 import { getAccessToken } from './supabase'
+import { throwResponseError } from './sanitize-error'
 
 export const api = new SanctumClient({
   baseUrl: apiBaseUrl,
@@ -130,7 +131,7 @@ export async function simulateAction(
     headers,
     body: JSON.stringify({ actor, action, context }),
   })
-  if (!res.ok) throw new Error(`Simulate failed: ${res.status}`)
+  if (!res.ok) await throwResponseError(res, 'Simulation failed')
   return res.json() as Promise<SimulateResult>
 }
 
@@ -206,7 +207,7 @@ export async function getFleetStatus(orgId?: string): Promise<FleetPauseStatus> 
   void orgId
   const h = await authHeaders()
   const res = await fetch(`${apiBaseUrl}/v1/fleet/pause-status`, { headers: h })
-  if (!res.ok) throw new Error(`Fleet status failed: ${res.status}`)
+  if (!res.ok) await throwResponseError(res, 'Could not load fleet status')
   return res.json() as Promise<FleetPauseStatus>
 }
 
@@ -217,7 +218,7 @@ export async function fleetPause(orgId?: string): Promise<FleetPauseStatus> {
     headers: h,
     body: JSON.stringify(orgId ? { org_id: orgId } : {}),
   })
-  if (!res.ok) throw new Error(`Fleet pause failed: ${res.status}`)
+  if (!res.ok) await throwResponseError(res, 'Could not pause the fleet')
   return res.json() as Promise<FleetPauseStatus>
 }
 
@@ -228,7 +229,7 @@ export async function fleetResume(orgId?: string): Promise<FleetPauseStatus> {
     headers: h,
     body: JSON.stringify(orgId ? { org_id: orgId } : {}),
   })
-  if (!res.ok) throw new Error(`Fleet resume failed: ${res.status}`)
+  if (!res.ok) await throwResponseError(res, 'Could not resume the fleet')
   return res.json() as Promise<FleetPauseStatus>
 }
 

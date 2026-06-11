@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
+import { responseError } from '../lib/sanitize-error'
 import { fetchMyOrgs } from '../lib/fleet'
+import { PlanGateAlert } from '../components/PlanGateAlert'
 import { AgentConnectStudio } from '../components/AgentConnectStudio'
 import { AgentDetail } from './AgentDetail'
 import { RefreshCw, RotateCcw, Download, Wifi, WifiOff, Clock, AlertTriangle } from 'lucide-react'
@@ -170,7 +172,7 @@ export function Agents({ onOpenDevices }: Props) {
         headers: await authHeaders(true),
         body: JSON.stringify({ name: name.trim(), description: desc.trim() || undefined }),
       })
-      if (!res.ok) { setError(`Failed: ${res.status}`); return }
+      if (!res.ok) { setError((await responseError(res, 'Could not register the agent')).message); return }
       const data = await res.json() as { token: string; name: string; token_hint: string }
       setNewToken({ name: data.name, token: data.token, hint: data.token_hint })
       setName(''); setDesc('')
@@ -184,7 +186,7 @@ export function Agents({ onOpenDevices }: Props) {
       const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/agents/${agentId}`, {
         method: 'DELETE', headers: await authHeaders(),
       })
-      if (!res.ok) { setError(`Revoke failed: ${res.status}`); return }
+      if (!res.ok) { setError((await responseError(res, 'Could not revoke the agent')).message); return }
       setConfirmRevoke(null)
       if (selectedAgent?.id === agentId) setSelectedAgent(null)
       await load(orgId)
@@ -197,7 +199,7 @@ export function Agents({ onOpenDevices }: Props) {
       const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/agents/${agentId}/rotate`, {
         method: 'POST', headers: await authHeaders(),
       })
-      if (!res.ok) { setError(`Rotation failed: ${res.status}`); return }
+      if (!res.ok) { setError((await responseError(res, 'Could not rotate the token')).message); return }
       const data = await res.json() as { token: string; token_hint: string }
       setRotatedToken({ agentId, token: data.token })
       await load(orgId)
@@ -298,7 +300,7 @@ export function Agents({ onOpenDevices }: Props) {
             {creating ? 'Creating…' : 'Register agent'}
           </button>
         </div>
-        {error && <p style={{ color: '#fca5a5', fontSize: '0.82rem', margin: 0 }}>{error}</p>}
+        {error && <PlanGateAlert message={error} onDismiss={() => setError(null)} />}
         <p style={{ margin: '0.5rem 0 0', fontSize: '0.78rem', color: 'var(--muted)', lineHeight: 1.5 }}>
           Each registered agent gets a signed token. The API extracts the org ID from the token — the agent never self-reports it, eliminating org impersonation risk.
         </p>

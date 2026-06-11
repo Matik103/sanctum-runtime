@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Download, ShieldCheck, BarChart3, FileText, BookOpen } from 'lucide-react'
 import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
+import { responseError } from '../lib/sanitize-error'
 import { PlanGateAlert } from '../components/PlanGateAlert'
 import { TabBar } from '../components/ui/TabBar'
 import { fetchMyOrgs, type FleetOrg } from '../lib/fleet'
@@ -81,7 +82,10 @@ export function Compliance() {
         fetch(`${apiBaseUrl}/v1/orgs/${orgId}/compliance/soc2`, { headers: h }),
       ])
       if (rRes.ok) setReport(await rRes.json() as ComplianceReport)
-      else if (rRes.status !== 404) setError(`Report failed: ${rRes.status}`)
+      else if (rRes.status !== 404) {
+        const err = await responseError(rRes, 'Could not load the compliance report')
+        setError(err.message)
+      }
       if (sRes.ok) setSoc2(await sRes.json() as Record<string, string>)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load compliance data')
@@ -103,9 +107,12 @@ export function Compliance() {
         headers: await authHeaders(),
       })
       if (!res.ok) {
-        setError(res.status === 403
-          ? 'Compliance export requires an admin or owner role and a plan with compliance export.'
-          : `Report download failed (HTTP ${res.status}).`)
+        if (res.status === 403) {
+          setError('Compliance export requires an admin or owner role and a plan with compliance export.')
+        } else {
+          const err = await responseError(res, 'Report download failed')
+          setError(err.message)
+        }
         return
       }
       const blob = await res.blob()

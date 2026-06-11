@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Loader2, Package } from 'lucide-react'
 import { Alert } from '../components/ui/Alert'
+import { PlanGateAlert } from '../components/PlanGateAlert'
 import { EmptyState } from '../components/ui/EmptyState'
 import { PageActions } from '../components/ui/PageActions'
 import {
@@ -161,11 +162,7 @@ export function Marketplace() {
         </PageActions>
       </header>
 
-      {error && (
-        <Alert variant="error" onDismiss={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
+      {error && <PlanGateAlert message={error} onDismiss={() => setError(null)} />}
       {success && (
         <Alert variant="success" onDismiss={() => setSuccess(null)}>
           {success}

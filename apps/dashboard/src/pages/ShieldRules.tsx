@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { getAccessToken } from '../lib/supabase'
 import { apiBaseUrl } from '../lib/api-url'
+import { PlanGateAlert } from '../components/PlanGateAlert'
 
 // Shared resolver (env var + production fallback). A bare `?? ''` would target
 // the console origin when VITE_SANCTUM_API_URL is unset, breaking rule CRUD.
@@ -163,7 +164,10 @@ export function ShieldRules() {
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({})) as Record<string, unknown>
-        throw new Error(typeof err.error === 'string' ? err.error : 'Failed to create rule.')
+        throw new Error(
+          typeof err.message === 'string' ? err.message
+            : typeof err.error === 'string' ? err.error : 'Failed to create rule.',
+        )
       }
       await loadRules()
       setForm(EMPTY_FORM)
@@ -185,7 +189,10 @@ export function ShieldRules() {
       const res = await fetch(`${API_BASE}/v1/shield/rules/${id}`, { method: 'DELETE', headers })
       if (!res.ok) {
         const err = await res.json().catch(() => ({})) as Record<string, unknown>
-        throw new Error(typeof err.error === 'string' ? err.error : `Failed to delete rule (HTTP ${res.status}).`)
+        throw new Error(
+          typeof err.message === 'string' ? err.message
+            : typeof err.error === 'string' ? err.error : `Failed to delete rule (HTTP ${res.status}).`,
+        )
       }
       setRules((prev) => prev.filter((r) => r.id !== id))
     } catch (e) {
@@ -206,7 +213,10 @@ export function ShieldRules() {
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({})) as Record<string, unknown>
-        throw new Error(typeof err.error === 'string' ? err.error : `Failed to update rule (HTTP ${res.status}).`)
+        throw new Error(
+          typeof err.message === 'string' ? err.message
+            : typeof err.error === 'string' ? err.error : `Failed to update rule (HTTP ${res.status}).`,
+        )
       }
       setRules((prev) => prev.map((r) => r.id === rule.id ? { ...r, enabled: !r.enabled } : r))
     } catch (e) {
@@ -241,17 +251,7 @@ export function ShieldRules() {
       )}
 
       {formError && !showForm && (
-        <div className="alert alert-error" style={{ marginBottom: '1rem', color: 'var(--danger)' }}>
-          {formError}
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            style={{ marginLeft: '0.5rem' }}
-            onClick={() => setFormError(null)}
-          >
-            Dismiss
-          </button>
-        </div>
+        <PlanGateAlert message={formError} onDismiss={() => setFormError(null)} style={{ marginBottom: '1rem' }} />
       )}
 
       {/* Add rule form */}

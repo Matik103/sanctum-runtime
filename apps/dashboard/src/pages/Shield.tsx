@@ -20,6 +20,7 @@ import {
 import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 import { timeAgo } from '../lib/format'
 import { getAccessToken } from '../lib/supabase'
+import { responseError } from '../lib/sanitize-error'
 import { apiBaseUrl } from '../lib/api-url'
 
 // Use the shared resolver (env var with a production fallback to
@@ -127,10 +128,10 @@ export function Shield({ audit, onPage }: Props) {
       const headers = await authHeaders()
       const endpoint = status.fleetPaused ? '/v1/fleet/resume' : '/v1/fleet/pause'
       const res = await fetch(`${API_BASE}${endpoint}`, { method: 'POST', headers, body: JSON.stringify({}) })
-      if (!res.ok) throw new Error('Fleet update failed')
+      if (!res.ok) throw await responseError(res, 'Could not update fleet status')
       await loadStatus()
-    } catch {
-      setError('Could not update fleet status. Try again.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not update fleet status. Try again.')
     } finally {
       setPauseLoading(false)
     }
@@ -146,11 +147,11 @@ export function Shield({ audit, onPage }: Props) {
         headers,
         body: JSON.stringify({ note: 'Reviewed and resolved by operator' }),
       })
-      if (!res.ok) throw new Error('Resolve request failed')
+      if (!res.ok) throw await responseError(res, 'Could not resolve the incident')
       setEvents((prev) => prev.map((e) => e.id === id ? { ...e, resolved: true, resolved_at: new Date().toISOString() } : e))
       if (status) setStatus({ ...status, unresolvedIncidents: Math.max(0, status.unresolvedIncidents - 1) })
-    } catch {
-      setResolveError('Could not resolve incident. Try again.')
+    } catch (e) {
+      setResolveError(e instanceof Error ? e.message : 'Could not resolve incident. Try again.')
     } finally {
       setResolving(null)
     }

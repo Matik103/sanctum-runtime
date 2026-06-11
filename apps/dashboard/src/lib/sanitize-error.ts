@@ -115,6 +115,17 @@ export function looksLikeUpgradeMessage(message: string): boolean {
     /plan feature required/i.test(message) ||
     /requires? .*(plan|personal|operator|team|enterprise)/i.test(message) ||
     /quota .*upgrade|upgrade .*quota/i.test(message) ||
-    /upgrade (your )?plan/i.test(message)
+    /upgrade (your )?plan/i.test(message) ||
+    // API entitlement wordings (entitlements-gate.ts):
+    // "X is not included on Developer. Upgrade to Team to use this feature."
+    /not included on/i.test(message) ||
+    /upgrade to (a |the )?(personal|operator|team|enterprise)/i.test(message) ||
+    // "Your Developer plan allows 2 active agents. Revoke an agent or upgrade to add more."
+    /plan allows \d+/i.test(message) ||
+    /upgrade to add/i.test(message) ||
+    // "Monthly governed actions quota reached (... / ...)."
+    /quota (reached|exceeded)/i.test(message) ||
+    // Governed-block reasoning: "Developer is observe-only. Upgrade to verify..."
+    /observe-only/i.test(message)
   )
 }

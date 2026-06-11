@@ -14,7 +14,9 @@ import {
 import type { PageId } from '../layout/Sidebar'
 import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
+import { throwResponseError } from '../lib/sanitize-error'
 import { Alert } from '../components/ui/Alert'
+import { PlanGateAlert } from '../components/PlanGateAlert'
 import { TabBar } from '../components/ui/TabBar'
 import { timeAgo } from '../lib/format'
 import { fetchMyOrgs } from '../lib/fleet'
@@ -191,7 +193,7 @@ export function Alerts({ onPage }: { onPage?: (p: PageId) => void }) {
         method: 'POST',
         headers: await authHeaders(),
       })
-      if (!res.ok) throw new Error(`Failed: ${res.status}`)
+      if (!res.ok) await throwResponseError(res, 'Could not acknowledge the alert')
       setMsg({ text: 'Alert acknowledged.', variant: 'success' })
       if (selected?.id === id) setSelected(null)
       await loadIncidents()
@@ -210,7 +212,7 @@ export function Alerts({ onPage }: { onPage?: (p: PageId) => void }) {
         method: 'POST',
         headers: await authHeaders(),
       })
-      if (!res.ok) throw new Error(`Failed: ${res.status}`)
+      if (!res.ok) await throwResponseError(res, 'Could not resolve the alert')
       setMsg({ text: 'Alert resolved.', variant: 'success' })
       if (selected?.id === id) setSelected(null)
       await loadIncidents()
@@ -231,7 +233,7 @@ export function Alerts({ onPage }: { onPage?: (p: PageId) => void }) {
         headers: await authHeaders(true),
         body: JSON.stringify(newRule),
       })
-      if (!res.ok) throw new Error(`Failed: ${res.status}`)
+      if (!res.ok) await throwResponseError(res, 'Could not create the alert rule')
       setMsg({ text: 'Alert rule created.', variant: 'success' })
       setShowNewRule(false)
       setNewRule({ name: '', event_type: 'anomaly.spike', threshold: 1, window_minutes: 60, severity: 'critical', channels: ['email'] })
@@ -250,7 +252,7 @@ export function Alerts({ onPage }: { onPage?: (p: PageId) => void }) {
         headers: await authHeaders(true),
         body: JSON.stringify({ is_active: !rule.is_active }),
       })
-      if (!res.ok) throw new Error(`Could not update rule (HTTP ${res.status})`)
+      if (!res.ok) await throwResponseError(res, 'Could not update the alert rule')
       await loadRules()
     } catch (e) {
       setMsg({ text: e instanceof Error ? e.message : 'Could not update rule', variant: 'error' })
@@ -264,7 +266,7 @@ export function Alerts({ onPage }: { onPage?: (p: PageId) => void }) {
         method: 'DELETE',
         headers: await authHeaders(),
       })
-      if (!res.ok) throw new Error(`Could not delete rule (HTTP ${res.status})`)
+      if (!res.ok) await throwResponseError(res, 'Could not delete the alert rule')
       await loadRules()
     } catch (e) {
       setMsg({ text: e instanceof Error ? e.message : 'Could not delete rule', variant: 'error' })
@@ -308,9 +310,13 @@ export function Alerts({ onPage }: { onPage?: (p: PageId) => void }) {
 
       {msg && (
         <div style={{ marginBottom: '1rem' }}>
-          <Alert variant={msg.variant} onDismiss={() => setMsg(null)}>
-            {msg.text}
-          </Alert>
+          {msg.variant === 'error' ? (
+            <PlanGateAlert message={msg.text} onDismiss={() => setMsg(null)} />
+          ) : (
+            <Alert variant={msg.variant} onDismiss={() => setMsg(null)}>
+              {msg.text}
+            </Alert>
+          )}
         </div>
       )}
 

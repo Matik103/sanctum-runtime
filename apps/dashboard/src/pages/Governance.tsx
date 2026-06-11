@@ -2,8 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { CheckCircle, Clock, XCircle, GitBranch, AlertTriangle, ChevronRight } from 'lucide-react'
 import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
+import { throwResponseError } from '../lib/sanitize-error'
 import { timeAgo } from '../lib/format'
 import { Alert } from '../components/ui/Alert'
+import { PlanGateAlert } from '../components/PlanGateAlert'
 import { TabBar } from '../components/ui/TabBar'
 import { fetchMyOrgs } from '../lib/fleet'
 
@@ -112,7 +114,7 @@ export function Governance() {
         headers: await authHeaders(),
         body: JSON.stringify({ decision, note: decideNote }),
       })
-      if (!res.ok) throw new Error(`Failed: ${res.status}`)
+      if (!res.ok) await throwResponseError(res, 'Request failed')
       setMsg({ text: `Action ${decision === 'approve' ? 'approved' : 'rejected'}.`, variant: 'success' })
       setDecideId(null)
       setDecideNote('')
@@ -139,7 +141,7 @@ export function Governance() {
           is_active: true,
         }),
       })
-      if (!res.ok) throw new Error(`Failed: ${res.status}`)
+      if (!res.ok) await throwResponseError(res, 'Request failed')
       setMsg({ text: 'Workflow created.', variant: 'success' })
       setNewWf(null)
       await load()
@@ -160,9 +162,13 @@ export function Governance() {
       </header>
 
       {msg && (
-        <Alert variant={msg.variant} onDismiss={() => setMsg(null)} style={{ marginBottom: '1rem' }}>
-          {msg.text}
-        </Alert>
+        msg.variant === 'error'
+          ? <PlanGateAlert message={msg.text} onDismiss={() => setMsg(null)} style={{ marginBottom: '1rem' }} />
+          : (
+            <Alert variant={msg.variant} onDismiss={() => setMsg(null)} style={{ marginBottom: '1rem' }}>
+              {msg.text}
+            </Alert>
+          )
       )}
 
       <TabBar

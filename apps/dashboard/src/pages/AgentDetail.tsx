@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
+import { responseError } from '../lib/sanitize-error'
 import { Shield, Clock, CheckCircle, XCircle, Plus } from 'lucide-react'
 
 type AuditEntry = {
@@ -107,7 +108,7 @@ export function AgentDetail({ agentId, agentName, orgId }: Props) {
         headers: await authHeaders(true),
         body: JSON.stringify({ action: grantAction.trim(), durationMinutes: grantDuration }),
       })
-      if (!res.ok) { setGrantError(`Failed: ${res.status}`); return }
+      if (!res.ok) { setGrantError((await responseError(res, 'Could not update the grant')).message); return }
       setGrantAction('')
       await load()
     } catch (e) { setGrantError(e instanceof Error ? e.message : 'Failed') }

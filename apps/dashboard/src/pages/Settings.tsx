@@ -11,6 +11,7 @@ import { riskModelMetaLine } from '../lib/risk-label'
 import { fetchUsage, usageMetricLabel, type UsageSummary } from '../lib/usage'
 import { apiBaseUrl as apiBase } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
+import { throwResponseError } from '../lib/sanitize-error'
 import { usePushNotifications } from '../hooks/usePushNotifications'
 
 async function authHeaders(json = false): Promise<Record<string, string>> {
@@ -152,7 +153,7 @@ export function Settings({ status }: Props) {
         headers: await authHeaders(true),
         body: JSON.stringify({ [field]: null }),
       })
-      if (!res.ok) throw new Error(`Clear failed: ${res.status}`)
+      if (!res.ok) await throwResponseError(res, 'Could not clear the webhook')
       const updated = await res.json() as NotificationPrefs
       setNotifPrefs(updated)
     } catch (e) {
@@ -179,7 +180,7 @@ export function Settings({ status }: Props) {
         headers: await authHeaders(true),
         body: JSON.stringify(patch),
       })
-      if (!res.ok) throw new Error(`Save failed: ${res.status}`)
+      if (!res.ok) await throwResponseError(res, 'Could not save notification preferences')
       const updated = await res.json() as NotificationPrefs
       setNotifPrefs(updated)
       setEditSlack('')

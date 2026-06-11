@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isUpgradeError, responseError, sanitizeApiError } from './sanitize-error'
+import { isUpgradeError, looksLikeUpgradeMessage, responseError, sanitizeApiError } from './sanitize-error'
 
 // In Vitest, import.meta.env.DEV is true, so the function returns err.message directly.
 // We assert that branch here — it's the dev-mode contract. The production-mode mapping
@@ -54,5 +54,36 @@ describe('sanitizeApiError (dev mode)', () => {
 
     expect(err.message).toContain('Monthly governed action quota reached')
     expect(isUpgradeError(err)).toBe(true)
+  })
+})
+
+describe('looksLikeUpgradeMessage', () => {
+  it('matches entitlements-gate plan feature wording', () => {
+    expect(looksLikeUpgradeMessage(
+      'Compliance exports is not included on Developer. Upgrade to Team to use this feature.',
+    )).toBe(true)
+  })
+
+  it('matches agent limit wording', () => {
+    expect(looksLikeUpgradeMessage(
+      'Your Developer plan allows 2 active agents. Revoke an agent or upgrade to add more.',
+    )).toBe(true)
+  })
+
+  it('matches quota reached wording', () => {
+    expect(looksLikeUpgradeMessage(
+      'Monthly governed actions quota reached (500 / 500). Upgrade your plan to continue.',
+    )).toBe(true)
+  })
+
+  it('matches observe-only block reasoning', () => {
+    expect(looksLikeUpgradeMessage(
+      'Developer is observe-only. Upgrade to verify, hold, approve, block, or gate agent actions.',
+    )).toBe(true)
+  })
+
+  it('does not match plain failures', () => {
+    expect(looksLikeUpgradeMessage('Could not delete the alert rule')).toBe(false)
+    expect(looksLikeUpgradeMessage('Server error — try again shortly')).toBe(false)
   })
 })

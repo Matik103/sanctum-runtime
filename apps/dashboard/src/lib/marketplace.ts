@@ -33,10 +33,15 @@ async function headers(): Promise<HeadersInit> {
 async function apiError(res: Response, label: string): Promise<never> {
   let detail = `${label} (${res.status})`;
   try {
-    const body = (await res.json()) as { error?: string; hint?: string; detail?: string };
-    if (body.error) detail = `${label}: ${body.error}`;
-    if (body.hint) detail += ` — ${body.hint}`;
-    else if (body.detail) detail += ` — ${body.detail}`;
+    const body = (await res.json()) as { error?: string; hint?: string; detail?: string; message?: string };
+    // Entitlement responses carry a human-readable `message` ("... Upgrade to
+    // Operator to use this feature.") — prefer it so plan gates render nicely.
+    if (body.message) detail = body.message;
+    else {
+      if (body.error) detail = `${label}: ${body.error}`;
+      if (body.hint) detail += ` — ${body.hint}`;
+      else if (body.detail) detail += ` — ${body.detail}`;
+    }
   } catch {
     /* non-JSON body */
   }

@@ -2,7 +2,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { History, RotateCcw, Tag } from 'lucide-react'
 import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
+import { throwResponseError } from '../lib/sanitize-error'
 import { Alert } from '../components/ui/Alert'
+import { PlanGateAlert } from '../components/PlanGateAlert'
 import { timeAgo } from '../lib/format'
 import { fetchMyOrgs } from '../lib/fleet'
 
@@ -55,7 +57,7 @@ export function PolicyHistory() {
         headers: await authHeaders(true),
         body: JSON.stringify({ label: label || undefined, change_summary: summary || undefined }),
       })
-      if (!res.ok) throw new Error(`Failed: ${res.status}`)
+      if (!res.ok) await throwResponseError(res, 'Request failed')
       setMsg({ text: 'Snapshot saved.', variant: 'success' })
       setLabel('')
       setSummary('')
@@ -76,7 +78,7 @@ export function PolicyHistory() {
         method: 'POST',
         headers: await authHeaders(),
       })
-      if (!res.ok) throw new Error(`Failed: ${res.status}`)
+      if (!res.ok) await throwResponseError(res, 'Request failed')
       setMsg({ text: 'Policies restored to snapshot.', variant: 'success' })
       setSelected(null)
     } catch (e) {
@@ -102,9 +104,13 @@ export function PolicyHistory() {
       </header>
 
       {msg && (
-        <Alert variant={msg.variant} onDismiss={() => setMsg(null)} style={{ marginBottom: '1rem' }}>
-          {msg.text}
-        </Alert>
+        msg.variant === 'error'
+          ? <PlanGateAlert message={msg.text} onDismiss={() => setMsg(null)} style={{ marginBottom: '1rem' }} />
+          : (
+            <Alert variant={msg.variant} onDismiss={() => setMsg(null)} style={{ marginBottom: '1rem' }}>
+              {msg.text}
+            </Alert>
+          )
       )}
 
       {showSave && (
