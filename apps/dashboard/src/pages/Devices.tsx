@@ -18,7 +18,7 @@ import {
 import { apiBaseUrl } from '../lib/api-url'
 import { fetchMyOrgs, fetchRuntimes, type FleetOrg, type FleetRuntime } from '../lib/fleet'
 import { fetchOperatorContext } from '../lib/marketplace'
-import { riskModelMetaLine } from '../lib/risk-label'
+import { formatApiError } from '../lib/sanitize-error'
 
 type Props = { status: RuntimeStatus | null }
 
@@ -116,7 +116,7 @@ export function Devices({ status }: Props) {
       setRuntimes(rt)
       setDevicesError(null)
     } catch (e) {
-      setDevicesError(e instanceof Error ? e.message : 'Could not load connected devices')
+      setDevicesError(formatApiError(e, 'Could not load connected devices'))
     } finally {
       setDevicesLoading(false)
     }
@@ -133,7 +133,7 @@ export function Devices({ status }: Props) {
       setKeys(await listApiKeys())
       setError(null)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load API keys')
+      setError(formatApiError(e, 'Could not load API keys'))
     }
   }, [])
 
@@ -150,7 +150,7 @@ export function Devices({ status }: Props) {
       setNewName('')
       await load()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Create failed')
+      setError(formatApiError(e, 'Create failed'))
     } finally {
       setBusy(false)
     }
@@ -164,7 +164,7 @@ export function Devices({ status }: Props) {
       setCreated(row)
       await load()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Rotate failed')
+      setError(formatApiError(e, 'Rotate failed'))
     } finally {
       setRotatingId(null)
     }
@@ -178,7 +178,7 @@ export function Devices({ status }: Props) {
       await deleteApiKey(id)
       setKeys((prev) => prev.filter((k) => k.id !== id))
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Delete failed')
+      setError(formatApiError(e, 'Delete failed'))
     } finally {
       setDeletingId(null)
     }
@@ -243,9 +243,7 @@ export function Devices({ status }: Props) {
 
         <div className="section__body">
           {devicesError && (
-            <Alert variant="error" onDismiss={() => setDevicesError(null)}>
-              {devicesError}
-            </Alert>
+            <PlanGateAlert message={devicesError} onDismiss={() => setDevicesError(null)} />
           )}
           {workspaceOrgId ? (
             <CopyField

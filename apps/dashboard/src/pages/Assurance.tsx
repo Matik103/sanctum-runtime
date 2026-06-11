@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Play, FileCheck, KeyRound, Download } from 'lucide-react'
-import { Alert } from '../components/ui/Alert'
+import { PlanGateAlert } from '../components/PlanGateAlert'
+import { formatApiError } from '../lib/sanitize-error'
 import { TabBar } from '../components/ui/TabBar'
 import {
   replayAudit, getEvidenceSummary, verifyActionToken,
@@ -30,21 +31,21 @@ export function Assurance() {
   const runReplay = async () => {
     setLoading(true); setError(null)
     try { setReplay(await replayAudit(200, orgId || undefined)) }
-    catch (e) { setError(e instanceof Error ? e.message : 'Replay failed') }
+    catch (e) { setError(formatApiError(e, 'Replay failed')) }
     finally { setLoading(false) }
   }
 
   const loadEvidence = async () => {
     setLoading(true); setError(null)
     try { setEvidence(await getEvidenceSummary(500, orgId || undefined)) }
-    catch (e) { setError(e instanceof Error ? e.message : 'Evidence load failed') }
+    catch (e) { setError(formatApiError(e, 'Evidence load failed')) }
     finally { setLoading(false) }
   }
 
   const verifyToken = async () => {
     setLoading(true); setError(null); setTokenResult(null)
     try { setTokenResult(await verifyActionToken(tokenInput.trim())) }
-    catch (e) { setError(e instanceof Error ? e.message : 'Token verification failed') }
+    catch (e) { setError(formatApiError(e, 'Token verification failed')) }
     finally { setLoading(false) }
   }
 
@@ -74,7 +75,7 @@ export function Assurance() {
         )}
       </header>
 
-      {error && <Alert variant="error" onDismiss={() => setError(null)} style={{ marginBottom: '1rem' }}>{error}</Alert>}
+      {error && <PlanGateAlert message={error} onDismiss={() => setError(null)} style={{ marginBottom: '1rem' }} />}
 
       <TabBar
         tabs={[

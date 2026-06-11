@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
-import { responseError } from '../lib/sanitize-error'
+import { responseError, formatApiError } from '../lib/sanitize-error'
+import { PlanGateAlert } from '../components/PlanGateAlert'
 import { Shield, Clock, CheckCircle, XCircle, Plus } from 'lucide-react'
 
 type AuditEntry = {
@@ -111,7 +112,7 @@ export function AgentDetail({ agentId, agentName, orgId }: Props) {
       if (!res.ok) { setGrantError((await responseError(res, 'Could not update the grant')).message); return }
       setGrantAction('')
       await load()
-    } catch (e) { setGrantError(e instanceof Error ? e.message : 'Failed') }
+    } catch (e) { setGrantError(formatApiError(e, 'Failed')) }
     finally { setCreatingGrant(false) }
   }
 
@@ -213,7 +214,9 @@ export function AgentDetail({ agentId, agentName, orgId }: Props) {
                 <Plus size={13} /> {creatingGrant ? 'Creating…' : 'Grant'}
               </button>
             </div>
-            {grantError && <p style={{ color: '#fca5a5', fontSize: '0.78rem', margin: '0.4rem 0 0' }}>{grantError}</p>}
+            {grantError && (
+              <PlanGateAlert message={grantError} onDismiss={() => setGrantError(null)} style={{ marginTop: '0.4rem' }} />
+            )}
           </div>
 
           {/* Active grants list */}

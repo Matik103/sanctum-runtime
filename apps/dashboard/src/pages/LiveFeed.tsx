@@ -6,6 +6,8 @@ import { resolveVerification } from '../lib/api'
 import { applyToolPolicy } from '../lib/connect-agent'
 import { getAccessToken } from '../lib/supabase'
 import { timeAgo } from '../lib/format'
+import { PlanGateAlert } from '../components/PlanGateAlert'
+import { formatApiError } from '../lib/sanitize-error'
 import type { PageId } from '../layout/Sidebar'
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -274,7 +276,7 @@ export function LiveFeed({ orgId, onPage }: Props) {
       await applyToolPolicy(targetOrg, event.action, mode)
       setPolicyMsg(`Policy for ${event.action}: ${mode}`)
     } catch (e) {
-      setResolveError(e instanceof Error ? e.message : 'Policy save failed')
+      setResolveError(formatApiError(e, 'Policy save failed'))
     } finally {
       setPolicySaving(null)
     }
@@ -287,7 +289,7 @@ export function LiveFeed({ orgId, onPage }: Props) {
       await resolveVerification(event.id, decision)
       patchEvent(event.id, { decision, reasoning: decision === 'APPROVED' ? 'Approved from Live Feed.' : 'Blocked from Live Feed.' })
     } catch (e) {
-      setResolveError(e instanceof Error ? e.message : 'Resolve failed')
+      setResolveError(formatApiError(e, 'Resolve failed'))
     } finally {
       setResolving(null)
     }
@@ -343,9 +345,7 @@ export function LiveFeed({ orgId, onPage }: Props) {
       )}
 
       {resolveError && (
-        <div className="alert alert--error" style={{ marginBottom: '0.75rem' }}>
-          <div className="alert__body">{resolveError}</div>
-        </div>
+        <PlanGateAlert message={resolveError} onDismiss={() => setResolveError(null)} style={{ marginBottom: '0.75rem' }} />
       )}
 
       <div className="card live-feed-card">

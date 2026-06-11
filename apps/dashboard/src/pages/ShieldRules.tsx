@@ -25,6 +25,7 @@ import {
 import { getAccessToken } from '../lib/supabase'
 import { apiBaseUrl } from '../lib/api-url'
 import { PlanGateAlert } from '../components/PlanGateAlert'
+import { formatApiError } from '../lib/sanitize-error'
 
 // Shared resolver (env var + production fallback). A bare `?? ''` would target
 // the console origin when VITE_SANCTUM_API_URL is unset, breaking rule CRUD.
@@ -175,7 +176,7 @@ export function ShieldRules() {
       setSuccessMsg('Rule created.')
       setTimeout(() => setSuccessMsg(null), 3000)
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : 'Failed to create rule.')
+      setFormError(formatApiError(e, 'Failed to create rule.'))
     } finally {
       setSaving(false)
     }
@@ -196,7 +197,7 @@ export function ShieldRules() {
       }
       setRules((prev) => prev.filter((r) => r.id !== id))
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : 'Failed to delete rule.')
+      setFormError(formatApiError(e, 'Failed to delete rule.'))
     } finally {
       setDeleting(null)
     }
@@ -220,7 +221,7 @@ export function ShieldRules() {
       }
       setRules((prev) => prev.map((r) => r.id === rule.id ? { ...r, enabled: !r.enabled } : r))
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : 'Failed to update rule.')
+      setFormError(formatApiError(e, 'Failed to update rule.'))
     } finally {
       setToggling(null)
     }

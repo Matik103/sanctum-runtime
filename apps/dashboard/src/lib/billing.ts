@@ -24,6 +24,14 @@ export function isSamePlanTier(a: string | null | undefined, b: string | null | 
   return normalizePlanId(a) === normalizePlanId(b)
 }
 
+/** Developer / observer can watch and simulate; paid tiers can edit policies and gates. */
+export function canUsePolicyEditor(planId: PlanId | string | null | undefined): boolean {
+  return normalizePlanId(planId) !== 'observer'
+}
+
+export const POLICY_EDITOR_UPGRADE_MESSAGE =
+  'Policy changes require Personal or higher. Developer plan is observe-only — upgrade on Billing to set approve, verify, and block rules.'
+
 export interface BillingPlan {
   plan: { id: PlanId; name: string; priceMonthlyUsd: number | null }
   limits: {

@@ -12,6 +12,10 @@ import {
   type PolicyResponse,
   type SimulateResult,
 } from '../lib/api'
+import { PlanGateAlert } from '../components/PlanGateAlert'
+import { useWorkspacePlan } from '../hooks/useWorkspacePlan'
+import { POLICY_EDITOR_UPGRADE_MESSAGE } from '../lib/billing'
+import { formatApiError } from '../lib/sanitize-error'
 
 // ─── Normalization ───────────────────────────────────────────────────────────
 function toActionKey(raw: string): string {
@@ -78,10 +82,11 @@ function CopyChip({ value }: { value: string }) {
 }
 
 // ─── Conditions editor ────────────────────────────────────────────────────────
-function ConditionsEditor({ action, conditions, onSave }: {
+function ConditionsEditor({ action, conditions, onSave, readOnly }: {
   action: string
   conditions: PolicyCondition[]
   onSave: (conditions: PolicyCondition[]) => Promise<void>
+  readOnly?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [list, setList] = useState<PolicyCondition[]>(conditions)
@@ -109,7 +114,7 @@ function ConditionsEditor({ action, conditions, onSave }: {
   const save = async () => {
     setSaving(true)
     try { await onSave(list); setOpen(false) }
-    catch (e) { setErr(e instanceof Error ? e.message : 'Save failed') }
+    catch (e) { setErr(formatApiError(e, 'Save failed')) }
     finally { setSaving(false) }
   }
 
@@ -120,8 +125,12 @@ function ConditionsEditor({ action, conditions, onSave }: {
     return (
       <button
         type="button"
-        onClick={() => setOpen(true)}
-        style={{ background:'none', border:'none', color:'var(--accent)', fontSize:'0.75rem', cursor:'pointer', padding:'0.3rem 0', display:'flex', alignItems:'center', gap:'0.25rem' }}
+        disabled={readOnly}
+        onClick={() => {
+          if (readOnly) return
+          setOpen(true)
+        }}
+        style={{ background:'none', border:'none', color: readOnly ? 'var(--muted)' : 'var(--accent)', fontSize:'0.75rem', cursor: readOnly ? 'not-allowed' : 'pointer', padding:'0.3rem 0', display:'flex', alignItems:'center', gap:'0.25rem' }}
       >
         {conditions.length > 0
           ? `${conditions.length} condition${conditions.length > 1 ? 's' : ''} active`
@@ -215,7 +224,7 @@ function PolicySimulator({ policies }: { policies: PolicyMap }) {
     try { ctx = JSON.parse(contextRaw) as Record<string, unknown> } catch { setErr('Context must be valid JSON'); return }
     setRunning(true); setErr(null); setResult(null)
     try { setResult(await simulateAction(actor, key, ctx)) }
-    catch (e) { setErr(e instanceof Error ? e.message : 'Simulation failed') }
+    catch (e) { setErr(formatApiError(e, 'Simulation failed')) }
     finally { setRunning(false) }
   }
 
@@ -323,6 +332,7 @@ type Props = {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export function Policies({ policies, audit, onSetPolicy, onPoliciesChange }: Props) {
+  const { orgId, canEditPolicies, loading: planLoading } = useWorkspacePlan()
   const [inputValue, setInputValue] = useState('')
   const [newMode, setNewMode] = useState<PolicyResponse>('verify')
   const [adding, setAdding] = useState(false)
@@ -334,41 +344,51 @@ export function Policies({ policies, audit, onSetPolicy, onPoliciesChange }: Pro
   const previewKey = toActionKey(inputValue)
   const keyIsValid = previewKey.length > 0
 
+  const guardEdit = (): boolean => {
+    if (canEditPolicies) return true
+    setError(POLICY_EDITOR_UPGRADE_MESSAGE)
+    return false
+  }
+
   const exportYaml = async () => {
     setYamlBusy(true)
     try {
-      const yaml = await exportPoliciesYaml()
+      const yaml = await exportPoliciesYaml(orgId || undefined)
       const blob = new Blob([yaml], { type: 'text/yaml' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a'); a.href = url; a.download = 'sanctum-policies.yaml'; a.click()
       URL.revokeObjectURL(url)
-    } catch (e) { setError(e instanceof Error ? e.message : 'Export failed') }
+    } catch (e) { setError(formatApiError(e, 'Export failed')) }
     finally { setYamlBusy(false) }
   }
 
   const importYamlFile = async (file: File) => {
+    if (!guardEdit()) return
     setYamlBusy(true)
-    try { onPoliciesChange(await importPoliciesYaml(await file.text(), true)) }
-    catch (e) { setError(e instanceof Error ? e.message : 'Import failed') }
+    try { onPoliciesChange(await importPoliciesYaml(await file.text(), true, orgId || undefined)) }
+    catch (e) { setError(formatApiError(e, 'Import failed')) }
     finally { setYamlBusy(false) }
   }
 
   const addPolicy = async () => {
+    if (!guardEdit()) return
     if (!previewKey) { setError('Enter an action name above'); return }
     setAdding(true); setError(null)
-    try { onPoliciesChange(await createPolicyResponse(previewKey, newMode)); setInputValue('') }
-    catch (e) { setError(e instanceof Error ? e.message : 'Failed to save policy') }
+    try { onPoliciesChange(await createPolicyResponse(previewKey, newMode, orgId || undefined)); setInputValue('') }
+    catch (e) { setError(formatApiError(e, 'Failed to save policy')) }
     finally { setAdding(false) }
   }
 
   const removePolicy = async (action: string) => {
+    if (!guardEdit()) return
     if (!confirm(`Remove policy for "${actionLabel(action)}"?`)) return
-    try { onPoliciesChange(await deletePolicyAction(action)) }
-    catch (e) { setError(e instanceof Error ? e.message : 'Failed to remove') }
+    try { onPoliciesChange(await deletePolicyAction(action, orgId || undefined)) }
+    catch (e) { setError(formatApiError(e, 'Failed to remove')) }
   }
 
   const saveConditions = async (action: string, conditions: PolicyCondition[]) => {
-    const next = await updatePolicyConditions(action, conditions)
+    if (!guardEdit()) return
+    const next = await updatePolicyConditions(action, conditions, orgId || undefined)
     onPoliciesChange(next)
   }
 
@@ -382,13 +402,23 @@ export function Policies({ policies, audit, onSetPolicy, onPoliciesChange }: Pro
         </div>
         <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap' }}>
           <button type="button" className="response-btn" disabled={yamlBusy} onClick={() => void exportYaml()}>Export YAML</button>
-          <label className="response-btn" style={{ cursor: yamlBusy ? 'wait' : 'pointer' }}>
+          <label className="response-btn" style={{ cursor: yamlBusy || !canEditPolicies ? 'not-allowed' : 'pointer', opacity: canEditPolicies ? 1 : 0.55 }}>
             Import YAML
-            <input type="file" accept=".yaml,.yml,text/yaml" hidden disabled={yamlBusy}
+            <input type="file" accept=".yaml,.yml,text/yaml" hidden disabled={yamlBusy || !canEditPolicies}
               onChange={(e) => { const f = e.target.files?.[0]; if (f) void importYamlFile(f); e.target.value = '' }} />
           </label>
         </div>
       </header>
+
+      {!planLoading && !canEditPolicies && (
+        <PlanGateAlert
+          message={POLICY_EDITOR_UPGRADE_MESSAGE}
+          style={{ marginBottom: '1rem' }}
+        />
+      )}
+      {error && (
+        <PlanGateAlert message={error} onDismiss={() => setError(null)} style={{ marginBottom: '1rem' }} />
+      )}
 
       {/* How it works */}
       <div className="card" style={{ marginBottom:'1.25rem' }}>
@@ -453,10 +483,8 @@ export function Policies({ policies, audit, onSetPolicy, onPoliciesChange }: Pro
           </div>
         </div>
 
-        {error && <p style={{ margin:'0 0 0.75rem', fontSize:'0.82rem', color:'#fca5a5' }}>{error}</p>}
-
         <div style={{ display:'flex', gap:'0.75rem', alignItems:'center', flexWrap:'wrap' }}>
-          <button type="button" className={`response-btn active ${newMode}`} disabled={adding || !keyIsValid} onClick={() => void addPolicy()} style={{ padding:'0.55rem 1.5rem', fontSize:'0.85rem' }}>
+          <button type="button" className={`response-btn active ${newMode}`} disabled={adding || !keyIsValid || !canEditPolicies} onClick={() => void addPolicy()} style={{ padding:'0.55rem 1.5rem', fontSize:'0.85rem' }}>
             {adding ? 'Saving…' : 'Save policy'}
           </button>
           <button type="button" onClick={() => setShowBrowse((v) => !v)}
@@ -508,7 +536,7 @@ export function Policies({ policies, audit, onSetPolicy, onPoliciesChange }: Pro
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'0.5rem', marginBottom:'0.15rem' }}>
                   <h3 style={{ margin:0, fontSize:'0.95rem', fontWeight:600 }}>{actionLabel(action)}</h3>
                   {!isBuiltin && (
-                    <button type="button" className="response-btn" style={{ fontSize:'0.68rem', padding:'0.15rem 0.45rem', flexShrink:0 }} onClick={() => void removePolicy(action)}>
+                    <button type="button" className="response-btn" style={{ fontSize:'0.68rem', padding:'0.15rem 0.45rem', flexShrink:0 }} disabled={!canEditPolicies} onClick={() => void removePolicy(action)}>
                       Remove
                     </button>
                   )}
@@ -526,11 +554,15 @@ export function Policies({ policies, audit, onSetPolicy, onPoliciesChange }: Pro
                     const isSaving = savingSpec?.action === action && savingSpec?.response === r
                     const isBusy = savingSpec?.action === action
                     return (
-                      <button key={r} type="button" className={`response-btn ${response === r ? `active ${r}` : ''}`} disabled={isBusy}
+                      <button key={r} type="button" className={`response-btn ${response === r ? `active ${r}` : ''}`} disabled={isBusy || !canEditPolicies}
                         onClick={() => {
+                          if (!canEditPolicies) {
+                            setError(POLICY_EDITOR_UPGRADE_MESSAGE)
+                            return
+                          }
                           setSavingSpec({ action, response: r })
                           void onSetPolicy(action, r)
-                            .catch((e) => setError(e instanceof Error ? e.message : 'Failed to save'))
+                            .catch((e) => setError(formatApiError(e, 'Failed to save')))
                             .finally(() => setSavingSpec(null))
                         }}>
                         {isSaving ? '…' : r.charAt(0).toUpperCase() + r.slice(1)}
@@ -543,6 +575,7 @@ export function Policies({ policies, audit, onSetPolicy, onPoliciesChange }: Pro
                 <ConditionsEditor
                   action={action}
                   conditions={conditions}
+                  readOnly={!canEditPolicies}
                   onSave={(c) => saveConditions(action, c)}
                 />
 

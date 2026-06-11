@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Loader2, Package } from 'lucide-react'
 import { Alert } from '../components/ui/Alert'
 import { PlanGateAlert } from '../components/PlanGateAlert'
+import { formatApiError } from '../lib/sanitize-error'
 import { EmptyState } from '../components/ui/EmptyState'
 import { PageActions } from '../components/ui/PageActions'
 import {
@@ -71,7 +72,7 @@ export function Marketplace() {
       setPackages(await fetchMarketplacePackages(orgId))
       setError(null)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Marketplace unavailable')
+      setError(formatApiError(e, 'Marketplace unavailable'))
     } finally {
       loadingRef.current = false
       setLoading(false)
@@ -126,7 +127,7 @@ export function Marketplace() {
       await refresh()
     } catch (e) {
       if (!staleOrg()) {
-        setError(e instanceof Error ? e.message : 'Action failed')
+        setError(formatApiError(e, 'Action failed'))
         await refresh()
       }
     } finally {

@@ -13,7 +13,8 @@ import { Sidebar, type PageId } from './layout/Sidebar'
 import { getFleetStatus, type FleetPauseStatus } from './lib/api'
 import { Overview } from './pages/Overview'
 import { fetchMyOrgs } from './lib/fleet'
-import { useOfflineQueue } from './hooks/useOfflineQueue'
+import { PlanGateAlert } from './components/PlanGateAlert'
+import { formatApiError } from './lib/sanitize-error'
 
 const RuntimeActivity = lazy(() => import('./pages/RuntimeActivity').then((m) => ({ default: m.RuntimeActivity })))
 const ThreatMonitor = lazy(() => import('./pages/ThreatMonitor').then((m) => ({ default: m.ThreatMonitor })))
@@ -176,19 +177,7 @@ export function App() {
           </div>
         )}
         {apiError && (
-          <div className="alert alert--error" role="alert">
-            <div className="alert__body">
-              <strong>API unreachable</strong>
-              <p style={{ margin: '0.5rem 0 0' }}>{apiError}</p>
-              {retryDelayMs !== null && (
-                <p style={{ margin: '0.35rem 0 0', fontSize: '0.8rem', opacity: 0.65 }}>
-                  Retrying in ~{retryDelayMs >= 60_000
-                    ? `${Math.round(retryDelayMs / 60_000)}m`
-                    : `${Math.round(retryDelayMs / 1000)}s`}
-                </p>
-              )}
-            </div>
-          </div>
+          <PlanGateAlert message={apiError} style={{ marginBottom: '1rem' }} />
         )}
 
         {fleetStatus?.paused && (
@@ -277,12 +266,8 @@ export function App() {
       {pendingVerification && (
         <>
           {modalError && (
-            <div className="alert alert--error" role="alert" style={{ position: 'fixed', top: '1rem', left: '50%', transform: 'translateX(-50%)', zIndex: 9999, minWidth: 320 }}>
-              <div className="alert__body">
-                <strong>Action failed</strong>
-                <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem' }}>{modalError}</p>
-              </div>
-              <button type="button" onClick={() => setModalError(null)} style={{ marginLeft: '1rem', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
+            <div style={{ position: 'fixed', top: '1rem', left: '50%', transform: 'translateX(-50%)', zIndex: 9999, minWidth: 320, maxWidth: 'min(92vw, 28rem)' }}>
+              <PlanGateAlert message={modalError} onDismiss={() => setModalError(null)} />
             </div>
           )}
           <VerificationModal
@@ -295,7 +280,7 @@ export function App() {
                 setSelected(entry)
                 setModalError(null)
               } catch (e) {
-                setModalError(e instanceof Error ? e.message : 'Failed to approve')
+                setModalError(formatApiError(e, 'Failed to approve'))
               }
             }}
             onAlwaysApprove={async () => {
@@ -306,7 +291,7 @@ export function App() {
                 markVerificationsDismissed({ action: entry.action })
                 setModalError(null)
               } catch (e) {
-                setModalError(e instanceof Error ? e.message : 'Failed to set policy')
+                setModalError(formatApiError(e, 'Failed to set policy'))
               }
             }}
             onDeny={async () => {
@@ -314,7 +299,7 @@ export function App() {
                 await resolveVerificationEntry(pendingVerification.id, 'BLOCKED')
                 setModalError(null)
               } catch (e) {
-                setModalError(e instanceof Error ? e.message : 'Failed to deny')
+                setModalError(formatApiError(e, 'Failed to deny'))
               }
             }}
           />

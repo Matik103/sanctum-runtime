@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { CheckCircle, Clock, XCircle, GitBranch, AlertTriangle, ChevronRight } from 'lucide-react'
 import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
-import { throwResponseError } from '../lib/sanitize-error'
+import { throwResponseError, formatApiError } from '../lib/sanitize-error'
 import { timeAgo } from '../lib/format'
 import { Alert } from '../components/ui/Alert'
 import { PlanGateAlert } from '../components/PlanGateAlert'
@@ -120,7 +120,7 @@ export function Governance() {
       setDecideNote('')
       await load()
     } catch (e) {
-      setMsg({ text: e instanceof Error ? e.message : 'Failed', variant: 'error' })
+      setMsg({ text: formatApiError(e, 'Failed'), variant: 'error' })
     } finally {
       setBusy(false)
     }
@@ -146,7 +146,7 @@ export function Governance() {
       setNewWf(null)
       await load()
     } catch (e) {
-      setMsg({ text: e instanceof Error ? e.message : 'Failed', variant: 'error' })
+      setMsg({ text: formatApiError(e, 'Failed'), variant: 'error' })
     } finally {
       setBusy(false)
     }

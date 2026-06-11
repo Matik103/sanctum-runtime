@@ -1,6 +1,6 @@
 import { getAccessToken } from "./supabase";
 import { fetchMyOrgs, type FleetOrg } from "./fleet";
-
+import { throwResponseError } from "./sanitize-error";
 import { apiBaseUrl as apiBase } from "./api-url";
 
 export type MarketplacePackage = {
@@ -30,25 +30,7 @@ async function headers(): Promise<HeadersInit> {
   return h;
 }
 
-async function apiError(res: Response, label: string): Promise<never> {
-  let detail = `${label} (${res.status})`;
-  try {
-    const body = (await res.json()) as { error?: string; hint?: string; detail?: string; message?: string };
-    // Entitlement responses carry a human-readable `message` ("... Upgrade to
-    // Operator to use this feature.") — prefer it so plan gates render nicely.
-    if (body.message) detail = body.message;
-    else {
-      if (body.error) detail = `${label}: ${body.error}`;
-      if (body.hint) detail += ` — ${body.hint}`;
-      else if (body.detail) detail += ` — ${body.detail}`;
-    }
-  } catch {
-    /* non-JSON body */
-  }
-  throw new Error(detail);
-}
 
-/** Resolve browser-safe operator context through the Sanctum API boundary. */
 export async function fetchOperatorContext(): Promise<OperatorContext | null> {
   const res = await fetch(`${apiBase}/v1/operator/context`, { headers: await headers() });
   if (!res.ok) return null;
@@ -58,7 +40,7 @@ export async function fetchOperatorContext(): Promise<OperatorContext | null> {
 export async function fetchMarketplacePackages(orgId?: string): Promise<MarketplacePackage[]> {
   const q = orgId ? `?org_id=${encodeURIComponent(orgId)}` : "";
   const res = await fetch(`${apiBase}/v1/marketplace/packages${q}`, { headers: await headers() });
-  if (!res.ok) await apiError(res, "Marketplace");
+  if (!res.ok) await throwResponseError(res, "Marketplace unavailable");
   const data = (await res.json()) as { packages: MarketplacePackage[] };
   return data.packages.map((p) => ({
     ...p,
@@ -79,7 +61,7 @@ export async function installMarketplacePackage(
       body: JSON.stringify({ organizationId }),
     },
   );
-  if (!res.ok) await apiError(res, "Install");
+  if (!res.ok) await throwResponseError(res, "Install failed");
   return res.json() as Promise<{
     installId: string;
     installedAt: string;
@@ -99,7 +81,7 @@ export async function uninstallMarketplacePackage(
       body: JSON.stringify({ organizationId }),
     },
   );
-  if (!res.ok) await apiError(res, "Uninstall");
+  if (!res.ok) await throwResponseError(res, "Uninstall failed");
 }
 
 export { fetchMyOrgs, type FleetOrg };

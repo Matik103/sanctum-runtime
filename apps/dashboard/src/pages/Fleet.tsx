@@ -25,7 +25,7 @@ import {
   type FleetRuntime,
 } from '../lib/fleet'
 import { fetchOperatorContext } from '../lib/marketplace'
-import { looksLikeUpgradeMessage } from '../lib/sanitize-error'
+import { formatApiError, looksLikeUpgradeMessage } from '../lib/sanitize-error'
 
 function statusBadge(status: string) {
   if (status === 'online') return 'success'
@@ -104,7 +104,7 @@ export function Fleet() {
       setEvents(ev)
       setAgents(ag)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Fleet data unavailable')
+      setError(formatApiError(e, 'Fleet data unavailable'))
       return
     }
 
@@ -117,7 +117,7 @@ export function Fleet() {
         setFleetMap(map)
         setGroups(gr)
       } catch (e) {
-        mapError = e instanceof Error ? e.message : 'Fleet map unavailable'
+        mapError = formatApiError(e, 'Fleet map unavailable')
         setFleetMap(null)
         setGroups([])
       }
@@ -168,7 +168,7 @@ export function Fleet() {
       setGroupMsg('Group created')
       void refresh()
     } catch (e) {
-      setGroupMsg(e instanceof Error ? e.message : 'Create failed')
+      setGroupMsg(formatApiError(e, 'Create failed'))
     }
   }
 
@@ -179,7 +179,7 @@ export function Fleet() {
       })
       void refresh()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not assign group')
+      setError(formatApiError(e, 'Could not assign group'))
     }
   }
 
@@ -208,7 +208,7 @@ export function Fleet() {
           : ''
       setDispatchMsg(`Dispatched to ${res.targetCount} runtime(s)${viaWs}`)
     } catch (e) {
-      setDispatchMsg(e instanceof Error ? e.message : 'Dispatch failed')
+      setDispatchMsg(formatApiError(e, 'Dispatch failed'))
     }
   }
 
@@ -272,16 +272,7 @@ export function Fleet() {
       )}
 
       {error && (
-        looksLikeUpgradeMessage(error) ? (
-          <PlanGateAlert message={error} onDismiss={() => setError(null)} />
-        ) : (
-          <Alert variant="error" onDismiss={() => setError(null)}>
-            {error}
-            <p style={{ marginTop: '0.5rem', fontSize: '0.8rem', opacity: 0.9 }}>
-              Connect a runtime from Devices or use the Connect Agent guide to bring this fleet online.
-            </p>
-          </Alert>
-        )
+        <PlanGateAlert message={error} onDismiss={() => setError(null)} />
       )}
 
       <TabBar tabs={tabs} active={tab} onChange={setTab} />
@@ -437,9 +428,13 @@ export function Fleet() {
                   Create group
                 </button>
                 {groupMsg && (
-                  <p style={{ marginTop: '0.35rem', fontSize: '0.8rem', color: 'var(--muted)' }}>
-                    {groupMsg}
-                  </p>
+                  looksLikeUpgradeMessage(groupMsg) ? (
+                    <PlanGateAlert message={groupMsg} onDismiss={() => setGroupMsg(null)} style={{ marginTop: '0.35rem' }} />
+                  ) : (
+                    <p style={{ marginTop: '0.35rem', fontSize: '0.8rem', color: 'var(--muted)' }}>
+                      {groupMsg}
+                    </p>
+                  )
                 )}
               </div>
               {fleetMap.groups.length > 0 ? (
@@ -518,9 +513,13 @@ export function Fleet() {
                   Dispatch
                 </button>
                 {dispatchMsg && (
-                  <p style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--muted)' }}>
-                    {dispatchMsg}
-                  </p>
+                  looksLikeUpgradeMessage(dispatchMsg) ? (
+                    <PlanGateAlert message={dispatchMsg} onDismiss={() => setDispatchMsg(null)} style={{ marginTop: '0.5rem' }} />
+                  ) : (
+                    <p style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--muted)' }}>
+                      {dispatchMsg}
+                    </p>
+                  )
                 )}
               </div>
             </>

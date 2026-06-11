@@ -68,8 +68,9 @@ export class SanctumClient {
       const text = await res.text()
       let msg = `Request failed (${res.status})`
       try {
-        const body = JSON.parse(text) as { error?: string; hint?: string }
-        if (body.hint && process.env.NODE_ENV !== 'production') msg = body.hint
+        const body = JSON.parse(text) as { error?: string; hint?: string; message?: string }
+        if (body.message) msg = body.message
+        else if (body.hint && process.env.NODE_ENV !== 'production') msg = body.hint
         else if (body.error) msg = body.error.replace(/_/g, ' ')
       } catch {
         /* non-JSON body */
@@ -164,61 +165,79 @@ export class SanctumClient {
     return this.request('POST', `/v1/audit/${encodeURIComponent(id)}/execution`, body)
   }
 
-  async getPolicies(): Promise<PolicyMap> {
-    const res = await fetch(`${this.baseUrl}/v1/policies`, {
+  private async readErrorMessage(res: Response, fallback: string): Promise<string> {
+    const text = await res.text()
+    try {
+      const body = JSON.parse(text) as { error?: string; message?: string; hint?: string }
+      if (body.message) return body.message
+      if (body.error) return body.error.replace(/_/g, ' ')
+      if (body.hint) return body.hint
+    } catch {
+      /* non-JSON */
+    }
+    return `${fallback} (${res.status})`
+  }
+
+  private orgQuery(orgId?: string): string {
+    return orgId ? `?org_id=${encodeURIComponent(orgId)}` : ''
+  }
+
+  async getPolicies(orgId?: string): Promise<PolicyMap> {
+    const res = await fetch(`${this.baseUrl}/v1/policies${this.orgQuery(orgId)}`, {
       headers: await this.headers(false),
     })
-    if (!res.ok) throw new Error(`Sanctum policies failed: ${res.status}`)
+    if (!res.ok) throw new Error(await this.readErrorMessage(res, 'Could not load policies'))
     return res.json() as Promise<PolicyMap>
   }
 
-  async updatePolicy(action: string, patch: Partial<PolicyMap[string]>): Promise<PolicyMap> {
-    const res = await fetch(`${this.baseUrl}/v1/policies/${encodeURIComponent(action)}`, {
+  async updatePolicy(action: string, patch: Partial<PolicyMap[string]>, orgId?: string): Promise<PolicyMap> {
+    const res = await fetch(`${this.baseUrl}/v1/policies/${encodeURIComponent(action)}${this.orgQuery(orgId)}`, {
       method: 'PATCH',
       headers: await this.headers(),
       body: JSON.stringify(patch),
     })
-    if (!res.ok) throw new Error(`Sanctum policy update failed: ${res.status}`)
+    if (!res.ok) throw new Error(await this.readErrorMessage(res, 'Could not update policy'))
     return res.json() as Promise<PolicyMap>
   }
 
   async createPolicy(
     action: string,
     patch: Partial<PolicyMap[string]> = {},
+    orgId?: string,
   ): Promise<PolicyMap> {
     const res = await fetch(`${this.baseUrl}/v1/policies`, {
       method: 'POST',
       headers: await this.headers(),
-      body: JSON.stringify({ action, ...patch }),
+      body: JSON.stringify({ action, org_id: orgId, ...patch }),
     })
-    if (!res.ok) throw new Error(`Sanctum policy create failed: ${res.status}`)
+    if (!res.ok) throw new Error(await this.readErrorMessage(res, 'Could not create policy'))
     return res.json() as Promise<PolicyMap>
   }
 
-  async deletePolicy(action: string): Promise<PolicyMap> {
-    const res = await fetch(`${this.baseUrl}/v1/policies/${encodeURIComponent(action)}`, {
+  async deletePolicy(action: string, orgId?: string): Promise<PolicyMap> {
+    const res = await fetch(`${this.baseUrl}/v1/policies/${encodeURIComponent(action)}${this.orgQuery(orgId)}`, {
       method: 'DELETE',
       headers: await this.headers(false),
     })
-    if (!res.ok) throw new Error(`Sanctum policy delete failed: ${res.status}`)
+    if (!res.ok) throw new Error(await this.readErrorMessage(res, 'Could not delete policy'))
     return res.json() as Promise<PolicyMap>
   }
 
-  async exportPoliciesYaml(): Promise<string> {
-    const res = await fetch(`${this.baseUrl}/v1/policies/export.yaml`, {
+  async exportPoliciesYaml(orgId?: string): Promise<string> {
+    const res = await fetch(`${this.baseUrl}/v1/policies/export.yaml${this.orgQuery(orgId)}`, {
       headers: await this.headers(false),
     })
-    if (!res.ok) throw new Error(`Sanctum policy export failed: ${res.status}`)
+    if (!res.ok) throw new Error(await this.readErrorMessage(res, 'Could not export policies'))
     return res.text()
   }
 
-  async importPoliciesYaml(yaml: string, merge = true): Promise<PolicyMap> {
+  async importPoliciesYaml(yaml: string, merge = true, orgId?: string): Promise<PolicyMap> {
     const res = await fetch(`${this.baseUrl}/v1/policies/import.yaml`, {
       method: 'POST',
       headers: await this.headers(),
-      body: JSON.stringify({ yaml, merge }),
+      body: JSON.stringify({ yaml, merge, org_id: orgId }),
     })
-    if (!res.ok) throw new Error(`Sanctum policy import failed: ${res.status}`)
+    if (!res.ok) throw new Error(await this.readErrorMessage(res, 'Could not import policies'))
     return res.json() as Promise<PolicyMap>
   }
 

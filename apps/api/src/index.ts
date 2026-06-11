@@ -786,7 +786,14 @@ app.post('/v1/actions/token/verify', async (req, reply) => {
   return { valid: true, payload }
 })
 
-async function requireOrgPolicyEdit(orgId: string, reply: import('fastify').FastifyReply): Promise<boolean> {
+async function requireOrgPolicyEdit(orgId: string | undefined, reply: import('fastify').FastifyReply): Promise<boolean> {
+  if (!orgId?.trim()) {
+    reply.status(400).send({
+      error: 'org_id_required',
+      message: 'Choose a workspace (org_id) before changing policies.',
+    })
+    return false
+  }
   if (!supabaseAuth) return true
   const limits = await getEntitlementEngine(supabaseAuth).getLimits(orgId)
   if (canUseConnectGate(limits) || canUseCustomShield(limits)) return true

@@ -14,7 +14,7 @@ import {
 import type { PageId } from '../layout/Sidebar'
 import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
-import { throwResponseError } from '../lib/sanitize-error'
+import { throwResponseError, formatApiError } from '../lib/sanitize-error'
 import { Alert } from '../components/ui/Alert'
 import { PlanGateAlert } from '../components/PlanGateAlert'
 import { TabBar } from '../components/ui/TabBar'
@@ -199,7 +199,7 @@ export function Alerts({ onPage }: { onPage?: (p: PageId) => void }) {
       await loadIncidents()
       await loadStats()
     } catch (e) {
-      setMsg({ text: e instanceof Error ? e.message : 'Failed', variant: 'error' })
+      setMsg({ text: formatApiError(e, 'Failed'), variant: 'error' })
     } finally {
       setBusy(false)
     }
@@ -218,7 +218,7 @@ export function Alerts({ onPage }: { onPage?: (p: PageId) => void }) {
       await loadIncidents()
       await loadStats()
     } catch (e) {
-      setMsg({ text: e instanceof Error ? e.message : 'Failed', variant: 'error' })
+      setMsg({ text: formatApiError(e, 'Failed'), variant: 'error' })
     } finally {
       setBusy(false)
     }
@@ -239,7 +239,7 @@ export function Alerts({ onPage }: { onPage?: (p: PageId) => void }) {
       setNewRule({ name: '', event_type: 'anomaly.spike', threshold: 1, window_minutes: 60, severity: 'critical', channels: ['email'] })
       await loadRules()
     } catch (e) {
-      setMsg({ text: e instanceof Error ? e.message : 'Failed', variant: 'error' })
+      setMsg({ text: formatApiError(e, 'Failed'), variant: 'error' })
     } finally {
       setBusy(false)
     }
@@ -255,7 +255,7 @@ export function Alerts({ onPage }: { onPage?: (p: PageId) => void }) {
       if (!res.ok) await throwResponseError(res, 'Could not update the alert rule')
       await loadRules()
     } catch (e) {
-      setMsg({ text: e instanceof Error ? e.message : 'Could not update rule', variant: 'error' })
+      setMsg({ text: formatApiError(e, 'Could not update rule'), variant: 'error' })
     }
   }
 
@@ -269,7 +269,7 @@ export function Alerts({ onPage }: { onPage?: (p: PageId) => void }) {
       if (!res.ok) await throwResponseError(res, 'Could not delete the alert rule')
       await loadRules()
     } catch (e) {
-      setMsg({ text: e instanceof Error ? e.message : 'Could not delete rule', variant: 'error' })
+      setMsg({ text: formatApiError(e, 'Could not delete rule'), variant: 'error' })
     }
   }
 

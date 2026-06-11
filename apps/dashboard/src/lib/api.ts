@@ -3,11 +3,24 @@ import type { ActionPolicy, ActionRequest, ActionResult, Decision, PolicyMap, Ri
 import { apiBaseUrl } from './api-url'
 import { getAccessToken } from './supabase'
 import { throwResponseError } from './sanitize-error'
+import { resolveDefaultWorkspaceOrg } from './workspace-org'
 
 export const api = new SanctumClient({
   baseUrl: apiBaseUrl,
   getAccessToken,
 })
+
+let cachedPolicyOrgId: { orgId: string; at: number } | null = null
+
+async function resolvePolicyOrgId(explicit?: string): Promise<string | undefined> {
+  if (explicit?.trim()) return explicit.trim()
+  if (cachedPolicyOrgId && Date.now() - cachedPolicyOrgId.at < 60_000) {
+    return cachedPolicyOrgId.orgId
+  }
+  const { orgId } = await resolveDefaultWorkspaceOrg()
+  if (orgId) cachedPolicyOrgId = { orgId, at: Date.now() }
+  return orgId || undefined
+}
 
 export type PolicyResponse = 'approve' | 'verify' | 'block'
 
@@ -49,10 +62,11 @@ export async function resolveVerification(
   } as Parameters<typeof api.resolveAuditEntry>[1] & { grantDurationMinutes?: number })
 }
 
-export async function fetchDashboard(): Promise<DashboardData> {
+export async function fetchDashboard(orgId?: string): Promise<DashboardData> {
+  const oid = await resolvePolicyOrgId(orgId)
   const [auditResult, policiesResult, statusResult] = await Promise.allSettled([
-    api.getAudit(100),
-    api.getPolicies(),
+    api.getAudit(100, oid),
+    api.getPolicies(oid),
     api.getStatus(),
   ])
 
@@ -73,30 +87,38 @@ export async function fetchDashboard(): Promise<DashboardData> {
 export async function updatePolicyResponse(
   action: string,
   response: PolicyResponse,
+  orgId?: string,
 ): Promise<PolicyMap> {
-  return api.updatePolicy(action, responseToPolicy(response))
+  const oid = await resolvePolicyOrgId(orgId)
+  return api.updatePolicy(action, responseToPolicy(response), oid)
 }
 
 export async function createPolicyResponse(
   action: string,
   response: PolicyResponse,
+  orgId?: string,
 ): Promise<PolicyMap> {
-  return api.createPolicy(action, responseToPolicy(response))
+  const oid = await resolvePolicyOrgId(orgId)
+  return api.createPolicy(action, responseToPolicy(response), oid)
 }
 
-export async function deletePolicyAction(action: string): Promise<PolicyMap> {
-  return api.deletePolicy(action)
+export async function deletePolicyAction(action: string, orgId?: string): Promise<PolicyMap> {
+  const oid = await resolvePolicyOrgId(orgId)
+  return api.deletePolicy(action, oid)
 }
 
-export async function exportPoliciesYaml(): Promise<string> {
-  return api.exportPoliciesYaml()
+export async function exportPoliciesYaml(orgId?: string): Promise<string> {
+  const oid = await resolvePolicyOrgId(orgId)
+  return api.exportPoliciesYaml(oid)
 }
 
 export async function updatePolicyConditions(
   action: string,
   conditions: import('@sanctum-runtime/sdk/browser').PolicyCondition[],
+  orgId?: string,
 ): Promise<PolicyMap> {
-  return api.updatePolicy(action, { conditions })
+  const oid = await resolvePolicyOrgId(orgId)
+  return api.updatePolicy(action, { conditions }, oid)
 }
 
 export type SimulateResult = {
@@ -135,8 +157,9 @@ export async function simulateAction(
   return res.json() as Promise<SimulateResult>
 }
 
-export async function importPoliciesYaml(yaml: string, merge = true): Promise<PolicyMap> {
-  return api.importPoliciesYaml(yaml, merge)
+export async function importPoliciesYaml(yaml: string, merge = true, orgId?: string): Promise<PolicyMap> {
+  const oid = await resolvePolicyOrgId(orgId)
+  return api.importPoliciesYaml(yaml, merge, oid)
 }
 
 export type AuditReplayChange = {

@@ -20,7 +20,7 @@ import {
 import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 import { timeAgo } from '../lib/format'
 import { getAccessToken } from '../lib/supabase'
-import { responseError } from '../lib/sanitize-error'
+import { formatApiError, responseError } from '../lib/sanitize-error'
 import { apiBaseUrl } from '../lib/api-url'
 
 // Use the shared resolver (env var with a production fallback to
@@ -131,7 +131,7 @@ export function Shield({ audit, onPage }: Props) {
       if (!res.ok) throw await responseError(res, 'Could not update fleet status')
       await loadStatus()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not update fleet status. Try again.')
+      setError(formatApiError(e, 'Could not update fleet status. Try again.'))
     } finally {
       setPauseLoading(false)
     }
@@ -151,7 +151,7 @@ export function Shield({ audit, onPage }: Props) {
       setEvents((prev) => prev.map((e) => e.id === id ? { ...e, resolved: true, resolved_at: new Date().toISOString() } : e))
       if (status) setStatus({ ...status, unresolvedIncidents: Math.max(0, status.unresolvedIncidents - 1) })
     } catch (e) {
-      setResolveError(e instanceof Error ? e.message : 'Could not resolve incident. Try again.')
+      setResolveError(formatApiError(e, 'Could not resolve incident. Try again.'))
     } finally {
       setResolving(null)
     }
@@ -246,7 +246,7 @@ export function Shield({ audit, onPage }: Props) {
             {pauseLoading ? 'Updating…' : status?.fleetPaused ? 'Resume Fleet' : 'Pause Fleet'}
           </button>
         </div>
-        {error && <p style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--danger)' }}>{error}</p>}
+        {error && <PlanGateAlert message={error} onDismiss={() => setError(null)} style={{ marginTop: '0.5rem' }} />}
       </div>
 
       {/* KPI strip */}

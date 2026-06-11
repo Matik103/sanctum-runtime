@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2, Play, Save, FileCode } from "lucide-react";
 import type { ActionPolicy, PolicyCondition } from "@sanctum-runtime/sdk/browser";
 import { api, simulateAction, exportPoliciesYaml, importPoliciesYaml } from "../lib/api";
+import { PlanGateAlert } from "../components/PlanGateAlert";
+import { formatApiError } from "../lib/sanitize-error";
 import { Alert } from "../components/ui/Alert";
 
 type Rule = {
@@ -130,7 +132,7 @@ export function WorkflowBuilder() {
       );
       setSimResult(result);
     } catch (e) {
-      setSimError(e instanceof Error ? e.message : "Simulation failed");
+      setSimError(formatApiError(e, "Simulation failed"));
     }
   };
 
@@ -141,7 +143,7 @@ export function WorkflowBuilder() {
       await importPoliciesYaml(yaml, true);
       setSaved(true);
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : "Save failed");
+      setSaveError(formatApiError(e, "Save failed"));
     }
   };
 
@@ -179,9 +181,7 @@ export function WorkflowBuilder() {
       </header>
 
       {saveError && (
-        <Alert variant="error" onDismiss={() => setSaveError(null)}>
-          {saveError}
-        </Alert>
+        <PlanGateAlert message={saveError} onDismiss={() => setSaveError(null)} />
       )}
       {saved && (
         <Alert variant="success" onDismiss={() => setSaved(false)}>
@@ -411,13 +411,11 @@ export function WorkflowBuilder() {
               <Play size={14} style={{ marginRight: "0.35rem" }} /> Simulate
             </button>
             {simError && (
-              <Alert
-                variant="error"
+              <PlanGateAlert
+                message={simError}
                 onDismiss={() => setSimError(null)}
                 style={{ marginTop: "0.75rem" }}
-              >
-                {simError}
-              </Alert>
+              />
             )}
             {simResult && (
               <div className="workflow-result">

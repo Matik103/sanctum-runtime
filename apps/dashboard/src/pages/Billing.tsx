@@ -17,6 +17,7 @@ import {
   type BillingPlan,
   type PlanId,
 } from '../lib/billing'
+import { formatApiError } from '../lib/sanitize-error'
 
 function UsageMeter({ label, used, limit, pct, unit = '', hint }: {
   label: string
@@ -209,7 +210,7 @@ export function Billing() {
     try {
       setPlan(await fetchBillingPlan(id))
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load billing info')
+      setError(formatApiError(e, 'Could not load billing info'))
     } finally {
       setLoading(false)
     }
@@ -299,7 +300,7 @@ export function Billing() {
         )
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Plan change failed')
+      setError(formatApiError(e, 'Plan change failed'))
     } finally {
       setCheckoutBusy(null)
     }
@@ -318,7 +319,7 @@ export function Billing() {
         setCheckoutMsg(message ?? 'Could not open Creem customer portal.')
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not open billing portal')
+      setError(formatApiError(e, 'Could not open billing portal'))
     } finally {
       setPortalBusy(false)
     }

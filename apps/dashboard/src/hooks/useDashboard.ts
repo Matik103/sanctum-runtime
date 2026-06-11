@@ -6,7 +6,7 @@ import {
   type DashboardData,
   type PolicyResponse,
 } from '../lib/api'
-import { sanitizeApiError } from '../lib/sanitize-error'
+import { sanitizeApiError, formatApiError } from '../lib/sanitize-error'
 import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 
 const BASE_POLL_MS  = 10_000
@@ -117,7 +117,7 @@ export function useDashboard() {
             ? 'Session expired — please sign in again.'
             : rateLimited
               ? 'Too many requests — backing off and retrying.'
-              : sanitizeApiError(e, 'Could not refresh console data.'),
+              : formatApiError(e, 'Could not refresh console data.'),
       )
 
       if (authFailed) {
@@ -143,12 +143,8 @@ export function useDashboard() {
   }, [refresh])
 
   const setPolicy = async (action: string, response: PolicyResponse) => {
-    try {
-      const policies = await updatePolicyResponse(action, response)
-      setData((d) => ({ ...d, policies }))
-    } catch (e) {
-      setApiError(e instanceof Error ? e.message : 'Failed to update policy')
-    }
+    const policies = await updatePolicyResponse(action, response)
+    setData((d) => ({ ...d, policies }))
   }
 
   const replacePolicies = (policies: DashboardData['policies']) => {

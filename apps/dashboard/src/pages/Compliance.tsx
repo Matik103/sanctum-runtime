@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Download, ShieldCheck, BarChart3, FileText, BookOpen } from 'lucide-react'
 import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
-import { responseError } from '../lib/sanitize-error'
+import { responseError, formatApiError } from '../lib/sanitize-error'
 import { PlanGateAlert } from '../components/PlanGateAlert'
 import { TabBar } from '../components/ui/TabBar'
 import { fetchMyOrgs, type FleetOrg } from '../lib/fleet'
@@ -88,7 +88,7 @@ export function Compliance() {
       }
       if (sRes.ok) setSoc2(await sRes.json() as Record<string, string>)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load compliance data')
+      setError(formatApiError(e, 'Failed to load compliance data'))
     } finally {
       setLoading(false)
     }
@@ -123,7 +123,7 @@ export function Compliance() {
       a.click()
       URL.revokeObjectURL(url)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Report download failed.')
+      setError(formatApiError(e, 'Report download failed.'))
     }
   }
 

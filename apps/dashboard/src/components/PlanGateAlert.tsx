@@ -1,20 +1,29 @@
 import { CreditCard, Sparkles } from 'lucide-react'
 import type { CSSProperties } from 'react'
 import { Alert } from './ui/Alert'
-import { looksLikeUpgradeMessage } from '../lib/sanitize-error'
+import {
+  formatApiError,
+  isEntitlementFailure,
+  looksLikeUpgradeMessage,
+} from '../lib/sanitize-error'
 
 type Props = {
-  message: string
+  /** Pre-formatted message (optional if `error` is set). */
+  message?: string
+  /** Thrown API error — formatted and classified automatically. */
+  error?: unknown
+  fallback?: string
   onDismiss?: () => void
   style?: CSSProperties
 }
 
 /**
- * Renders API errors. Entitlement / plan-gate messages get a calm,
- * upgrade-styled banner with a View plans CTA; real failures stay red.
+ * Entitlement / plan-gate → calm upgrade banner with View plans CTA.
+ * Real failures → red error alert.
  */
-export function PlanGateAlert({ message, onDismiss, style }: Props) {
-  const gated = looksLikeUpgradeMessage(message)
+export function PlanGateAlert({ message, error, fallback = 'Request failed', onDismiss, style }: Props) {
+  const text = message ?? formatApiError(error, fallback)
+  const gated = isEntitlementFailure(error) || looksLikeUpgradeMessage(text)
 
   if (!gated) {
     return (
@@ -23,7 +32,7 @@ export function PlanGateAlert({ message, onDismiss, style }: Props) {
           <strong style={{ display: 'block', marginBottom: '0.15rem' }}>
             Action could not be completed
           </strong>
-          <span style={{ display: 'block', overflowWrap: 'anywhere' }}>{message}</span>
+          <span style={{ display: 'block', overflowWrap: 'anywhere' }}>{text}</span>
         </div>
       </Alert>
     )
@@ -37,7 +46,7 @@ export function PlanGateAlert({ message, onDismiss, style }: Props) {
             <Sparkles size={14} aria-hidden />
             Upgrade to unlock this
           </strong>
-          <span style={{ display: 'block', overflowWrap: 'anywhere' }}>{message}</span>
+          <span style={{ display: 'block', overflowWrap: 'anywhere' }}>{text}</span>
         </div>
         <a className="btn btn-primary btn-sm" href="?page=billing" style={{ textDecoration: 'none', flex: '0 0 auto' }}>
           <CreditCard size={14} />

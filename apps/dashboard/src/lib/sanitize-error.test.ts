@@ -83,6 +83,9 @@ describe('looksLikeUpgradeMessage', () => {
   })
 
   it('does not match plain failures', () => {
+    expect(looksLikeUpgradeMessage(
+      'Policy changes require Personal or higher.',
+    )).toBe(true)
     expect(looksLikeUpgradeMessage('Could not delete the alert rule')).toBe(false)
     expect(looksLikeUpgradeMessage('Server error — try again shortly')).toBe(false)
   })

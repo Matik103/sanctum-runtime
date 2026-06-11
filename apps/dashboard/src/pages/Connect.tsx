@@ -32,6 +32,7 @@ import {
 } from '../lib/platform-credentials'
 import type { PageId } from '../layout/Sidebar'
 import { PlanGateAlert } from '../components/PlanGateAlert'
+import { formatApiError } from '../lib/sanitize-error'
 
 const PLATFORMS: { id: PlatformId; name: string; flag: string }[] = [
   { id: 'openai', name: 'OpenAI', flag: '🤖' },
@@ -297,7 +298,7 @@ export function Connect({ orgId, onPage }: Props) {
         setAgents(list)
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load connection settings')
+      setError(formatApiError(e, 'Could not load connection settings'))
     } finally {
       setLoading(false)
     }
@@ -391,7 +392,7 @@ export function Connect({ orgId, onPage }: Props) {
       setKeyEntryOpen(false)
       setTestMsg('Platform API key saved securely.')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Save failed')
+      setError(formatApiError(e, 'Save failed'))
     } finally {
       setSaving(false)
     }
@@ -412,7 +413,7 @@ export function Connect({ orgId, onPage }: Props) {
       setTestMsg(result.ok ? 'Connection successful.' : `Test failed: ${result.detail ?? 'unknown error'}`)
       if (useSaved) void load()
     } catch (e) {
-      setTestMsg(e instanceof Error ? e.message : 'Test failed')
+      setTestMsg(formatApiError(e, 'Test failed'))
     } finally {
       setTesting(false)
     }
@@ -427,7 +428,7 @@ export function Connect({ orgId, onPage }: Props) {
       setSettings(next)
       setTestMsg('Connect settings saved.')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Settings save failed')
+      setError(formatApiError(e, 'Settings save failed'))
     } finally {
       setSettingsSaving(false)
     }
@@ -447,7 +448,7 @@ export function Connect({ orgId, onPage }: Props) {
       setSettings(settingsRes)
       setTestMsg(`Applied "${presetId}" preset.`)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Preset apply failed')
+      setError(formatApiError(e, 'Preset apply failed'))
     } finally {
       setPresetApplying(null)
     }
@@ -480,7 +481,7 @@ export function Connect({ orgId, onPage }: Props) {
       }
     } catch (e) {
       setTestMsg(null)
-      setError(e instanceof Error ? e.message : 'Test failed')
+      setError(formatApiError(e, 'Test failed'))
     } finally {
       setTestRunning(false)
     }
@@ -495,7 +496,7 @@ export function Connect({ orgId, onPage }: Props) {
       setTestMsg(`Applied shield bundle "${presetId}".`)
       void load()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Shield preset apply failed')
+      setError(formatApiError(e, 'Shield preset apply failed'))
     } finally {
       setPresetApplying(null)
     }
@@ -509,7 +510,7 @@ export function Connect({ orgId, onPage }: Props) {
       setSettings(next)
       setTestMsg('Promoted to gate mode — tool calls are now verified.')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Promote failed')
+      setError(formatApiError(e, 'Promote failed'))
     } finally {
       setSettingsSaving(false)
     }
@@ -527,7 +528,7 @@ export function Connect({ orgId, onPage }: Props) {
       )
       setTestMsg('Platform key removed.')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Delete failed')
+      setError(formatApiError(e, 'Delete failed'))
     } finally {
       setSaving(false)
     }
@@ -549,7 +550,7 @@ export function Connect({ orgId, onPage }: Props) {
         setRotationStep(2)
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Rotation failed')
+      setError(formatApiError(e, 'Rotation failed'))
     } finally {
       setSaving(false)
     }

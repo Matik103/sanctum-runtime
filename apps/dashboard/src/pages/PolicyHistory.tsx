@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { History, RotateCcw, Tag } from 'lucide-react'
 import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
-import { throwResponseError } from '../lib/sanitize-error'
+import { throwResponseError, formatApiError } from '../lib/sanitize-error'
 import { Alert } from '../components/ui/Alert'
 import { PlanGateAlert } from '../components/PlanGateAlert'
 import { timeAgo } from '../lib/format'
@@ -64,7 +64,7 @@ export function PolicyHistory() {
       setShowSave(false)
       await load()
     } catch (e) {
-      setMsg({ text: e instanceof Error ? e.message : 'Failed', variant: 'error' })
+      setMsg({ text: formatApiError(e, 'Failed'), variant: 'error' })
     } finally {
       setBusy(false)
     }
@@ -82,7 +82,7 @@ export function PolicyHistory() {
       setMsg({ text: 'Policies restored to snapshot.', variant: 'success' })
       setSelected(null)
     } catch (e) {
-      setMsg({ text: e instanceof Error ? e.message : 'Failed', variant: 'error' })
+      setMsg({ text: formatApiError(e, 'Failed'), variant: 'error' })
     } finally {
       setBusy(false)
     }

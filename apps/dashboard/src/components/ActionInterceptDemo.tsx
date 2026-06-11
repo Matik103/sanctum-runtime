@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { ArrowRight, BadgeCheck, Coins, DatabaseZap, DoorOpen, Loader2, MailWarning, ShieldCheck } from 'lucide-react'
 import type { SimulateResult } from '../lib/api'
 import { simulateAction } from '../lib/api'
+import { PlanGateAlert } from './PlanGateAlert'
+import { formatApiError } from '../lib/sanitize-error'
 import type { PageId } from '../layout/Sidebar'
 import { decisionLabel } from '../lib/labels'
 import { decisionTone } from '../lib/format'
@@ -128,7 +130,7 @@ export function ActionInterceptDemo({ orgId, onPage }: Props) {
       const simulation = await simulateAction(active.actor, active.action, context)
       setResult(simulation)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Simulation failed')
+      setError(formatApiError(e, 'Simulation failed'))
     } finally {
       setRunning(false)
     }
@@ -188,7 +190,7 @@ export function ActionInterceptDemo({ orgId, onPage }: Props) {
           </button>
         </div>
 
-        {error && <div className="alert alert--error"><div className="alert__body">{error}</div></div>}
+        {error && <PlanGateAlert message={error} onDismiss={() => setError(null)} />}
 
         {result ? (
           <div className="action-intercept__result">

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
-import { responseError } from '../lib/sanitize-error'
+import { formatApiError, responseError } from '../lib/sanitize-error'
 import { fetchMyOrgs } from '../lib/fleet'
 import { PlanGateAlert } from '../components/PlanGateAlert'
 import { AgentConnectStudio } from '../components/AgentConnectStudio'
@@ -138,7 +138,7 @@ export function Agents({ onOpenDevices }: Props) {
     setLoading(true)
     try {
       const res = await fetch(`${apiBaseUrl}/v1/orgs/${oid}/agents`, { headers: await authHeaders() })
-      if (!res.ok) { setError(`Failed to load agents: ${res.status}`); return }
+      if (!res.ok) { setError((await responseError(res, 'Could not load agents')).message); return }
       const data = await res.json() as AgentReg[]
       setAgents(data)
       // Load stats for each agent in parallel (best-effort)
@@ -157,7 +157,7 @@ export function Agents({ onOpenDevices }: Props) {
       }
       setStatsMap(map)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load agents')
+      setError(formatApiError(e, 'Failed to load agents'))
     } finally { setLoading(false) }
   }, [])
 
@@ -177,7 +177,7 @@ export function Agents({ onOpenDevices }: Props) {
       setNewToken({ name: data.name, token: data.token, hint: data.token_hint })
       setName(''); setDesc('')
       await load(orgId)
-    } catch (e) { setError(e instanceof Error ? e.message : 'Failed') }
+    } catch (e) { setError(formatApiError(e, 'Failed to register agent')) }
     finally { setCreating(false) }
   }
 
@@ -190,7 +190,7 @@ export function Agents({ onOpenDevices }: Props) {
       setConfirmRevoke(null)
       if (selectedAgent?.id === agentId) setSelectedAgent(null)
       await load(orgId)
-    } catch (e) { setError(e instanceof Error ? e.message : 'Revoke failed') }
+    } catch (e) { setError(formatApiError(e, 'Revoke failed')) }
   }
 
   const rotate = async (agentId: string) => {
@@ -203,7 +203,7 @@ export function Agents({ onOpenDevices }: Props) {
       const data = await res.json() as { token: string; token_hint: string }
       setRotatedToken({ agentId, token: data.token })
       await load(orgId)
-    } catch (e) { setError(e instanceof Error ? e.message : 'Rotation failed') }
+    } catch (e) { setError(formatApiError(e, 'Rotation failed')) }
     finally { setRotating(null) }
   }
 
