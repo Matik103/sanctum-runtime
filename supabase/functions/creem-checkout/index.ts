@@ -24,7 +24,7 @@ import {
   creemChangeSubscriptionPlan,
   hasActiveCreemSubscription,
   planChangeType,
-  planIdFromSubscription,
+  resolvePlanAfterSubscriptionChange,
 } from '../_shared/creem-subscription.ts'
 import { customerEmail, customerId, subscriptionId } from '../_shared/creem-parse.ts'
 import { handleCorsPreflight, jsonWithCors } from '../_shared/cors.ts'
@@ -199,7 +199,7 @@ Deno.serve(async (req) => {
     }
 
     const map = productMap()
-    const resolvedPlan = planIdFromSubscription(change.body, map) ?? targetPlanId
+    const resolvedPlan = resolvePlanAfterSubscriptionChange(targetPlanId, change.body, map)
     await grantOrgPlan(admin, {
       orgId,
       planId: resolvedPlan,

@@ -46,6 +46,7 @@ if (!url || !serviceKey) {
 const endpoint = `${url}/functions/v1/creem-verify`
 console.log(`POST ${endpoint}\n`)
 
+const reconcile = process.argv.includes('--reconcile')
 const res = await fetch(endpoint, {
   method: 'POST',
   headers: {
@@ -53,6 +54,7 @@ const res = await fetch(endpoint, {
     ...(anonKey ? { apikey: anonKey } : {}),
     'Content-Type': 'application/json',
   },
+  body: JSON.stringify(reconcile ? { reconcile: true } : {}),
 })
 
 const body = await res.json().catch(() => ({}))

@@ -8,8 +8,10 @@ import {
   grantOrgPlan,
   markPaymentFailed,
   markScheduledCancel,
+  readOrgPlan,
   revokeOrgPlan,
 } from '../_shared/creem-org-plan.ts'
+import { planRank } from '../_shared/creem-subscription.ts'
 import {
   customerEmail,
   customerId,
@@ -24,6 +26,7 @@ const GRANT_EVENTS = new Set([
   'subscription.paid',
   'subscription.active',
   'subscription.trialing',
+  'subscription.update',
 ])
 const REVOKE_EVENTS = new Set([
   'subscription.canceled',
@@ -127,6 +130,28 @@ Deno.serve(async (req) => {
     if (!planId) {
       return Response.json({ error: 'plan_unresolved', orgId, eventType }, { status: 500 })
     }
+
+    const existing = await readOrgPlan(admin, orgId)
+    const incomingSub = subscriptionId(obj)
+    const existingSub = existing?.creem_subscription_id as string | null | undefined
+    if (
+      eventType === 'checkout.completed'
+      && existing?.plan_id
+      && planRank(planId) < planRank(existing.plan_id as string)
+      && incomingSub
+      && existingSub
+      && incomingSub === existingSub
+    ) {
+      return Response.json({
+        ok: true,
+        skipped: 'stale_checkout_completed',
+        orgId,
+        keptPlanId: existing.plan_id,
+        ignoredPlanId: planId,
+        eventType,
+      })
+    }
+
     await grantOrgPlan(admin, {
       orgId,
       planId,

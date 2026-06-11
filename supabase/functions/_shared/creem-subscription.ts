@@ -93,6 +93,25 @@ export async function creemCancelSubscription(
   }
 }
 
+/** Retrieve subscription — Creem uses query param, not path segment. */
+export async function creemGetSubscription(
+  apiKey: string,
+  subscriptionId: string,
+): Promise<CreemApiResult> {
+  const url = `${creemApiBase()}/v1/subscriptions?subscription_id=${encodeURIComponent(subscriptionId)}`
+  const res = await fetch(url, {
+    headers: { 'x-api-key': apiKey },
+    signal: AbortSignal.timeout(12_000),
+  })
+  const text = await res.text()
+  if (!res.ok) return { ok: false, status: res.status, text }
+  try {
+    return { ok: true, body: JSON.parse(text) as Record<string, unknown> }
+  } catch {
+    return { ok: false, status: 502, text: 'invalid_json' }
+  }
+}
+
 /** Customer self-service portal (payment method, cancel, invoices). */
 export async function creemCustomerPortalLink(
   apiKey: string,
@@ -126,6 +145,21 @@ export function planIdFromSubscription(
   const pid = productIdFrom(sub)
   if (pid && map[pid]) return map[pid]
   return null
+}
+
+/** Prefer explicit user/API target over Creem body when subscription change succeeded. */
+export function resolvePlanAfterSubscriptionChange(
+  targetPlanId: string,
+  creemBody: Record<string, unknown>,
+  map: Record<string, string>,
+): string {
+  const fromApi = planIdFromSubscription(creemBody, map)
+  if (!fromApi) return targetPlanId
+  if (fromApi === targetPlanId) return targetPlanId
+  // Creem upgrade responses may still echo the previous product briefly.
+  if (planRank(fromApi) < planRank(targetPlanId)) return targetPlanId
+  if (planRank(fromApi) > planRank(targetPlanId)) return fromApi
+  return targetPlanId
 }
 
 export function planChangeType(

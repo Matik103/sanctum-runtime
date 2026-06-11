@@ -1,15 +1,25 @@
 /**
  * Admin-only Creem billing diagnostics (uses Edge Function secrets).
  * Invoke with service role JWT: npm run creem:verify-remote
+ * POST { "reconcile": true } — sync org_plans from live Creem subscriptions
  */
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
   creemApiBase,
   creemKeyMode,
   formatCreemErrorDetail,
   normalizeCreemApiKey,
   productIdForPlan,
+  productMap,
   validateCreemEnvironment,
 } from '../_shared/creem.ts'
+import { grantOrgPlan } from '../_shared/creem-org-plan.ts'
+import {
+  customerId,
+  planFrom,
+  subscriptionId,
+} from '../_shared/creem-parse.ts'
+import { creemGetSubscription, planIdFromSubscription } from '../_shared/creem-subscription.ts'
 import { handleCorsPreflight, jsonWithCors } from '../_shared/cors.ts'
 
 const PLANS = ['personal', 'operator', 'team'] as const
@@ -55,7 +65,21 @@ Deno.serve(async (req) => {
     return jsonWithCors(req, { error: 'method_not_allowed' }, { status: 405 })
   }
 
+  let reqBody: { reconcile?: boolean } = {}
+  if (req.method === 'POST') {
+    try {
+      reqBody = await req.json() as typeof reqBody
+    } catch {
+      /* empty body is fine */
+    }
+  }
+
   const apiKey = normalizeCreemApiKey(Deno.env.get('CREEM_API_KEY'))
+
+  if (reqBody.reconcile) {
+    const result = await reconcileOrgPlansFromCreem(apiKey)
+    return jsonWithCors(req, result)
+  }
   const base = creemApiBase()
   const envError = validateCreemEnvironment(apiKey)
   const dashboardUrl = Deno.env.get('DASHBOARD_URL')?.trim() ?? null
@@ -132,6 +156,61 @@ Deno.serve(async (req) => {
     fixes,
   })
 })
+
+async function reconcileOrgPlansFromCreem(apiKey: string): Promise<Record<string, unknown>> {
+  if (!apiKey) return { ok: false, error: 'creem_api_key_not_configured' }
+  const envError = validateCreemEnvironment(apiKey)
+  if (envError) return { ok: false, error: 'creem_env_mismatch', hint: envError }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
+  const base = creemApiBase()
+  const map = productMap()
+
+  const { data: rows, error } = await admin
+    .from('org_plans')
+    .select('org_id, plan_id, creem_subscription_id, creem_customer_id')
+    .not('creem_subscription_id', 'is', null)
+
+  if (error) return { ok: false, error: error.message }
+
+  const updates: Array<{ orgId: string; from: string; to: string }> = []
+  const failures: Array<{ orgId: string; detail: string }> = []
+
+  for (const row of rows ?? []) {
+    const orgId = row.org_id as string
+    const subId = (row.creem_subscription_id as string).trim()
+    const fromPlan = row.plan_id as string
+    try {
+      const fetched = await creemGetSubscription(apiKey, subId)
+      if (!fetched.ok) {
+        failures.push({ orgId, detail: `HTTP ${fetched.status}` })
+        continue
+      }
+      const sub = fetched.body
+      const planId = planIdFromSubscription(sub, map) ?? planFrom(sub, map)
+      if (!planId) {
+        failures.push({ orgId, detail: 'plan_unresolved' })
+        continue
+      }
+      if (planId !== fromPlan) {
+        await grantOrgPlan(admin, {
+          orgId,
+          planId,
+          customerId: customerId(sub) ?? (row.creem_customer_id as string | null),
+          subscriptionId: subscriptionId(sub) ?? subId,
+          email: null,
+        })
+        updates.push({ orgId, from: fromPlan, to: planId })
+      }
+    } catch (err) {
+      failures.push({ orgId, detail: err instanceof Error ? err.message : String(err) })
+    }
+  }
+
+  return { ok: true, reconciled: updates.length, updates, failures }
+}
 
 async function testWebhookHandler(webhookSecretSet: boolean): Promise<{
   ok: boolean

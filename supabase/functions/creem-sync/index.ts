@@ -9,6 +9,7 @@ import {
   validateCreemEnvironment,
 } from '../_shared/creem.ts'
 import { grantOrgPlan, readOrgPlan } from '../_shared/creem-org-plan.ts'
+import { creemGetSubscription, planIdFromSubscription } from '../_shared/creem-subscription.ts'
 import { handleCorsPreflight, jsonWithCors } from '../_shared/cors.ts'
 import {
   customerEmail,
@@ -19,6 +20,34 @@ import {
 } from '../_shared/creem-parse.ts'
 
 const BILLING_ROLES = new Set(['owner', 'admin'])
+
+async function syncFromCreemSubscription(
+  admin: ReturnType<typeof createClient>,
+  orgId: string,
+  apiKey: string,
+  email: string | null,
+): Promise<{ planId: string } | null> {
+  const row = await readOrgPlan(admin, orgId)
+  const subId = (row?.creem_subscription_id as string | undefined)?.trim()
+  if (!subId) return null
+
+  const fetched = await creemGetSubscription(apiKey, subId)
+  if (!fetched.ok) return null
+  const sub = fetched.body
+
+  const map = productMap()
+  const planId = planIdFromSubscription(sub, map) ?? planFrom(sub, map)
+  if (!planId) return null
+
+  await grantOrgPlan(admin, {
+    orgId,
+    planId,
+    customerId: customerId(sub) ?? (row?.creem_customer_id as string | null) ?? null,
+    subscriptionId: subscriptionId(sub) ?? subId,
+    email,
+  })
+  return { planId }
+}
 
 Deno.serve(async (req) => {
   const preflight = handleCorsPreflight(req)
@@ -110,6 +139,27 @@ Deno.serve(async (req) => {
     }
   }
 
+  if (apiKey) {
+    const envError = validateCreemEnvironment(apiKey)
+    if (!envError) {
+      const fromSub = await syncFromCreemSubscription(
+        admin,
+        orgId,
+        apiKey,
+        user.email ?? null,
+      )
+      if (fromSub) {
+        return jsonWithCors(req, {
+          ok: true,
+          synced: true,
+          orgId,
+          planId: fromSub.planId,
+          source: 'creem_subscription',
+        })
+      }
+    }
+  }
+
   const row = await readOrgPlan(admin, orgId)
   return jsonWithCors(req, {
     ok: true,
@@ -121,6 +171,6 @@ Deno.serve(async (req) => {
     billingStatus: row?.billing_status ?? null,
     note: checkoutId
       ? 'Webhook may still be processing; refresh again in a few seconds.'
-      : 'Returned current org_plans row.',
+      : 'Could not reconcile from Creem subscription; returned current org_plans row.',
   })
 })

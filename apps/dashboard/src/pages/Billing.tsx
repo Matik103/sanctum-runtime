@@ -286,6 +286,11 @@ export function Billing() {
         setCheckoutMsg('Checkout opened in a new tab (Creem). Your plan updates after payment completes.')
       } else if (result.changed || result.upgraded) {
         setCheckoutMsg(result.message ?? `Plan updated to ${result.planId ?? planId}.`)
+        try {
+          await syncBillingAfterCheckout(orgId)
+        } catch {
+          /* reconcile via Creem subscription API if webhook is slow */
+        }
         await load(orgId)
       } else {
         setCheckoutMsg(
@@ -364,7 +369,14 @@ export function Billing() {
             type="button"
             className="btn btn-ghost"
             disabled={loading}
-            onClick={() => void load(orgId)}
+            onClick={() => void (async () => {
+              try {
+                await syncBillingAfterCheckout(orgId)
+              } catch {
+                /* fall through to load */
+              }
+              await load(orgId)
+            })()}
           >
             <RefreshCw size={16} className={loading ? 'spin' : undefined} />
             Refresh

@@ -29,7 +29,21 @@ export function orgIdFrom(obj: Record<string, unknown>): string | null {
   return null
 }
 
+function productIdFromItems(items: unknown): string | null {
+  if (!Array.isArray(items) || !items.length) return null
+  const first = items[0]
+  if (!first || typeof first !== 'object') return null
+  const row = first as { product_id?: string; product?: string | { id?: string } }
+  if (row.product_id?.trim()) return row.product_id.trim()
+  if (typeof row.product === 'string' && row.product) return row.product
+  if (row.product && typeof row.product === 'object' && row.product.id) return row.product.id
+  return null
+}
+
 export function productIdFrom(obj: Record<string, unknown>): string | null {
+  const fromItems = productIdFromItems(obj.items)
+  if (fromItems) return fromItems
+
   const p = obj.product
   if (typeof p === 'string' && p) return p
   if (p && typeof p === 'object' && 'id' in p) return String((p as { id?: string }).id ?? '') || null
@@ -40,6 +54,8 @@ export function productIdFrom(obj: Record<string, unknown>): string | null {
   }
   const sub = obj.subscription
   if (sub && typeof sub === 'object') {
+    const fromSubItems = productIdFromItems((sub as { items?: unknown[] }).items)
+    if (fromSubItems) return fromSubItems
     const sp = (sub as { product?: string | { id?: string } }).product
     if (typeof sp === 'string') return sp
     if (sp && typeof sp === 'object' && sp.id) return sp.id
