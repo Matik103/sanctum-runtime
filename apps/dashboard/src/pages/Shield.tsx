@@ -21,6 +21,7 @@ import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 import { timeAgo } from '../lib/format'
 import { getAccessToken } from '../lib/supabase'
 import { formatApiError, responseError } from '../lib/sanitize-error'
+import { PlanGateAlert } from '../components/PlanGateAlert'
 import { apiBaseUrl } from '../lib/api-url'
 
 // Use the shared resolver (env var with a production fallback to

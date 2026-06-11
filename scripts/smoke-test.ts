@@ -5,10 +5,12 @@
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { protectAgent, AgentActions } from '../packages/adapters/agent-runtime/src/index.ts'
-import { SanctumRuntime } from '../packages/sdk/src/index.ts'
+import { SanctumClient, SanctumRuntime } from '../packages/sdk/src/index.ts'
 import { apiRequestHeaders, resolveSanctumApiUrl } from './env.ts'
 
 const API = resolveSanctumApiUrl()
+/** Local/CI smoke org — policy writes require an explicit workspace when unauthenticated. */
+const SMOKE_ORG = process.env.SANCTUM_SMOKE_ORG_ID?.trim() || 'ci-smoke'
 
 async function fetchJson(path: string, init?: RequestInit) {
   const headers = {
@@ -101,6 +103,7 @@ async function main() {
       method: 'POST',
       body: JSON.stringify({
         action: 'smoke_custom_action',
+        org_id: SMOKE_ORG,
         requiresVerification: true,
         riskPrompt: 'Smoke test: treat all requests as medium risk unless context says test.',
       }),
@@ -167,7 +170,12 @@ async function main() {
 
   try {
     const runtime = new SanctumRuntime({ baseUrl: API })
-    await runtime.policy('send_email', 'approve')
+    const client = new SanctumClient({ baseUrl: API })
+    await client.updatePolicy(
+      'send_email',
+      { requiresVerification: false, autoBlock: false },
+      SMOKE_ORG,
+    )
     ok('SanctumRuntime.policy()')
     const middleware = runtime.middleware()
     await middleware({
