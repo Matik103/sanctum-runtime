@@ -25,7 +25,7 @@ export async function completeEnterpriseSignIn(
     joinedOrgId = bootOrg
   }
 
-  const { data: profile } = await sb.from('my_profile').select('portal_type').maybeSingle()
+  const { data: profile } = await sb.from('profiles').select('portal_type').eq('id', user.id).maybeSingle()
   const portalType =
     (profile?.portal_type as 'operator' | 'enterprise' | undefined) ??
     (user.user_metadata?.portal_type as 'operator' | 'enterprise' | undefined) ??
