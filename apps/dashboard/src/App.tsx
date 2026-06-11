@@ -13,6 +13,7 @@ import { Sidebar, type PageId } from './layout/Sidebar'
 import { getFleetStatus, type FleetPauseStatus } from './lib/api'
 import { Overview } from './pages/Overview'
 import { fetchMyOrgs } from './lib/fleet'
+import { useOfflineQueue } from './hooks/useOfflineQueue'
 import { PlanGateAlert } from './components/PlanGateAlert'
 import { formatApiError } from './lib/sanitize-error'
 
