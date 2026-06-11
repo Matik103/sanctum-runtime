@@ -193,11 +193,27 @@ export class EntitlementEngine {
   async getPlanId(orgId: string): Promise<PlanId> {
     try {
       await this.ensureOrgPlan(orgId)
-      const { data } = await this.admin()
+      const admin = this.admin()
+      const { data } = await admin
         .from('org_plans')
-        .select('plan_id,trial_ends_at')
+        .select('plan_id,pending_plan_id,pending_plan_effective_at,trial_ends_at')
         .eq('org_id', orgId)
         .maybeSingle()
+
+      if (data?.pending_plan_id && data.pending_plan_effective_at) {
+        const effectiveAt = new Date(data.pending_plan_effective_at as string)
+        if (!Number.isNaN(effectiveAt.getTime()) && effectiveAt <= new Date()) {
+          const pending = normalizePlanId(data.pending_plan_id as string | undefined)
+          await admin.from('org_plans').update({
+            plan_id: pending,
+            pending_plan_id: null,
+            pending_plan_effective_at: null,
+            updated_at: new Date().toISOString(),
+          }).eq('org_id', orgId)
+          return pending
+        }
+      }
+
       if (data?.trial_ends_at && new Date(data.trial_ends_at as string) > new Date()) {
         return 'operator'
       }

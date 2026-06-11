@@ -13,16 +13,20 @@ import {
   validateCreemEnvironment,
 } from '../_shared/creem.ts'
 import {
+  applyPendingPlanIfDue,
   ensureOrgPlan,
   grantOrgPlan,
   markScheduledCancel,
   normalizePlanId,
   revokeOrgPlan,
+  schedulePlanDowngrade,
 } from '../_shared/creem-org-plan.ts'
 import {
   creemCancelSubscription,
   creemChangeSubscriptionPlan,
+  creemGetSubscription,
   hasActiveCreemSubscription,
+  periodEndFromSubscription,
   planChangeType,
   resolvePlanAfterSubscriptionChange,
 } from '../_shared/creem-subscription.ts'
@@ -111,9 +115,13 @@ Deno.serve(async (req) => {
 
   await ensureOrgPlan(admin, orgId)
 
+  await applyPendingPlanIfDue(admin, orgId)
+
   const { data: orgPlan } = await admin
     .from('org_plans')
-    .select('plan_id, creem_subscription_id, creem_subscription_status, creem_customer_id')
+    .select(
+      'plan_id, pending_plan_id, pending_plan_effective_at, creem_subscription_id, creem_subscription_status, creem_customer_id',
+    )
     .eq('org_id', orgId)
     .maybeSingle()
 
@@ -121,6 +129,8 @@ Deno.serve(async (req) => {
   const targetPlanId = normalizePlanId(planId)
   const subId = orgPlan?.creem_subscription_id as string | undefined
   const subStatus = orgPlan?.creem_subscription_status as string | undefined
+  const pendingPlanId = normalizePlanId(orgPlan?.pending_plan_id as string | undefined)
+  const pendingEffectiveAt = orgPlan?.pending_plan_effective_at as string | undefined
 
   if (currentPlanId === targetPlanId) {
     const label = targetPlanId === 'observer' ? 'Developer' : targetPlanId
@@ -129,6 +139,26 @@ Deno.serve(async (req) => {
       changed: false,
       planId: targetPlanId,
       message: `This workspace is already on the ${label} plan.`,
+    })
+  }
+
+  if (
+    pendingPlanId === targetPlanId
+    && pendingEffectiveAt
+    && new Date(pendingEffectiveAt) > new Date()
+  ) {
+    const effectiveLabel = new Date(pendingEffectiveAt).toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    })
+    return jsonWithCors(req, {
+      checkoutUrl: null,
+      changed: false,
+      planId: currentPlanId,
+      pendingPlanId,
+      pendingPlanEffectiveAt: pendingEffectiveAt,
+      message: `Downgrade to ${targetPlanId} is already scheduled for ${effectiveLabel}. You keep ${currentPlanId} access until then.`,
     })
   }
 
@@ -188,6 +218,7 @@ Deno.serve(async (req) => {
 
   // ─── Existing subscriber: upgrade or downgrade via subscription API ─────────
   if (hasActiveCreemSubscription(currentPlanId, subId, subStatus)) {
+    const changeKind = planChangeType(currentPlanId, targetPlanId)
     const change = await creemChangeSubscriptionPlan(apiKey, subId!, productId)
     if (!change.ok) {
       return jsonWithCors(req, {
@@ -200,20 +231,62 @@ Deno.serve(async (req) => {
 
     const map = productMap()
     const resolvedPlan = resolvePlanAfterSubscriptionChange(targetPlanId, change.body, map)
+    const custId = customerId(change.body) ?? (orgPlan?.creem_customer_id as string | null) ?? null
+    const nextSubId = subscriptionId(change.body) ?? subId!
+
+    if (changeKind === 'downgrade') {
+      let effectiveAt = periodEndFromSubscription(change.body)
+      if (!effectiveAt) {
+        const fetched = await creemGetSubscription(apiKey, nextSubId)
+        if (fetched.ok) effectiveAt = periodEndFromSubscription(fetched.body)
+      }
+      if (!effectiveAt) {
+        effectiveAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+      }
+
+      await schedulePlanDowngrade(admin, {
+        orgId,
+        entitlementPlanId: currentPlanId,
+        pendingPlanId: resolvedPlan,
+        effectiveAt,
+        customerId: custId,
+        subscriptionId: nextSubId,
+        email: user.email ?? null,
+      })
+
+      const effectiveLabel = new Date(effectiveAt).toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      })
+
+      return jsonWithCors(req, {
+        checkoutUrl: null,
+        changed: true,
+        upgraded: true,
+        changeType: 'downgrade_scheduled',
+        checkoutMode: 'subscription_change',
+        planId: currentPlanId,
+        pendingPlanId: resolvedPlan,
+        pendingPlanEffectiveAt: effectiveAt,
+        message:
+          `Downgrade scheduled. Billing moves to ${resolvedPlan} now (prorated credit per Creem). `
+          + `You keep ${currentPlanId} access until ${effectiveLabel}.`,
+      })
+    }
+
     await grantOrgPlan(admin, {
       orgId,
       planId: resolvedPlan,
-      customerId: customerId(change.body) ?? (orgPlan?.creem_customer_id as string | null) ?? null,
-      subscriptionId: subscriptionId(change.body) ?? subId!,
+      customerId: custId,
+      subscriptionId: nextSubId,
       email: user.email ?? null,
     })
 
     const changeType = planChangeType(currentPlanId, resolvedPlan)
     const message = changeType === 'upgrade'
       ? `Plan upgraded to ${resolvedPlan}. Prorated charge applied to your payment method on file.`
-      : changeType === 'downgrade'
-        ? `Plan downgraded to ${resolvedPlan}. Prorated credit applied per Creem billing rules.`
-        : `Plan changed to ${resolvedPlan}.`
+      : `Plan changed to ${resolvedPlan}.`
 
     return jsonWithCors(req, {
       checkoutUrl: null,

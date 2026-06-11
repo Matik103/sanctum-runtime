@@ -8,7 +8,7 @@ import {
   productMap,
   validateCreemEnvironment,
 } from '../_shared/creem.ts'
-import { grantOrgPlan, readOrgPlan } from '../_shared/creem-org-plan.ts'
+import { applyPendingPlanIfDue, grantOrgPlan, readOrgPlan } from '../_shared/creem-org-plan.ts'
 import { creemGetSubscription, planIdFromSubscription } from '../_shared/creem-subscription.ts'
 import { handleCorsPreflight, jsonWithCors } from '../_shared/cors.ts'
 import {
@@ -160,6 +160,7 @@ Deno.serve(async (req) => {
     }
   }
 
+  await applyPendingPlanIfDue(admin, orgId)
   const row = await readOrgPlan(admin, orgId)
   return jsonWithCors(req, {
     ok: true,

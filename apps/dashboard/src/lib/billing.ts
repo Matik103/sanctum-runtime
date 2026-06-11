@@ -50,6 +50,11 @@ export interface BillingPlan {
     runtimes: { used: number; limit: number | null; pct: number | null }
     agents?: { used: number; limit: number | null; pct: number | null }
   }
+  pendingPlan?: {
+    id: PlanId
+    name: string
+    effectiveAt: string
+  } | null
   billing: {
     billingProvider?: string | null
     creemCustomerId?: string | null
@@ -142,6 +147,7 @@ export async function fetchBillingPlan(orgId: string): Promise<BillingPlan> {
         name: mergedId === 'observer' ? 'Developer' : fromDb.plan.name,
         priceMonthlyUsd: mergedId === 'observer' ? null : fromDb.plan.priceMonthlyUsd,
       }
+      apiPlan.pendingPlan = fromDb.pendingPlan ?? null
       apiPlan.billing = { ...apiPlan.billing, ...fromDb.billing }
     }
     return apiPlan
@@ -241,8 +247,10 @@ export type PlanChangeResult = {
   contactEmail?: string
   changed?: boolean
   upgraded?: boolean
-  changeType?: 'upgrade' | 'downgrade' | 'cancel_scheduled' | 'cancel_immediate' | 'same'
+  changeType?: 'upgrade' | 'downgrade' | 'downgrade_scheduled' | 'cancel_scheduled' | 'cancel_immediate' | 'same'
   planId?: string
+  pendingPlanId?: string
+  pendingPlanEffectiveAt?: string
   portalUrl?: string
 }
 

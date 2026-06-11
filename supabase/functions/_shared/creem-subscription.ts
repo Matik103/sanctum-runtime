@@ -147,19 +147,38 @@ export function planIdFromSubscription(
   return null
 }
 
-/** Prefer explicit user/API target over Creem body when subscription change succeeded. */
+/** After a successful Creem subscription change, trust the user's chosen target. */
 export function resolvePlanAfterSubscriptionChange(
   targetPlanId: string,
-  creemBody: Record<string, unknown>,
-  map: Record<string, string>,
+  _creemBody: Record<string, unknown>,
+  _map: Record<string, string>,
 ): string {
-  const fromApi = planIdFromSubscription(creemBody, map)
-  if (!fromApi) return targetPlanId
-  if (fromApi === targetPlanId) return targetPlanId
-  // Creem upgrade responses may still echo the previous product briefly.
-  if (planRank(fromApi) < planRank(targetPlanId)) return targetPlanId
-  if (planRank(fromApi) > planRank(targetPlanId)) return fromApi
+  // Creem responses may briefly echo the previous product on upgrades and downgrades.
   return targetPlanId
+}
+
+/** Billing period end from a Creem subscription object (ISO timestamptz). */
+export function periodEndFromSubscription(sub: Record<string, unknown>): string | null {
+  const candidates: unknown[] = [
+    sub.current_period_end_date,
+    sub.currentPeriodEndDate,
+    sub.current_period_end,
+    sub.currentPeriodEnd,
+    sub.next_billing_date,
+    sub.nextBillingDate,
+  ]
+  for (const raw of candidates) {
+    if (typeof raw === 'string' && raw.trim()) {
+      const d = new Date(raw)
+      if (!Number.isNaN(d.getTime())) return d.toISOString()
+    }
+    if (typeof raw === 'number' && raw > 0) {
+      const ms = raw > 1e12 ? raw : raw * 1000
+      const d = new Date(ms)
+      if (!Number.isNaN(d.getTime())) return d.toISOString()
+    }
+  }
+  return null
 }
 
 export function planChangeType(

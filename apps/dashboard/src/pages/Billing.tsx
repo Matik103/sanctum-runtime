@@ -386,6 +386,18 @@ export function Billing() {
 
       {error && <PlanGateAlert message={error} onDismiss={() => setError(null)} />}
       {checkoutMsg && <Alert variant="info" onDismiss={() => setCheckoutMsg(null)}>{checkoutMsg}</Alert>}
+      {plan?.pendingPlan && (
+        <Alert variant="info">
+          Downgrading to <strong>{plan.pendingPlan.name}</strong>
+          {' on '}
+          {new Date(plan.pendingPlan.effectiveAt).toLocaleDateString('en-US', {
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric',
+          })}
+          . You keep <strong>{plan.plan.name}</strong> access until then. Creem billing may already reflect the lower tier.
+        </Alert>
+      )}
 
       {plan && governedQuota && governedQuota.pct !== null && governedQuota.pct >= 80 && (
         <Alert variant="warn">
@@ -526,13 +538,16 @@ export function Billing() {
                 {PLAN_CARDS.map((pc) => {
                   const isCurrent = isSamePlanTier(pc.id, currentPlanId)
                     || (pc.id === 'observer' && plan?.plan.name?.toLowerCase() === 'developer')
+                  const isPendingTarget = Boolean(
+                    plan?.pendingPlan && isSamePlanTier(pc.id, plan.pendingPlan.id),
+                  )
                   const targetIdx = PLAN_ORDER.indexOf(pc.id)
                   const isUpgrade = targetIdx > currentPlanIdx
                   const isDowngrade = targetIdx < currentPlanIdx && currentPlanId !== 'observer'
                   const isCancelToObserver = pc.id === 'observer' && currentPlanId !== 'observer'
                   const isChange = isUpgrade || isDowngrade || isCancelToObserver
                   const busy = checkoutBusy === pc.id
-                  const canCheckout = pc.id !== 'enterprise' && !isCurrent && isChange
+                  const canCheckout = pc.id !== 'enterprise' && !isCurrent && !isPendingTarget && isChange
                   const actionLabel = pc.id === 'observer'
                     ? 'Switch to Developer'
                     : isDowngrade
@@ -547,7 +562,8 @@ export function Billing() {
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.35rem' }}>
                         <h3 style={{ margin: 0 }}>{pc.label}</h3>
                         {isCurrent && <span className="badge success">Current</span>}
-                        {pc.highlight && !isCurrent && <span className="badge warning">Popular</span>}
+                        {isPendingTarget && <span className="badge">Scheduled</span>}
+                        {pc.highlight && !isCurrent && !isPendingTarget && <span className="badge warning">Popular</span>}
                       </div>
                       <p style={{ margin: '0 0 0.25rem', fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary)' }}>
                         {pc.headline}
@@ -593,6 +609,15 @@ export function Billing() {
                         )}
                         {isCurrent && (
                           <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--muted)' }}>Your active plan</p>
+                        )}
+                        {isPendingTarget && plan?.pendingPlan && (
+                          <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--muted)' }}>
+                            Starts{' '}
+                            {new Date(plan.pendingPlan.effectiveAt).toLocaleDateString(undefined, {
+                              month: 'short',
+                              day: 'numeric',
+                            })}
+                          </p>
                         )}
                         {!canBill && !isCurrent && (
                           <p style={{ margin: '0.45rem 0 0', fontSize: '0.74rem', color: 'var(--muted)' }}>

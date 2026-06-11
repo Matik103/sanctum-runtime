@@ -34,9 +34,14 @@ User picks target plan on Billing
   │     → org_plans: creem_subscription_status = scheduled_cancel (plan_id unchanged until period end)
   │     → webhook subscription.canceled → plan_id = observer
   │
-  ├─ creem_subscription_id exists AND target is paid tier
+  ├─ creem_subscription_id exists AND target is paid tier (upgrade)
   │     → POST /v1/subscriptions/{id}/upgrade  { product_id, update_behavior: "proration-charge-immediately" }
-  │     → org_plans updated immediately; webhook may follow
+  │     → org_plans.plan_id updated immediately; webhook may follow
+  │
+  ├─ creem_subscription_id exists AND target is lower paid tier (downgrade)
+  │     → POST /v1/subscriptions/{id}/upgrade  (Creem billing changes immediately + prorated credit)
+  │     → org_plans.plan_id unchanged until current_period_end
+  │     → pending_plan_id + pending_plan_effective_at set; applied at period end (webhook/sync/entitlements)
   │
   └─ no creem_subscription_id
         → POST /v1/checkouts  (metadata: org_id, plan_id)
@@ -129,14 +134,18 @@ Idempotency: `creem_webhook_events.event_id` (migration 067).
 
 | Table / column | Role |
 |----------------|------|
-| `org_plans.plan_id` | Entitlement tier |
+| `org_plans.plan_id` | Entitlement tier (features/quotas) |
+| `org_plans.pending_plan_id` | Lower tier scheduled at period end after paid downgrade |
+| `org_plans.pending_plan_effective_at` | When `pending_plan_id` replaces `plan_id` |
 | `org_plans.creem_subscription_id` | Required for upgrade/downgrade/cancel APIs |
 | `org_plans.creem_customer_id` | Customer portal |
 | `profiles.billing_org_id` | Which workspace bills this user |
 
 ## Console UX
 
-- **Upgrade** / **Downgrade to X** → `changePlan(orgId, planId)` → subscription upgrade API when subscribed.
+- **Upgrade** → immediate `plan_id` grant.
+- **Downgrade to lower paid tier** → Creem billing updates now; Sanctum keeps current entitlements until period end (banner shows pending tier + date).
+- **Return to Observer** → scheduled cancel (unchanged).
 - **Return to Observer** → `changePlan(orgId, 'observer')` → scheduled cancel.
 - **Manage billing in Creem** → `openCustomerPortal(orgId)` when `creem_customer_id` exists.
 - After checkout redirect → `creem-sync` with `checkout_id` if webhook is slow.
