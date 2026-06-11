@@ -112,8 +112,12 @@ Copy keys from **Creem → Developers** (toggle test/live in the sidebar bottom)
 ## Verify
 
 ```bash
-# After secrets + deploy, resend a Creem test webhook or run a new checkout from Billing.
+npm run env:pull              # local service role for diagnostics
+npm run creem:verify-remote   # tests secrets + Creem checkout API + webhook handler
+npm run creem:verify-test     # same checks using .env Creem vars (optional)
 ```
+
+`creem:verify-remote` calls the `creem-verify` Edge Function (service role JWT). It creates test checkouts for Personal, Operator, and Team without exposing full secrets.
 
 In SQL editor:
 

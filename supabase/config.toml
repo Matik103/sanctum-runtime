@@ -35,3 +35,6 @@ verify_jwt = true
 
 [functions.creem-portal]
 verify_jwt = true
+
+[functions.creem-verify]
+verify_jwt = false

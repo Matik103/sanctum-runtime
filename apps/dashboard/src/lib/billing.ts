@@ -250,89 +250,62 @@ export type PlanChangeResult = {
 export async function changePlan(orgId: string, planId: PlanId): Promise<PlanChangeResult> {
   const fnBase = supabaseFunctionsBase()
   const token = await getAccessToken()
-  if (fnBase && token) {
-    const res = await fetch(`${fnBase}/creem-checkout`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ org_id: orgId, plan_id: planId }),
-    })
-    if (res.ok) {
-      return res.json() as Promise<PlanChangeResult>
-    }
 
-    let body: { error?: string; hint?: string; detail?: string } = {}
-    try {
-      body = await res.json() as typeof body
-    } catch {
-      /* non-JSON error body */
-    }
-
-    if (res.status === 401 || res.status === 403) {
-      await throwResponseError(res, 'Could not change plan (Supabase)')
-    }
-
-    // Setup/config errors: fall through to the API path which supports
-    // static checkout URLs and hosted Creem payment pages as fallbacks.
-    const isSetupError =
-      res.status === 503
-      || body.error === 'product_not_configured'
-      || body.error === 'creem_api_key_not_configured'
-      || body.error === 'creem_env_mismatch'
-
-    if (!isSetupError) {
-      const hint = body.hint?.trim() || ''
-      const detail = body.detail?.trim()
-      const errCode = body.error ?? `http_${res.status}`
-      return {
-        checkoutUrl: null,
-        billingProvider: null,
-        message: hint
-          || (detail && !detail.startsWith('{')
-            ? `Billing change failed (${errCode}): ${detail}`
-            : `Billing change failed (${errCode}). Contact billing@sanctumruntime.com.`),
-        contactEmail: 'billing@sanctumruntime.com',
-      }
-    }
-    // Setup error — fall through to API path below
-  }
-
-  if (planId === 'observer') {
+  if (!fnBase) {
     return {
       checkoutUrl: null,
-      message: 'To cancel your subscription, contact billing@sanctumruntime.com and we will process it within one business day.',
+      billingProvider: null,
+      message:
+        'Billing checkout is not wired on this console build (missing VITE_SUPABASE_URL). '
+        + 'Creem billing runs on Supabase Edge Functions — set VITE_SUPABASE_URL on sanctum-dashboard and redeploy.',
       contactEmail: 'billing@sanctumruntime.com',
     }
   }
 
-  if (planId === 'enterprise') {
+  if (!token) {
     return {
       checkoutUrl: null,
-      message: 'Contact billing@sanctumruntime.com for Enterprise pricing and custom terms.',
+      billingProvider: null,
+      message: 'Sign in again to change billing plans (session expired).',
       contactEmail: 'billing@sanctumruntime.com',
     }
   }
 
-  const headers = { ...await authHeaders(), 'Content-Type': 'application/json' }
-  const res = await fetch(`${apiBase}/v1/billing/checkout`, {
+  const res = await fetch(`${fnBase}/creem-checkout`, {
     method: 'POST',
-    headers,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify({ org_id: orgId, plan_id: planId }),
   })
   if (res.ok) {
-    const data = await res.json() as PlanChangeResult
-    if (data.checkoutUrl) return data
-    return {
-      ...data,
-      message: data.message
-        ?? 'Checkout is not configured on the API either. Creem billing runs on Supabase — verify live API key and product IDs in Edge Function secrets (docs/CREEM_SUPABASE.md).',
-      contactEmail: data.contactEmail ?? 'billing@sanctumruntime.com',
-    }
+    return res.json() as Promise<PlanChangeResult>
   }
-  await throwResponseError(res, 'Could not open checkout')
-  throw new Error('Could not open checkout')
+
+  let body: { error?: string; hint?: string; detail?: string } = {}
+  try {
+    body = await res.json() as typeof body
+  } catch {
+    /* non-JSON error body */
+  }
+
+  if (res.status === 401 || res.status === 403) {
+    await throwResponseError(res, 'Could not change plan (Supabase)')
+  }
+
+  const hint = body.hint?.trim() || ''
+  const detail = body.detail?.trim()
+  const errCode = body.error ?? `http_${res.status}`
+  return {
+    checkoutUrl: null,
+    billingProvider: null,
+    message: hint
+      || (detail && !detail.startsWith('{')
+        ? `Billing change failed (${errCode}): ${detail}`
+        : `Billing change failed (${errCode}). Run creem:verify-remote or see docs/CREEM_SUPABASE.md.`),
+    contactEmail: 'billing@sanctumruntime.com',
+  }
 }
 
 /** @deprecated Use changePlan — kept for callers that exclude observer. */

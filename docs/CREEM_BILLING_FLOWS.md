@@ -93,7 +93,6 @@ Content-Type: application/json
   "request_id": "<org_id>",
   "metadata": { "org_id": "<org_id>", "plan": "personal", "plan_id": "personal" },
   "success_url": "https://console.sanctumruntime.com/?page=billing&checkout=success&org_id=...",
-  "cancel_url": "https://console.sanctumruntime.com/?page=billing&checkout=cancelled",
   "customer": { "email": "user@example.com" }
 }
 ```
