@@ -186,17 +186,20 @@ export async function registerPolicyVersionRoutes(
     const admin = createSupabaseAdmin(cfg)
     const { data: policyRows, error: policyErr } = await admin
       .from('runtime_policies')
-      .select('action,config')
+      .select('action_key,policy')
       .eq('org_id', orgId)
 
     if (policyErr) {
       return reply.status(500).send({ error: 'failed_to_fetch_policies', detail: policyErr.message })
     }
 
-    // Build a PolicyMap: { [action]: config }
+    // Build a PolicyMap: { [action]: policy } — strip org prefix from action_key
     const policies: PolicyMap = {}
     for (const row of policyRows ?? []) {
-      policies[row.action as string] = row.config
+      const actionKey = row.action_key as string
+      const colon = actionKey.indexOf(':')
+      const action = colon > 0 ? actionKey.slice(colon + 1) : actionKey
+      policies[action] = row.policy
     }
 
     const snapshotId = await savePolicySnapshot(
@@ -252,10 +255,10 @@ export async function registerPolicyVersionRoutes(
       return reply.status(500).send({ error: 'restore_delete_failed', detail: deleteErr.message })
     }
 
-    const rows = Object.entries(policies).map(([action, config]) => ({
+    const rows = Object.entries(policies).map(([action, policy]) => ({
+      action_key: `${orgId}:${action}`,
       org_id: orgId,
-      action,
-      config,
+      policy,
       updated_at: new Date().toISOString(),
     }))
 

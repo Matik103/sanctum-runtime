@@ -17,6 +17,7 @@ import {
 } from '../lib/api-keys'
 import { apiBaseUrl } from '../lib/api-url'
 import { fetchMyOrgs, fetchRuntimes, type FleetOrg, type FleetRuntime } from '../lib/fleet'
+import { riskModelMetaLine } from '../lib/risk-label'
 import { fetchOperatorContext } from '../lib/marketplace'
 import { formatApiError } from '../lib/sanitize-error'
 
