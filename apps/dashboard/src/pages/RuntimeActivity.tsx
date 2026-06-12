@@ -26,7 +26,7 @@ export function RuntimeActivity({ orgId, onSelect, onPage }: Props) {
     return { search: search.trim() || undefined }
   }, [filter, search])
 
-  const { entries, loading, totalApprox, retentionDays } = useOrgAudit(orgId, serverFilters)
+  const { entries, loading, loadingMore, totalApprox, retentionDays, nextCursor, loadMore } = useOrgAudit(orgId, serverFilters)
 
   return (
     <>
@@ -67,7 +67,7 @@ export function RuntimeActivity({ orgId, onSelect, onPage }: Props) {
           ['all', 'All'],
           ['approved', 'Approved'],
           ['blocked', 'Blocked'],
-          ['verify', 'Held'],
+          ['verify', 'Held for review'],
           ['high', 'High risk'],
         ].map(([id, label]) => (
           <button key={id} type="button" className={`chip ${filter === id ? 'active' : ''}`} onClick={() => setFilter(id)}>
@@ -118,6 +118,14 @@ export function RuntimeActivity({ orgId, onSelect, onPage }: Props) {
           </tbody>
         </table>
       </div>
+
+      {nextCursor && (
+        <div style={{ padding: '0.75rem 0', textAlign: 'center' }}>
+          <button type="button" className="btn btn-ghost btn-sm" disabled={loadingMore} onClick={() => loadMore()}>
+            {loadingMore ? 'Loading…' : 'Load more events'}
+          </button>
+        </div>
+      )}
     </>
   )
 }

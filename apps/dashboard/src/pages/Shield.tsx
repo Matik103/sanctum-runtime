@@ -23,6 +23,8 @@ import { getAccessToken } from '../lib/supabase'
 import { formatApiError, responseError } from '../lib/sanitize-error'
 import { PlanGateAlert } from '../components/PlanGateAlert'
 import { apiBaseUrl } from '../lib/api-url'
+import { useOrgAudit } from '../hooks/useOrgAudit'
+import { useConfirmDialog } from '../hooks/useConfirmDialog'
 
 // Use the shared resolver (env var with a production fallback to
 // api.sanctumruntime.com). A bare `?? ''` would fetch from the console origin
@@ -87,11 +89,15 @@ function levelColor(level: string): string {
 }
 
 type Props = {
-  audit: ActionResult[]
+  orgId?: string | null
+  sessionAudit?: ActionResult[]
   onPage: (page: import('../layout/Sidebar').PageId) => void
 }
 
-export function Shield({ audit, onPage }: Props) {
+export function Shield({ orgId, sessionAudit = [], onPage }: Props) {
+  const { confirm, ConfirmDialog } = useConfirmDialog()
+  const { entries: orgAudit } = useOrgAudit(orgId, {}, { limit: 200, pollMs: 15_000 })
+  const audit = orgId ? orgAudit : sessionAudit
   const [status, setStatus] = useState<ShieldStatus | null>(null)
   const [events, setEvents] = useState<ContainmentEvent[]>([])
   const [loadingStatus, setLoadingStatus] = useState(true)
@@ -130,8 +136,19 @@ export function Shield({ audit, onPage }: Props) {
 
   const toggleFleet = useCallback(async () => {
     if (!status) return
-    if (!status.fleetPaused && !window.confirm('Pause the entire fleet? All agent approvals will be suspended org-wide until resumed.')) {
-      return
+    if (!status.fleetPaused) {
+      const ok = await confirm({
+        title: 'Pause entire fleet?',
+        message: 'All agent approvals will be suspended org-wide until you resume.',
+        confirmLabel: 'Pause fleet',
+        variant: 'danger',
+        impact: [
+          'Every held action stays blocked',
+          'New tool calls cannot be approved',
+          'Operators can still review audit logs',
+        ],
+      })
+      if (!ok) return
     }
     setPauseLoading(true)
     setError(null)
@@ -146,7 +163,7 @@ export function Shield({ audit, onPage }: Props) {
     } finally {
       setPauseLoading(false)
     }
-  }, [status, loadStatus])
+  }, [status, loadStatus, confirm])
 
   const resolveEvent = useCallback(async (id: string) => {
     setResolving(id)
@@ -168,11 +185,11 @@ export function Shield({ audit, onPage }: Props) {
     }
   }, [status])
 
-  // Derive metrics from in-memory audit log
+  // Org audit metrics (durable, not session-only)
   const shieldCritical = audit.filter((e) => e.shield?.level === 'critical').length
   const shieldHigh = audit.filter((e) => e.shield?.level === 'high').length
   const contained = audit.filter((e) => e.shield?.automaticResponse?.includes('block_action')).length
-  const blocked24h = audit.filter((e) => e.decision === 'BLOCKED').length
+  const blockedCount = audit.filter((e) => e.decision === 'BLOCKED').length
 
   const shieldHealthy = !loadingStatus && !status?.fleetPaused && (status?.unresolvedIncidents ?? 0) === 0
   const shieldWarning = !loadingStatus && ((status?.unresolvedIncidents ?? 0) > 0)
@@ -180,6 +197,7 @@ export function Shield({ audit, onPage }: Props) {
 
   return (
     <>
+      <ConfirmDialog />
       <header className="page-header">
         <div>
           <h1>Sanctum Shield</h1>
@@ -283,8 +301,8 @@ export function Shield({ audit, onPage }: Props) {
           <p className="stat-strip__value">{contained}</p>
         </div>
         <div className="stat-strip__item">
-          <p className="stat-strip__label">Blocked (session)</p>
-          <p className="stat-strip__value">{blocked24h}</p>
+          <p className="stat-strip__label">Blocked (loaded)</p>
+          <p className="stat-strip__value">{blockedCount}</p>
         </div>
         <div className="stat-strip__item">
           <p className="stat-strip__label">Unresolved</p>

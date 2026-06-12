@@ -31,6 +31,7 @@ import type { PolicyMap } from '@sanctum-runtime/sdk/browser'
 import type { PageId } from '../layout/Sidebar'
 import { PlanFeatureBanner } from '../components/PlanFeatureBanner'
 import { useWorkspacePlan } from '../hooks/useWorkspacePlan'
+import { useConfirmDialog } from '../hooks/useConfirmDialog'
 import { canUsePolicyEditor } from '../lib/billing'
 
 type PolicyDiff = {
@@ -58,6 +59,7 @@ function diffPolicies(live: PolicyMap, snapshot: Record<string, unknown>): Polic
 
 export function PolicyHistory({ onPage }: { onPage?: (p: PageId) => void }) {
   const { planId } = useWorkspacePlan()
+  const { confirm, ConfirmDialog } = useConfirmDialog()
   const canSnapshot = canUsePolicyEditor(planId)
   const [orgId, setOrgId] = useState('')
   const [snapshots, setSnapshots] = useState<PolicySnapshot[]>([])
@@ -109,7 +111,15 @@ export function PolicyHistory({ onPage }: { onPage?: (p: PageId) => void }) {
   }
 
   const restore = async (snapshotId: string) => {
-    if (!orgId || !confirm('Restore policies to this snapshot? Current policies will be overwritten.')) return
+    if (!orgId) return
+    const ok = await confirm({
+      title: 'Restore policy snapshot?',
+      message: 'Current org policies will be overwritten with this snapshot.',
+      confirmLabel: 'Restore snapshot',
+      variant: 'warn',
+      impact: ['All live policy changes since this snapshot will be lost', 'Agents may see different approve/hold/block behavior immediately'],
+    })
+    if (!ok) return
     setBusy(true)
     try {
       const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/policy-snapshots/${snapshotId}/restore`, {
@@ -131,6 +141,7 @@ export function PolicyHistory({ onPage }: { onPage?: (p: PageId) => void }) {
 
   return (
     <>
+      <ConfirmDialog />
       <header className="page-header">
         <div>
           <h1>Policy History</h1>

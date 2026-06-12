@@ -1,10 +1,15 @@
 import { apiBaseUrl } from '../lib/api-url'
+import type { PageId } from '../layout/Sidebar'
 
-export function Phase3Onboarding() {
+type Props = {
+  onPage?: (p: PageId) => void
+}
+
+export function Phase3Onboarding({ onPage }: Props) {
   const apiUrl = apiBaseUrl
 
   return (
-    <section className="card panel-glass alert--info" style={{ marginBottom: '1.25rem' }}>
+    <section className="card panel-glass alert--info" style={{ marginBottom: 0 }}>
       <h3 style={{ margin: '0 0 0.35rem', fontSize: '0.95rem' }}>Bring your control plane online</h3>
       <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.85rem', lineHeight: 1.55 }}>
         Connect a runtime or send a sample action so operators can review approvals, blocks, and audit
@@ -20,7 +25,17 @@ export function Phase3Onboarding() {
         }}
       >
         <li>
-          Create or copy a scoped API key from Devices.
+          {onPage ? (
+            <>
+              Create or copy a scoped API key from{' '}
+              <button type="button" className="btn btn-ghost" style={{ padding: 0, fontSize: 'inherit', display: 'inline' }} onClick={() => onPage('devices')}>
+                Devices
+              </button>
+              .
+            </>
+          ) : (
+            'Create or copy a scoped API key from Devices.'
+          )}
         </li>
         <li>
           Send a sample action with your runtime or SDK:{' '}
@@ -29,7 +44,17 @@ export function Phase3Onboarding() {
           </code>
         </li>
         <li>
-          Use <strong style={{ color: 'var(--text)' }}>Review next</strong> when an action needs a human decision.
+          {onPage ? (
+            <>
+              Use{' '}
+              <button type="button" className="btn btn-ghost" style={{ padding: 0, fontSize: 'inherit', display: 'inline' }} onClick={() => onPage('live-feed')}>
+                Live Feed
+              </button>{' '}
+              when an action is <strong style={{ color: 'var(--text)' }}>held for review</strong>.
+            </>
+          ) : (
+            <>Use <strong style={{ color: 'var(--text)' }}>Review next</strong> when an action needs a human decision.</>
+          )}
         </li>
       </ol>
     </section>

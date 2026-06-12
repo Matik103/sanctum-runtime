@@ -64,27 +64,37 @@ export const COMPANION_NAV_IDS: PageId[] = [
 
 const NAV: { id: PageId; label: string; shortLabel: string; icon: typeof LayoutDashboard }[] = [
   { id: 'overview',         label: 'Overview',         shortLabel: 'Overview',  icon: LayoutDashboard },
+  { id: 'connect',          label: 'Connect Agent',     shortLabel: 'Connect',   icon: Plug },
+  { id: 'live-feed',        label: 'Live Feed',         shortLabel: 'Live',      icon: Eye },
   { id: 'activity',         label: 'Runtime Activity',  shortLabel: 'Activity',  icon: Activity },
+  { id: 'audit',            label: 'Audit Logs',        shortLabel: 'Audit',     icon: ScrollText },
   { id: 'threats',          label: 'Threat Monitor',    shortLabel: 'Threats',   icon: ShieldAlert },
+  { id: 'alerts',           label: 'Alerts',            shortLabel: 'Alerts',    icon: Bell },
   { id: 'shield',           label: 'Sanctum Shield',    shortLabel: 'Shield',    icon: ShieldCheck },
   { id: 'shield-rules',     label: 'Shield Rules',      shortLabel: 'S.Rules',   icon: Shield },
-  { id: 'alerts',           label: 'Alerts',            shortLabel: 'Alerts',    icon: Bell },
   { id: 'policies',         label: 'Policies',          shortLabel: 'Policies',  icon: Shield },
   { id: 'policy-history',   label: 'Policy History',    shortLabel: 'History',   icon: History },
-  { id: 'workflow-builder', label: 'Workflow Builder',  shortLabel: 'Workflows', icon: GitBranch },
-  { id: 'assurance',        label: 'Assurance',         shortLabel: 'Assurance', icon: ShieldCheck },
+  { id: 'workflow-builder', label: 'Policy Composer',   shortLabel: 'Composer',  icon: GitBranch },
   { id: 'governance',       label: 'Governance',        shortLabel: 'Govern',    icon: CheckSquare },
+  { id: 'assurance',        label: 'Assurance',         shortLabel: 'Assurance', icon: ShieldCheck },
   { id: 'compliance',       label: 'Compliance',        shortLabel: 'Comply',    icon: FileText },
   { id: 'agents',           label: 'Agents',            shortLabel: 'Agents',    icon: Bot },
   { id: 'devices',          label: 'Devices',           shortLabel: 'Devices',   icon: Monitor },
   { id: 'fleet',            label: 'Runtime Fleet',     shortLabel: 'Fleet',     icon: Radio },
   { id: 'marketplace',      label: 'Marketplace',       shortLabel: 'Market',    icon: Package },
-  { id: 'audit',            label: 'Audit Logs',        shortLabel: 'Audit',     icon: ScrollText },
   { id: 'billing',          label: 'Billing',           shortLabel: 'Billing',   icon: CreditCard },
   { id: 'settings',         label: 'Settings',          shortLabel: 'Settings',  icon: Settings },
-  { id: 'connect',          label: 'Connect Agent',     shortLabel: 'Connect',   icon: Plug },
-  { id: 'live-feed',        label: 'Live Feed',         shortLabel: 'Live',      icon: Eye },
 ]
+
+const NAV_GROUPS: { label: string; ids: PageId[] }[] = [
+  { label: 'Start', ids: ['overview', 'connect', 'live-feed'] },
+  { label: 'Observe', ids: ['activity', 'audit', 'threats', 'alerts', 'shield', 'shield-rules'] },
+  { label: 'Govern', ids: ['policies', 'policy-history', 'workflow-builder', 'governance', 'assurance', 'compliance'] },
+  { label: 'Fleet', ids: ['agents', 'devices', 'fleet', 'marketplace'] },
+  { label: 'Account', ids: ['billing', 'settings'] },
+]
+
+const NAV_BY_ID = Object.fromEntries(NAV.map((n) => [n.id, n])) as Record<PageId, (typeof NAV)[number]>
 
 type Props = {
   page: PageId
@@ -124,25 +134,56 @@ export function Sidebar({ page, onPage, status, orgId, companionMode, heldCount 
         </div>
 
         <nav>
-          {navItems.map(({ id, label, shortLabel, icon: Icon }) => (
-            <button
-              key={id}
-              type="button"
-              className={`nav-item ${page === id ? 'active' : ''}`}
-              onClick={() => onPage(id)}
-            >
-              <span style={{ position: 'relative', display: 'inline-flex' }}>
-                <Icon size={17} strokeWidth={1.75} aria-hidden />
-                {id === 'live-feed' && heldCount > 0 && (
-                  <span className="nav-item--more__badge" aria-label={`${heldCount} held`}>
-                    {heldCount > 9 ? '9+' : heldCount}
-                  </span>
-                )}
-              </span>
-              <span className="nav-label nav-label--full">{label}</span>
-              <span className="nav-label nav-label--short">{shortLabel}</span>
-            </button>
-          ))}
+          {companionMode ? (
+            navItems.map(({ id, label, shortLabel, icon: Icon }) => (
+              <button
+                key={id}
+                type="button"
+                className={`nav-item ${page === id ? 'active' : ''}`}
+                onClick={() => onPage(id)}
+              >
+                <span style={{ position: 'relative', display: 'inline-flex' }}>
+                  <Icon size={17} strokeWidth={1.75} aria-hidden />
+                  {id === 'live-feed' && heldCount > 0 && (
+                    <span className="nav-item--more__badge" aria-label={`${heldCount} held`}>
+                      {heldCount > 9 ? '9+' : heldCount}
+                    </span>
+                  )}
+                </span>
+                <span className="nav-label nav-label--full">{label}</span>
+                <span className="nav-label nav-label--short">{shortLabel}</span>
+              </button>
+            ))
+          ) : (
+            NAV_GROUPS.map((group) => (
+              <div key={group.label} className="nav-group">
+                <div className="nav-group__label">{group.label}</div>
+                {group.ids.map((id) => {
+                  const item = NAV_BY_ID[id]
+                  const Icon = item.icon
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      className={`nav-item ${page === id ? 'active' : ''}`}
+                      onClick={() => onPage(id)}
+                    >
+                      <span style={{ position: 'relative', display: 'inline-flex' }}>
+                        <Icon size={17} strokeWidth={1.75} aria-hidden />
+                        {id === 'live-feed' && heldCount > 0 && (
+                          <span className="nav-item--more__badge" aria-label={`${heldCount} held`}>
+                            {heldCount > 9 ? '9+' : heldCount}
+                          </span>
+                        )}
+                      </span>
+                      <span className="nav-label nav-label--full">{item.label}</span>
+                      <span className="nav-label nav-label--short">{item.shortLabel}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            ))
+          )}
 
           {/* Mobile-only: More button (hidden on desktop via CSS) */}
           <button

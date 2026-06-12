@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Bell, Check, Eye, ExternalLink, FileText, Radio, Settings, User, Wifi, WifiOff, X } from 'lucide-react'
+import { Bell, Check, CheckSquare, Eye, ExternalLink, FileText, Radio, Settings, User, Wifi, WifiOff, X } from 'lucide-react'
 import { useLiveFeed, type ProxyEvent } from '../hooks/useLiveFeed'
 import { apiBaseUrl } from '../lib/api-url'
 import { resolveVerification } from '../lib/api'
 import { applyToolPolicy } from '../lib/connect-agent'
 import { getAccessToken } from '../lib/supabase'
 import { timeAgo } from '../lib/format'
+import { decisionLabel } from '../lib/labels'
 import { PlanGateAlert } from '../components/PlanGateAlert'
 import { formatApiError } from '../lib/sanitize-error'
 import type { PageId } from '../layout/Sidebar'
@@ -37,12 +38,16 @@ type FeedTab = 'all' | 'held'
 function DecisionBadge({ decision }: { decision: string }) {
   const tone =
     decision === 'APPROVED'
-      ? { bg: 'rgba(34,197,94,0.15)', color: '#22c55e', label: 'Approved' }
+      ? { bg: 'rgba(34,197,94,0.15)', color: '#22c55e' }
       : decision === 'BLOCKED'
-        ? { bg: 'rgba(248,113,113,0.15)', color: '#f87171', label: 'Blocked' }
+        ? { bg: 'rgba(248,113,113,0.15)', color: '#f87171' }
         : decision === 'REQUIRE_VERIFICATION'
-          ? { bg: 'rgba(251,191,36,0.15)', color: '#fbbf24', label: 'Held' }
-          : { bg: 'var(--surface-2, #1a1a2e)', color: 'inherit', label: decision }
+          ? { bg: 'rgba(251,191,36,0.15)', color: '#fbbf24' }
+          : { bg: 'var(--surface-2, #1a1a2e)', color: 'inherit' }
+  const label =
+    decision === 'APPROVED' || decision === 'BLOCKED' || decision === 'REQUIRE_VERIFICATION'
+      ? decisionLabel(decision as 'APPROVED' | 'BLOCKED' | 'REQUIRE_VERIFICATION')
+      : decision
   return (
     <span style={{
       fontSize: '0.65rem',
@@ -54,7 +59,7 @@ function DecisionBadge({ decision }: { decision: string }) {
       textTransform: 'uppercase',
       letterSpacing: '0.04em',
     }}>
-      {tone.label}
+      {label}
     </span>
   )
 }
@@ -146,12 +151,15 @@ function EventRow({
       {(held || orgId) && (
         <div className="live-feed-actions" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }} onClick={(e) => e.stopPropagation()}>
           {held && (
-            <div className="live-feed-decision-actions" style={{ display: 'flex', gap: '0.25rem' }}>
+            <div className="live-feed-decision-actions" style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
               <button type="button" className="btn btn-primary btn-sm" disabled={resolving === event.id} title="Approve" onClick={() => onResolve(event, 'APPROVED')}>
                 <Check size={14} />
               </button>
               <button type="button" className="btn btn-ghost btn-sm" disabled={resolving === event.id} title="Deny" onClick={() => onResolve(event, 'BLOCKED')}>
                 <X size={14} />
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: '0.62rem', padding: '0.08rem 0.35rem' }} title="Open governance approvals" onClick={() => onPage('governance')}>
+                <CheckSquare size={11} />
               </button>
             </div>
           )}

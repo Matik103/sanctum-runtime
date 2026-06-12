@@ -2,7 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 import { fetchOrgAuditPage, type AuditFilters } from '../lib/audit-api'
 
-export function useOrgAudit(orgId: string | null | undefined, filters: AuditFilters = {}) {
+export function useOrgAudit(
+  orgId: string | null | undefined,
+  filters: AuditFilters = {},
+  options: { limit?: number; pollMs?: number } = {},
+) {
+  const pageLimit = options.limit ?? 50
+  const pollMs = options.pollMs ?? 15_000
   const [entries, setEntries] = useState<ActionResult[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -25,7 +31,7 @@ export function useOrgAudit(orgId: string | null | undefined, filters: AuditFilt
       try {
         const parsed = JSON.parse(filtersKey) as AuditFilters
         const page = await fetchOrgAuditPage(orgId, parsed, {
-          limit: 50,
+          limit: pageLimit,
           cursor: append ? cursor ?? nextCursor : null,
         })
         setNextCursor(page.nextCursor)
@@ -40,7 +46,7 @@ export function useOrgAudit(orgId: string | null | undefined, filters: AuditFilt
         setLoadingMore(false)
       }
     },
-    [orgId, filtersKey, nextCursor],
+    [orgId, filtersKey, nextCursor, pageLimit],
   )
 
   const loadMore = useCallback(() => {
@@ -50,7 +56,7 @@ export function useOrgAudit(orgId: string | null | undefined, filters: AuditFilt
 
   useEffect(() => {
     void load(false)
-    const id = window.setInterval(() => void load(false), 15_000)
+    const id = window.setInterval(() => void load(false), pollMs)
     return () => window.clearInterval(id)
   }, [orgId, filtersKey]) // eslint-disable-line react-hooks/exhaustive-deps
 

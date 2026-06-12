@@ -211,7 +211,7 @@ export function App() {
         {page === 'overview' && (
           <ErrorBoundary page="Overview">
             <Overview
-              audit={audit}
+              sessionAudit={audit}
               policies={policies}
               status={status}
               onSelect={onSelect}
@@ -226,8 +226,8 @@ export function App() {
         )}
         <Suspense fallback={<div className="page-loading" role="status">Loading view…</div>}>
           {page === 'activity' && <ErrorBoundary page="Runtime Activity"><RuntimeActivity orgId={orgId} onSelect={onSelect} onPage={onPage} /></ErrorBoundary>}
-          {page === 'threats' && <ErrorBoundary page="Threat Monitor"><ThreatMonitor audit={audit} onSelect={onSelect} /></ErrorBoundary>}
-          {page === 'shield' && <ErrorBoundary page="Sanctum Shield"><ShieldPage audit={audit} onPage={onPage} /></ErrorBoundary>}
+          {page === 'threats' && <ErrorBoundary page="Threat Monitor"><ThreatMonitor orgId={orgId} sessionAudit={audit} onSelect={onSelect} onPage={onPage} /></ErrorBoundary>}
+          {page === 'shield' && <ErrorBoundary page="Sanctum Shield"><ShieldPage orgId={orgId} sessionAudit={audit} onPage={onPage} /></ErrorBoundary>}
           {page === 'shield-rules' && <ErrorBoundary page="Shield Rules"><ShieldRulesPage /></ErrorBoundary>}
           {page === 'agents' && <ErrorBoundary page="Agents"><Agents onOpenDevices={() => onPage('devices')} onPage={onPage} /></ErrorBoundary>}
           {page === 'alerts' && <ErrorBoundary page="Alerts"><Alerts onPage={onPage} /></ErrorBoundary>}
@@ -244,7 +244,7 @@ export function App() {
             </ErrorBoundary>
           )}
           {page === 'policy-history' && <ErrorBoundary page="Policy History"><PolicyHistory onPage={onPage} /></ErrorBoundary>}
-          {page === 'workflow-builder' && <ErrorBoundary page="Workflow Builder"><WorkflowBuilder /></ErrorBoundary>}
+          {page === 'workflow-builder' && <ErrorBoundary page="Policy Composer"><WorkflowBuilder /></ErrorBoundary>}
           {page === 'assurance' && <ErrorBoundary page="Assurance"><Assurance /></ErrorBoundary>}
           {page === 'governance' && <ErrorBoundary page="Governance"><Governance /></ErrorBoundary>}
           {page === 'compliance' && <ErrorBoundary page="Compliance"><Compliance /></ErrorBoundary>}

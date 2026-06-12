@@ -85,8 +85,10 @@ export function AuditLogs({ orgId, onSelect, onPage }: Props) {
         <div>
           <h1>Audit Logs</h1>
           <p>
-            Immutable org-wide record of every agent action and trust decision
+            Durable org-wide record of every agent action and trust decision
             {retentionDays ? ` · ${retentionDays}-day retention on your plan` : ''}
+            {' · '}
+            <span title="Cryptographic integrity proofs are on the enterprise roadmap">integrity: standard audit</span>
           </p>
         </div>
         <PageActions>

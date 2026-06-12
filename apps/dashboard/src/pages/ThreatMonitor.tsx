@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { OctagonX, ShieldAlert, Siren } from 'lucide-react'
+import { ExternalLink, OctagonX, ShieldAlert, Siren } from 'lucide-react'
 import type { ActionResult } from '@sanctum-runtime/sdk/browser'
+import { useOrgAudit } from '../hooks/useOrgAudit'
 import { decisionTone, timeAgo } from '../lib/format'
 import {
   actionLabel,
@@ -64,9 +65,16 @@ function eventSeverity(e: ActionResult): Severity | null {
   return null
 }
 
-type Props = { audit: ActionResult[]; onSelect: (e: ActionResult) => void }
+type Props = {
+  orgId?: string | null
+  sessionAudit?: ActionResult[]
+  onSelect: (e: ActionResult) => void
+  onPage?: (p: import('../layout/Sidebar').PageId) => void
+}
 
-export function ThreatMonitor({ audit, onSelect }: Props) {
+export function ThreatMonitor({ orgId, sessionAudit = [], onSelect, onPage }: Props) {
+  const { entries: orgAudit, loading } = useOrgAudit(orgId, {}, { limit: 200, pollMs: 15_000 })
+  const audit = orgId ? orgAudit : sessionAudit
   const [severityFilter, setSeverityFilter] = useState<'all' | Severity>('all')
   const [threatTypeFilter, setThreatTypeFilter] = useState<string | null>(null)
 
@@ -108,8 +116,17 @@ export function ThreatMonitor({ audit, onSelect }: Props) {
       <header className="page-header">
         <div>
           <h1>Threat Monitor</h1>
-          <p>Sanctum Shield early-warning detection and automatic containment</p>
+          <p>
+            Sanctum Shield early-warning detection and automatic containment
+            {orgId ? ' · org audit store' : ' · session only'}
+          </p>
         </div>
+        {onPage && (
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => onPage('audit')}>
+            <ExternalLink size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+            Full audit logs
+          </button>
+        )}
       </header>
 
       <section className="shield-overview" aria-label="Sanctum Shield status">
@@ -233,9 +250,11 @@ export function ThreatMonitor({ audit, onSelect }: Props) {
             {filtered.length === 0 ? (
               <tr>
                 <td colSpan={4} className="empty">
-                  {threats.length === 0
-                    ? 'No threats in current log'
-                    : 'No threats match this severity filter'}
+                  {loading
+                    ? 'Loading org threats…'
+                    : threats.length === 0
+                      ? 'No threats in org audit'
+                      : 'No threats match this severity filter'}
                 </td>
               </tr>
             ) : (

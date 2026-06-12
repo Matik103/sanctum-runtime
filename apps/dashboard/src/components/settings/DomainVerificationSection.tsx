@@ -9,6 +9,7 @@ import {
   type OrgDomain,
 } from '../../lib/org-domains'
 import { pricingUrl } from '../../lib/site-links'
+import { useConfirmDialog } from '../../hooks/useConfirmDialog'
 
 type Props = {
   orgId: string
@@ -17,6 +18,7 @@ type Props = {
 }
 
 export function DomainVerificationSection({ orgId, editable, isPersonalWorkspace }: Props) {
+  const { confirm, ConfirmDialog } = useConfirmDialog()
   const [domains, setDomains] = useState<OrgDomain[]>([])
   const [loading, setLoading] = useState(true)
   const [planBlocked, setPlanBlocked] = useState(false)
@@ -95,7 +97,14 @@ export function DomainVerificationSection({ orgId, editable, isPersonalWorkspace
   }
 
   const handleRemove = async (domain: string) => {
-    if (!window.confirm(`Remove domain ${domain}? SSO auto-join will stop for this domain.`)) return
+    const ok = await confirm({
+      title: 'Remove verified domain?',
+      message: `Remove ${domain} from this organization.`,
+      confirmLabel: 'Remove domain',
+      variant: 'danger',
+      impact: ['SSO auto-join stops for this domain', 'Existing members keep access until removed manually'],
+    })
+    if (!ok) return
     setBusy(true)
     try {
       await removeOrgDomain(orgId, domain)
@@ -109,6 +118,8 @@ export function DomainVerificationSection({ orgId, editable, isPersonalWorkspace
   }
 
   return (
+    <>
+      <ConfirmDialog />
     <section className="section" id="company-sso-domains">
       <div className="section__header">
         <h2>
@@ -261,5 +272,6 @@ export function DomainVerificationSection({ orgId, editable, isPersonalWorkspace
         )}
       </div>
     </section>
+    </>
   )
 }

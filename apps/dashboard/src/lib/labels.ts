@@ -16,6 +16,9 @@ export function policyLabel(policyPath: string): string {
   return `${actionLabel(action)} policy`
 }
 
+/** User-facing label for REQUIRE_VERIFICATION — use consistently across the console. */
+export const HELD_DECISION_LABEL = 'Held for review'
+
 export function decisionLabel(decision: Decision): string {
   switch (decision) {
     case 'APPROVED':
@@ -23,7 +26,7 @@ export function decisionLabel(decision: Decision): string {
     case 'BLOCKED':
       return 'Blocked'
     case 'REQUIRE_VERIFICATION':
-      return 'Verification required'
+      return HELD_DECISION_LABEL
   }
 }
 

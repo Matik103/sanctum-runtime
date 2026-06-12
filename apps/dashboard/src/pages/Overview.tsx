@@ -1,5 +1,6 @@
 import type { ActionResult, PolicyMap, RuntimeStatus } from '@sanctum-runtime/sdk/browser'
 import { CompanionOverview } from '../components/CompanionOverview'
+import { OverviewOnboarding } from '../components/OverviewOnboarding'
 import { decisionTone, timeAgo } from '../lib/format'
 import { actionLabel, decisionLabel } from '../lib/labels'
 import { auditRecordHeadline } from '../lib/narrative'
@@ -7,9 +8,11 @@ import { riskModelMetaLine } from '../lib/risk-label'
 import { sparkBars } from '../lib/spark'
 import { OctagonX, ShieldCheck } from 'lucide-react'
 import { ActionInterceptDemo } from '../components/ActionInterceptDemo'
+import { useOrgAudit } from '../hooks/useOrgAudit'
 
 type Props = {
-  audit: ActionResult[]
+  /** Session-scoped audit from runtime polling — fallback when org store is empty. */
+  sessionAudit: ActionResult[]
   policies: PolicyMap
   status: RuntimeStatus | null
   onSelect: (e: ActionResult) => void
@@ -22,7 +25,7 @@ type Props = {
 }
 
 export function Overview({
-  audit,
+  sessionAudit,
   policies,
   status,
   onSelect,
@@ -33,12 +36,15 @@ export function Overview({
   orgId,
   onPage,
 }: Props) {
+  const { entries: orgAudit, loading: orgLoading, totalApprox } = useOrgAudit(orgId, {}, { limit: 100, pollMs: 10_000 })
+  const audit = orgId ? orgAudit : sessionAudit
+  const eventTotal = totalApprox ?? audit.length
+
   const approved = audit.filter((e) => e.decision === 'APPROVED').length
   const blocked = audit.filter((e) => e.decision === 'BLOCKED').length
   const verify = audit.filter((e) => e.decision === 'REQUIRE_VERIFICATION').length
   const shieldCritical = audit.filter((e) => e.shield?.level === 'critical').length
   const shieldActive = audit.some((e) => e.shield && e.shield.level !== 'clear')
-  // Threats = blocked + held for review + approved-but-anomalous (flagged actions)
   const blockedOrHeld = audit.filter(
     (e) => e.decision === 'BLOCKED' || e.decision === 'REQUIRE_VERIFICATION',
   ).length
@@ -85,6 +91,11 @@ export function Overview({
             />
             {status === null ? 'Connecting…' : status.runtimeOnline ? 'Runtime online' : 'Runtime offline'}
           </span>
+          {orgId && (
+            <span className="pill" title="Org audit store">
+              {orgLoading ? 'Syncing audit…' : `${eventTotal.toLocaleString()} org events`}
+            </span>
+          )}
           <span className="pill" title="Open-source runtime preview">
             v0.1
           </span>
@@ -95,6 +106,8 @@ export function Overview({
           </span>
         </div>
       </header>
+
+      <OverviewOnboarding eventCount={audit.length} orgId={orgId} onPage={onPage} />
 
       <ActionInterceptDemo orgId={orgId} onPage={onPage} />
 
@@ -135,9 +148,10 @@ export function Overview({
 
         <div className="card">
           <div className="card-label">Actions processed</div>
-          <div className="card-value">{audit.length}</div>
+          <div className="card-value">{eventTotal.toLocaleString()}</div>
           <div className="card-meta">
-            {approved} approved · {blocked} blocked · {verify} verify
+            {approved} approved · {blocked} blocked · {verify} held
+            {orgId ? ' · org store' : ' · session'}
           </div>
           <div className="spark">
             {bars.map((h, i) => (
@@ -159,10 +173,9 @@ export function Overview({
           <div className="card-value" style={{ fontSize: '1.25rem' }}>
             {audit.length ? `${Math.round((approved / audit.length) * 100)}%` : '—'}
           </div>
-          <div className="card-meta">{audit.length ? `across last ${audit.length} events` : 'No actions yet'}</div>
+          <div className="card-meta">{audit.length ? `across last ${audit.length} loaded events` : 'No actions yet'}</div>
         </div>
 
-        {/* Shield status card */}
         <div
           className={`card ${shieldCritical > 0 ? 'glow-danger' : ''}`}
           style={{ cursor: onPage ? 'pointer' : undefined }}
@@ -190,6 +203,9 @@ export function Overview({
       <div className="table-wrap">
         <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid var(--border)' }}>
           <strong style={{ fontSize: '0.9rem' }}>Recent events</strong>
+          {orgId && (
+            <span style={{ marginLeft: '0.5rem', fontSize: '0.78rem', color: 'var(--muted)' }}>from org audit</span>
+          )}
         </div>
         <table className="data">
           <thead>
@@ -204,16 +220,16 @@ export function Overview({
             {audit.length === 0 ? (
               <tr>
                 <td colSpan={4} className="empty">
-                  No events yet. Connect a runtime to begin streaming action events.
+                  {orgLoading
+                    ? 'Loading org audit…'
+                    : 'No events yet. Connect an agent to begin streaming action events.'}
                 </td>
               </tr>
             ) : (
               audit.slice(0, 12).map((e) => (
                 <tr key={e.id} className="feed-row" onClick={() => onSelect(e)}>
                   <td>
-                    <span className={`badge ${decisionTone(e.decision)}`}>
-                      {e.decision === 'APPROVED' ? '●' : e.decision === 'BLOCKED' ? '●' : '●'}
-                    </span>
+                    <span className={`badge ${decisionTone(e.decision)}`}>●</span>
                   </td>
                   <td style={{ maxWidth: '22rem' }}>
                     <span style={{ fontWeight: 500 }}>{auditRecordHeadline(e)}</span>

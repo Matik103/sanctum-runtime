@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { RefreshCw, PauseCircle, PlayCircle } from 'lucide-react'
 import { getFleetStatus, fleetPause, fleetResume, type FleetPauseStatus } from '../lib/api'
+import { useConfirmDialog } from '../hooks/useConfirmDialog'
 import { timeAgo } from '../lib/format'
 import { Alert } from '../components/ui/Alert'
 import { PlanGateAlert } from '../components/PlanGateAlert'
@@ -46,6 +47,7 @@ import type { PageId } from '../layout/Sidebar'
 
 export function Fleet({ onPage }: { onPage?: (p: PageId) => void } = {}) {
   const { planId } = useWorkspacePlan()
+  const { confirm, ConfirmDialog } = useConfirmDialog()
   const advancedFleet = canUseAdvancedFleet(planId)
   const [runtimes, setRuntimes] = useState<FleetRuntime[]>([])
   const [agents, setAgents] = useState<FleetAgent[]>([])
@@ -225,7 +227,18 @@ export function Fleet({ onPage }: { onPage?: (p: PageId) => void } = {}) {
       setDispatchMsg('Enter a command first')
       return
     }
-    if (!window.confirm(`Dispatch "${cmd}" to all matching runtimes in org ${mapOrgId}?`)) return
+    const ok = await confirm({
+      title: 'Dispatch fleet command?',
+      message: `Send "${cmd}" to all matching runtimes in this organization.`,
+      confirmLabel: 'Dispatch',
+      variant: 'warn',
+      impact: [
+        `Organization: ${mapOrgId}`,
+        dispatchRegion.trim() ? `Region filter: ${dispatchRegion.trim()}` : 'All regions',
+        'Agents on matched runtimes will receive this command',
+      ],
+    })
+    if (!ok) return
     try {
       const res = await dispatchFleetCommand({
         organizationId: mapOrgId,
@@ -246,6 +259,7 @@ export function Fleet({ onPage }: { onPage?: (p: PageId) => void } = {}) {
 
   return (
     <>
+      <ConfirmDialog />
       <header className="page-header">
         <div>
           <h1>Runtime Fleet</h1>

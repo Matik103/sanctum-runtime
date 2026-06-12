@@ -20,6 +20,7 @@ import { PlanGateAlert } from '../components/PlanGateAlert'
 import { TabBar } from '../components/ui/TabBar'
 import { timeAgo } from '../lib/format'
 import { fetchMyOrgs } from '../lib/fleet'
+import { useConfirmDialog } from '../hooks/useConfirmDialog'
 
 type AlertSeverity = 'info' | 'warning' | 'critical' | 'emergency'
 type AlertStatus = 'open' | 'acknowledged' | 'resolved'
@@ -115,6 +116,7 @@ const EVENT_TYPES = [
 ]
 
 export function Alerts({ onPage }: { onPage?: (p: PageId) => void }) {
+  const { confirm, ConfirmDialog } = useConfirmDialog()
   const [orgId, setOrgId] = useState('')
   const [tab, setTab] = useState<'incidents' | 'rules'>('incidents')
   const [statusFilter, setStatusFilter] = useState<AlertStatus | 'all'>('open')
@@ -265,7 +267,13 @@ export function Alerts({ onPage }: { onPage?: (p: PageId) => void }) {
   }
 
   const deleteRule = async (ruleId: string) => {
-    if (!confirm('Delete this alert rule?')) return
+    const ok = await confirm({
+      title: 'Delete alert rule?',
+      message: 'This rule will stop generating new incidents.',
+      confirmLabel: 'Delete rule',
+      variant: 'danger',
+    })
+    if (!ok) return
     try {
       const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/alert-rules/${ruleId}`, {
         method: 'DELETE',
@@ -280,6 +288,7 @@ export function Alerts({ onPage }: { onPage?: (p: PageId) => void }) {
 
   return (
     <>
+      <ConfirmDialog />
       <header className="page-header">
         <div>
           <h1>Alerts</h1>

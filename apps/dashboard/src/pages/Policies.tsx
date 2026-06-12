@@ -14,6 +14,7 @@ import {
 } from '../lib/api'
 import { PlanGateAlert } from '../components/PlanGateAlert'
 import { useWorkspacePlan } from '../hooks/useWorkspacePlan'
+import { useConfirmDialog } from '../hooks/useConfirmDialog'
 import { POLICY_EDITOR_UPGRADE_MESSAGE } from '../lib/billing'
 import { formatApiError } from '../lib/sanitize-error'
 
@@ -334,6 +335,7 @@ type Props = {
 // ─── Component ────────────────────────────────────────────────────────────────
 export function Policies({ policies, audit, onSetPolicy, onPoliciesChange, onPage }: Props) {
   const { orgId, canEditPolicies, loading: planLoading } = useWorkspacePlan()
+  const { confirm, ConfirmDialog } = useConfirmDialog()
   const [inputValue, setInputValue] = useState('')
   const [newMode, setNewMode] = useState<PolicyResponse>('verify')
   const [adding, setAdding] = useState(false)
@@ -382,7 +384,14 @@ export function Policies({ policies, audit, onSetPolicy, onPoliciesChange, onPag
 
   const removePolicy = async (action: string) => {
     if (!guardEdit()) return
-    if (!confirm(`Remove policy for "${actionLabel(action)}"?`)) return
+    const ok = await confirm({
+      title: 'Remove policy?',
+      message: `Stop gating "${actionLabel(action)}" for this organization.`,
+      confirmLabel: 'Remove policy',
+      variant: 'warn',
+      impact: ['The action may run without Sanctum verification', 'Existing audit history is preserved'],
+    })
+    if (!ok) return
     try { onPoliciesChange(await deletePolicyAction(action, orgId || undefined)) }
     catch (e) { setError(formatApiError(e, 'Failed to remove')) }
   }
@@ -395,6 +404,7 @@ export function Policies({ policies, audit, onSetPolicy, onPoliciesChange, onPag
 
   return (
     <>
+      <ConfirmDialog />
       {/* Header */}
       <header className="page-header">
         <div>

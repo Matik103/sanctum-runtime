@@ -15,6 +15,27 @@ import {
   type MarketplacePackage,
 } from '../lib/marketplace'
 
+const STARTER_PACKS = [
+  {
+    id: 'agent',
+    title: 'Coding & workflow agents',
+    description: 'Gate tool calls for dev agents, MCP servers, and API operators.',
+    match: (p: MarketplacePackage) => /agent|coding|workflow|mcp|dev/i.test(`${p.category} ${p.name} ${p.slug}`),
+  },
+  {
+    id: 'finance',
+    title: 'Finance & transfers',
+    description: 'Hold high-value payments, transfers, and billing actions.',
+    match: (p: MarketplacePackage) => /finance|payment|transfer|billing|bank/i.test(`${p.category} ${p.name} ${p.slug}`),
+  },
+  {
+    id: 'physical',
+    title: 'Physical & access control',
+    description: 'Verify door unlocks, robotics, and environment actions.',
+    match: (p: MarketplacePackage) => /physical|robot|door|access|iot|home/i.test(`${p.category} ${p.name} ${p.slug}`),
+  },
+] as const
+
 export function Marketplace() {
   const [packages, setPackages] = useState<MarketplacePackage[]>([])
   const [orgs, setOrgs] = useState<FleetOrg[]>([])
@@ -24,6 +45,7 @@ export function Marketplace() {
   const [success, setSuccess] = useState<string | null>(null)
   const [busySlug, setBusySlug] = useState<string | null>(null)
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
+  const [starterPack, setStarterPack] = useState<string | null>(null)
   const [detailPkg, setDetailPkg] = useState<MarketplacePackage | null>(null)
   const loadingRef = useRef(false)
   const orgIdRef = useRef(orgId)
@@ -35,9 +57,15 @@ export function Marketplace() {
   }, [packages])
 
   const visiblePackages = useMemo(() => {
-    if (categoryFilter === 'all') return packages
-    return packages.filter((p) => p.category === categoryFilter)
-  }, [packages, categoryFilter])
+    let list = packages
+    if (starterPack) {
+      const pack = STARTER_PACKS.find((s) => s.id === starterPack)
+      if (pack) list = list.filter(pack.match)
+    } else if (categoryFilter !== 'all') {
+      list = list.filter((p) => p.category === categoryFilter)
+    }
+    return list
+  }, [packages, categoryFilter, starterPack])
 
   useEffect(() => {
     void (async () => {
@@ -193,12 +221,28 @@ export function Marketplace() {
         />
       ) : (
         <>
+          <div className="marketplace-starter-packs">
+            {STARTER_PACKS.map((pack) => (
+              <button
+                key={pack.id}
+                type="button"
+                className={`marketplace-starter-pack${starterPack === pack.id ? ' marketplace-starter-pack--active' : ''}`}
+                onClick={() => {
+                  setStarterPack((cur) => (cur === pack.id ? null : pack.id))
+                  setCategoryFilter('all')
+                }}
+              >
+                <strong>{pack.title}</strong>
+                <span>{pack.description}</span>
+              </button>
+            ))}
+          </div>
           {categories.length > 1 && (
             <div className="toolbar marketplace-filters">
               <button
                 type="button"
-                className={`chip ${categoryFilter === 'all' ? 'active' : ''}`}
-                onClick={() => setCategoryFilter('all')}
+                className={`chip ${categoryFilter === 'all' && !starterPack ? 'active' : ''}`}
+                onClick={() => { setCategoryFilter('all'); setStarterPack(null) }}
               >
                 All ({packages.length})
               </button>
@@ -206,8 +250,8 @@ export function Marketplace() {
                 <button
                   key={cat}
                   type="button"
-                  className={`chip ${categoryFilter === cat ? 'active' : ''}`}
-                  onClick={() => setCategoryFilter(cat)}
+                  className={`chip ${categoryFilter === cat && !starterPack ? 'active' : ''}`}
+                  onClick={() => { setCategoryFilter(cat); setStarterPack(null) }}
                 >
                   {cat} ({packages.filter((p) => p.category === cat).length})
                 </button>

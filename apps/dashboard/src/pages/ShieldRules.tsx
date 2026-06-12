@@ -26,6 +26,7 @@ import { getAccessToken } from '../lib/supabase'
 import { apiBaseUrl } from '../lib/api-url'
 import { PlanGateAlert } from '../components/PlanGateAlert'
 import { formatApiError } from '../lib/sanitize-error'
+import { useConfirmDialog } from '../hooks/useConfirmDialog'
 
 // Shared resolver (env var + production fallback). A bare `?? ''` would target
 // the console origin when VITE_SANCTUM_API_URL is unset, breaking rule CRUD.
@@ -109,6 +110,7 @@ const EMPTY_FORM: FormState = {
 }
 
 export function ShieldRules() {
+  const { confirm, ConfirmDialog } = useConfirmDialog()
   const [rules, setRules] = useState<ShieldRule[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -200,7 +202,14 @@ export function ShieldRules() {
   }, [])
 
   const deleteRule = useCallback(async (id: string) => {
-    if (!confirm('Delete this shield rule? Actions it was blocking or holding will no longer be gated.')) return
+    const ok = await confirm({
+      title: 'Delete shield rule?',
+      message: 'Actions this rule was blocking or holding will no longer be gated by it.',
+      confirmLabel: 'Delete rule',
+      variant: 'danger',
+      impact: ['Built-in Shield signals still apply', 'Custom pattern matching stops immediately'],
+    })
+    if (!ok) return
     setDeleting(id)
     try {
       const headers = await authHeaders()
@@ -218,7 +227,7 @@ export function ShieldRules() {
     } finally {
       setDeleting(null)
     }
-  }, [])
+  }, [confirm])
 
   const toggleRule = useCallback(async (rule: ShieldRule) => {
     setToggling(rule.id)
@@ -246,6 +255,7 @@ export function ShieldRules() {
 
   return (
     <>
+      <ConfirmDialog />
       <header className="page-header">
         <div>
           <h1>Shield Rules</h1>

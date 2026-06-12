@@ -3,6 +3,8 @@ import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
 import { responseError, formatApiError } from '../lib/sanitize-error'
 import { PlanGateAlert } from '../components/PlanGateAlert'
+import { useConfirmDialog } from '../hooks/useConfirmDialog'
+import { HELD_DECISION_LABEL } from '../lib/labels'
 import { Shield, Clock, CheckCircle, XCircle, Plus } from 'lucide-react'
 
 type AuditEntry = {
@@ -49,10 +51,10 @@ function decisionColor(d: string) {
   return '#f59e0b'
 }
 
-function decisionLabel(d: string) {
+function decisionLabelLocal(d: string) {
   if (d === 'APPROVED') return 'Approved'
   if (d === 'BLOCKED') return 'Blocked'
-  return 'Held'
+  return HELD_DECISION_LABEL
 }
 
 function timeAgo(ts: string) {
@@ -66,6 +68,7 @@ function timeAgo(ts: string) {
 type Props = { agentId: string; agentName: string; orgId: string }
 
 export function AgentDetail({ agentId, agentName, orgId }: Props) {
+  const { confirm, ConfirmDialog } = useConfirmDialog()
   const [audit, setAudit] = useState<AuditEntry[]>([])
   const [grants, setGrants] = useState<Grant[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
@@ -116,8 +119,18 @@ export function AgentDetail({ agentId, agentName, orgId }: Props) {
     finally { setCreatingGrant(false) }
   }
 
-  const revokeGrant = async (grantId: string) => {
-    if (!window.confirm('Revoke this grant? The agent will need approval again for this action.')) return
+  const revokeGrant = async (grantId: string, action: string) => {
+    const ok = await confirm({
+      title: 'Revoke time-bound grant?',
+      message: `Remove the grant for "${action.replace(/_/g, ' ')}".`,
+      confirmLabel: 'Revoke grant',
+      variant: 'warn',
+      impact: [
+        'The agent will need approval again for this action',
+        'Existing held actions are not auto-approved',
+      ],
+    })
+    if (!ok) return
     try {
       const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/agents/${agentId}/grants/${grantId}`, {
         method: 'DELETE',
@@ -136,6 +149,8 @@ export function AgentDetail({ agentId, agentName, orgId }: Props) {
   }
 
   return (
+    <>
+      <ConfirmDialog />
     <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 10px 10px', padding: '1rem' }}>
       {/* Stats strip */}
       {stats && (
@@ -193,7 +208,7 @@ export function AgentDetail({ agentId, agentName, orgId }: Props) {
                   )}
                 </div>
                 <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexShrink: 0 }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: decisionColor(e.decision) }}>{decisionLabel(e.decision)}</span>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: decisionColor(e.decision) }}>{decisionLabelLocal(e.decision)}</span>
                   <span style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>{timeAgo(e.created_at)}</span>
                 </div>
               </div>
@@ -246,7 +261,7 @@ export function AgentDetail({ agentId, agentName, orgId }: Props) {
                     <span style={{ fontSize: '0.72rem', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 4 }}>
                       <Clock size={11} /> expires {new Date(g.expires_at).toLocaleTimeString()}
                     </span>
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => void revokeGrant(g.id)}>Revoke</button>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => void revokeGrant(g.id, g.action)}>Revoke</button>
                   </div>
                 </div>
               ))}
@@ -255,5 +270,6 @@ export function AgentDetail({ agentId, agentName, orgId }: Props) {
         </div>
       )}
     </div>
+    </>
   )
 }
