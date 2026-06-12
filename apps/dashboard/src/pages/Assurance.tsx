@@ -11,8 +11,11 @@ import {
   type AuditReplayResult, type EvidenceSummary,
 } from '../lib/api'
 import { fetchMyOrgs, type FleetOrg } from '../lib/fleet'
+import { EmptyState } from '../components/ui/EmptyState'
+import type { ConsolePersona } from '../hooks/useConsolePersona'
+import type { PageId } from '../layout/Sidebar'
 
-export function Assurance() {
+export function Assurance({ onPage, persona = 'operator' }: { onPage?: (p: PageId) => void; persona?: ConsolePersona } = {}) {
   const { planId } = useWorkspacePlan()
   const plan = normalizePlanId(planId)
   const canReplay = plan !== 'observer'
@@ -117,7 +120,22 @@ export function Assurance() {
               <Play size={14} style={{ marginRight: '0.35rem' }} /> Replay last 200
             </button>
           </div>
-          {!replay && <p style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>Run a replay to see how many past decisions would change under your current policy set.</p>}
+          {!replay && (
+            <EmptyState
+              title="Run a policy replay"
+              description={
+                persona === 'compliance'
+                  ? 'See how current policies would have decided past actions — useful for SOC2 change-management evidence.'
+                  : 'Replay shows how many past decisions would change under your current policy set.'
+              }
+            >
+              {onPage && persona === 'compliance' && (
+                <button type="button" className="btn btn-ghost btn-sm" style={{ marginTop: '0.5rem' }} onClick={() => onPage('audit')}>
+                  Open Audit Logs
+                </button>
+              )}
+            </EmptyState>
+          )}
           {replay && (
             <>
               <div className="grid-4" style={{ marginBottom: '1rem' }}>
@@ -164,7 +182,22 @@ export function Assurance() {
               )}
             </div>
           </div>
-          {!evidence && <p style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>Generate evidence to surface control coverage for auditors.</p>}
+          {!evidence && (
+            <EmptyState
+              title="Generate evidence bundle"
+              description={
+                persona === 'compliance'
+                  ? 'Produce SOC2 / NIST AI RMF control coverage from org audit — pair with SHA-256 fingerprints in Audit Logs.'
+                  : 'Generate an evidence summary for auditors from your org audit window.'
+              }
+            >
+              {onPage && (
+                <button type="button" className="btn btn-ghost btn-sm" style={{ marginTop: '0.5rem' }} onClick={() => onPage('compliance')}>
+                  Compliance reports
+                </button>
+              )}
+            </EmptyState>
+          )}
           {evidence && (
             <>
               <div className="grid-4" style={{ marginBottom: '1rem' }}>

@@ -1,10 +1,23 @@
 /**
  * Paginated org audit queries for dashboard Audit Logs + Runtime Activity.
  */
-import { createHash } from 'node:crypto'
+import {
+  attachAuditChain,
+  auditRecordFingerprint,
+  verifyAuditExport,
+  type AuditFingerprintInput,
+  type VerifyExportEntry,
+} from '@sanctum/audit-system/integrity'
 import type { ActionResult } from '@sanctum-runtime/sdk'
 import type { SupabaseAuthConfig } from './auth.js'
 import { createSupabaseAdmin } from './auth.js'
+
+export {
+  auditRecordFingerprint,
+  attachAuditChain,
+  verifyAuditExport,
+  type VerifyExportEntry,
+}
 
 type AuditRow = {
   id: string
@@ -26,23 +39,11 @@ type AuditRow = {
   shield_score?: number | null
 }
 
-/** Deterministic SHA-256 fingerprint (first 16 hex chars) for tamper-evident display. */
-export function auditRecordFingerprint(
-  row: Pick<AuditRow, 'id' | 'org_id' | 'correlation_id' | 'actor' | 'action' | 'decision' | 'created_at'>,
-): string {
-  const canonical = JSON.stringify({
-    id: row.id,
-    org_id: row.org_id,
-    correlation_id: row.correlation_id,
-    actor: row.actor,
-    action: row.action,
-    decision: row.decision,
-    created_at: row.created_at,
-  })
-  return createHash('sha256').update(canonical).digest('hex').slice(0, 16)
+export type OrgAuditEntry = ActionResult & {
+  recordFingerprint: string
+  chainHash?: string
+  prevChainHash?: string | null
 }
-
-export type OrgAuditEntry = ActionResult & { recordFingerprint: string }
 
 export function rowToActionResult(row: AuditRow): ActionResult {
   const payload = row.payload as Partial<ActionResult> | undefined
@@ -110,6 +111,40 @@ export type OrgAuditPage = {
   nextCursor: string | null
   totalApprox: number | null
   retentionDays: number
+  chainAnchored: boolean
+}
+
+const CHAIN_LOOKBACK = 200
+
+function rowFingerprintInput(row: AuditRow): AuditFingerprintInput {
+  return {
+    id: row.id,
+    org_id: row.org_id,
+    correlation_id: row.correlation_id,
+    actor: row.actor,
+    action: row.action,
+    decision: row.decision,
+    created_at: row.created_at,
+  }
+}
+
+async function chainAnchorHash(
+  admin: ReturnType<typeof createSupabaseAdmin>,
+  orgId: string,
+  beforeCreatedAt: string,
+): Promise<string | null> {
+  const { data } = await admin
+    .from('audit_events')
+    .select('id, org_id, correlation_id, actor, action, decision, created_at')
+    .eq('org_id', orgId)
+    .lt('created_at', beforeCreatedAt)
+    .order('created_at', { ascending: false })
+    .limit(CHAIN_LOOKBACK)
+
+  const predecessors = ((data ?? []) as AuditRow[]).reverse()
+  if (predecessors.length === 0) return null
+  const chained = attachAuditChain(predecessors.map(rowFingerprintInput))
+  return chained[chained.length - 1]!.chainHash
 }
 
 export async function listOrgAuditPage(
@@ -173,13 +208,33 @@ export async function listOrgAuditPage(
   const nextCursor =
     hasMore && pageRows.length > 0 ? pageRows[pageRows.length - 1]!.created_at : null
 
+  const chainById = new Map<string, { chainHash: string; prevChainHash: string | null }>()
+  let chainAnchored = pageRows.length === 0
+  if (pageRows.length > 0) {
+    const oldest = pageRows[pageRows.length - 1]!.created_at
+    const anchor = await chainAnchorHash(admin, orgId, oldest)
+    const asc = [...pageRows].sort((a, b) => a.created_at.localeCompare(b.created_at))
+    const chained = attachAuditChain(asc.map(rowFingerprintInput), anchor)
+    for (const c of chained) {
+      chainById.set(c.id, { chainHash: c.chainHash, prevChainHash: c.prevChainHash })
+    }
+    chainAnchored = anchor != null || (count ?? 0) <= pageRows.length
+  }
+
   return {
-    entries: pageRows.map((row) => ({
-      ...rowToActionResult(row),
-      recordFingerprint: auditRecordFingerprint(row),
-    })),
+    entries: pageRows.map((row) => {
+      const chain = chainById.get(row.id)
+      return {
+        ...rowToActionResult(row),
+        recordFingerprint: auditRecordFingerprint(row),
+        ...(chain
+          ? { chainHash: chain.chainHash, prevChainHash: chain.prevChainHash }
+          : {}),
+      }
+    }),
     nextCursor,
     totalApprox: count,
     retentionDays,
+    chainAnchored,
   }
 }

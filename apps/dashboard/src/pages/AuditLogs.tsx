@@ -1,14 +1,18 @@
-import { useMemo, useState } from 'react'
-import { RefreshCw, Search } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
+import { RefreshCw, Search, ShieldCheck, Upload } from 'lucide-react'
 import { AuditRecord } from '../components/AuditRecord'
+import { Alert } from '../components/ui/Alert'
 import { EmptyState } from '../components/ui/EmptyState'
 import { PageActions } from '../components/ui/PageActions'
 import { PlanGateAlert } from '../components/PlanGateAlert'
 import { useOrgAudit } from '../hooks/useOrgAudit'
+import { useWorkspacePlan } from '../hooks/useWorkspacePlan'
+import { canVerifyAuditChain } from '../lib/billing'
+import { verifyOrgAuditExport, type AuditEntry } from '../lib/audit-api'
 import { decisionTone, timeAgo } from '../lib/format'
 import { decisionLabel } from '../lib/labels'
 import { auditRecordText } from '../lib/narrative'
-import type { AuditEntry } from '../lib/audit-api'
+import { formatApiError } from '../lib/sanitize-error'
 import type { PageId } from '../layout/Sidebar'
 
 type Props = {
@@ -33,9 +37,14 @@ function escapeCsv(value: string): string {
 }
 
 export function AuditLogs({ orgId, onSelect, onPage }: Props) {
+  const { planId } = useWorkspacePlan()
+  const canVerify = canVerifyAuditChain(planId)
+  const verifyInputRef = useRef<HTMLInputElement>(null)
   const [search, setSearch] = useState('')
   const [decision, setDecision] = useState('')
   const [heldOnly, setHeldOnly] = useState(false)
+  const [verifyMsg, setVerifyMsg] = useState<{ text: string; ok: boolean } | null>(null)
+  const [verifyBusy, setVerifyBusy] = useState(false)
 
   const filters = useMemo(
     () => ({
@@ -54,20 +63,30 @@ export function AuditLogs({ orgId, onSelect, onPage }: Props) {
     nextCursor,
     totalApprox,
     retentionDays,
+    chainAnchored,
     refresh,
     loadMore,
   } = useOrgAudit(orgId, filters)
+
+  const showChain = canVerify
 
   const exportJson = () => {
     download('sanctum-audit.json', JSON.stringify(entries, null, 2), 'application/json')
   }
 
   const exportCsv = () => {
-    const headers = ['id', 'fingerprint', 'actor', 'action', 'decision', 'risk', 'human_record', 'reasoning', 'timestamp']
-    const rows = entries.map((e) =>
-      [
+    const headers = showChain
+      ? ['id', 'fingerprint', 'chain_hash', 'prev_chain_hash', 'actor', 'action', 'decision', 'risk', 'human_record', 'reasoning', 'timestamp']
+      : ['id', 'fingerprint', 'actor', 'action', 'decision', 'risk', 'human_record', 'reasoning', 'timestamp']
+    const rows = entries.map((e) => {
+      const base = [
         escapeCsv(e.id),
         escapeCsv(e.recordFingerprint ?? ''),
+      ]
+      if (showChain) {
+        base.push(escapeCsv(e.chainHash ?? ''), escapeCsv(e.prevChainHash ?? ''))
+      }
+      base.push(
         escapeCsv(e.actor),
         escapeCsv(e.action),
         escapeCsv(e.decision),
@@ -75,9 +94,28 @@ export function AuditLogs({ orgId, onSelect, onPage }: Props) {
         escapeCsv(auditRecordText(e)),
         escapeCsv(e.reasoning),
         escapeCsv(e.timestamp),
-      ].join(','),
-    )
+      )
+      return base.join(',')
+    })
     download('sanctum-audit.csv', [headers.join(','), ...rows].join('\n'), 'text/csv')
+  }
+
+  async function handleVerifyFile(file: File) {
+    if (!orgId) return
+    setVerifyBusy(true)
+    setVerifyMsg(null)
+    try {
+      const text = await file.text()
+      const parsed = JSON.parse(text) as unknown
+      const list = Array.isArray(parsed) ? parsed : (parsed as { entries?: unknown[] }).entries
+      if (!Array.isArray(list) || list.length === 0) throw new Error('Export must be a JSON array of audit records.')
+      const result = await verifyOrgAuditExport(orgId, list)
+      setVerifyMsg({ text: result.message, ok: result.valid })
+    } catch (e) {
+      setVerifyMsg({ text: formatApiError(e, 'Verification failed'), ok: false })
+    } finally {
+      setVerifyBusy(false)
+    }
   }
 
   return (
@@ -89,10 +127,33 @@ export function AuditLogs({ orgId, onSelect, onPage }: Props) {
             Durable org-wide record of every agent action and trust decision
             {retentionDays ? ` · ${retentionDays}-day retention on your plan` : ''}
             {' · '}
-            <span title="Server-computed SHA-256 digest of core audit fields">SHA-256 record fingerprints</span>
+            <span title="Server-computed SHA-256 digest of core audit fields">SHA-256 fingerprints{showChain ? ' + chain hashes' : ''}</span>
           </p>
         </div>
         <PageActions>
+          <input
+            ref={verifyInputRef}
+            type="file"
+            accept="application/json,.json"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) void handleVerifyFile(file)
+              e.target.value = ''
+            }}
+          />
+          {canVerify && orgId && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              disabled={verifyBusy}
+              title="Upload exported JSON to verify fingerprints and chain links"
+              onClick={() => verifyInputRef.current?.click()}
+            >
+              <Upload size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+              Verify export
+            </button>
+          )}
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => refresh()} disabled={loading}>
             <RefreshCw size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} />
             Refresh
@@ -105,6 +166,18 @@ export function AuditLogs({ orgId, onSelect, onPage }: Props) {
           </button>
         </PageActions>
       </header>
+
+      {verifyMsg && (
+        <Alert variant={verifyMsg.ok ? 'success' : 'error'} onDismiss={() => setVerifyMsg(null)} style={{ marginBottom: '0.75rem' }}>
+          {verifyMsg.text}
+        </Alert>
+      )}
+
+      {showChain && !chainAnchored && entries.length > 0 && (
+        <Alert variant="info" style={{ marginBottom: '0.75rem' }}>
+          Chain hashes on this page are anchored within the last {200} org records. Load earlier pages or verify full exports for complete lineage.
+        </Alert>
+      )}
 
       {error && (
         <PlanGateAlert message={error} onDismiss={() => refresh()} style={{ marginBottom: '0.75rem' }} />
@@ -150,6 +223,7 @@ export function AuditLogs({ orgId, onSelect, onPage }: Props) {
             <tr>
               <th>Record</th>
               <th>Fingerprint</th>
+              {showChain && <th>Chain</th>}
               <th>Actor</th>
               <th>Decision</th>
               <th>When</th>
@@ -157,11 +231,11 @@ export function AuditLogs({ orgId, onSelect, onPage }: Props) {
           </thead>
           <tbody>
             {loading && entries.length === 0 && (
-              <tr><td colSpan={5} className="empty">Loading audit history…</td></tr>
+              <tr><td colSpan={showChain ? 6 : 5} className="empty">Loading audit history…</td></tr>
             )}
             {!loading && entries.length === 0 && (
               <tr>
-                <td colSpan={5}>
+                <td colSpan={showChain ? 6 : 5}>
                   <EmptyState
                     title="No audit records in this window"
                     description={orgId ? 'Actions appear here as soon as agents verify through Sanctum.' : 'Sign in and select a workspace.'}
@@ -184,6 +258,11 @@ export function AuditLogs({ orgId, onSelect, onPage }: Props) {
                 <td style={{ fontFamily: 'monospace', fontSize: '0.72rem', opacity: 0.75, whiteSpace: 'nowrap' }}>
                   {e.recordFingerprint ?? '—'}
                 </td>
+                {showChain && (
+                  <td style={{ fontFamily: 'monospace', fontSize: '0.68rem', opacity: 0.65, whiteSpace: 'nowrap' }} title={e.prevChainHash ? `prev ${e.prevChainHash}` : 'genesis'}>
+                    {e.chainHash ?? '—'}
+                  </td>
+                )}
                 <td style={{ fontSize: '0.82rem', opacity: 0.85 }}>{e.actor}</td>
                 <td>
                   <span className={`badge ${decisionTone(e.decision)}`}>{decisionLabel(e.decision)}</span>

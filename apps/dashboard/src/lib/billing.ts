@@ -39,6 +39,12 @@ export function canUseAdvancedFleet(planId: PlanId | string | null | undefined):
   return p === 'team' || p === 'enterprise'
 }
 
+/** SHA-256 chain verification on audit exports (Team+). */
+export function canVerifyAuditChain(planId: PlanId | string | null | undefined): boolean {
+  const p = normalizePlanId(planId)
+  return p === 'team' || p === 'enterprise'
+}
+
 export const POLICY_EDITOR_UPGRADE_MESSAGE =
   'Policy changes require Personal or higher. Developer plan is observe-only — upgrade on Billing to set approve, verify, and block rules.'
 

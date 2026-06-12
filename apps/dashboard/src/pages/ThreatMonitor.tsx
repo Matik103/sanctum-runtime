@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { ExternalLink, OctagonX, ShieldAlert, Siren } from 'lucide-react'
 import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 import { useOrgAudit } from '../hooks/useOrgAudit'
+import type { ConsolePersona } from '../hooks/useConsolePersona'
+import { EmptyState } from '../components/ui/EmptyState'
 import { decisionTone, timeAgo } from '../lib/format'
 import {
   actionLabel,
@@ -70,9 +72,10 @@ type Props = {
   sessionAudit?: ActionResult[]
   onSelect: (e: ActionResult) => void
   onPage?: (p: import('../layout/Sidebar').PageId) => void
+  persona?: ConsolePersona
 }
 
-export function ThreatMonitor({ orgId, sessionAudit = [], onSelect, onPage }: Props) {
+export function ThreatMonitor({ orgId, sessionAudit = [], onSelect, onPage, persona = 'operator' }: Props) {
   const { entries: orgAudit, loading } = useOrgAudit(orgId, {}, { limit: 200, pollMs: 15_000 })
   const audit = orgId ? orgAudit : sessionAudit
   const [severityFilter, setSeverityFilter] = useState<'all' | Severity>('all')
@@ -249,12 +252,44 @@ export function ThreatMonitor({ orgId, sessionAudit = [], onSelect, onPage }: Pr
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={4} className="empty">
-                  {loading
-                    ? 'Loading org threats…'
-                    : threats.length === 0
-                      ? 'No threats in org audit'
-                      : 'No threats match this severity filter'}
+                <td colSpan={4}>
+                  {loading ? (
+                    <span className="empty">Loading org threats…</span>
+                  ) : threats.length === 0 ? (
+                    <EmptyState
+                      title="No threats detected"
+                      description={
+                        persona === 'compliance'
+                          ? 'Sanctum Shield monitors org audit for anomalies, blocks, and held actions. Evidence accumulates as agents run.'
+                          : persona === 'developer'
+                            ? 'Connect an agent and gate tool calls — Shield flags injection patterns, high blast radius, and unsafe chains.'
+                            : 'When Shield detects anomalies or blocks actions, they appear here with reasoning and containment status.'
+                      }
+                    >
+                      {onPage && (
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                          {persona === 'compliance' ? (
+                            <>
+                              <button type="button" className="btn btn-primary btn-sm" onClick={() => onPage('audit')}>Audit Logs</button>
+                              <button type="button" className="btn btn-ghost btn-sm" onClick={() => onPage('compliance')}>Compliance</button>
+                            </>
+                          ) : persona === 'developer' ? (
+                            <>
+                              <button type="button" className="btn btn-primary btn-sm" onClick={() => onPage('connect')}>Connect Agent</button>
+                              <button type="button" className="btn btn-ghost btn-sm" onClick={() => onPage('live-feed')}>Live Feed</button>
+                            </>
+                          ) : (
+                            <>
+                              <button type="button" className="btn btn-primary btn-sm" onClick={() => onPage('live-feed')}>Live Feed</button>
+                              <button type="button" className="btn btn-ghost btn-sm" onClick={() => onPage('shield')}>Sanctum Shield</button>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </EmptyState>
+                  ) : (
+                    <span className="empty">No threats match this severity filter</span>
+                  )}
                 </td>
               </tr>
             ) : (

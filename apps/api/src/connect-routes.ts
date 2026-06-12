@@ -11,7 +11,7 @@ import { CONNECT_POLICY_PRESETS, getConnectPreset } from './connect-presets.js'
 import { CONNECT_SHIELD_PRESETS, getConnectShieldPreset } from './connect-shield-presets.js'
 import { listConnectTools } from './connect-tool-registry.js'
 import { countHeldConnectEvents, listConnectProxyEvents } from './connect-live-feed.js'
-import { listOrgAuditPage } from './org-audit.js'
+import { listOrgAuditPage, verifyAuditExport, type VerifyExportEntry } from './org-audit.js'
 import { invalidateShieldRulesCache } from './shield-routes.js'
 import { issueAgentToken, verifyAgentToken } from './agent-tokens.js'
 import { gateProxyToolCall } from './proxy-gate.js'
@@ -673,7 +673,18 @@ export async function registerConnectRoutes(
       nextCursor: page.nextCursor,
       totalApprox: page.totalApprox,
       retentionDays: page.retentionDays,
+      chainAnchored: page.chainAnchored,
     }
+  })
+
+  app.post('/v1/orgs/:orgId/audit/verify', async (req, reply) => {
+    const user = (req as SanctumReq).sanctumUser
+    if (!user) return reply.status(403).send({ error: 'dashboard_auth_required' })
+    const { orgId } = req.params as { orgId: string }
+    if (!(await requireRole(cfg, orgId, user.id, 'viewer', reply))) return
+    const body = z.object({ entries: z.array(z.record(z.string(), z.unknown())).min(1).max(500) }).parse(req.body ?? {})
+    const result = verifyAuditExport(body.entries as VerifyExportEntry[])
+    return { ok: result.valid, ...result }
   })
 
   app.get('/v1/orgs/:orgId/connect/live-feed/stream', async (req, reply) => {

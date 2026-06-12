@@ -2,7 +2,11 @@ import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 import { apiBaseUrl } from './api-url'
 import { getAccessToken } from './supabase'
 
-export type AuditEntry = ActionResult & { recordFingerprint?: string }
+export type AuditEntry = ActionResult & {
+  recordFingerprint?: string
+  chainHash?: string
+  prevChainHash?: string | null
+}
 
 export type AuditFilters = {
   decision?: string
@@ -18,6 +22,7 @@ export type AuditPage = {
   nextCursor: string | null
   totalApprox: number | null
   retentionDays: number
+  chainAnchored?: boolean
 }
 
 async function authHeaders(): Promise<Record<string, string>> {
@@ -49,4 +54,27 @@ export async function fetchOrgAuditPage(
     throw new Error(body.message ?? body.error ?? `audit_${res.status}`)
   }
   return res.json() as Promise<AuditPage>
+}
+
+export type AuditVerifyResponse = {
+  ok: boolean
+  valid: boolean
+  recordCount: number
+  fingerprintMismatches: number
+  chainBreaks: number
+  firstBreakIndex: number | null
+  message: string
+}
+
+export async function verifyOrgAuditExport(orgId: string, entries: unknown[]): Promise<AuditVerifyResponse> {
+  const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/audit/verify`, {
+    method: 'POST',
+    headers: { ...(await authHeaders()), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ entries }),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { message?: string; error?: string }
+    throw new Error(body.message ?? body.error ?? `audit_verify_${res.status}`)
+  }
+  return res.json() as Promise<AuditVerifyResponse>
 }

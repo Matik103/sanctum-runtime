@@ -35,6 +35,10 @@ export function deriveSourceTrust(request: ActionRequest): SourceTrust {
 const HIGH_VALUE_ACTIONS = /(transfer|wire|pay|payment|invoice|trade|withdraw|refund|charge)/i
 const PHYSICAL_ACTIONS = /(move_robot|actuate|locomot|unlock|navigate|manipulator|drive|fly|fire|launch|robot)/i
 const IRREVERSIBLE_ACTIONS = /(delete|drop|wipe|format|erase|destroy|terminate|revoke|expire|cancel)/i
+const SHELL_DESTRUCTIVE =
+  /(\brm\s+(-[^\s]+\s+)*\/?(\s|--|$)|\brm\s+-[^\s]*r[^\s]*\s|\bdd\s+if=|\bmkfs\b|\bshred\b|:()\{:\|:&\};:|>\s*\/dev\/sd|\bchmod\s+(-[^\s]+\s+)*777\s+\/)/i
+const SYSTEM_DESTRUCTIVE =
+  /(drop\s+database|drop\s+table|truncate\s+table|kubectl\s+delete\s+namespace|terraform\s+destroy)/i
 const EXTERNAL_ACTIONS = /(send_email|post|publish|webhook|tweet|message|notify|sms)/i
 const CRED_ACTIONS = /(credential|secret|password|key|token|api_key|keychain)/i
 const PHI_ACTIONS = /(patient|phi|medical|health|diagnosis|record)/i
@@ -53,6 +57,18 @@ function stringArray(value: unknown): string[] {
   }
   if (typeof value === 'string' && value.trim()) return [value.trim()]
   return []
+}
+
+/** Action string plus common command/context fields for pattern matching. */
+function inspectableText(request: ActionRequest): string {
+  const ctx = (request.context ?? {}) as Record<string, unknown>
+  const parts = [request.action ?? '']
+  for (const key of ['command', 'cmd', 'script', 'arguments', 'input', 'code', 'shell', 'prompt']) {
+    const value = ctx[key]
+    if (typeof value === 'string') parts.push(value)
+    else if (value != null) parts.push(JSON.stringify(value))
+  }
+  return parts.join(' ')
 }
 
 /**
@@ -102,6 +118,7 @@ export function deriveActionIdentity(request: ActionRequest): ActionIdentity {
  */
 export function estimateBlastRadius(request: ActionRequest): BlastRadius {
   const action = request.action ?? ''
+  const inspect = inspectableText(request)
   const ctx = (request.context ?? {}) as Record<string, unknown>
   const factors: string[] = []
   let score = 10
@@ -110,6 +127,16 @@ export function estimateBlastRadius(request: ActionRequest): BlastRadius {
   let physicalWorld = false
   let dataSensitivity: BlastRadius['dataSensitivity'] = 'public'
   let estimatedValue: number | undefined
+
+  if (SHELL_DESTRUCTIVE.test(inspect) || SYSTEM_DESTRUCTIVE.test(inspect)) {
+    score += 45
+    reversible = false
+    factors.push('destructive shell / system command')
+    if (/\brm\s+(-[^\s]+\s+)*\/(\s|--|$)|--no-preserve-root/.test(inspect)) {
+      score += 25
+      factors.push('root filesystem impact')
+    }
+  }
 
   if (HIGH_VALUE_ACTIONS.test(action)) {
     score += 30
@@ -126,7 +153,7 @@ export function estimateBlastRadius(request: ActionRequest): BlastRadius {
     physicalWorld = true
     factors.push('physical-world effect')
   }
-  if (IRREVERSIBLE_ACTIONS.test(action) || ctx.reversible === false) {
+  if (IRREVERSIBLE_ACTIONS.test(action) || IRREVERSIBLE_ACTIONS.test(inspect) || ctx.reversible === false) {
     score += 20
     reversible = false
     factors.push('irreversible')

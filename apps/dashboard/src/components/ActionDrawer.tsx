@@ -69,6 +69,12 @@ export function ActionDrawer({ entry, onClose, audit, onSelect, status }: Props)
             <p style={{ margin: '0.65rem 0 0', fontSize: '0.78rem', color: 'var(--muted)' }}>
               Fingerprint{' '}
               <code style={{ fontSize: '0.76rem', color: 'var(--foreground)' }}>{recordFingerprint(entry)}</code>
+              {(entry as AuditEntry).chainHash && (
+                <>
+                  {' · Chain '}
+                  <code style={{ fontSize: '0.76rem', color: 'var(--foreground)' }}>{(entry as AuditEntry).chainHash}</code>
+                </>
+              )}
               {' · '}
               SHA-256 of core fields for tamper-evident exports
             </p>
