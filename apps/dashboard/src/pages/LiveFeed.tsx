@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Bell, Check, CheckSquare, Eye, ExternalLink, FileText, Radio, Settings, User, Wifi, WifiOff, X } from 'lucide-react'
 import { useLiveFeed, type ProxyEvent } from '../hooks/useLiveFeed'
+import { isAuditRealtimeEnabled } from '../hooks/useAuditEventsRealtime'
 import { apiBaseUrl } from '../lib/api-url'
 import { resolveVerification } from '../lib/api'
 import { applyToolPolicy } from '../lib/connect-agent'
@@ -8,7 +9,9 @@ import { getAccessToken } from '../lib/supabase'
 import { timeAgo } from '../lib/format'
 import { decisionLabel } from '../lib/labels'
 import { PlanGateAlert } from '../components/PlanGateAlert'
+import { Alert } from '../components/ui/Alert'
 import { formatApiError } from '../lib/sanitize-error'
+import { readPageQuery } from '../lib/navigate'
 import type { PageId } from '../layout/Sidebar'
 import type { NavigateQuery } from '../lib/navigate'
 
@@ -98,6 +101,7 @@ function EventRow({
   onPage,
   resolving,
   policySaving,
+  focused,
 }: {
   event: ProxyEvent
   agentNames: Record<string, string>
@@ -108,6 +112,7 @@ function EventRow({
   onPage: (p: PageId, query?: NavigateQuery) => void
   resolving: string | null
   policySaving: string | null
+  focused?: boolean
 }) {
   const ctx = event.context
   const platform = ctx.platform ?? 'unknown'
@@ -117,7 +122,7 @@ function EventRow({
 
   return (
     <div
-      className="live-feed-row"
+      className={`live-feed-row${focused ? ' live-feed-row--focus' : ''}`}
       role="button"
       tabIndex={0}
       onClick={() => onSelect(event)}
@@ -240,6 +245,9 @@ export function LiveFeed({ orgId, onPage, onHeldChange }: Props) {
   const [policySaving, setPolicySaving] = useState<string | null>(null)
   const [resolveError, setResolveError] = useState<string | null>(null)
   const [policyMsg, setPolicyMsg] = useState<string | null>(null)
+  const [focusKey, setFocusKey] = useState<string | null>(null)
+  const [focusDismissed, setFocusDismissed] = useState(false)
+  const realtime = isAuditRealtimeEnabled()
 
   const filters = useMemo(() => ({
     heldOnly: tab === 'held',
@@ -250,6 +258,34 @@ export function LiveFeed({ orgId, onPage, onHeldChange }: Props) {
   }), [tab, platformFilter, agentFilter, toolFilter, decisionFilter])
 
   const { events, connected, loading, heldCount, patchEvent } = useLiveFeed(orgId, filters)
+
+  useEffect(() => {
+    const params = readPageQuery()
+    if (params.get('tab') === 'held') setTab('held')
+    const focusEvent = params.get('focus_event')
+    const correlation = params.get('correlation')
+    const focusAction = params.get('focus_action')
+    if (focusEvent) setFocusKey(focusEvent)
+    else if (correlation) setFocusKey(correlation)
+    else if (focusAction) setFocusKey(`action:${focusAction}`)
+  }, [])
+
+  function eventMatchesFocus(event: ProxyEvent): boolean {
+    if (!focusKey) return false
+    if (focusKey.startsWith('action:')) return event.action === focusKey.slice(7)
+    return event.id === focusKey || event.correlation_id === focusKey
+  }
+
+  useEffect(() => {
+    if (!focusKey || events.length === 0) return
+    const match = events.find(eventMatchesFocus)
+    if (match) {
+      setSelected(match)
+      requestAnimationFrame(() => {
+        document.querySelector('.live-feed-row--focus')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+      })
+    }
+  }, [focusKey, events])
 
   async function handlePolicy(event: ProxyEvent, mode: 'verify' | 'block' | 'approve') {
     if (!orgId) return
@@ -306,9 +342,9 @@ export function LiveFeed({ orgId, onPage, onHeldChange }: Props) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Eye size={22} strokeWidth={1.75} />
             <h1 className="page-title" style={{ margin: 0 }}>Live Feed</h1>
-            <span title={connected ? 'Updating every ~2s' : 'Connecting…'} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', padding: '0.15rem 0.5rem', borderRadius: '1rem', background: connected ? 'var(--success-muted, rgba(34,197,94,0.12))' : 'var(--surface-2, #1a1a2e)', color: connected ? 'var(--success, #22c55e)' : 'var(--muted, #888)' }}>
+            <span title={connected ? (realtime ? 'Realtime + 15s fallback poll' : 'Polling every ~2s') : 'Connecting…'} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', padding: '0.15rem 0.5rem', borderRadius: '1rem', background: connected ? 'var(--success-muted, rgba(34,197,94,0.12))' : 'var(--surface-2, #1a1a2e)', color: connected ? 'var(--success, #22c55e)' : 'var(--muted, #888)' }}>
               {connected ? <Wifi size={11} /> : <WifiOff size={11} />}
-              {connected ? 'live · 2s' : 'connecting'}
+              {connected ? (realtime ? 'live · realtime' : 'live · 2s') : 'connecting'}
             </span>
             {heldCount > 0 && (
               <span className="badge warning" style={{ fontSize: '0.72rem' }}>
@@ -326,6 +362,12 @@ export function LiveFeed({ orgId, onPage, onHeldChange }: Props) {
           Connect an agent
         </button>
       </div>
+
+      {focusKey && !focusDismissed && (
+        <Alert variant="info" onDismiss={() => setFocusDismissed(true)} style={{ marginBottom: '0.75rem' }}>
+          Highlighting event from Governance{focusKey.startsWith('action:') ? ` matching ${focusKey.slice(7)}` : ''}.
+        </Alert>
+      )}
 
       <div className="live-feed-toolbar card" style={{ padding: '0.75rem 1rem', marginBottom: '0.75rem' }}>
         <div className="live-feed-tabs" style={{ display: 'flex', gap: '0.35rem', marginBottom: '0.65rem', flexWrap: 'wrap' }}>
@@ -392,6 +434,7 @@ export function LiveFeed({ orgId, onPage, onHeldChange }: Props) {
             onPage={onPage}
             resolving={resolving}
             policySaving={policySaving}
+            focused={eventMatchesFocus(e)}
           />
         ))}
       </div>
@@ -400,7 +443,7 @@ export function LiveFeed({ orgId, onPage, onHeldChange }: Props) {
 
       {events.length > 0 && (
         <p style={{ fontSize: '0.75rem', opacity: 0.4, marginTop: '0.5rem', textAlign: 'right' }}>
-          Showing {events.length} tool call{events.length === 1 ? '' : 's'} · Updates every ~2s
+          Showing {events.length} tool call{events.length === 1 ? '' : 's'} · {realtime ? 'Realtime + 15s fallback' : 'Updates every ~2s'}
           <button type="button" className="btn btn-ghost btn-sm" style={{ marginLeft: '0.5rem' }} onClick={() => onPage('audit')}>
             <ExternalLink size={12} /> Full audit
           </button>

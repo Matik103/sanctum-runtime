@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { CheckCircle, Clock, XCircle, GitBranch, AlertTriangle, ChevronRight } from 'lucide-react'
+import { CheckCircle, Clock, XCircle, GitBranch, AlertTriangle, ChevronRight, Eye } from 'lucide-react'
 import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
 import { throwResponseError, formatApiError } from '../lib/sanitize-error'
@@ -8,7 +8,8 @@ import { Alert } from '../components/ui/Alert'
 import { PlanGateAlert } from '../components/PlanGateAlert'
 import { TabBar } from '../components/ui/TabBar'
 import { fetchMyOrgs } from '../lib/fleet'
-import { readPageQuery } from '../lib/navigate'
+import { readPageQuery, type NavigateQuery } from '../lib/navigate'
+import type { PageId } from '../layout/Sidebar'
 
 type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'expired' | 'escalated'
 
@@ -16,6 +17,7 @@ type PendingApproval = {
   id: string
   action: string
   actor?: string
+  audit_event_id?: string
   status: ApprovalStatus
   current_step: number
   approvals: Array<{ user_id: string; role: string; decision: string; note?: string; timestamp: string }>
@@ -60,7 +62,7 @@ function statusBadge(status: ApprovalStatus) {
   return map[status] ?? 'neutral'
 }
 
-export function Governance() {
+export function Governance({ onPage }: { onPage?: (p: PageId, query?: NavigateQuery) => void }) {
   const [orgId, setOrgId] = useState('')
   const [approvals, setApprovals] = useState<PendingApproval[]>([])
   const [pendingCount, setPendingCount] = useState(0)
@@ -240,24 +242,42 @@ export function Governance() {
                     <td style={{ color: 'var(--muted)', fontSize: '0.8rem' }}>{timeAgo(a.expires_at)}</td>
                     <td style={{ color: 'var(--muted)', fontSize: '0.8rem' }}>{timeAgo(a.created_at)}</td>
                     <td>
-                      {a.status === 'pending' && (
-                        decideId === a.id ? (
-                          <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                            <input
-                              className="input"
-                              placeholder="Note (optional)"
-                              value={decideNote}
-                              onChange={(e) => setDecideNote(e.target.value)}
-                              style={{ width: '10rem', fontSize: '0.8rem', padding: '0.25rem 0.5rem' }}
-                            />
-                            <button type="button" className="btn btn-sm btn-primary" disabled={busy} onClick={() => void decide(a.id, 'approve')}>Approve</button>
-                            <button type="button" className="btn btn-sm" disabled={busy} onClick={() => void decide(a.id, 'reject')} style={{ color: 'var(--danger)' }}>Reject</button>
-                            <button type="button" className="btn btn-sm" onClick={() => setDecideId(null)}>Cancel</button>
-                          </div>
-                        ) : (
-                          <button type="button" className="btn btn-sm" onClick={() => setDecideId(a.id)}>Review</button>
-                        )
-                      )}
+                      <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        {onPage && a.status === 'pending' && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-ghost"
+                            title="Open matching event in Live Feed"
+                            onClick={() => onPage('live-feed', {
+                              tab: 'held',
+                              ...(a.audit_event_id
+                                ? { focus_event: a.audit_event_id }
+                                : { focus_action: a.action }),
+                            })}
+                          >
+                            <Eye size={12} style={{ marginRight: 3, verticalAlign: 'middle' }} />
+                            Live Feed
+                          </button>
+                        )}
+                        {a.status === 'pending' && (
+                          decideId === a.id ? (
+                            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                              <input
+                                className="input"
+                                placeholder="Note (optional)"
+                                value={decideNote}
+                                onChange={(e) => setDecideNote(e.target.value)}
+                                style={{ width: '10rem', fontSize: '0.8rem', padding: '0.25rem 0.5rem' }}
+                              />
+                              <button type="button" className="btn btn-sm btn-primary" disabled={busy} onClick={() => void decide(a.id, 'approve')}>Approve</button>
+                              <button type="button" className="btn btn-sm" disabled={busy} onClick={() => void decide(a.id, 'reject')} style={{ color: 'var(--danger)' }}>Reject</button>
+                              <button type="button" className="btn btn-sm" onClick={() => setDecideId(null)}>Cancel</button>
+                            </div>
+                          ) : (
+                            <button type="button" className="btn btn-sm" onClick={() => setDecideId(a.id)}>Review</button>
+                          )
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

@@ -2,6 +2,8 @@ import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 import { apiBaseUrl } from './api-url'
 import { getAccessToken } from './supabase'
 
+export type AuditEntry = ActionResult & { recordFingerprint?: string }
+
 export type AuditFilters = {
   decision?: string
   actor?: string
@@ -12,7 +14,7 @@ export type AuditFilters = {
 }
 
 export type AuditPage = {
-  entries: ActionResult[]
+  entries: AuditEntry[]
   nextCursor: string | null
   totalApprox: number | null
   retentionDays: number

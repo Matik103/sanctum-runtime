@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { ActionResult } from '@sanctum-runtime/sdk/browser'
-import { fetchOrgAuditPage, type AuditFilters } from '../lib/audit-api'
+import { fetchOrgAuditPage, type AuditEntry, type AuditFilters } from '../lib/audit-api'
 
 export function useOrgAudit(
   orgId: string | null | undefined,
@@ -9,7 +8,7 @@ export function useOrgAudit(
 ) {
   const pageLimit = options.limit ?? 50
   const pollMs = options.pollMs ?? 15_000
-  const [entries, setEntries] = useState<ActionResult[]>([])
+  const [entries, setEntries] = useState<AuditEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)

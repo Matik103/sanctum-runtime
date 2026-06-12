@@ -1,8 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { getSupabase } from '../lib/supabase'
 
-const ENABLE_DIRECT_REALTIME =
-  import.meta.env.DEV || import.meta.env.VITE_ENABLE_DIRECT_SUPABASE_REALTIME === 'true'
+/** Direct Realtime when Supabase is configured; opt out with VITE_ENABLE_DIRECT_SUPABASE_REALTIME=false */
+export function isAuditRealtimeEnabled(): boolean {
+  if (import.meta.env.VITE_ENABLE_DIRECT_SUPABASE_REALTIME === 'false') return false
+  return Boolean(getSupabase())
+}
 
 /** Subscribe to org-scoped audit_events inserts/updates when direct Realtime is enabled. */
 export function useAuditEventsRealtime(
@@ -13,7 +16,7 @@ export function useAuditEventsRealtime(
   onChangeRef.current = onChange
 
   useEffect(() => {
-    if (!ENABLE_DIRECT_REALTIME || !orgId) return
+    if (!isAuditRealtimeEnabled() || !orgId) return
     const sb = getSupabase()
     if (!sb) return
 
@@ -45,8 +48,4 @@ export function useAuditEventsRealtime(
       void sb.removeChannel(channel)
     }
   }, [orgId])
-}
-
-export function isAuditRealtimeEnabled(): boolean {
-  return ENABLE_DIRECT_REALTIME && Boolean(getSupabase())
 }

@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 import { RefreshCw, Search } from 'lucide-react'
 import { AuditRecord } from '../components/AuditRecord'
 import { EmptyState } from '../components/ui/EmptyState'
@@ -9,11 +8,12 @@ import { useOrgAudit } from '../hooks/useOrgAudit'
 import { decisionTone, timeAgo } from '../lib/format'
 import { decisionLabel } from '../lib/labels'
 import { auditRecordText } from '../lib/narrative'
+import type { AuditEntry } from '../lib/audit-api'
 import type { PageId } from '../layout/Sidebar'
 
 type Props = {
   orgId?: string | null
-  onSelect: (e: ActionResult) => void
+  onSelect: (e: AuditEntry) => void
   onPage?: (p: PageId) => void
 }
 
@@ -63,10 +63,11 @@ export function AuditLogs({ orgId, onSelect, onPage }: Props) {
   }
 
   const exportCsv = () => {
-    const headers = ['id', 'actor', 'action', 'decision', 'risk', 'human_record', 'reasoning', 'timestamp']
+    const headers = ['id', 'fingerprint', 'actor', 'action', 'decision', 'risk', 'human_record', 'reasoning', 'timestamp']
     const rows = entries.map((e) =>
       [
         escapeCsv(e.id),
+        escapeCsv(e.recordFingerprint ?? ''),
         escapeCsv(e.actor),
         escapeCsv(e.action),
         escapeCsv(e.decision),
@@ -88,7 +89,7 @@ export function AuditLogs({ orgId, onSelect, onPage }: Props) {
             Durable org-wide record of every agent action and trust decision
             {retentionDays ? ` · ${retentionDays}-day retention on your plan` : ''}
             {' · '}
-            <span title="Cryptographic integrity proofs are on the enterprise roadmap">integrity: standard audit</span>
+            <span title="Server-computed SHA-256 digest of core audit fields">SHA-256 record fingerprints</span>
           </p>
         </div>
         <PageActions>
@@ -148,6 +149,7 @@ export function AuditLogs({ orgId, onSelect, onPage }: Props) {
           <thead>
             <tr>
               <th>Record</th>
+              <th>Fingerprint</th>
               <th>Actor</th>
               <th>Decision</th>
               <th>When</th>
@@ -155,11 +157,11 @@ export function AuditLogs({ orgId, onSelect, onPage }: Props) {
           </thead>
           <tbody>
             {loading && entries.length === 0 && (
-              <tr><td colSpan={4} className="empty">Loading audit history…</td></tr>
+              <tr><td colSpan={5} className="empty">Loading audit history…</td></tr>
             )}
             {!loading && entries.length === 0 && (
               <tr>
-                <td colSpan={4}>
+                <td colSpan={5}>
                   <EmptyState
                     title="No audit records in this window"
                     description={orgId ? 'Actions appear here as soon as agents verify through Sanctum.' : 'Sign in and select a workspace.'}
@@ -178,6 +180,9 @@ export function AuditLogs({ orgId, onSelect, onPage }: Props) {
               <tr key={e.id} className="feed-row" onClick={() => onSelect(e)}>
                 <td style={{ maxWidth: '28rem' }}>
                   <AuditRecord entry={e} compact />
+                </td>
+                <td style={{ fontFamily: 'monospace', fontSize: '0.72rem', opacity: 0.75, whiteSpace: 'nowrap' }}>
+                  {e.recordFingerprint ?? '—'}
                 </td>
                 <td style={{ fontSize: '0.82rem', opacity: 0.85 }}>{e.actor}</td>
                 <td>

@@ -1,6 +1,7 @@
 /**
  * Paginated org audit queries for dashboard Audit Logs + Runtime Activity.
  */
+import { createHash } from 'node:crypto'
 import type { ActionResult } from '@sanctum-runtime/sdk'
 import type { SupabaseAuthConfig } from './auth.js'
 import { createSupabaseAdmin } from './auth.js'
@@ -24,6 +25,24 @@ type AuditRow = {
   shield_level?: string | null
   shield_score?: number | null
 }
+
+/** Deterministic SHA-256 fingerprint (first 16 hex chars) for tamper-evident display. */
+export function auditRecordFingerprint(
+  row: Pick<AuditRow, 'id' | 'org_id' | 'correlation_id' | 'actor' | 'action' | 'decision' | 'created_at'>,
+): string {
+  const canonical = JSON.stringify({
+    id: row.id,
+    org_id: row.org_id,
+    correlation_id: row.correlation_id,
+    actor: row.actor,
+    action: row.action,
+    decision: row.decision,
+    created_at: row.created_at,
+  })
+  return createHash('sha256').update(canonical).digest('hex').slice(0, 16)
+}
+
+export type OrgAuditEntry = ActionResult & { recordFingerprint: string }
 
 export function rowToActionResult(row: AuditRow): ActionResult {
   const payload = row.payload as Partial<ActionResult> | undefined
@@ -87,7 +106,7 @@ export type OrgAuditQuery = {
 }
 
 export type OrgAuditPage = {
-  entries: ActionResult[]
+  entries: OrgAuditEntry[]
   nextCursor: string | null
   totalApprox: number | null
   retentionDays: number
@@ -155,7 +174,10 @@ export async function listOrgAuditPage(
     hasMore && pageRows.length > 0 ? pageRows[pageRows.length - 1]!.created_at : null
 
   return {
-    entries: pageRows.map(rowToActionResult),
+    entries: pageRows.map((row) => ({
+      ...rowToActionResult(row),
+      recordFingerprint: auditRecordFingerprint(row),
+    })),
     nextCursor,
     totalApprox: count,
     retentionDays,

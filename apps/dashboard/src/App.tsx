@@ -247,7 +247,7 @@ export function App() {
           {page === 'policy-history' && <ErrorBoundary page="Policy History"><PolicyHistory onPage={onPage} /></ErrorBoundary>}
           {page === 'workflow-builder' && <ErrorBoundary page="Policy Composer"><WorkflowBuilder /></ErrorBoundary>}
           {page === 'assurance' && <ErrorBoundary page="Assurance"><Assurance /></ErrorBoundary>}
-          {page === 'governance' && <ErrorBoundary page="Governance"><Governance /></ErrorBoundary>}
+          {page === 'governance' && <ErrorBoundary page="Governance"><Governance onPage={onPage} /></ErrorBoundary>}
           {page === 'permissions' && <ErrorBoundary page="Permission graph"><Permissions onPage={onPage} /></ErrorBoundary>}
           {page === 'compliance' && <ErrorBoundary page="Compliance"><Compliance /></ErrorBoundary>}
           {page === 'devices' && <ErrorBoundary page="Devices"><Devices status={status} /></ErrorBoundary>}

@@ -1,8 +1,9 @@
+import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 import { Brain, X } from 'lucide-react'
-import type { ActionResult, RuntimeStatus } from '@sanctum-runtime/sdk/browser'
 import { actionLabel, anomalyLabel, decisionLabel, policyLabel, riskLabel } from '../lib/labels'
 import { decisionTone, timeAgo } from '../lib/format'
 import { extractHeardPhrase, extractIntent } from '../lib/narrative'
+import type { AuditEntry } from '../lib/audit-api'
 import { AuditRecord } from './AuditRecord'
 import { CausalChain } from './CausalChain'
 import { ContextDetails } from './ContextDetails'
@@ -12,7 +13,11 @@ type Props = {
   onClose: () => void
   audit?: ActionResult[]
   onSelect?: (e: ActionResult) => void
-  status?: RuntimeStatus | null
+  status?: import('@sanctum-runtime/sdk/browser').RuntimeStatus | null
+}
+
+function recordFingerprint(entry: ActionResult): string | undefined {
+  return (entry as AuditEntry).recordFingerprint
 }
 
 function providerDisplayName(provider: string | undefined): string {
@@ -60,6 +65,14 @@ export function ActionDrawer({ entry, onClose, audit, onSelect, status }: Props)
           <div className="audit-record audit-record--drawer">
             <AuditRecord entry={entry} />
           </div>
+          {recordFingerprint(entry) && (
+            <p style={{ margin: '0.65rem 0 0', fontSize: '0.78rem', color: 'var(--muted)' }}>
+              Fingerprint{' '}
+              <code style={{ fontSize: '0.76rem', color: 'var(--foreground)' }}>{recordFingerprint(entry)}</code>
+              {' · '}
+              SHA-256 of core fields for tamper-evident exports
+            </p>
+          )}
         </section>
 
         {(heard || intent) && (
