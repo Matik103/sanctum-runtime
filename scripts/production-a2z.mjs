@@ -472,6 +472,7 @@ async function main() {
     ['accounts-e2e', 'npm', ['run', 'test:accounts-e2e']],
     ['connect-full', 'node', ['scripts/test-connect-full.mjs'], { SANCTUM_API_URL: PROD_API }],
     ['connect-live-feed', 'node', ['scripts/test-connect-live-feed.mjs'], { SANCTUM_API_URL: PROD_API }],
+    ['marketplace-scenarios', 'node', ['scripts/test-marketplace.mjs'], { SANCTUM_API_URL: PROD_API }],
     ['control-plane', 'npm', ['run', 'smoke:control-plane'], { SANCTUM_API_URL: PROD_API }],
   ]
   for (const [name, cmd, args, env = {}] of childScripts) {

@@ -93,6 +93,7 @@
     "a2z:connect": "node scripts/test-connect-watch.mjs && node scripts/test-connect-full.mjs && node scripts/test-connect-live-feed.mjs",
     "a2z:modules": "node scripts/test-modules-write.mjs",
     "a2z:pages": "node scripts/test-pages-production.mjs",
+    "a2z:marketplace": "node scripts/test-marketplace.mjs",
     "env:pull": "node scripts/pull-supabase-env.mjs",
     "db:push": "supabase db push",
     "db:align": "supabase db push && node scripts/verify-plans-alignment.mjs",
