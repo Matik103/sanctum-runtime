@@ -44,8 +44,9 @@ function trustBadge(status: FleetRuntime['attestation_status']) {
 }
 
 import type { PageId } from '../layout/Sidebar'
+import type { NavigateQuery } from '../lib/navigate'
 
-export function Fleet({ onPage }: { onPage?: (p: PageId) => void } = {}) {
+export function Fleet({ onPage }: { onPage?: (p: PageId, query?: NavigateQuery) => void } = {}) {
   const { planId } = useWorkspacePlan()
   const { confirm, ConfirmDialog } = useConfirmDialog()
   const advancedFleet = canUseAdvancedFleet(planId)
@@ -334,7 +335,15 @@ export function Fleet({ onPage }: { onPage?: (p: PageId) => void } = {}) {
                   ? 'Connect-only agents appear under the Agents tab. Register an SDK runtime via Devices, or use Connect Agent for a zero-SDK proxy path.'
                   : 'Connect a runtime using your organization credentials. See Devices for API keys, or Connect Agent for proxy-based agents.'
               }
-            />
+            >
+              {onPage && (
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                  <button type="button" className="btn btn-primary btn-sm" onClick={() => onPage('connect')}>Connect Agent</button>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => onPage('devices')}>Get API key</button>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => onPage('live-feed')}>Live Feed</button>
+                </div>
+              )}
+            </EmptyState>
             </div>
           ) : (
             <div className="policy-grid">
@@ -624,14 +633,25 @@ export function Fleet({ onPage }: { onPage?: (p: PageId) => void } = {}) {
                           </span>
                         </td>
                         <td>
-                          <button
-                            type="button"
-                            className="btn btn-ghost btn-sm"
-                            disabled={agentPauseLoading === a.id}
-                            onClick={() => void toggleAgentPause(a)}
-                          >
-                            {a.actions_paused ? 'Resume' : 'Pause'}
-                          </button>
+                          <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                            {onPage && (
+                              <button
+                                type="button"
+                                className="btn btn-ghost btn-sm"
+                                onClick={() => onPage('live-feed', { agent_id: a.id })}
+                              >
+                                Live Feed
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-sm"
+                              disabled={agentPauseLoading === a.id}
+                              onClick={() => void toggleAgentPause(a)}
+                            >
+                              {a.actions_paused ? 'Resume' : 'Pause'}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -663,7 +683,14 @@ export function Fleet({ onPage }: { onPage?: (p: PageId) => void } = {}) {
                             ? 'Connect agents above use the proxy path. SDK runtime agents register when a runtime connects via Devices.'
                             : 'Create agents on Connect Agent or register via SDK runtimes on Devices.'
                         }
-                      />
+                      >
+                        {onPage && connectAgents.length === 0 && (
+                          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                            <button type="button" className="btn btn-primary btn-sm" onClick={() => onPage('connect')}>Connect Agent</button>
+                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => onPage('devices')}>Devices</button>
+                          </div>
+                        )}
+                      </EmptyState>
                     </td>
                   </tr>
                 ) : (

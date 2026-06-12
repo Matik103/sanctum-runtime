@@ -731,6 +731,9 @@ export function Connect({ orgId, onPage }: Props) {
               <Activity size={14} />
               Open Live Feed
             </button>
+            <button type="button" className="btn btn-ghost" onClick={() => onPage('fleet')}>
+              View in Fleet
+            </button>
           </div>
           {testMsg && (
             <div

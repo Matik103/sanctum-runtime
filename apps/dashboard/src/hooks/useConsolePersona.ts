@@ -5,10 +5,32 @@ export type ConsolePersona = 'developer' | 'operator' | 'compliance'
 
 const STORAGE_KEY = 'sanctum.console.persona'
 
-const PERSONA_LABELS: Record<ConsolePersona, string> = {
+export const PERSONA_LABELS: Record<ConsolePersona, string> = {
   developer: 'Developer',
   operator: 'Operator',
   compliance: 'Compliance',
+}
+
+/** Persona-specific Overview copy and primary CTAs. */
+export const PERSONA_LANDING: Record<
+  ConsolePersona,
+  { subtitle: string; primary: { page: PageId; label: string }; secondary: { page: PageId; label: string } }
+> = {
+  developer: {
+    subtitle: 'Connect agents and gate tool calls before they execute',
+    primary: { page: 'connect', label: 'Connect Agent' },
+    secondary: { page: 'live-feed', label: 'Live Feed' },
+  },
+  operator: {
+    subtitle: 'Pre-execution trust verification for your AI agent fleet',
+    primary: { page: 'live-feed', label: 'Live Feed' },
+    secondary: { page: 'fleet', label: 'Runtime Fleet' },
+  },
+  compliance: {
+    subtitle: 'Audit trail, approvals, and evidence for governed AI actions',
+    primary: { page: 'audit', label: 'Audit Logs' },
+    secondary: { page: 'compliance', label: 'Compliance' },
+  },
 }
 
 /** Nav pages visible per persona (operator = full console). */

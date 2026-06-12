@@ -29,7 +29,7 @@ import { useAuth } from '../auth/AuthProvider'
 import { riskModelStatusLine } from '../lib/risk-label'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { useInAppNotifications } from '../hooks/useInAppNotifications'
-import { useConsolePersona, type ConsolePersona, PERSONA_NAV } from '../hooks/useConsolePersona'
+import { PERSONA_NAV, PERSONA_LABELS, type ConsolePersona } from '../hooks/useConsolePersona'
 import { NotificationPanel } from '../components/NotificationPanel'
 
 export type PageId =
@@ -107,11 +107,13 @@ type Props = {
   orgId?: string | null
   companionMode?: boolean
   heldCount?: number
+  persona: ConsolePersona
+  setPersona: (p: ConsolePersona) => void
 }
 
-export function Sidebar({ page, onPage, status, orgId, companionMode, heldCount = 0 }: Props) {
+export function Sidebar({ page, onPage, status, orgId, companionMode, heldCount = 0, persona, setPersona }: Props) {
   const { user, signOut } = useAuth()
-  const { persona, setPersona, label: personaLabel } = useConsolePersona()
+  const personaLabel = PERSONA_LABELS[persona]
   const risk = riskModelStatusLine(status)
   const [panelOpen, setPanelOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)

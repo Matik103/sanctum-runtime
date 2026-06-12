@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Bell, Check, CheckSquare, Eye, ExternalLink, FileText, Radio, Settings, User, Wifi, WifiOff, X } from 'lucide-react'
 import { useLiveFeed, type ProxyEvent } from '../hooks/useLiveFeed'
 import { isAuditRealtimeEnabled } from '../hooks/useAuditEventsRealtime'
+import { useLiveFeedPrefs } from '../hooks/useLiveFeedPrefs'
 import { apiBaseUrl } from '../lib/api-url'
 import { resolveVerification } from '../lib/api'
 import { applyToolPolicy } from '../lib/connect-agent'
@@ -36,8 +37,6 @@ const PLATFORM_FLAGS: Record<string, string> = {
   doubao: '🎵',
   gemini: '✨',
 }
-
-type FeedTab = 'all' | 'held'
 
 function DecisionBadge({ decision }: { decision: string }) {
   const tone =
@@ -234,11 +233,8 @@ type Props = {
 }
 
 export function LiveFeed({ orgId, onPage, onHeldChange }: Props) {
-  const [tab, setTab] = useState<FeedTab>('all')
-  const [platformFilter, setPlatformFilter] = useState('')
-  const [agentFilter, setAgentFilter] = useState('')
-  const [toolFilter, setToolFilter] = useState('')
-  const [decisionFilter, setDecisionFilter] = useState('')
+  const { prefs, setPrefs } = useLiveFeedPrefs(orgId)
+  const { tab, platformFilter, agentFilter, toolFilter, decisionFilter } = prefs
   const [agentNames, setAgentNames] = useState<Record<string, string>>({})
   const [selected, setSelected] = useState<ProxyEvent | null>(null)
   const [resolving, setResolving] = useState<string | null>(null)
@@ -261,7 +257,9 @@ export function LiveFeed({ orgId, onPage, onHeldChange }: Props) {
 
   useEffect(() => {
     const params = readPageQuery()
-    if (params.get('tab') === 'held') setTab('held')
+    if (params.get('tab') === 'held') setPrefs({ tab: 'held' })
+    const agentId = params.get('agent_id')
+    if (agentId) setPrefs({ agentFilter: agentId })
     const focusEvent = params.get('focus_event')
     const correlation = params.get('correlation')
     const focusAction = params.get('focus_action')
@@ -372,31 +370,31 @@ export function LiveFeed({ orgId, onPage, onHeldChange }: Props) {
       <div className="live-feed-toolbar card" style={{ padding: '0.75rem 1rem', marginBottom: '0.75rem' }}>
         <div className="live-feed-tabs" style={{ display: 'flex', gap: '0.35rem', marginBottom: '0.65rem', flexWrap: 'wrap' }}>
           {(['all', 'held'] as const).map((t) => (
-            <button key={t} type="button" className={`btn btn-sm ${tab === t ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setTab(t)}>
+            <button key={t} type="button" className={`btn btn-sm ${tab === t ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setPrefs({ tab: t })}>
               {t === 'all' ? 'All events' : `Held queue${heldCount ? ` (${heldCount})` : ''}`}
             </button>
           ))}
         </div>
         <div className="live-feed-filters" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.5rem' }}>
-          <select className="input" value={platformFilter} onChange={(e) => setPlatformFilter(e.target.value)} aria-label="Filter platform">
+          <select className="input" value={platformFilter} onChange={(e) => setPrefs({ platformFilter: e.target.value })} aria-label="Filter platform">
             <option value="">All platforms</option>
             {Object.entries(PLATFORM_LABELS).map(([id, label]) => (
               <option key={id} value={id}>{label}</option>
             ))}
           </select>
-          <select className="input" value={agentFilter} onChange={(e) => setAgentFilter(e.target.value)} aria-label="Filter agent">
+          <select className="input" value={agentFilter} onChange={(e) => setPrefs({ agentFilter: e.target.value })} aria-label="Filter agent">
             <option value="">All agents</option>
             {Object.entries(agentNames).map(([id, name]) => (
               <option key={id} value={id}>{name}</option>
             ))}
           </select>
-          <select className="input" value={decisionFilter} onChange={(e) => setDecisionFilter(e.target.value)} aria-label="Filter decision">
+          <select className="input" value={decisionFilter} onChange={(e) => setPrefs({ decisionFilter: e.target.value })} aria-label="Filter decision">
             <option value="">All decisions</option>
             <option value="APPROVED">Approved</option>
             <option value="REQUIRE_VERIFICATION">Held</option>
             <option value="BLOCKED">Blocked</option>
           </select>
-          <input className="input" placeholder="Filter tool name…" value={toolFilter} onChange={(e) => setToolFilter(e.target.value)} aria-label="Filter tool" />
+          <input className="input" placeholder="Filter tool name…" value={toolFilter} onChange={(e) => setPrefs({ toolFilter: e.target.value })} aria-label="Filter tool" />
         </div>
       </div>
 

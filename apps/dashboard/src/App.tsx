@@ -11,6 +11,7 @@ import { useDashboard } from './hooks/useDashboard'
 import { MainCanvas } from './layout/MainCanvas'
 import { Sidebar, type PageId } from './layout/Sidebar'
 import { useHeldCount } from './hooks/useHeldCount'
+import { useConsolePersona } from './hooks/useConsolePersona'
 import { getFleetStatus, type FleetPauseStatus } from './lib/api'
 import { Overview } from './pages/Overview'
 import { fetchMyOrgs } from './lib/fleet'
@@ -80,6 +81,7 @@ function scrollPageToTop() {
 export function App() {
   const online = useNetworkStatus()
   const companionMode = useCompanionMode()
+  const { persona, setPersona, allowedNav } = useConsolePersona()
   const [page, setPage] = useState<PageId>(initialPage)
   const [selected, setSelected] = useState<ActionResult | null>(null)
   const [orgId, setOrgId] = useState<string | null>(null)
@@ -157,9 +159,19 @@ export function App() {
     return () => window.removeEventListener('popstate', onPopState)
   }, [])
 
+  // Persona views hide nav sections — bounce disallowed deep links to a valid home.
+  useEffect(() => {
+    if (companionMode || !allowedNav) return
+    if (allowedNav.includes(page)) return
+    const fallback = allowedNav[0] ?? 'overview'
+    window.history.replaceState(null, '', buildPageUrl(fallback))
+    setPage(fallback)
+    scrollPageToTop()
+  }, [companionMode, allowedNav, page])
+
   return (
     <div className="shell">
-      <Sidebar page={page} onPage={onPage} status={status} orgId={orgId} companionMode={companionMode} heldCount={heldConnectCount} />
+      <Sidebar page={page} onPage={onPage} status={status} orgId={orgId} companionMode={companionMode} heldCount={heldConnectCount} persona={persona} setPersona={setPersona} />
 
       <MainCanvas>
         <PwaInstallBanner />
@@ -222,6 +234,7 @@ export function App() {
               onOpenReview={openNextPendingReview}
               orgId={orgId}
               onPage={onPage}
+              persona={persona}
             />
           </ErrorBoundary>
         )}
@@ -249,7 +262,7 @@ export function App() {
           {page === 'assurance' && <ErrorBoundary page="Assurance"><Assurance /></ErrorBoundary>}
           {page === 'governance' && <ErrorBoundary page="Governance"><Governance onPage={onPage} /></ErrorBoundary>}
           {page === 'permissions' && <ErrorBoundary page="Permission graph"><Permissions onPage={onPage} /></ErrorBoundary>}
-          {page === 'compliance' && <ErrorBoundary page="Compliance"><Compliance /></ErrorBoundary>}
+          {page === 'compliance' && <ErrorBoundary page="Compliance"><Compliance onPage={onPage} /></ErrorBoundary>}
           {page === 'devices' && <ErrorBoundary page="Devices"><Devices status={status} /></ErrorBoundary>}
           {page === 'fleet' && <ErrorBoundary page="Runtime Fleet"><Fleet onPage={onPage} /></ErrorBoundary>}
           {page === 'marketplace' && <ErrorBoundary page="Marketplace"><Marketplace /></ErrorBoundary>}

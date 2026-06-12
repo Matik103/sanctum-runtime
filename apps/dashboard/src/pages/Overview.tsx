@@ -9,6 +9,7 @@ import { sparkBars } from '../lib/spark'
 import { OctagonX, ShieldCheck } from 'lucide-react'
 import { ActionInterceptDemo } from '../components/ActionInterceptDemo'
 import { useOrgAudit } from '../hooks/useOrgAudit'
+import { PERSONA_LANDING, type ConsolePersona } from '../hooks/useConsolePersona'
 
 type Props = {
   /** Session-scoped audit from runtime polling — fallback when org store is empty. */
@@ -22,6 +23,7 @@ type Props = {
   onOpenReview?: () => void
   orgId?: string | null
   onPage?: (page: import('../layout/Sidebar').PageId) => void
+  persona?: ConsolePersona
 }
 
 export function Overview({
@@ -35,6 +37,7 @@ export function Overview({
   onOpenReview,
   orgId,
   onPage,
+  persona = 'operator',
 }: Props) {
   const { entries: orgAudit, loading: orgLoading, totalApprox } = useOrgAudit(orgId, {}, { limit: 100, pollMs: 10_000 })
   const audit = orgId ? orgAudit : sessionAudit
@@ -54,6 +57,7 @@ export function Overview({
   const threats = blockedOrHeld + flagged
   const hasThreat = threats > 0
   const bars = sparkBars(audit)
+  const landing = PERSONA_LANDING[persona]
 
   if (companionMode) {
     return (
@@ -80,7 +84,7 @@ export function Overview({
       <header className="page-header">
         <div>
           <h1>Overview</h1>
-          <p>Pre-execution trust verification for your AI agent fleet</p>
+          <p>{landing.subtitle}</p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <span className={`pill ${status?.runtimeOnline === false ? 'warn' : 'ok'}`}>
@@ -111,15 +115,19 @@ export function Overview({
 
       <ActionInterceptDemo orgId={orgId} onPage={onPage} />
 
-      {(pendingReviewCount > 0 || !status?.runtimeOnline) && onPage && (
+      {(pendingReviewCount > 0 || !status?.runtimeOnline || onPage) && onPage && (
         <div className="overview-quick-actions" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
           {pendingReviewCount > 0 && onOpenReview && (
             <button type="button" className="btn btn-primary btn-sm" onClick={onOpenReview}>
               Review {pendingReviewCount} held action{pendingReviewCount === 1 ? '' : 's'}
             </button>
           )}
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => onPage('live-feed')}>Live Feed</button>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => onPage('connect')}>Connect Agent</button>
+          <button type="button" className="btn btn-primary btn-sm" onClick={() => onPage(landing.primary.page)}>
+            {landing.primary.label}
+          </button>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => onPage(landing.secondary.page)}>
+            {landing.secondary.label}
+          </button>
           {status?.runtimeOnline === false && (
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => onPage('devices')}>Connect runtime</button>
           )}

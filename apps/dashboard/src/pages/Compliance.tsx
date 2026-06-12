@@ -4,8 +4,10 @@ import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
 import { responseError, formatApiError } from '../lib/sanitize-error'
 import { PlanGateAlert } from '../components/PlanGateAlert'
+import { Alert } from '../components/ui/Alert'
 import { TabBar } from '../components/ui/TabBar'
 import { fetchMyOrgs, type FleetOrg } from '../lib/fleet'
+import type { PageId } from '../layout/Sidebar'
 
 type ComplianceReport = {
   period: { start: string; end: string }
@@ -46,7 +48,7 @@ function ControlRow({ id, description, status }: { id: string; description: stri
   )
 }
 
-export function Compliance() {
+export function Compliance({ onPage }: { onPage?: (p: PageId) => void } = {}) {
   const [orgs, setOrgs] = useState<FleetOrg[]>([])
   const [orgId, setOrgId] = useState('')
   const [report, setReport] = useState<ComplianceReport | null>(null)
@@ -146,7 +148,7 @@ export function Compliance() {
       <header className="page-header">
         <div>
           <h1>Compliance</h1>
-          <p>SOC2, audit evidence, and compliance reporting</p>
+          <p>SOC2, audit evidence, and compliance reporting · SHA-256 record fingerprints in Audit Logs</p>
         </div>
         <div className="responsive-action-row">
           <input type="date" className="input" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={{ fontSize: '0.85rem' }} />
@@ -168,6 +170,16 @@ export function Compliance() {
       )}
 
       {error && <PlanGateAlert message={error} onDismiss={() => setError(null)} style={{ marginBottom: '1rem' }} />}
+
+      {onPage && (
+        <Alert variant="info" style={{ marginBottom: '1rem' }}>
+          Tie this report to tamper-evident records — each action has a server-computed SHA-256 fingerprint in{' '}
+          <button type="button" className="btn btn-ghost btn-sm" style={{ padding: '0 0.25rem', verticalAlign: 'baseline' }} onClick={() => onPage('audit')}>
+            Audit Logs
+          </button>
+          {' '}and JSON/CSV exports.
+        </Alert>
+      )}
 
       {!report && !loading && (
         <div className="card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--muted)' }}>
