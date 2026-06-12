@@ -4,6 +4,7 @@ import {
   auditChainHash,
   auditRecordFingerprint,
   verifyAuditExport,
+  verifyStoredChainSequence,
 } from './integrity.js'
 
 describe('auditRecordFingerprint', () => {
@@ -127,5 +128,39 @@ describe('verifyAuditExport', () => {
     ])
     expect(result.valid).toBe(false)
     expect(result.fingerprintMismatches).toBeGreaterThan(0)
+  })
+})
+
+describe('verifyStoredChainSequence', () => {
+  it('passes for attachAuditChain output', () => {
+    const chained = attachAuditChain([
+      {
+        id: '1',
+        org_id: 'o',
+        correlation_id: 'c1',
+        actor: 'a',
+        action: 'x',
+        decision: 'APPROVED',
+        created_at: '2026-05-30T10:00:00.000Z',
+      },
+      {
+        id: '2',
+        org_id: 'o',
+        correlation_id: 'c2',
+        actor: 'a',
+        action: 'y',
+        decision: 'APPROVED',
+        created_at: '2026-05-30T11:00:00.000Z',
+      },
+    ])
+    const result = verifyStoredChainSequence(
+      chained.map((r) => ({
+        ...r,
+        recordFingerprint: r.recordFingerprint,
+        chainHash: r.chainHash,
+        prevChainHash: r.prevChainHash,
+      })),
+    )
+    expect(result.valid).toBe(true)
   })
 })

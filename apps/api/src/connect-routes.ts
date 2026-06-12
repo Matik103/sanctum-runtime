@@ -12,6 +12,7 @@ import { CONNECT_SHIELD_PRESETS, getConnectShieldPreset } from './connect-shield
 import { listConnectTools } from './connect-tool-registry.js'
 import { countHeldConnectEvents, listConnectProxyEvents } from './connect-live-feed.js'
 import { listOrgAuditPage, verifyAuditExport, type VerifyExportEntry } from './org-audit.js'
+import { rebuildOrgAuditChain, verifyOrgAuditChainGenesis } from './audit-chain.js'
 import { invalidateShieldRulesCache } from './shield-routes.js'
 import { issueAgentToken, verifyAgentToken } from './agent-tokens.js'
 import { gateProxyToolCall } from './proxy-gate.js'
@@ -674,6 +675,9 @@ export async function registerConnectRoutes(
       totalApprox: page.totalApprox,
       retentionDays: page.retentionDays,
       chainAnchored: page.chainAnchored,
+      chainComplete: page.chainComplete,
+      chainTotal: page.chainTotal,
+      chainStored: page.chainStored,
     }
   })
 
@@ -685,6 +689,32 @@ export async function registerConnectRoutes(
     const body = z.object({ entries: z.array(z.record(z.string(), z.unknown())).min(1).max(500) }).parse(req.body ?? {})
     const result = verifyAuditExport(body.entries as VerifyExportEntry[])
     return { ok: result.valid, ...result }
+  })
+
+  app.post('/v1/orgs/:orgId/audit/verify-chain', async (req, reply) => {
+    const user = (req as SanctumReq).sanctumUser
+    if (!user) return reply.status(403).send({ error: 'dashboard_auth_required' })
+    const { orgId } = req.params as { orgId: string }
+    if (!(await requireRole(cfg, orgId, user.id, 'viewer', reply))) return
+    const entitlements = getEntitlementEngine(cfg)
+    const limits = await entitlements.getLimits(orgId)
+    const retentionDays = limits.retentionDays ?? 30
+    const since = new Date(Date.now() - retentionDays * 86_400_000).toISOString()
+    const result = await verifyOrgAuditChainGenesis(cfg, orgId, since)
+    return { ok: result.valid, ...result }
+  })
+
+  app.post('/v1/orgs/:orgId/audit/rebuild-chain', async (req, reply) => {
+    const user = (req as SanctumReq).sanctumUser
+    if (!user) return reply.status(403).send({ error: 'dashboard_auth_required' })
+    const { orgId } = req.params as { orgId: string }
+    if (!(await requireRole(cfg, orgId, user.id, 'admin', reply))) return
+    const entitlements = getEntitlementEngine(cfg)
+    const limits = await entitlements.getLimits(orgId)
+    const retentionDays = limits.retentionDays ?? 30
+    const since = new Date(Date.now() - retentionDays * 86_400_000).toISOString()
+    const { updated } = await rebuildOrgAuditChain(cfg, orgId, since)
+    return { ok: true, updated }
   })
 
   app.get('/v1/orgs/:orgId/connect/live-feed/stream', async (req, reply) => {

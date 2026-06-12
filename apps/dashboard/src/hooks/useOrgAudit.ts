@@ -16,6 +16,9 @@ export function useOrgAudit(
   const [totalApprox, setTotalApprox] = useState<number | null>(null)
   const [retentionDays, setRetentionDays] = useState(30)
   const [chainAnchored, setChainAnchored] = useState(true)
+  const [chainComplete, setChainComplete] = useState(false)
+  const [chainTotal, setChainTotal] = useState(0)
+  const [chainStored, setChainStored] = useState(0)
   const filtersKey = JSON.stringify(filters)
 
   const load = useCallback(
@@ -38,6 +41,9 @@ export function useOrgAudit(
         setTotalApprox(page.totalApprox)
         setRetentionDays(page.retentionDays)
         setChainAnchored(page.chainAnchored ?? true)
+        setChainComplete(page.chainComplete ?? false)
+        setChainTotal(page.chainTotal ?? 0)
+        setChainStored(page.chainStored ?? 0)
         setEntries((prev) => (append ? [...prev, ...page.entries] : page.entries))
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load audit')
@@ -70,6 +76,9 @@ export function useOrgAudit(
     totalApprox,
     retentionDays,
     chainAnchored,
+    chainComplete,
+    chainTotal,
+    chainStored,
     refresh: () => void load(false),
     loadMore,
   }

@@ -151,3 +151,64 @@ export function verifyAuditExport(entries: VerifyExportEntry[]): AuditVerifyResu
     message,
   }
 }
+
+export type StoredChainRow = AuditFingerprintInput & {
+  recordFingerprint?: string | null
+  chainHash?: string | null
+  prevChainHash?: string | null
+}
+
+/** Verify persisted chain sequence from DB (genesis → latest). */
+export function verifyStoredChainSequence(rowsAsc: StoredChainRow[]): AuditVerifyResult {
+  if (rowsAsc.length === 0) {
+    return {
+      valid: true,
+      recordCount: 0,
+      fingerprintMismatches: 0,
+      chainBreaks: 0,
+      firstBreakIndex: null,
+      message: 'No records to verify.',
+    }
+  }
+
+  let fingerprintMismatches = 0
+  let chainBreaks = 0
+  let firstBreakIndex: number | null = null
+  let prevChain: string | null = null
+
+  rowsAsc.forEach((row, index) => {
+    const expectedFp = auditRecordFingerprint(row)
+    const storedFp = row.recordFingerprint ?? expectedFp
+
+    if (row.recordFingerprint && row.recordFingerprint !== expectedFp) {
+      fingerprintMismatches += 1
+      if (firstBreakIndex === null) firstBreakIndex = index
+    }
+
+    const expectedChain = auditChainHash(storedFp, prevChain)
+    if (row.chainHash && row.chainHash !== expectedChain) {
+      chainBreaks += 1
+      if (firstBreakIndex === null) firstBreakIndex = index
+    }
+    if (row.prevChainHash != null && row.prevChainHash !== prevChain) {
+      chainBreaks += 1
+      if (firstBreakIndex === null) firstBreakIndex = index
+    }
+
+    prevChain = row.chainHash ?? expectedChain
+  })
+
+  const valid = fingerprintMismatches === 0 && chainBreaks === 0
+  const message = valid
+    ? `${rowsAsc.length} record${rowsAsc.length === 1 ? '' : 's'} — genesis chain verified from org store.`
+    : `Integrity issue: ${fingerprintMismatches} fingerprint mismatch${fingerprintMismatches === 1 ? '' : 'es'}, ${chainBreaks} chain break${chainBreaks === 1 ? '' : 's'}.`
+
+  return {
+    valid,
+    recordCount: rowsAsc.length,
+    fingerprintMismatches,
+    chainBreaks,
+    firstBreakIndex,
+    message,
+  }
+}

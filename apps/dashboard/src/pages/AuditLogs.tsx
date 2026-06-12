@@ -8,7 +8,7 @@ import { PlanGateAlert } from '../components/PlanGateAlert'
 import { useOrgAudit } from '../hooks/useOrgAudit'
 import { useWorkspacePlan } from '../hooks/useWorkspacePlan'
 import { canVerifyAuditChain } from '../lib/billing'
-import { verifyOrgAuditExport, type AuditEntry } from '../lib/audit-api'
+import { verifyOrgAuditExport, verifyOrgAuditChain, rebuildOrgAuditChain, type AuditEntry } from '../lib/audit-api'
 import { decisionTone, timeAgo } from '../lib/format'
 import { decisionLabel } from '../lib/labels'
 import { auditRecordText } from '../lib/narrative'
@@ -64,6 +64,9 @@ export function AuditLogs({ orgId, onSelect, onPage }: Props) {
     totalApprox,
     retentionDays,
     chainAnchored,
+    chainComplete,
+    chainTotal,
+    chainStored,
     refresh,
     loadMore,
   } = useOrgAudit(orgId, filters)
@@ -98,6 +101,39 @@ export function AuditLogs({ orgId, onSelect, onPage }: Props) {
       return base.join(',')
     })
     download('sanctum-audit.csv', [headers.join(','), ...rows].join('\n'), 'text/csv')
+  }
+
+  async function handleVerifyOrgChain() {
+    if (!orgId) return
+    setVerifyBusy(true)
+    setVerifyMsg(null)
+    try {
+      const result = await verifyOrgAuditChain(orgId)
+      setVerifyMsg({
+        text: `${result.message}${result.chainComplete === false ? ` · ${result.chainStored ?? result.chained ?? 0}/${result.chainTotal ?? 0} chained — run Rebuild chain.` : ''}`,
+        ok: result.valid && result.chainComplete !== false,
+      })
+      if (!result.chainComplete) refresh()
+    } catch (e) {
+      setVerifyMsg({ text: formatApiError(e, 'Chain verification failed'), ok: false })
+    } finally {
+      setVerifyBusy(false)
+    }
+  }
+
+  async function handleRebuildChain() {
+    if (!orgId) return
+    setVerifyBusy(true)
+    setVerifyMsg(null)
+    try {
+      const result = await rebuildOrgAuditChain(orgId)
+      setVerifyMsg({ text: `Rebuilt chain for ${result.updated} record${result.updated === 1 ? '' : 's'}.`, ok: true })
+      refresh()
+    } catch (e) {
+      setVerifyMsg({ text: formatApiError(e, 'Rebuild failed'), ok: false })
+    } finally {
+      setVerifyBusy(false)
+    }
   }
 
   async function handleVerifyFile(file: File) {
@@ -143,16 +179,37 @@ export function AuditLogs({ orgId, onSelect, onPage }: Props) {
             }}
           />
           {canVerify && orgId && (
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              disabled={verifyBusy}
-              title="Upload exported JSON to verify fingerprints and chain links"
-              onClick={() => verifyInputRef.current?.click()}
-            >
-              <Upload size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} />
-              Verify export
-            </button>
+            <>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                disabled={verifyBusy}
+                title="Verify full org chain from database (genesis → latest)"
+                onClick={() => void handleVerifyOrgChain()}
+              >
+                <ShieldCheck size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                Verify org chain
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                disabled={verifyBusy}
+                title="Backfill chain hashes for legacy records (admin)"
+                onClick={() => void handleRebuildChain()}
+              >
+                Rebuild chain
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                disabled={verifyBusy}
+                title="Upload exported JSON to verify fingerprints and chain links"
+                onClick={() => verifyInputRef.current?.click()}
+              >
+                <Upload size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                Verify export
+              </button>
+            </>
           )}
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => refresh()} disabled={loading}>
             <RefreshCw size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} />
@@ -173,9 +230,15 @@ export function AuditLogs({ orgId, onSelect, onPage }: Props) {
         </Alert>
       )}
 
-      {showChain && !chainAnchored && entries.length > 0 && (
+      {showChain && !chainComplete && chainTotal > 0 && (
         <Alert variant="info" style={{ marginBottom: '0.75rem' }}>
-          Chain hashes on this page are anchored within the last {200} org records. Load earlier pages or verify full exports for complete lineage.
+          {chainStored} of {chainTotal} records have persisted chain links. Run <strong>Rebuild chain</strong> once to backfill legacy rows, then use <strong>Verify org chain</strong> for genesis verification.
+        </Alert>
+      )}
+
+      {showChain && chainComplete && !chainAnchored && entries.length > 0 && (
+        <Alert variant="info" style={{ marginBottom: '0.75rem' }}>
+          Chain hashes on this page are anchored within the last {200} org records. Org store is fully chained — use Verify org chain for full lineage.
         </Alert>
       )}
 
@@ -212,6 +275,11 @@ export function AuditLogs({ orgId, onSelect, onPage }: Props) {
           {totalApprox != null && (
             <span className="badge neutral" style={{ fontSize: '0.72rem' }}>
               ~{totalApprox.toLocaleString()} in window
+            </span>
+          )}
+          {showChain && chainTotal > 0 && (
+            <span className={`badge ${chainComplete ? 'success' : 'warn'}`} style={{ fontSize: '0.72rem' }} title="Records with persisted chain_hash in retention window">
+              chain {chainStored}/{chainTotal}
             </span>
           )}
         </div>

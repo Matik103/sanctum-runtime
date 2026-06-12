@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type { FastifyRequest } from 'fastify'
 import { createSupabaseAdmin, type SupabaseAuthConfig } from './auth.js'
+import { chainFieldsForNewRow } from './audit-chain.js'
 import { isProduction } from './security.js'
 
 export type AdminAuditInput = {
@@ -21,15 +22,33 @@ export function logAdminAuditEvent(cfg: SupabaseAuthConfig | null, input: AdminA
   if (!cfg) return
 
   const admin = createSupabaseAdmin(cfg)
-  void admin
-    .from('audit_events')
-    .insert({
-      id: randomUUID(),
-      correlation_id: randomUUID(),
+  void (async () => {
+    const id = randomUUID()
+    const correlation_id = randomUUID()
+    const created_at = new Date().toISOString()
+    const decision = input.decision ?? 'RECORDED'
+
+    let integrity: Record<string, string | null> = {}
+    if (input.orgId) {
+      const fields = await chainFieldsForNewRow(admin, {
+        id,
+        org_id: input.orgId,
+        correlation_id,
+        actor: input.actor,
+        action: input.action,
+        decision,
+        created_at,
+      })
+      if (fields) integrity = fields
+    }
+
+    const { error } = await admin.from('audit_events').insert({
+      id,
+      correlation_id,
       org_id: input.orgId,
       actor: input.actor,
       action: input.action,
-      decision: input.decision ?? 'RECORDED',
+      decision,
       risk: input.risk ?? 'low',
       reasoning: input.reasoning,
       context: {
@@ -37,12 +56,13 @@ export function logAdminAuditEvent(cfg: SupabaseAuthConfig | null, input: AdminA
         ...(input.changes ? { field_changes: input.changes } : {}),
       },
       payload: {},
+      created_at,
+      ...integrity,
     })
-    .then(({ error }) => {
-      if (error && !isProduction()) {
-        console.warn('[admin_audit] persist failed', error.message)
-      }
-    })
+    if (error && !isProduction()) {
+      console.warn('[admin_audit] persist failed', error.message)
+    }
+  })()
 }
 
 export function actorLabel(

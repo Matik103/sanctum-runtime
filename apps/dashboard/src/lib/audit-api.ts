@@ -23,6 +23,9 @@ export type AuditPage = {
   totalApprox: number | null
   retentionDays: number
   chainAnchored?: boolean
+  chainComplete?: boolean
+  chainTotal?: number
+  chainStored?: number
 }
 
 async function authHeaders(): Promise<Record<string, string>> {
@@ -64,6 +67,10 @@ export type AuditVerifyResponse = {
   chainBreaks: number
   firstBreakIndex: number | null
   message: string
+  chainComplete?: boolean
+  chainTotal?: number
+  chained?: number
+  chainStored?: number
 }
 
 export async function verifyOrgAuditExport(orgId: string, entries: unknown[]): Promise<AuditVerifyResponse> {
@@ -77,4 +84,30 @@ export async function verifyOrgAuditExport(orgId: string, entries: unknown[]): P
     throw new Error(body.message ?? body.error ?? `audit_verify_${res.status}`)
   }
   return res.json() as Promise<AuditVerifyResponse>
+}
+
+export async function verifyOrgAuditChain(orgId: string): Promise<AuditVerifyResponse> {
+  const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/audit/verify-chain`, {
+    method: 'POST',
+    headers: { ...(await authHeaders()), 'Content-Type': 'application/json' },
+    body: '{}',
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { message?: string; error?: string }
+    throw new Error(body.message ?? body.error ?? `audit_verify_chain_${res.status}`)
+  }
+  return res.json() as Promise<AuditVerifyResponse>
+}
+
+export async function rebuildOrgAuditChain(orgId: string): Promise<{ ok: boolean; updated: number }> {
+  const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/audit/rebuild-chain`, {
+    method: 'POST',
+    headers: { ...(await authHeaders()), 'Content-Type': 'application/json' },
+    body: '{}',
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { message?: string; error?: string }
+    throw new Error(body.message ?? body.error ?? `audit_rebuild_chain_${res.status}`)
+  }
+  return res.json() as Promise<{ ok: boolean; updated: number }>
 }

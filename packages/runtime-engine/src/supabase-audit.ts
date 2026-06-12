@@ -1,4 +1,8 @@
 import type { ActionResult } from '@sanctum-runtime/sdk'
+import {
+  auditChainHash,
+  auditRecordFingerprint,
+} from '@sanctum/audit-system/integrity'
 import { getSupabaseServiceClient } from './supabase-client.js'
 
 type AuditRow = {
@@ -90,11 +94,56 @@ export async function maybeSyncAuditToSupabase(entry: ActionResult): Promise<voi
   // an otherwise-successful verifyAction with a 500. Swallow all failures —
   // verification correctness does not depend on the audit row being written.
   try {
+    const orgId = orgIdFromContext(entry.context ?? {})
+    let integrityFields: Record<string, string | null> = {}
+
+    if (orgId) {
+      const { data: existing } = await sb
+        .from('audit_events')
+        .select('id, chain_hash, record_fingerprint, prev_chain_hash')
+        .eq('id', entry.id)
+        .maybeSingle()
+
+      if (existing?.chain_hash && existing.record_fingerprint) {
+        integrityFields = {
+          record_fingerprint: existing.record_fingerprint,
+          chain_hash: existing.chain_hash,
+          prev_chain_hash: existing.prev_chain_hash ?? null,
+        }
+      } else if (!existing) {
+        const { data: latest } = await sb
+          .from('audit_events')
+          .select('chain_hash')
+          .eq('org_id', orgId)
+          .not('chain_hash', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        const prevChain = (latest as { chain_hash?: string } | null)?.chain_hash ?? null
+        const fpInput = {
+          id: entry.id,
+          org_id: orgId,
+          correlation_id: entry.correlationId,
+          actor: entry.actor,
+          action: entry.action,
+          decision: entry.decision,
+          created_at: entry.timestamp,
+        }
+        const record_fingerprint = auditRecordFingerprint(fpInput)
+        integrityFields = {
+          record_fingerprint,
+          chain_hash: auditChainHash(record_fingerprint, prevChain),
+          prev_chain_hash: prevChain,
+        }
+      }
+    }
+
     const { error } = await sb.from('audit_events').upsert(
       {
         id: entry.id,
         correlation_id: entry.correlationId,
-        org_id: orgIdFromContext(entry.context),
+        org_id: orgId,
         actor: entry.actor,
         action: entry.action,
         decision: entry.decision,
@@ -109,6 +158,7 @@ export async function maybeSyncAuditToSupabase(entry: ActionResult): Promise<voi
         created_at: entry.timestamp,
         resolved_at: entry.resolvedAt ?? null,
         ...shieldExtras,
+        ...integrityFields,
       },
       { onConflict: 'id' },
     )

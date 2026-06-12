@@ -11,6 +11,7 @@ import {
 import type { ActionResult } from '@sanctum-runtime/sdk'
 import type { SupabaseAuthConfig } from './auth.js'
 import { createSupabaseAdmin } from './auth.js'
+import { orgAuditChainStatus } from './audit-chain.js'
 
 export {
   auditRecordFingerprint,
@@ -37,6 +38,9 @@ type AuditRow = {
   resolved_at: string | null
   shield_level?: string | null
   shield_score?: number | null
+  record_fingerprint?: string | null
+  chain_hash?: string | null
+  prev_chain_hash?: string | null
 }
 
 export type OrgAuditEntry = ActionResult & {
@@ -112,6 +116,9 @@ export type OrgAuditPage = {
   totalApprox: number | null
   retentionDays: number
   chainAnchored: boolean
+  chainComplete: boolean
+  chainTotal: number
+  chainStored: number
 }
 
 const CHAIN_LOOKBACK = 200
@@ -208,33 +215,39 @@ export async function listOrgAuditPage(
   const nextCursor =
     hasMore && pageRows.length > 0 ? pageRows[pageRows.length - 1]!.created_at : null
 
+  const chainStatus = await orgAuditChainStatus(cfg, orgId, since)
+
   const chainById = new Map<string, { chainHash: string; prevChainHash: string | null }>()
-  let chainAnchored = pageRows.length === 0
-  if (pageRows.length > 0) {
-    const oldest = pageRows[pageRows.length - 1]!.created_at
+  const legacyRows = pageRows.filter((r) => !r.chain_hash)
+  if (legacyRows.length > 0) {
+    const oldest = [...legacyRows].sort((a, b) => a.created_at.localeCompare(b.created_at))[0]!.created_at
     const anchor = await chainAnchorHash(admin, orgId, oldest)
-    const asc = [...pageRows].sort((a, b) => a.created_at.localeCompare(b.created_at))
+    const asc = [...legacyRows].sort((a, b) => a.created_at.localeCompare(b.created_at))
     const chained = attachAuditChain(asc.map(rowFingerprintInput), anchor)
     for (const c of chained) {
       chainById.set(c.id, { chainHash: c.chainHash, prevChainHash: c.prevChainHash })
     }
-    chainAnchored = anchor != null || (count ?? 0) <= pageRows.length
   }
 
   return {
     entries: pageRows.map((row) => {
-      const chain = chainById.get(row.id)
+      const storedChain = row.chain_hash
+        ? { chainHash: row.chain_hash, prevChainHash: row.prev_chain_hash ?? null }
+        : chainById.get(row.id)
       return {
         ...rowToActionResult(row),
-        recordFingerprint: auditRecordFingerprint(row),
-        ...(chain
-          ? { chainHash: chain.chainHash, prevChainHash: chain.prevChainHash }
+        recordFingerprint: row.record_fingerprint ?? auditRecordFingerprint(row),
+        ...(storedChain
+          ? { chainHash: storedChain.chainHash, prevChainHash: storedChain.prevChainHash }
           : {}),
       }
     }),
     nextCursor,
     totalApprox: count,
     retentionDays,
-    chainAnchored,
+    chainAnchored: chainStatus.chainComplete || legacyRows.length === 0,
+    chainComplete: chainStatus.chainComplete,
+    chainTotal: chainStatus.total,
+    chainStored: chainStatus.chained,
   }
 }
