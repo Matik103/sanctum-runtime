@@ -165,6 +165,11 @@ function EventRow({
               {readable(event.sourceTrust)}
             </span>
           )}
+          {event.shieldLevel && event.shieldLevel !== 'clear' && event.shieldScore != null && (
+            <span className={`badge ${blastTone(event.shieldLevel === 'critical' ? 'critical' : event.shieldLevel === 'high' ? 'high' : 'medium')}`}>
+              shield {event.shieldLevel} · {event.shieldScore}/100
+            </span>
+          )}
           {(() => {
             const blast = blastDisplay(event)
             if (!blast) return null

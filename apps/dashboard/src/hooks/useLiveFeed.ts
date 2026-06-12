@@ -12,6 +12,8 @@ export type ProxyEvent = {
   reasoning?: string
   correlation_id?: string
   sourceTrust?: string
+  shieldLevel?: string
+  shieldScore?: number
   blastRadius?: {
     level: string
     score: number

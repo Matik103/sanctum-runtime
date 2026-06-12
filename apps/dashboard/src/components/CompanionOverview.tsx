@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { ActionResult } from '@sanctum-runtime/sdk/browser'
+import { computeBehavioralTrustScore, trustScoreTone } from '@sanctum-runtime/sdk/browser'
 import { decisionTone, timeAgo } from '../lib/format'
 import { actionLabel, decisionLabel } from '../lib/labels'
 import { auditRecordHeadline } from '../lib/narrative'
@@ -14,18 +15,15 @@ type Props = {
   orgId?: string | null
 }
 
-function computeTrustScore(audit: ActionResult[]): number {
-  if (audit.length === 0) return 94
-  const approved = audit.filter((e) => e.decision === 'APPROVED').length
-  const blocked = audit.filter((e) => e.decision === 'BLOCKED').length
-  const verify = audit.filter((e) => e.decision === 'REQUIRE_VERIFICATION').length
-  const base = (approved / audit.length) * 100
-  const penalty = blocked * 8 + verify * 4
-  return Math.max(12, Math.min(99, base - penalty))
-}
-
 export function CompanionOverview({ audit, pendingReviewCount, onSelect, onOpenReview, orgId }: Props) {
-  const score = computeTrustScore(audit)
+  const score = computeBehavioralTrustScore(
+    audit.map((e) => ({
+      decision: e.decision,
+      anomalyFlags: e.anomalyFlags,
+      shield: e.shield,
+      timestamp: e.timestamp,
+    })),
+  )
   const recent = audit.slice(0, 8)
   const [fleetStatus, setFleetStatus] = useState<FleetPauseStatus | null>(null)
   const [fleetLoading, setFleetLoading] = useState(false)
@@ -51,7 +49,12 @@ export function CompanionOverview({ audit, pendingReviewCount, onSelect, onOpenR
   return (
     <section className="companion-panel" aria-label="Mobile companion overview">
       <div className="companion-panel__hero">
-        <TrustScoreRing score={score} />
+        <TrustScoreRing
+          score={score}
+          label="Behavioral health"
+          subtitle={score == null ? 'No actions in last 24h' : 'Last 24h · audit-weighted'}
+          tone={trustScoreTone(score)}
+        />
         <div className="companion-panel__stats">
           <div>
             <span className="companion-stat__value">{audit.length}</span>

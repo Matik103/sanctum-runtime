@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from 'crypto'
 import type { FastifyInstance } from 'fastify'
+import { computeBehavioralTrustScore } from '@sanctum-runtime/sdk'
 import { z } from 'zod'
 import { createSupabaseAdmin, type SupabaseAuthConfig } from './auth.js'
 import { ControlPlaneStore } from './control-plane-store.js'
@@ -332,7 +333,25 @@ export async function registerAgentTokenRoutes(
     const worstShield = shieldLevels.find(l => rows.some(r => r.shield_level === l)) ?? null
     const maxScore = rows.reduce((m, r) => Math.max(m, r.shield_score ?? 0), 0)
 
-    return { blocked24h, held24h, approved24h, total24h: rows.length, worstShield, maxScore, actor: reg.name }
+    const trustScore = computeBehavioralTrustScore(
+      rows.map((r) => ({
+        decision: r.decision,
+        shield_level: r.shield_level,
+        shield_score: r.shield_score,
+        timestamp: r.created_at,
+      })),
+    )
+
+    return {
+      blocked24h,
+      held24h,
+      approved24h,
+      total24h: rows.length,
+      worstShield,
+      maxScore,
+      trustScore,
+      actor: reg.name,
+    }
   })
 
   // Per-agent grants — GET /v1/orgs/:orgId/agents/:agentId/grants

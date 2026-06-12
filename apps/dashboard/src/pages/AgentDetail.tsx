@@ -35,6 +35,7 @@ type Stats = {
   total24h: number
   worstShield: string | null
   maxScore: number
+  trustScore: number | null
 }
 
 async function authHeaders(json = false): Promise<Record<string, string>> {
@@ -171,9 +172,14 @@ export function AgentDetail({ agentId, agentName, orgId }: Props) {
               <XCircle size={12} style={{ verticalAlign: 'middle' }} /> {stats.blocked24h} blocked
             </span>
           )}
+          {stats.trustScore != null && (
+            <span style={{ fontSize: '0.8rem', color: 'var(--text)' }}>
+              Behavioral health: <strong>{stats.trustScore}%</strong>
+            </span>
+          )}
           {stats.worstShield && stats.worstShield !== 'clear' && (
             <span style={{ fontSize: '0.8rem', color: shieldColor(stats.worstShield) }}>
-              <Shield size={12} style={{ verticalAlign: 'middle' }} /> Shield: {stats.worstShield} (max {stats.maxScore})
+              <Shield size={12} style={{ verticalAlign: 'middle' }} /> Shield: {stats.worstShield} (max {stats.maxScore}/100)
             </span>
           )}
         </div>

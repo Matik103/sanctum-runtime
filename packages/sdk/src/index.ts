@@ -28,6 +28,12 @@ export {
   type VerificationStatus,
 } from './verification.js'
 export {
+  computeBehavioralTrustScore,
+  formatAttestationTrustScore,
+  trustScoreTone,
+  type TrustScoreInput,
+} from './trust-scores.js'
+export {
   ControlPlaneSession,
   type ConnectOptions,
   type ConnectResult,

@@ -24,3 +24,9 @@ export {
   type VerificationState,
   type VerificationStatus,
 } from './verification.js'
+export {
+  computeBehavioralTrustScore,
+  formatAttestationTrustScore,
+  trustScoreTone,
+  type TrustScoreInput,
+} from './trust-scores.js'

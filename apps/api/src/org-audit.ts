@@ -49,8 +49,25 @@ export type OrgAuditEntry = ActionResult & {
   prevChainHash?: string | null
 }
 
+function shieldFromRow(row: AuditRow, payload?: Partial<ActionResult>) {
+  if (payload?.shield) return payload.shield
+  if (!row.shield_level || row.shield_level === 'clear') return undefined
+  return {
+    level: row.shield_level as NonNullable<ActionResult['shield']>['level'],
+    score: row.shield_score ?? 0,
+    signals: payload?.shield?.signals ?? [],
+    automaticResponse: payload?.shield?.automaticResponse ?? [],
+    recommendedResponse: payload?.shield?.recommendedResponse ?? [],
+    summary: payload?.shield?.summary ?? '',
+  }
+}
+
 export function rowToActionResult(row: AuditRow): ActionResult {
   const payload = row.payload as Partial<ActionResult> | undefined
+  const shield = shieldFromRow(row, payload)
+  const blastRadius = payload?.blastRadius
+  const sourceTrust = payload?.sourceTrust
+
   if (payload?.id && payload.correlationId) {
     return {
       ...payload,
@@ -70,6 +87,9 @@ export function rowToActionResult(row: AuditRow): ActionResult {
         ...(row.context ?? payload.context ?? {}),
         ...(row.org_id ? { org_id: row.org_id } : {}),
       },
+      ...(shield ? { shield } : {}),
+      ...(blastRadius ? { blastRadius } : {}),
+      ...(sourceTrust ? { sourceTrust } : {}),
     } as ActionResult
   }
 
@@ -95,6 +115,9 @@ export function rowToActionResult(row: AuditRow): ActionResult {
     humanRecord: row.human_record ?? undefined,
     humanResolution: row.human_resolution ?? undefined,
     resolvedAt: row.resolved_at ?? undefined,
+    ...(shield ? { shield } : {}),
+    ...(blastRadius ? { blastRadius } : {}),
+    ...(sourceTrust ? { sourceTrust } : {}),
   }
 }
 

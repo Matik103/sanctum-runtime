@@ -14,6 +14,8 @@ export type ConnectProxyEvent = {
   correlation_id?: string
   sourceTrust?: string
   blastRadius?: Record<string, unknown>
+  shieldLevel?: string
+  shieldScore?: number
   actionIdentity?: Record<string, unknown>
   context: {
     proxy: true
@@ -91,6 +93,17 @@ export function normalizeConnectProxyRow(raw: Record<string, unknown>): ConnectP
     sourceTrust:
       pickString(raw, 'sourceTrust', 'source_trust') ?? payloadFields.sourceTrust,
     blastRadius: payloadFields.blastRadius,
+    shieldLevel:
+      pickString(raw, 'shield_level', 'shieldLevel') ??
+      (typeof (raw.payload as Record<string, unknown> | undefined)?.shield === 'object'
+        ? pickString((raw.payload as Record<string, unknown>).shield as Record<string, unknown>, 'level')
+        : undefined),
+    shieldScore:
+      typeof raw.shield_score === 'number'
+        ? raw.shield_score
+        : typeof raw.shieldScore === 'number'
+          ? raw.shieldScore
+          : undefined,
     actionIdentity: payloadFields.actionIdentity,
     context: {
       proxy: true,

@@ -363,7 +363,7 @@ export function Fleet({ onPage }: { onPage?: (p: PageId, query?: NavigateQuery) 
                     </div>
                   </div>
                   <p className="hint-line" style={{ margin: '0.3rem 0 0' }}>
-                    {r.mode}{r.region ? ` · ${r.region}` : ''} · trust {r.trust_score}
+                    {r.mode}{r.region ? ` · ${r.region}` : ''} · attestation {Math.round(r.trust_score)}%
                   </p>
                   {r.active_model && (
                     <p style={{ margin: '0.3rem 0 0', fontSize: '0.82rem', color: 'var(--muted)' }}>

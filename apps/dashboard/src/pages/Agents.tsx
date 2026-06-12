@@ -9,6 +9,7 @@ import { AgentPathsExplainer } from '../components/AgentPathsExplainer'
 import { EmptyState } from '../components/ui/EmptyState'
 import { AgentDetail } from './AgentDetail'
 import type { PageId } from '../layout/Sidebar'
+import { trustScoreTone } from '@sanctum-runtime/sdk/browser'
 import { RefreshCw, RotateCcw, Download, Wifi, WifiOff, Clock, AlertTriangle } from 'lucide-react'
 
 type AgentReg = {
@@ -28,6 +29,7 @@ type AgentStats = {
   total24h: number
   worstShield: string | null
   maxScore: number
+  trustScore: number | null
 }
 
 type OrgOption = { org_id: string; org_name?: string }
@@ -81,21 +83,18 @@ function ThreatBadge({ stats }: { stats?: AgentStats }) {
   )
 }
 
-function agentTrustScore(stats?: AgentStats): number {
-  if (!stats || stats.total24h === 0) return 100
-  const blockedPenalty = stats.blocked24h * 16
-  const heldPenalty = stats.held24h * 8
-  const shieldPenalty = Math.round((stats.maxScore ?? 0) * 0.35)
-  const approvalCredit = Math.min(8, stats.approved24h)
-  return Math.max(0, Math.min(100, 100 - blockedPenalty - heldPenalty - shieldPenalty + approvalCredit))
-}
-
 function AgentTrustBadge({ stats }: { stats?: AgentStats }) {
-  const score = agentTrustScore(stats)
-  const color = score >= 85 ? 'var(--success)' : score >= 65 ? '#f59e0b' : '#ef4444'
+  const score = stats?.trustScore ?? null
+  const tone = trustScoreTone(score)
+  const color =
+    tone === 'ok' ? 'var(--success)' : tone === 'warn' ? '#f59e0b' : tone === 'danger' ? '#ef4444' : 'var(--muted)'
   return (
     <span
-      title="Computed from the last 24h of blocked, held, approved, and Shield-scored actions"
+      title={
+        score == null
+          ? 'No gated actions in the last 24 hours'
+          : 'Behavioral health from last 24h audit: decisions, Shield scores, and anomaly flags'
+      }
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -105,7 +104,7 @@ function AgentTrustBadge({ stats }: { stats?: AgentStats }) {
         fontWeight: 600,
       }}
     >
-      Trust {score}%
+      Health {score == null ? '—' : `${score}%`}
     </span>
   )
 }
