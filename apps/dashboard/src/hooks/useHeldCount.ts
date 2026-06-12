@@ -34,7 +34,7 @@ export function useHeldCount(orgId: string | null | undefined) {
 
   useAuditEventsRealtime(orgId, () => {
     void refresh()
-  })
+  }, 'held-count')
 
   return { held, refreshHeld: refresh }
 }

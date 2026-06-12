@@ -32,10 +32,10 @@ test.describe('Connect Agent — Live Feed visibility', () => {
     await page.goto('/?page=live-feed')
     await expect(page.locator('h1.page-title', { hasText: 'Live Feed' })).toBeVisible({ timeout: 30_000 })
 
-    // Events from connect-watch E2E (transfer_funds, send_email, etc.) or empty state
+    // Events from Connect Agent or empty state
     await expect(
       page
-        .getByText(/transfer_funds|send_email|unlock_door|send_customer_export|no proxy events|proxy events/i)
+        .getByText(/transfer_funds|send_email|unlock_door|connect_test|connect_verify|no tool calls yet|no held actions|held queue/i)
         .first(),
     ).toBeVisible({ timeout: 20_000 })
 

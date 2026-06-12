@@ -11,6 +11,8 @@ export function isAuditRealtimeEnabled(): boolean {
 export function useAuditEventsRealtime(
   orgId: string | null | undefined,
   onChange: () => void,
+  /** Unique per hook — Supabase rejects .on() after subscribe() on a reused channel name. */
+  channelKey = 'default',
 ) {
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
@@ -21,7 +23,7 @@ export function useAuditEventsRealtime(
     if (!sb) return
 
     const channel = sb
-      .channel(`audit_events:${orgId}`)
+      .channel(`audit_events:${orgId}:${channelKey}`)
       .on(
         'postgres_changes',
         {
@@ -47,5 +49,5 @@ export function useAuditEventsRealtime(
     return () => {
       void sb.removeChannel(channel)
     }
-  }, [orgId])
+  }, [orgId, channelKey])
 }

@@ -120,7 +120,7 @@ export function useLiveFeed(orgId: string | null | undefined, filters: LiveFeedF
 
   useAuditEventsRealtime(orgId, () => {
     void loadRef.current(false)
-  })
+  }, 'live-feed')
 
   return { events, connected, loading, heldCount, patchEvent }
 }
