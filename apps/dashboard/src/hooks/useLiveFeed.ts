@@ -1,9 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { apiBaseUrl } from '../lib/api-url'
-import { getAccessToken, getSupabase } from '../lib/supabase'
-
-const ENABLE_DIRECT_REALTIME =
-  import.meta.env.DEV || import.meta.env.VITE_ENABLE_DIRECT_SUPABASE_REALTIME === 'true'
+import { getAccessToken } from '../lib/supabase'
 
 export type ProxyEvent = {
   id: string
@@ -45,139 +42,77 @@ export type ProxyEvent = {
   created_at: string
 }
 
-function normalizeProxyEvent(raw: Record<string, unknown>): ProxyEvent | null {
-  const ctx = (raw.context as Record<string, unknown> | undefined) ?? {}
-  if (ctx.proxy !== true) return null
-  const created =
-    (typeof raw.created_at === 'string' && raw.created_at) ||
-    (typeof raw.timestamp === 'string' && raw.timestamp) ||
-    new Date().toISOString()
-  return {
-    id: String(raw.id ?? crypto.randomUUID()),
-    org_id: String(raw.org_id ?? ctx.org_id ?? ''),
-    action: String(raw.action ?? ''),
-    actor: String(raw.actor ?? ''),
-    decision: String(raw.decision ?? 'APPROVED'),
-    reasoning: typeof raw.reasoning === 'string' ? raw.reasoning : undefined,
-    sourceTrust:
-      typeof raw.sourceTrust === 'string'
-        ? raw.sourceTrust
-        : typeof raw.source_trust === 'string'
-          ? raw.source_trust
-          : undefined,
-    blastRadius: (raw.blastRadius ?? raw.blast_radius) as ProxyEvent['blastRadius'],
-    actionIdentity: (raw.actionIdentity ?? raw.action_identity) as ProxyEvent['actionIdentity'],
-    correlation_id:
-      typeof raw.correlation_id === 'string'
-        ? raw.correlation_id
-        : typeof raw.correlationId === 'string'
-          ? raw.correlationId
-          : undefined,
-    context: {
-      proxy: true,
-      platform: String(ctx.platform ?? 'unknown'),
-      agent_id: ctx.agent_id != null ? String(ctx.agent_id) : undefined,
-      agent_name: ctx.agent_name != null ? String(ctx.agent_name) : undefined,
-      tool_call_id: String(ctx.tool_call_id ?? ''),
-      arguments: ctx.arguments,
-      phase: ctx.phase != null ? String(ctx.phase) : undefined,
-    },
-    created_at: created,
-  }
+export type LiveFeedFilters = {
+  decision?: string
+  platform?: string
+  action?: string
+  agentId?: string
+  heldOnly?: boolean
 }
 
-async function fetchRecentProxyEvents(orgId: string, limit = 50): Promise<ProxyEvent[]> {
+function buildLiveFeedUrl(orgId: string, filters: LiveFeedFilters, limit = 80): string {
+  const params = new URLSearchParams({ limit: String(limit) })
+  if (filters.decision) params.set('decision', filters.decision)
+  if (filters.platform) params.set('platform', filters.platform)
+  if (filters.action) params.set('action', filters.action)
+  if (filters.agentId) params.set('agent_id', filters.agentId)
+  if (filters.heldOnly) params.set('held_only', 'true')
+  return `${apiBaseUrl}/v1/orgs/${orgId}/connect/live-feed?${params.toString()}`
+}
+
+async function fetchLiveFeedEvents(orgId: string, filters: LiveFeedFilters): Promise<ProxyEvent[]> {
   const token = await getAccessToken()
   const headers: Record<string, string> = {}
   if (token) headers['Authorization'] = `Bearer ${token}`
-
-  const res = await fetch(
-    `${apiBaseUrl}/v1/audit?limit=${limit}&org_id=${encodeURIComponent(orgId)}`,
-    { headers },
-  )
+  const res = await fetch(buildLiveFeedUrl(orgId, filters), { headers })
   if (!res.ok) return []
-  const data = (await res.json()) as ProxyEvent[] | { entries?: ProxyEvent[] }
-  const rows = Array.isArray(data) ? data : (data.entries ?? [])
-  return rows
-    .map((e) => normalizeProxyEvent(e as unknown as Record<string, unknown>))
-    .filter((e): e is ProxyEvent => e != null)
-    // Defense in depth — drop anything that is not for the requested org.
-    .filter((e) => !e.org_id || e.org_id === orgId)
+  const data = (await res.json()) as { events?: ProxyEvent[] }
+  return data.events ?? []
 }
 
-export function useLiveFeed(orgId: string | null | undefined) {
+export function useLiveFeed(orgId: string | null | undefined, filters: LiveFeedFilters = {}) {
   const [events, setEvents] = useState<ProxyEvent[]>([])
   const [connected, setConnected] = useState(false)
   const [loading, setLoading] = useState(true)
-  const channelRef = useRef<ReturnType<NonNullable<ReturnType<typeof getSupabase>>['channel']> | null>(null)
-
-  // Initial load. Production uses API polling instead of direct Supabase
-  // Realtime so the browser does not expose database channel URLs.
-  useEffect(() => {
-    if (!orgId) return
-    let cancelled = false
-    const load = async (showLoading = false) => {
-      if (showLoading) setLoading(true)
-      const recent = await fetchRecentProxyEvents(orgId).catch(() => [])
-      if (cancelled) return
-      setEvents(recent)
-      if (showLoading) setLoading(false)
-    }
-
-    void load(true)
-    if (ENABLE_DIRECT_REALTIME) {
-      return () => {
-        cancelled = true
-      }
-    }
-
-    const timer = window.setInterval(() => { void load(false) }, 15_000)
-    return () => {
-      cancelled = true
-      window.clearInterval(timer)
-    }
-  }, [orgId])
-
-  // Supabase Realtime subscription for local development or explicitly
-  // opted-in deployments.
-  useEffect(() => {
-    if (!ENABLE_DIRECT_REALTIME) return
-    if (!orgId) return
-    const sb = getSupabase()
-    if (!sb) return
-
-    const channel = sb
-      .channel(`live-feed:${orgId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'audit_events',
-          filter: `org_id=eq.${orgId}`,
-        },
-        (payload) => {
-          const entry = normalizeProxyEvent(payload.new as Record<string, unknown>)
-          if (!entry) return
-          setEvents((prev) => [entry, ...prev].slice(0, 200))
-        },
-      )
-      .subscribe((status) => {
-        setConnected(status === 'SUBSCRIBED')
-      })
-
-    channelRef.current = channel
-
-    return () => {
-      void sb.removeChannel(channel)
-      channelRef.current = null
-      setConnected(false)
-    }
-  }, [orgId])
+  const [heldCount, setHeldCount] = useState(0)
+  const filtersKey = JSON.stringify(filters)
 
   const patchEvent = useCallback((id: string, patch: Partial<Pick<ProxyEvent, 'decision' | 'reasoning'>>) => {
     setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)))
   }, [])
 
-  return { events, connected, loading, patchEvent }
+  useEffect(() => {
+    if (!orgId) return
+    let cancelled = false
+
+    const load = async (showLoading = false) => {
+      if (showLoading) setLoading(true)
+      const parsedFilters = JSON.parse(filtersKey) as LiveFeedFilters
+      const [rows, heldRes] = await Promise.all([
+        fetchLiveFeedEvents(orgId, parsedFilters),
+        fetch(`${apiBaseUrl}/v1/orgs/${orgId}/connect/held-count`, {
+          headers: await (async () => {
+            const token = await getAccessToken()
+            return token ? { Authorization: `Bearer ${token}` } : {}
+          })(),
+        }).then((r) => (r.ok ? r.json() as Promise<{ held?: number }> : { held: 0 })).catch(() => ({ held: 0 })),
+      ])
+      if (cancelled) return
+      setEvents(rows)
+      setHeldCount(typeof heldRes.held === 'number' ? heldRes.held : rows.filter((e) => e.decision === 'REQUIRE_VERIFICATION').length)
+      if (showLoading) setLoading(false)
+      setConnected(true)
+    }
+
+    void load(true)
+    const pollId = window.setInterval(() => void load(false), 2000)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(pollId)
+      setConnected(false)
+    }
+  }, [orgId, filtersKey])
+
+  return { events, connected, loading, heldCount, patchEvent }
 }

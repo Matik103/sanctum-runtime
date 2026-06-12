@@ -10,6 +10,7 @@ import { VerificationModal } from './components/VerificationModal'
 import { useDashboard } from './hooks/useDashboard'
 import { MainCanvas } from './layout/MainCanvas'
 import { Sidebar, type PageId } from './layout/Sidebar'
+import { useHeldCount } from './hooks/useHeldCount'
 import { getFleetStatus, type FleetPauseStatus } from './lib/api'
 import { Overview } from './pages/Overview'
 import { fetchMyOrgs } from './lib/fleet'
@@ -79,6 +80,7 @@ export function App() {
   const [page, setPage] = useState<PageId>(initialPage)
   const [selected, setSelected] = useState<ActionResult | null>(null)
   const [orgId, setOrgId] = useState<string | null>(null)
+  const { held: heldConnectCount, refreshHeld } = useHeldCount(orgId)
   const [modalError, setModalError] = useState<string | null>(null)
   const [fleetStatus, setFleetStatus] = useState<FleetPauseStatus | null>(null)
 
@@ -156,7 +158,7 @@ export function App() {
 
   return (
     <div className="shell">
-      <Sidebar page={page} onPage={onPage} status={status} orgId={orgId} companionMode={companionMode} />
+      <Sidebar page={page} onPage={onPage} status={status} orgId={orgId} companionMode={companionMode} heldCount={heldConnectCount} />
 
       <MainCanvas>
         <PwaInstallBanner />
@@ -252,7 +254,7 @@ export function App() {
           {page === 'billing' && <ErrorBoundary page="Billing"><Billing /></ErrorBoundary>}
           {page === 'settings' && <ErrorBoundary page="Settings"><Settings status={status} /></ErrorBoundary>}
           {page === 'connect' && <ErrorBoundary page="Connect Agent"><Connect orgId={orgId} onPage={onPage} /></ErrorBoundary>}
-          {page === 'live-feed' && <ErrorBoundary page="Live Feed"><LiveFeed orgId={orgId} onPage={onPage} /></ErrorBoundary>}
+          {page === 'live-feed' && <ErrorBoundary page="Live Feed"><LiveFeed orgId={orgId} onPage={onPage} onHeldChange={refreshHeld} /></ErrorBoundary>}
         </Suspense>
       </MainCanvas>
 

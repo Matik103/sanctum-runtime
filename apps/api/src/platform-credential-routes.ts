@@ -16,7 +16,7 @@ type SanctumReq = import('fastify').FastifyRequest & {
   sanctumUser?: { id: string; email?: string }
 }
 
-const platformParam = z.enum(['openai', 'deepseek', 'qwen', 'kimi', 'doubao', 'gemini'])
+const platformParam = z.enum(['openai', 'deepseek', 'qwen', 'kimi', 'doubao', 'gemini', 'claude', 'azure'])
 
 function canRevealPlatformSecretForDevE2E(): boolean {
   const isProduction =
@@ -78,6 +78,7 @@ export async function registerPlatformCredentialRoutes(
         secret: z.string().min(8).max(512),
         default_agent_id: z.string().uuid().nullable().optional(),
         environment: z.enum(['development', 'staging', 'production']).optional(),
+        proxy_base_url: z.string().url().max(512).nullable().optional(),
       })
       .parse(req.body)
 
@@ -89,6 +90,7 @@ export async function registerPlatformCredentialRoutes(
         userId: user.id,
         defaultAgentId: body.default_agent_id,
         environment: body.environment,
+        proxyBaseUrl: body.proxy_base_url,
       })
     } catch (err) {
       req.log.error({ err, orgId, platform }, 'platform_credentials_save_failed')
@@ -142,7 +144,9 @@ export async function registerPlatformCredentialRoutes(
       })
     }
 
-    const result = await testPlatformSecret(platform, secret)
+    const creds = await listPlatformCredentials(cfg, orgId, environment)
+    const row = creds.find((c) => c.platform === platform)
+    const result = await testPlatformSecret(platform, secret, row?.proxy_base_url)
     if (!body.secret) {
       await recordPlatformTestResult(cfg, orgId, platform, result, environment).catch(() => {})
     }

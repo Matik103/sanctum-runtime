@@ -10,7 +10,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { logger } from './logger.js'
 import { createSupabaseAdmin, getSupabaseAuthConfig } from './auth.js'
 import { verifyAgentToken } from './agent-tokens.js'
-import { getPlatformSecret } from './platform-credentials.js'
+import { getPlatformCredentialMeta } from './platform-credentials.js'
 import { getConnectSettings } from './connect-settings.js'
 import { extractToolsFromChatBody, upsertConnectTool } from './connect-tool-registry.js'
 import { recordUsage, UsageMetrics } from './usage-store.js'
@@ -51,6 +51,8 @@ export const PROXY_PLATFORMS: Record<string, string> = {
   kimi:     'https://api.moonshot.cn/v1',
   doubao:   'https://ark.cn-beijing.volces.com/api/v3',
   gemini:   'https://generativelanguage.googleapis.com/v1beta/openai',
+  claude:   'https://api.anthropic.com/v1',
+  azure:    '', // requires org-scoped proxy_base_url on platform_credentials
 }
 
 function toolsFromChunk(chunk: string): ProxyToolCall[] {
@@ -181,9 +183,15 @@ export function registerProxyRoutes(app: FastifyInstance, runtime: RuntimeEngine
         const admin = createSupabaseAdmin(cfg)
         const { data: agentRow } = await admin
           .from('agent_registrations')
-          .select('name')
+          .select('name, actions_paused')
           .eq('id', agentId)
           .maybeSingle()
+        if (agentRow?.actions_paused) {
+          return reply.code(403).send({
+            error: 'agent_paused',
+            message: 'This agent is paused by an operator. Resume it from Runtime Fleet or Agents.',
+          })
+        }
         const agentName = agentRow?.name ?? agentId.slice(0, 8)
 
         const connectSettings = await getConnectSettings(cfg, orgId)
@@ -213,18 +221,31 @@ export function registerProxyRoutes(app: FastifyInstance, runtime: RuntimeEngine
         const socketTimeout = waitVerification ? waitTimeoutMs + 60_000 : 45_000
         if (req.raw.socket) req.raw.socket.setTimeout(socketTimeout)
 
-        const baseUrl = PROXY_PLATFORMS[platform]
-        if (!baseUrl) {
+        const baseUrlDefault = PROXY_PLATFORMS[platform]
+        if (!baseUrlDefault && platform !== 'azure') {
           return reply.code(400).send({
             error: `Unknown platform "${platform}"`,
             supported: Object.keys(PROXY_PLATFORMS),
           })
         }
 
+        const credMeta = await getPlatformCredentialMeta(cfg, orgId, platform, credEnvironment)
+        const baseUrl = (platform === 'azure'
+          ? credMeta?.proxy_base_url?.replace(/\/$/, '')
+          : credMeta?.proxy_base_url?.replace(/\/$/, '') || baseUrlDefault) ?? baseUrlDefault
+        if (!baseUrl) {
+          return reply.code(400).send({
+            error: 'azure_base_url_required',
+            hint: 'Save an Azure OpenAI deployment base URL in Connect (Platform API key step).',
+          })
+        }
+
         let platformAuth = req.headers['authorization'] as string | undefined
-        if (!platformAuth) {
-          const stored = await getPlatformSecret(cfg, orgId, platform, credEnvironment)
-          if (stored) platformAuth = `Bearer ${stored}`
+        let platformSecret = credMeta?.secret ?? null
+        if (!platformAuth && platformSecret) {
+          platformAuth = platform === 'claude' || platform === 'azure'
+            ? platformSecret
+            : `Bearer ${platformSecret}`
         }
         if (!platformAuth) {
           return reply.code(400).send({
@@ -238,7 +259,17 @@ export function registerProxyRoutes(app: FastifyInstance, runtime: RuntimeEngine
 
         const forwardHeaders: Record<string, string> = {
           'content-type': (req.headers['content-type'] as string | undefined) ?? 'application/json',
-          authorization: platformAuth,
+        }
+        const authKey = (platformAuth ?? '').replace(/^Bearer\s+/i, '').trim()
+        if (platform === 'claude') {
+          forwardHeaders['x-api-key'] = authKey
+          forwardHeaders['anthropic-version'] = '2023-06-01'
+        } else if (platform === 'azure') {
+          forwardHeaders['api-key'] = authKey
+        } else {
+          forwardHeaders.authorization = platformAuth?.startsWith('Bearer ')
+            ? platformAuth
+            : `Bearer ${authKey}`
         }
 
         let requestBody = req.body

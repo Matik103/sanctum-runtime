@@ -25,6 +25,9 @@ import {
   type FleetRuntime,
 } from '../lib/fleet'
 import { fetchOperatorContext } from '../lib/marketplace'
+import { fetchConnectAgents, pauseConnectAgent, resumeConnectAgent, type ConnectAgentRegistration } from '../lib/agents-api'
+import { canUseAdvancedFleet } from '../lib/billing'
+import { useWorkspacePlan } from '../hooks/useWorkspacePlan'
 import { formatApiError, looksLikeUpgradeMessage } from '../lib/sanitize-error'
 
 function statusBadge(status: string) {
@@ -40,8 +43,11 @@ function trustBadge(status: FleetRuntime['attestation_status']) {
 }
 
 export function Fleet() {
+  const { planId } = useWorkspacePlan()
+  const advancedFleet = canUseAdvancedFleet(planId)
   const [runtimes, setRuntimes] = useState<FleetRuntime[]>([])
   const [agents, setAgents] = useState<FleetAgent[]>([])
+  const [connectAgents, setConnectAgents] = useState<ConnectAgentRegistration[]>([])
   const [events, setEvents] = useState<FleetEvent[]>([])
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<'runtimes' | 'map' | 'agents' | 'events'>('map')
@@ -58,6 +64,7 @@ export function Fleet() {
   const [groupMsg, setGroupMsg] = useState<string | null>(null)
   const [pauseStatus, setPauseStatus] = useState<FleetPauseStatus | null>(null)
   const [pauseLoading, setPauseLoading] = useState(false)
+  const [agentPauseLoading, setAgentPauseLoading] = useState<string | null>(null)
 
   useEffect(() => {
     void (async () => {
@@ -103,6 +110,12 @@ export function Fleet() {
       setRuntimes(rt)
       setEvents(ev)
       setAgents(ag)
+      if (filter) {
+        const ca = await fetchConnectAgents(filter).catch(() => [])
+        setConnectAgents(ca)
+      } else {
+        setConnectAgents([])
+      }
     } catch (e) {
       setError(formatApiError(e, 'Fleet data unavailable'))
       return
@@ -148,9 +161,26 @@ export function Fleet() {
   const tabs = [
     { id: 'runtimes' as const, label: 'Runtimes', count: runtimes.length },
     { id: 'map' as const, label: 'Map', count: fleetMap?.regions.length ?? 0 },
-    { id: 'agents' as const, label: 'Agents', count: agents.length },
+    { id: 'agents' as const, label: 'Agents', count: agents.length + connectAgents.length },
     { id: 'events' as const, label: 'Events', count: events.length },
   ]
+
+  async function toggleAgentPause(agent: ConnectAgentRegistration) {
+    if (!orgId || agentPauseLoading) return
+    setAgentPauseLoading(agent.id)
+    try {
+      if (agent.actions_paused) {
+        await resumeConnectAgent(orgId, agent.id)
+      } else {
+        await pauseConnectAgent(orgId, agent.id)
+      }
+      void refresh()
+    } catch {
+      /* best-effort */
+    } finally {
+      setAgentPauseLoading(null)
+    }
+  }
 
   async function handleCreateGroup() {
     if (!mapOrgId || !newGroupName.trim()) {
@@ -282,11 +312,11 @@ export function Fleet() {
           {runtimes.length === 0 ? (
             <div className="section__body">
             <EmptyState
-              title="No runtimes connected"
+              title="No SDK runtimes connected"
               description={
                 orgId
-                  ? 'No runtimes found for this organization. Connect a runtime using your API key and organization credentials.'
-                  : 'Connect a runtime using your organization credentials. See Devices for API keys.'
+                  ? 'Connect-only agents appear under the Agents tab. Register an SDK runtime via Devices, or use Connect Agent for a zero-SDK proxy path.'
+                  : 'Connect a runtime using your organization credentials. See Devices for API keys, or Connect Agent for proxy-based agents.'
               }
             />
             </div>
@@ -351,9 +381,11 @@ export function Fleet() {
       {tab === 'map' && (
         <div className="section__body panel-glass">
           {!mapOrgId ? (
+            <EmptyState title="Select an organization" description="Fleet map and dispatch require a single org — pick one from the dropdown." />
+          ) : !advancedFleet ? (
             <EmptyState
-              title="Select an organization"
-              description="Fleet map and dispatch require a single org — pick one from the dropdown."
+              title="Advanced fleet controls"
+              description="Regional map, deployment groups, and dispatch require Team plan or higher. Kill switch and runtime list are available on all plans."
             />
           ) : !fleetMap ? (
             <p className="hint-line">Loading fleet map…</p>
@@ -375,11 +407,28 @@ export function Fleet() {
 
               <h2 className="section-title">By region</h2>
               {fleetMap.regions.length === 0 ? (
-                <EmptyState
-                  title="No regions"
-                  description="Assign a region when connecting runtimes to enable geographic grouping."
-                />
+                <EmptyState title="No regions" description="Assign a region when connecting runtimes to enable geographic grouping." />
               ) : (
+                <div className="fleet-region-bars" style={{ marginBottom: '1.5rem' }}>
+                  {fleetMap.regions.map((reg) => {
+                    const pct = reg.total > 0 ? Math.round((reg.online / reg.total) * 100) : 0
+                    return (
+                      <div key={reg.region} className="fleet-region-bar">
+                        <div className="fleet-region-bar__head">
+                          <strong>{reg.region}</strong>
+                          <span>{reg.online}/{reg.total} online</span>
+                        </div>
+                        <div className="fleet-region-bar__track">
+                          <div className="fleet-region-bar__fill" style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              <h2 className="section-title">Region detail</h2>
+              {fleetMap.regions.length === 0 ? null : (
                 <div className="policy-grid" style={{ marginBottom: '1.5rem' }}>
                   {fleetMap.regions.map((reg) => (
                     <article key={reg.region} className="policy-card">
@@ -528,43 +577,89 @@ export function Fleet() {
       )}
 
       {tab === 'agents' && (
-        <div className="table-wrap">
-          <table className="data">
-            <thead>
-              <tr>
-                <th>Agent</th>
-                <th>Runtime</th>
-                <th>Model</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {agents.length === 0 ? (
+        <>
+          {connectAgents.length > 0 && (
+            <>
+              <h2 className="section-title" style={{ marginTop: 0 }}>Connect agents (proxy path)</h2>
+              <div className="table-wrap" style={{ marginBottom: '1.5rem' }}>
+                <table className="data">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Token hint</th>
+                      <th>Last seen</th>
+                      <th>Status</th>
+                      <th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {connectAgents.map((a) => (
+                      <tr key={a.id}>
+                        <td><strong>{a.name}</strong></td>
+                        <td style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>…{a.token_hint}</td>
+                        <td style={{ color: 'var(--muted)' }}>{a.last_seen_at ? timeAgo(a.last_seen_at) : 'never'}</td>
+                        <td>
+                          <span className={`badge ${a.actions_paused ? 'warning' : 'success'}`}>
+                            {a.actions_paused ? 'Paused' : 'Active'}
+                          </span>
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-sm"
+                            disabled={agentPauseLoading === a.id}
+                            onClick={() => void toggleAgentPause(a)}
+                          >
+                            {a.actions_paused ? 'Resume' : 'Pause'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          <h2 className="section-title">{connectAgents.length > 0 ? 'SDK runtime agents' : 'Agents'}</h2>
+          <div className="table-wrap">
+            <table className="data">
+              <thead>
                 <tr>
-                  <td colSpan={4}>
-                    <EmptyState
-                      title="No agents registered"
-                      description="Register agents from your connected runtimes to see them listed here."
-                    />
-                  </td>
+                  <th>Agent</th>
+                  <th>Runtime</th>
+                  <th>Model</th>
+                  <th>Status</th>
                 </tr>
-              ) : (
-                agents.map((a) => (
-                  <tr key={a.id}>
-                    <td>
-                      <strong>{a.agent_id}</strong>
-                    </td>
-                    <td>{a.runtime_name ?? a.runtime_id.slice(0, 8)}</td>
-                    <td>{a.model ?? '—'}</td>
-                    <td>
-                      <span className="badge neutral">{a.status}</span>
+              </thead>
+              <tbody>
+                {agents.length === 0 ? (
+                  <tr>
+                    <td colSpan={4}>
+                      <EmptyState
+                        title={connectAgents.length > 0 ? 'No SDK runtime agents' : 'No agents registered'}
+                        description={
+                          connectAgents.length > 0
+                            ? 'Connect agents above use the proxy path. SDK runtime agents register when a runtime connects via Devices.'
+                            : 'Create agents on Connect Agent or register via SDK runtimes on Devices.'
+                        }
+                      />
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : (
+                  agents.map((a) => (
+                    <tr key={a.id}>
+                      <td><strong>{a.agent_id}</strong></td>
+                      <td>{a.runtime_name ?? a.runtime_id.slice(0, 8)}</td>
+                      <td>{a.model ?? '—'}</td>
+                      <td><span className="badge neutral">{a.status}</span></td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {tab === 'events' && (
@@ -573,27 +668,33 @@ export function Fleet() {
             <thead>
               <tr>
                 <th>Event</th>
-                <th>Agent</th>
+                <th>Agent / runtime</th>
+                <th>Details</th>
                 <th>Time</th>
               </tr>
             </thead>
             <tbody>
               {events.length === 0 ? (
                 <tr>
-                  <td colSpan={3}>
+                  <td colSpan={4}>
                     <EmptyState
                       title="No events yet"
-                      description="Events are emitted when runtimes connect and agents verify actions."
+                      description="Events are emitted when runtimes connect, agents verify actions, or fleet commands dispatch."
                     />
                   </td>
                 </tr>
               ) : (
                 events.map((e) => (
                   <tr key={e.id}>
-                    <td>
-                      <code className="inline-code">{e.event_type}</code>
-                    </td>
+                    <td><code className="inline-code">{e.event_type}</code></td>
                     <td style={{ color: 'var(--muted)' }}>{e.agent_id ?? '—'}</td>
+                    <td style={{ color: 'var(--muted)', fontSize: '0.8rem', maxWidth: '20rem' }}>
+                      {typeof e.payload === 'object' && e.payload && 'decision' in (e.payload as object)
+                        ? String((e.payload as { decision?: string }).decision)
+                        : typeof e.payload === 'object' && e.payload
+                          ? JSON.stringify(e.payload).slice(0, 80)
+                          : '—'}
+                    </td>
                     <td style={{ color: 'var(--muted)', whiteSpace: 'nowrap' }}>
                       {new Date(e.created_at).toLocaleString()}
                     </td>

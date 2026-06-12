@@ -92,9 +92,10 @@ type Props = {
   status: RuntimeStatus | null
   orgId?: string | null
   companionMode?: boolean
+  heldCount?: number
 }
 
-export function Sidebar({ page, onPage, status, orgId, companionMode }: Props) {
+export function Sidebar({ page, onPage, status, orgId, companionMode, heldCount = 0 }: Props) {
   const { user, signOut } = useAuth()
   const risk = riskModelStatusLine(status)
   const [panelOpen, setPanelOpen] = useState(false)
@@ -130,7 +131,14 @@ export function Sidebar({ page, onPage, status, orgId, companionMode }: Props) {
               className={`nav-item ${page === id ? 'active' : ''}`}
               onClick={() => onPage(id)}
             >
-              <Icon size={17} strokeWidth={1.75} aria-hidden />
+              <span style={{ position: 'relative', display: 'inline-flex' }}>
+                <Icon size={17} strokeWidth={1.75} aria-hidden />
+                {id === 'live-feed' && heldCount > 0 && (
+                  <span className="nav-item--more__badge" aria-label={`${heldCount} held`}>
+                    {heldCount > 9 ? '9+' : heldCount}
+                  </span>
+                )}
+              </span>
               <span className="nav-label nav-label--full">{label}</span>
               <span className="nav-label nav-label--short">{shortLabel}</span>
             </button>

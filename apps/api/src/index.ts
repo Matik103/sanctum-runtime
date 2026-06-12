@@ -1098,7 +1098,7 @@ app.post('/v1/actions/verify', {
     const adminClient = createSupabaseAdmin(supabaseAuth)
     const revocationCheck = adminClient
       .from('agent_registrations')
-      .select('id,token_iat_min')
+      .select('id,token_iat_min,actions_paused')
       .eq('id', agentClaims.id)
       .is('revoked_at', null)
       .maybeSingle()
@@ -1107,6 +1107,23 @@ app.post('/v1/actions/verify', {
       new Promise<{ data: null }>((res) => setTimeout(() => res({ data: null }), 2000)),
     ])
     if (!reg) return reply.status(401).send({ error: 'agent_token_revoked' })
+    if (reg.actions_paused) {
+      return reply.status(200).send({
+        id: crypto.randomUUID(),
+        correlationId: body.correlationId ?? crypto.randomUUID(),
+        actor: body.actor,
+        action: body.action,
+        context: body.context ?? {},
+        decision: 'BLOCKED',
+        risk: 'high',
+        reasoning: 'This agent is paused by an operator. Resume it from Runtime Fleet or Agents.',
+        policyPath: 'agent:paused',
+        anomalyFlags: ['agent_paused'],
+        modelInvoked: false,
+        modelConfidence: null,
+        timestamp: new Date().toISOString(),
+      })
+    }
     if (reg.token_iat_min != null) {
       // Extract iat from the token payload
       const rest = agentTokenRaw.slice('sk_agent_'.length)

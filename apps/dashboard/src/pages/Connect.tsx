@@ -2,6 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { Activity, ArrowRight, Check, Copy, ExternalLink, KeyRound, Loader2, Plug, Shield, Trash2, Zap } from 'lucide-react'
 import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
+import { ConnectSetupChecklist } from '../components/ConnectSetupChecklist'
+import { ConnectInlineAgentCreate } from '../components/ConnectInlineAgentCreate'
+import { useWorkspacePlan } from '../hooks/useWorkspacePlan'
+import { canUseConnectGate } from '../lib/billing'
 import {
   applyConnectPreset,
   applyConnectShieldPreset,
@@ -36,6 +40,8 @@ import { formatApiError } from '../lib/sanitize-error'
 
 const PLATFORMS: { id: PlatformId; name: string; flag: string }[] = [
   { id: 'openai', name: 'OpenAI', flag: '🤖' },
+  { id: 'claude', name: 'Claude', flag: '🧠' },
+  { id: 'azure', name: 'Azure OpenAI', flag: '☁️' },
   { id: 'deepseek', name: 'DeepSeek', flag: '🐋' },
   { id: 'qwen', name: 'Qwen / Alibaba', flag: '☁️' },
   { id: 'kimi', name: 'Kimi / Moonshot', flag: '🌙' },
@@ -218,12 +224,15 @@ type Props = {
 }
 
 export function Connect({ orgId, onPage }: Props) {
+  const { planId } = useWorkspacePlan()
   const [platform, setPlatform] = useState<PlatformId>('openai')
   const [selectedAgentId, setSelectedAgentId] = useState('')
   const [agents, setAgents] = useState<AgentOption[]>([])
   const [credentials, setCredentials] = useState<PlatformCredential[]>([])
   const [platformKeyInput, setPlatformKeyInput] = useState('')
+  const [azureBaseUrl, setAzureBaseUrl] = useState('')
   const [keyEntryOpen, setKeyEntryOpen] = useState(false)
+  const [verifyTestOk, setVerifyTestOk] = useState(false)
   const [lang, setLang] = useState<'python' | 'typescript'>('python')
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -362,9 +371,14 @@ export function Connect({ orgId, onPage }: Props) {
       setPlatformKeyInput('')
       setKeyEntryOpen(false)
       setTestMsg(null)
+      if (platform === 'azure' && savedCred?.proxy_base_url) {
+        setAzureBaseUrl(savedCred.proxy_base_url)
+      } else if (platform !== 'azure') {
+        setAzureBaseUrl('')
+      }
     }, 0)
     return () => window.clearTimeout(timer)
-  }, [platform, credEnvironment])
+  }, [platform, credEnvironment, savedCred?.proxy_base_url])
 
   const staleCredentials = health?.credentials.filter((c) => c.age_days >= 90) ?? []
 
@@ -380,6 +394,7 @@ export function Connect({ orgId, onPage }: Props) {
         platformKeyInput.trim(),
         selectedAgentId || null,
         credEnvironment,
+        platform === 'azure' ? azureBaseUrl.trim() : null,
       )
       setCredentials((prev) => {
         const rest = prev.filter(
@@ -474,6 +489,7 @@ export function Connect({ orgId, onPage }: Props) {
       const action = result.action ?? 'connect_verify_test_tool_call'
       const decision = result.decision ?? (result.ok ? 'APPROVED' : `HTTP ${result.status ?? 'failed'}`)
       if (result.ok) {
+        setVerifyTestOk(true)
         setTestMsg(`Verify pipeline OK: ${action} was ${decision}. Live Feed now has the dry-run audit event.`)
       } else {
         setTestMsg(null)
@@ -577,6 +593,16 @@ export function Connect({ orgId, onPage }: Props) {
 
       {error && (
         <PlanGateAlert message={error} onDismiss={() => setError(null)} style={{ marginBottom: '1rem' }} />
+      )}
+
+      {orgId && (
+        <ConnectSetupChecklist
+          planId={planId}
+          hasAgent={hasRunnableAgent}
+          hasPlatformKey={Boolean(savedCred)}
+          verifyTestOk={verifyTestOk}
+          liveFeedEvents={health?.events?.total ?? 0}
+        />
       )}
 
       {staleCredentials.length > 0 && (
@@ -766,6 +792,7 @@ export function Connect({ orgId, onPage }: Props) {
                 </button>
               </div>
             ) : (
+              <>
               <label className="connect-field-label">
                 Select agent
                 <select
@@ -781,6 +808,16 @@ export function Connect({ orgId, onPage }: Props) {
                   ))}
                 </select>
               </label>
+              {orgId && (
+                <ConnectInlineAgentCreate
+                  orgId={orgId}
+                  onCreated={(a) => {
+                    setAgents((prev) => [...prev, { id: a.id, name: a.name, token_hint: a.token_hint }])
+                    setSelectedAgentId(a.id)
+                  }}
+                />
+              )}
+              </>
             )}
             {selectedAgent && (
               <p className="connect-panel__note">
@@ -870,6 +907,16 @@ export function Connect({ orgId, onPage }: Props) {
 
           {keyEntryOpen && (
             <div className="connect-key-entry">
+              {platform === 'azure' && (
+                <input
+                  type="url"
+                  className="input"
+                  placeholder="Azure deployment base URL (required)"
+                  value={azureBaseUrl}
+                  onChange={(e) => setAzureBaseUrl(e.target.value)}
+                  style={{ marginBottom: '0.5rem' }}
+                />
+              )}
               <input
                 type="text"
                 className="input"
@@ -882,7 +929,7 @@ export function Connect({ orgId, onPage }: Props) {
                 spellCheck={false}
               />
               <div className="responsive-action-row">
-                <button type="button" className="btn btn-primary btn-sm" disabled={saving || !platformKeyInput.trim()} onClick={() => void handleSaveKey()}>
+                <button type="button" className="btn btn-primary btn-sm" disabled={saving || !platformKeyInput.trim() || (platform === 'azure' && !azureBaseUrl.trim())} onClick={() => void handleSaveKey()}>
                   {saving ? <Loader2 size={14} className="spin" /> : null}
                   {savedCred ? 'Update saved key' : 'Save platform key'}
                 </button>
@@ -993,11 +1040,18 @@ export function Connect({ orgId, onPage }: Props) {
             </h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', fontSize: '0.82rem' }}>
               <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
-                <span>Proxy mode</span>
+                <span>
+                  Proxy mode
+                  {!canUseConnectGate(planId) && (
+                    <span style={{ display: 'block', fontSize: '0.72rem', opacity: 0.6, marginTop: '0.15rem' }}>
+                      Gate requires Personal or higher
+                    </span>
+                  )}
+                </span>
                 <select
                   className="input"
                   value={settings.proxy_mode}
-                  disabled={settingsSaving}
+                  disabled={settingsSaving || !canUseConnectGate(planId)}
                   onChange={(e) => void handleSettingsChange({ proxy_mode: e.target.value as 'gate' | 'observe' })}
                   style={{ width: 'auto' }}
                 >

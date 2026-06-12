@@ -116,7 +116,7 @@ export async function registerAgentTokenRoutes(
 
     const { data, error } = await admin
       .from('agent_registrations')
-      .select('id,org_id,name,description,token_hint,created_by,created_at,last_seen_at')
+      .select('id,org_id,name,description,token_hint,created_by,created_at,last_seen_at,actions_paused,actions_paused_at,actions_paused_by')
       .eq('org_id', orgId)
       .is('revoked_at', null)
       .order('created_at', { ascending: false })
@@ -184,6 +184,54 @@ export async function registerAgentTokenRoutes(
 
     if (error) return reply.status(500).send({ error: error.message })
     return { ok: true }
+  })
+
+  async function setAgentPaused(
+    orgId: string,
+    agentId: string,
+    paused: boolean,
+    userId?: string,
+  ) {
+    const { data, error } = await admin
+      .from('agent_registrations')
+      .update({
+        actions_paused: paused,
+        actions_paused_at: paused ? new Date().toISOString() : null,
+        actions_paused_by: paused ? (userId ?? 'operator') : null,
+      })
+      .eq('id', agentId)
+      .eq('org_id', orgId)
+      .is('revoked_at', null)
+      .select('id,name,actions_paused,actions_paused_at,actions_paused_by')
+      .single()
+    if (error || !data) throw new Error(error?.message ?? 'agent_not_found')
+    return data
+  }
+
+  app.post('/v1/orgs/:orgId/agents/:agentId/pause', async (req, reply) => {
+    const { orgId, agentId } = req.params as { orgId: string; agentId: string }
+    orgIdSchema.parse(orgId)
+    const access = await resolveUser(req as SanctumReq, orgId, 'admin')
+    if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
+    try {
+      const row = await setAgentPaused(orgId, agentId, true, access.userId)
+      return { ok: true, agent: row }
+    } catch (e) {
+      return reply.status(404).send({ error: e instanceof Error ? e.message : 'agent_not_found' })
+    }
+  })
+
+  app.post('/v1/orgs/:orgId/agents/:agentId/resume', async (req, reply) => {
+    const { orgId, agentId } = req.params as { orgId: string; agentId: string }
+    orgIdSchema.parse(orgId)
+    const access = await resolveUser(req as SanctumReq, orgId, 'admin')
+    if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
+    try {
+      const row = await setAgentPaused(orgId, agentId, false, access.userId)
+      return { ok: true, agent: row }
+    } catch (e) {
+      return reply.status(404).send({ error: e instanceof Error ? e.message : 'agent_not_found' })
+    }
   })
 
   // Token rotation — POST /v1/orgs/:orgId/agents/:agentId/rotate

@@ -29,6 +29,16 @@ export function canUsePolicyEditor(planId: PlanId | string | null | undefined): 
   return normalizePlanId(planId) !== 'observer'
 }
 
+/** Connect gate mode (verify/block tool calls) requires Personal or higher. */
+export function canUseConnectGate(planId: PlanId | string | null | undefined): boolean {
+  return normalizePlanId(planId) !== 'observer'
+}
+
+export function canUseAdvancedFleet(planId: PlanId | string | null | undefined): boolean {
+  const p = normalizePlanId(planId)
+  return p === 'team' || p === 'enterprise'
+}
+
 export const POLICY_EDITOR_UPGRADE_MESSAGE =
   'Policy changes require Personal or higher. Developer plan is observe-only — upgrade on Billing to set approve, verify, and block rules.'
 

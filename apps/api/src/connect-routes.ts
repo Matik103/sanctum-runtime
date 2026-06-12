@@ -10,6 +10,7 @@ import { getConnectSettings, upsertConnectSettings } from './connect-settings.js
 import { CONNECT_POLICY_PRESETS, getConnectPreset } from './connect-presets.js'
 import { CONNECT_SHIELD_PRESETS, getConnectShieldPreset } from './connect-shield-presets.js'
 import { listConnectTools } from './connect-tool-registry.js'
+import { countHeldConnectEvents, listConnectProxyEvents } from './connect-live-feed.js'
 import { invalidateShieldRulesCache } from './shield-routes.js'
 import { issueAgentToken, verifyAgentToken } from './agent-tokens.js'
 import { gateProxyToolCall } from './proxy-gate.js'
@@ -595,5 +596,76 @@ export async function registerConnectRoutes(
       decision: entry.decision,
       reasoning,
     }
+  })
+
+  app.get('/v1/orgs/:orgId/connect/held-count', async (req, reply) => {
+    const user = (req as SanctumReq).sanctumUser
+    if (!user) return reply.status(403).send({ error: 'dashboard_auth_required' })
+    const { orgId } = req.params as { orgId: string }
+    if (!(await requireRole(cfg, orgId, user.id, 'viewer', reply))) return
+    const held = await countHeldConnectEvents(cfg, orgId)
+    return { ok: true, held, org_id: orgId }
+  })
+
+  app.get('/v1/orgs/:orgId/connect/live-feed', async (req, reply) => {
+    const user = (req as SanctumReq).sanctumUser
+    if (!user) return reply.status(403).send({ error: 'dashboard_auth_required' })
+    const { orgId } = req.params as { orgId: string }
+    if (!(await requireRole(cfg, orgId, user.id, 'viewer', reply))) return
+    const q = z
+      .object({
+        limit: z.coerce.number().int().min(1).max(200).optional(),
+        decision: z.string().optional(),
+        platform: z.string().optional(),
+        action: z.string().optional(),
+        agent_id: z.string().optional(),
+        held_only: z.coerce.boolean().optional(),
+      })
+      .parse(req.query ?? {})
+    const events = await listConnectProxyEvents(cfg, orgId, {
+      limit: q.limit,
+      decision: q.decision,
+      platform: q.platform,
+      action: q.action,
+      agentId: q.agent_id,
+      heldOnly: q.held_only,
+    })
+    return { ok: true, events, count: events.length }
+  })
+
+  app.get('/v1/orgs/:orgId/connect/live-feed/stream', async (req, reply) => {
+    const user = (req as SanctumReq).sanctumUser
+    if (!user) return reply.status(403).send({ error: 'dashboard_auth_required' })
+    const { orgId } = req.params as { orgId: string }
+    if (!(await requireRole(cfg, orgId, user.id, 'viewer', reply))) return
+
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+    })
+
+    let lastPayload = ''
+    const tick = async () => {
+      try {
+        const [events, held] = await Promise.all([
+          listConnectProxyEvents(cfg, orgId, { limit: 80 }),
+          countHeldConnectEvents(cfg, orgId),
+        ])
+        const payload = JSON.stringify({ events, held, at: new Date().toISOString() })
+        if (payload !== lastPayload) {
+          lastPayload = payload
+          reply.raw.write(`data: ${payload}\n\n`)
+        } else {
+          reply.raw.write(`: ping ${Date.now()}\n\n`)
+        }
+      } catch {
+        reply.raw.write(`event: error\ndata: {"message":"tick_failed"}\n\n`)
+      }
+    }
+
+    await tick()
+    const interval = setInterval(tick, 2000)
+    req.raw.on('close', () => clearInterval(interval))
   })
 }

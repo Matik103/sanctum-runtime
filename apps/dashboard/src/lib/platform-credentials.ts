@@ -1,7 +1,7 @@
 import { apiBaseUrl } from './api-url'
 import { getAccessToken } from './supabase'
 
-export type PlatformId = 'openai' | 'deepseek' | 'qwen' | 'kimi' | 'doubao' | 'gemini'
+export type PlatformId = 'openai' | 'deepseek' | 'qwen' | 'kimi' | 'doubao' | 'gemini' | 'claude' | 'azure'
 
 export type PlatformCredential = {
   id: string
@@ -10,6 +10,7 @@ export type PlatformCredential = {
   environment?: string
   key_suffix: string
   default_agent_id: string | null
+  proxy_base_url?: string | null
   configured: true
   created_at: string
   updated_at: string
@@ -45,6 +46,7 @@ export async function savePlatformCredential(
   secret: string,
   defaultAgentId?: string | null,
   environment?: 'development' | 'staging' | 'production',
+  proxyBaseUrl?: string | null,
 ): Promise<PlatformCredential> {
   const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/platform-credentials/${platform}`, {
     method: 'PUT',
@@ -53,6 +55,7 @@ export async function savePlatformCredential(
       secret,
       default_agent_id: defaultAgentId ?? null,
       environment,
+      proxy_base_url: proxyBaseUrl ?? null,
     }),
   })
   if (!res.ok) {

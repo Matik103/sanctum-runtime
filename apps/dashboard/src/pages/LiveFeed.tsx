@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Check, Eye, Radio, Wifi, WifiOff, X } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Bell, Check, Eye, ExternalLink, FileText, Radio, Settings, User, Wifi, WifiOff, X } from 'lucide-react'
 import { useLiveFeed, type ProxyEvent } from '../hooks/useLiveFeed'
 import { apiBaseUrl } from '../lib/api-url'
 import { resolveVerification } from '../lib/api'
@@ -11,24 +11,28 @@ import { formatApiError } from '../lib/sanitize-error'
 import type { PageId } from '../layout/Sidebar'
 
 const PLATFORM_LABELS: Record<string, string> = {
-  openai:   'OpenAI',
+  openai: 'OpenAI',
+  claude: 'Claude',
+  azure: 'Azure OpenAI',
   deepseek: 'DeepSeek',
-  qwen:     'Qwen',
-  kimi:     'Kimi',
-  doubao:   'Doubao',
-  gemini:   'Gemini',
+  qwen: 'Qwen',
+  kimi: 'Kimi',
+  doubao: 'Doubao',
+  gemini: 'Gemini',
 }
 
 const PLATFORM_FLAGS: Record<string, string> = {
-  openai:   '🤖',
+  openai: '🤖',
+  claude: '🧠',
+  azure: '☁️',
   deepseek: '🐋',
-  qwen:     '☁️',
-  kimi:     '🌙',
-  doubao:   '🎵',
-  gemini:   '✨',
+  qwen: '☁️',
+  kimi: '🌙',
+  doubao: '🎵',
+  gemini: '✨',
 }
 
-type AgentOption = { id: string; name: string }
+type FeedTab = 'all' | 'held'
 
 function DecisionBadge({ decision }: { decision: string }) {
   const tone =
@@ -85,6 +89,7 @@ function EventRow({
   onSelect,
   onResolve,
   onPolicy,
+  onPage,
   resolving,
   policySaving,
 }: {
@@ -94,6 +99,7 @@ function EventRow({
   onSelect: (e: ProxyEvent) => void
   onResolve: (e: ProxyEvent, decision: 'APPROVED' | 'BLOCKED') => void
   onPolicy: (e: ProxyEvent, mode: 'verify' | 'block' | 'approve') => void
+  onPage: (p: PageId) => void
   resolving: string | null
   policySaving: string | null
 }) {
@@ -110,10 +116,8 @@ function EventRow({
       tabIndex={0}
       onClick={() => onSelect(event)}
       onKeyDown={(e) => { if (e.key === 'Enter') onSelect(event) }}
-      style={{
-      fontSize: '0.82rem',
-      cursor: 'pointer',
-    }}>
+      style={{ fontSize: '0.82rem', cursor: 'pointer' }}
+    >
       <div className="live-feed-time" style={{ opacity: 0.55, fontSize: '0.75rem', paddingTop: '0.1rem' }}>
         {timeAgo(event.created_at)}
       </div>
@@ -126,9 +130,6 @@ function EventRow({
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
           <code style={{ fontWeight: 600, fontSize: '0.82rem' }}>{event.action}</code>
           <DecisionBadge decision={event.decision} />
-          {ctx.phase && (
-            <span style={{ fontSize: '0.62rem', opacity: 0.45 }}>{ctx.phase}</span>
-          )}
           {event.sourceTrust && (
             <span className={`badge ${event.sourceTrust === 'untrusted_content' ? 'danger' : event.sourceTrust === 'tool_output' ? 'warn' : 'neutral'}`}>
               {readable(event.sourceTrust)}
@@ -155,11 +156,24 @@ function EventRow({
             </div>
           )}
           {orgId && (
-            <div className="live-feed-policy-actions" style={{ display: 'flex', gap: '0.2rem', flexWrap: 'wrap' }}>
-              <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }} disabled={policySaving === event.id} onClick={() => onPolicy(event, 'verify')}>Hold tool</button>
-              <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }} disabled={policySaving === event.id} onClick={() => onPolicy(event, 'block')}>Block</button>
-              <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }} disabled={policySaving === event.id} onClick={() => onPolicy(event, 'approve')}>Auto-approve</button>
-            </div>
+            <>
+              <div className="live-feed-policy-actions" style={{ display: 'flex', gap: '0.2rem', flexWrap: 'wrap' }}>
+                <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }} disabled={policySaving === event.id} onClick={() => onPolicy(event, 'verify')}>Hold tool</button>
+                <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }} disabled={policySaving === event.id} onClick={() => onPolicy(event, 'block')}>Block</button>
+                <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }} disabled={policySaving === event.id} onClick={() => onPolicy(event, 'approve')}>Auto-approve</button>
+              </div>
+              <div style={{ display: 'flex', gap: '0.2rem', flexWrap: 'wrap' }}>
+                <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: '0.62rem', padding: '0.08rem 0.3rem' }} title="View agent" onClick={() => onPage('agents')}>
+                  <User size={11} />
+                </button>
+                <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: '0.62rem', padding: '0.08rem 0.3rem' }} title="Open audit" onClick={() => onPage('audit')}>
+                  <FileText size={11} />
+                </button>
+                <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: '0.62rem', padding: '0.08rem 0.3rem' }} title="Edit policies" onClick={() => onPage('policies')}>
+                  <Settings size={11} />
+                </button>
+              </div>
+            </>
           )}
         </div>
       )}
@@ -167,82 +181,21 @@ function EventRow({
   )
 }
 
-function DetailDrawer({
-  event,
-  onClose,
-}: {
-  event: ProxyEvent
-  onClose: () => void
-}) {
+function DetailDrawer({ event, onClose }: { event: ProxyEvent; onClose: () => void }) {
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 100,
-        display: 'flex',
-        justifyContent: 'flex-end',
-        background: 'rgba(0,0,0,0.45)',
-      }}
-      onClick={onClose}
-    >
-      <div
-        className="card"
-        style={{
-          width: 'min(420px, 100%)',
-          height: '100%',
-          borderRadius: 0,
-          padding: '1.25rem',
-          overflowY: 'auto',
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', justifyContent: 'flex-end', background: 'rgba(0,0,0,0.45)' }} onClick={onClose}>
+      <div className="card" style={{ width: 'min(420px, 100%)', height: '100%', borderRadius: 0, padding: '1.25rem', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h2 style={{ margin: 0, fontSize: '1rem' }}>Audit detail</h2>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
-            <X size={16} />
-          </button>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}><X size={16} /></button>
         </div>
         <dl style={{ fontSize: '0.82rem', display: 'grid', gap: '0.65rem' }}>
           <div><dt style={{ opacity: 0.55 }}>Action</dt><dd><code>{event.action}</code></dd></div>
           <div><dt style={{ opacity: 0.55 }}>Decision</dt><dd><DecisionBadge decision={event.decision} /></dd></div>
           <div><dt style={{ opacity: 0.55 }}>Platform</dt><dd>{event.context.platform}</dd></div>
           <div><dt style={{ opacity: 0.55 }}>Agent</dt><dd>{event.context.agent_name ?? event.actor}</dd></div>
-          {event.correlation_id && (
-            <div><dt style={{ opacity: 0.55 }}>Correlation</dt><dd style={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{event.correlation_id}</dd></div>
-          )}
-          {event.reasoning && (
-            <div><dt style={{ opacity: 0.55 }}>Reasoning</dt><dd>{event.reasoning}</dd></div>
-          )}
-          {event.sourceTrust && (
-            <div><dt style={{ opacity: 0.55 }}>Instruction source</dt><dd>{readable(event.sourceTrust)}</dd></div>
-          )}
-          {event.blastRadius && (
-            <div>
-              <dt style={{ opacity: 0.55 }}>Blast radius</dt>
-              <dd style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
-                <span className={`badge ${blastTone(event.blastRadius.level)}`}>
-                  {event.blastRadius.level} · {event.blastRadius.score}/100
-                </span>
-                {event.blastRadius.estimatedValue != null && (
-                  <span className="badge neutral">${event.blastRadius.estimatedValue.toLocaleString()} at risk</span>
-                )}
-                {event.blastRadius.externalDestination && <span className="badge warn">external</span>}
-                {event.blastRadius.physicalWorld && <span className="badge danger">physical world</span>}
-              </dd>
-            </div>
-          )}
-          {event.actionIdentity && (
-            <div>
-              <dt style={{ opacity: 0.55 }}>Action passport</dt>
-              <dd style={{ fontSize: '0.78rem', lineHeight: 1.55 }}>
-                {event.actionIdentity.requestedPermission && <div>Permission: {event.actionIdentity.requestedPermission}</div>}
-                {event.actionIdentity.toolId && <div>Tool: {event.actionIdentity.toolId}</div>}
-                {event.actionIdentity.runtimeId && <div>Runtime: {event.actionIdentity.runtimeId}</div>}
-                {event.actionIdentity.scope?.length ? <div>Scope: {event.actionIdentity.scope.join(' · ')}</div> : null}
-              </dd>
-            </div>
-          )}
+          {event.correlation_id && <div><dt style={{ opacity: 0.55 }}>Correlation</dt><dd style={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{event.correlation_id}</dd></div>}
+          {event.reasoning && <div><dt style={{ opacity: 0.55 }}>Reasoning</dt><dd>{event.reasoning}</dd></div>}
           <div><dt style={{ opacity: 0.55 }}>Arguments</dt><dd><ArgView value={event.context.arguments} /></dd></div>
           <div><dt style={{ opacity: 0.55 }}>When</dt><dd>{new Date(event.created_at).toLocaleString()}</dd></div>
         </dl>
@@ -254,10 +207,15 @@ function DetailDrawer({
 type Props = {
   orgId?: string | null
   onPage: (p: PageId) => void
+  onHeldChange?: () => void
 }
 
-export function LiveFeed({ orgId, onPage }: Props) {
-  const { events, connected, loading, patchEvent } = useLiveFeed(orgId)
+export function LiveFeed({ orgId, onPage, onHeldChange }: Props) {
+  const [tab, setTab] = useState<FeedTab>('all')
+  const [platformFilter, setPlatformFilter] = useState('')
+  const [agentFilter, setAgentFilter] = useState('')
+  const [toolFilter, setToolFilter] = useState('')
+  const [decisionFilter, setDecisionFilter] = useState('')
   const [agentNames, setAgentNames] = useState<Record<string, string>>({})
   const [selected, setSelected] = useState<ProxyEvent | null>(null)
   const [resolving, setResolving] = useState<string | null>(null)
@@ -265,10 +223,18 @@ export function LiveFeed({ orgId, onPage }: Props) {
   const [resolveError, setResolveError] = useState<string | null>(null)
   const [policyMsg, setPolicyMsg] = useState<string | null>(null)
 
+  const filters = useMemo(() => ({
+    heldOnly: tab === 'held',
+    platform: platformFilter || undefined,
+    agentId: agentFilter || undefined,
+    action: toolFilter || undefined,
+    decision: decisionFilter || undefined,
+  }), [tab, platformFilter, agentFilter, toolFilter, decisionFilter])
+
+  const { events, connected, loading, heldCount, patchEvent } = useLiveFeed(orgId, filters)
+
   async function handlePolicy(event: ProxyEvent, mode: 'verify' | 'block' | 'approve') {
     if (!orgId) return
-    // Always apply to the org that owns the event, not whatever org the page
-    // happens to be on — guards against mixed-org feeds.
     const targetOrg = event.org_id || orgId
     setPolicySaving(event.id)
     setPolicyMsg(null)
@@ -288,6 +254,7 @@ export function LiveFeed({ orgId, onPage }: Props) {
     try {
       await resolveVerification(event.id, decision)
       patchEvent(event.id, { decision, reasoning: decision === 'APPROVED' ? 'Approved from Live Feed.' : 'Blocked from Live Feed.' })
+      onHeldChange?.()
     } catch (e) {
       setResolveError(formatApiError(e, 'Resolve failed'))
     } finally {
@@ -303,10 +270,16 @@ export function LiveFeed({ orgId, onPage }: Props) {
       if (token) headers['Authorization'] = `Bearer ${token}`
       const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/agents`, { headers })
       if (!res.ok) return
-      const list = (await res.json()) as AgentOption[]
+      const list = (await res.json()) as Array<{ id: string; name: string }>
       setAgentNames(Object.fromEntries(list.map((a) => [a.id, a.name])))
     })()
   }, [orgId])
+
+  useEffect(() => {
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      void Notification.requestPermission()
+    }
+  }, [])
 
   return (
     <div className="page">
@@ -315,76 +288,80 @@ export function LiveFeed({ orgId, onPage }: Props) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Eye size={22} strokeWidth={1.75} />
             <h1 className="page-title" style={{ margin: 0 }}>Live Feed</h1>
-            <span
-              title={connected ? 'Real-time connected' : 'Connecting…'}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', padding: '0.15rem 0.5rem', borderRadius: '1rem', background: connected ? 'var(--success-muted, rgba(34,197,94,0.12))' : 'var(--surface-2, #1a1a2e)', color: connected ? 'var(--success, #22c55e)' : 'var(--muted, #888)' }}
-            >
+            <span title={connected ? 'Updating every ~2s' : 'Connecting…'} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', padding: '0.15rem 0.5rem', borderRadius: '1rem', background: connected ? 'var(--success-muted, rgba(34,197,94,0.12))' : 'var(--surface-2, #1a1a2e)', color: connected ? 'var(--success, #22c55e)' : 'var(--muted, #888)' }}>
               {connected ? <Wifi size={11} /> : <WifiOff size={11} />}
-              {connected ? 'live' : 'connecting'}
+              {connected ? 'live · 2s' : 'connecting'}
             </span>
+            {heldCount > 0 && (
+              <span className="badge warning" style={{ fontSize: '0.72rem' }}>
+                <Bell size={11} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                {heldCount} held
+              </span>
+            )}
           </div>
           <p className="page-subtitle" style={{ marginTop: '0.25rem' }}>
-            Connect Agent gates each tool call through Sanctum verify (same as the SDK). Approve or deny held items inline — the proxy releases waiting requests automatically.
+            Connect Agent gates each tool call through Sanctum verify. Approve held actions inline — the proxy releases waiting requests automatically.
           </p>
         </div>
-        <button
-          type="button"
-          className="btn btn-ghost"
-          onClick={() => onPage('connect')}
-          style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem' }}
-        >
+        <button type="button" className="btn btn-ghost" onClick={() => onPage('connect')} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem' }}>
           <Radio size={14} />
           Connect an agent
         </button>
       </div>
 
-      {policyMsg && (
-        <div className="alert alert--info" style={{ marginBottom: '0.75rem' }}>
-          <div className="alert__body">{policyMsg}</div>
+      <div className="live-feed-toolbar card" style={{ padding: '0.75rem 1rem', marginBottom: '0.75rem' }}>
+        <div className="live-feed-tabs" style={{ display: 'flex', gap: '0.35rem', marginBottom: '0.65rem', flexWrap: 'wrap' }}>
+          {(['all', 'held'] as const).map((t) => (
+            <button key={t} type="button" className={`btn btn-sm ${tab === t ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setTab(t)}>
+              {t === 'all' ? 'All events' : `Held queue${heldCount ? ` (${heldCount})` : ''}`}
+            </button>
+          ))}
         </div>
-      )}
+        <div className="live-feed-filters" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.5rem' }}>
+          <select className="input" value={platformFilter} onChange={(e) => setPlatformFilter(e.target.value)} aria-label="Filter platform">
+            <option value="">All platforms</option>
+            {Object.entries(PLATFORM_LABELS).map(([id, label]) => (
+              <option key={id} value={id}>{label}</option>
+            ))}
+          </select>
+          <select className="input" value={agentFilter} onChange={(e) => setAgentFilter(e.target.value)} aria-label="Filter agent">
+            <option value="">All agents</option>
+            {Object.entries(agentNames).map(([id, name]) => (
+              <option key={id} value={id}>{name}</option>
+            ))}
+          </select>
+          <select className="input" value={decisionFilter} onChange={(e) => setDecisionFilter(e.target.value)} aria-label="Filter decision">
+            <option value="">All decisions</option>
+            <option value="APPROVED">Approved</option>
+            <option value="REQUIRE_VERIFICATION">Held</option>
+            <option value="BLOCKED">Blocked</option>
+          </select>
+          <input className="input" placeholder="Filter tool name…" value={toolFilter} onChange={(e) => setToolFilter(e.target.value)} aria-label="Filter tool" />
+        </div>
+      </div>
 
+      {policyMsg && (
+        <div className="alert alert--info" style={{ marginBottom: '0.75rem' }}><div className="alert__body">{policyMsg}</div></div>
+      )}
       {resolveError && (
         <PlanGateAlert message={resolveError} onDismiss={() => setResolveError(null)} style={{ marginBottom: '0.75rem' }} />
       )}
 
       <div className="card live-feed-card">
-        <div className="live-feed-header" style={{
-          fontSize: '0.72rem',
-          fontWeight: 600,
-          textTransform: 'uppercase',
-          letterSpacing: '0.05em',
-          opacity: 0.5,
-        }}>
-          <span>When</span>
-          <span>Sanctum agent</span>
-          <span>Platform</span>
-          <span>Tool call</span>
+        <div className="live-feed-header" style={{ fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.5 }}>
+          <span>When</span><span>Sanctum agent</span><span>Platform</span><span>Tool call</span>
         </div>
-
-        {loading && (
-          <div style={{ padding: '2rem', textAlign: 'center', opacity: 0.5, fontSize: '0.85rem' }}>
-            Loading…
-          </div>
-        )}
-
+        {loading && <div style={{ padding: '2rem', textAlign: 'center', opacity: 0.5, fontSize: '0.85rem' }}>Loading…</div>}
         {!loading && events.length === 0 && (
           <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
             <Eye size={32} strokeWidth={1.25} style={{ opacity: 0.2, marginBottom: '0.75rem' }} />
-            <p style={{ fontWeight: 600, marginBottom: '0.25rem' }}>No tool calls yet</p>
+            <p style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{tab === 'held' ? 'No held actions' : 'No tool calls yet'}</p>
             <p style={{ fontSize: '0.83rem', opacity: 0.55, marginBottom: '1rem' }}>
-              Once your agent makes a tool call through the proxy, it will appear here instantly.
+              {tab === 'held' ? 'When a tool call requires approval it appears here instantly.' : 'Once your agent makes a tool call through the proxy, it will appear here within ~2 seconds.'}
             </p>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => onPage('connect')}
-            >
-              Connect your agent
-            </button>
+            <button type="button" className="btn btn-primary" onClick={() => onPage('connect')}>Connect your agent</button>
           </div>
         )}
-
         {!loading && events.map((e) => (
           <EventRow
             key={e.id}
@@ -394,19 +371,21 @@ export function LiveFeed({ orgId, onPage }: Props) {
             onSelect={setSelected}
             onResolve={(ev, d) => void handleResolve(ev, d)}
             onPolicy={(ev, m) => void handlePolicy(ev, m)}
+            onPage={onPage}
             resolving={resolving}
             policySaving={policySaving}
           />
         ))}
       </div>
 
-      {selected && (
-        <DetailDrawer event={selected} onClose={() => setSelected(null)} />
-      )}
+      {selected && <DetailDrawer event={selected} onClose={() => setSelected(null)} />}
 
       {events.length > 0 && (
         <p style={{ fontSize: '0.75rem', opacity: 0.4, marginTop: '0.5rem', textAlign: 'right' }}>
-          Showing last {events.length} tool calls · Updates in real time
+          Showing {events.length} tool call{events.length === 1 ? '' : 's'} · Updates every ~2s
+          <button type="button" className="btn btn-ghost btn-sm" style={{ marginLeft: '0.5rem' }} onClick={() => onPage('audit')}>
+            <ExternalLink size={12} /> Full audit
+          </button>
         </p>
       )}
     </div>
