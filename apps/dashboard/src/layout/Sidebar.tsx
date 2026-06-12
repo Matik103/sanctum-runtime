@@ -9,6 +9,7 @@ import {
   FileText,
   GitBranch,
   History,
+  KeyRound,
   LayoutDashboard,
   LogOut,
   Monitor,
@@ -43,6 +44,7 @@ export type PageId =
   | 'assurance'
   | 'governance'
   | 'compliance'
+  | 'permissions'
   | 'agents'
   | 'devices'
   | 'fleet'
@@ -76,6 +78,7 @@ const NAV: { id: PageId; label: string; shortLabel: string; icon: typeof LayoutD
   { id: 'policy-history',   label: 'Policy History',    shortLabel: 'History',   icon: History },
   { id: 'workflow-builder', label: 'Policy Composer',   shortLabel: 'Composer',  icon: GitBranch },
   { id: 'governance',       label: 'Governance',        shortLabel: 'Govern',    icon: CheckSquare },
+  { id: 'permissions',      label: 'Permission graph',  shortLabel: 'Perms',     icon: KeyRound },
   { id: 'assurance',        label: 'Assurance',         shortLabel: 'Assurance', icon: ShieldCheck },
   { id: 'compliance',       label: 'Compliance',        shortLabel: 'Comply',    icon: FileText },
   { id: 'agents',           label: 'Agents',            shortLabel: 'Agents',    icon: Bot },
@@ -89,7 +92,7 @@ const NAV: { id: PageId; label: string; shortLabel: string; icon: typeof LayoutD
 const NAV_GROUPS: { label: string; ids: PageId[] }[] = [
   { label: 'Start', ids: ['overview', 'connect', 'live-feed'] },
   { label: 'Observe', ids: ['activity', 'audit', 'threats', 'alerts', 'shield', 'shield-rules'] },
-  { label: 'Govern', ids: ['policies', 'policy-history', 'workflow-builder', 'governance', 'assurance', 'compliance'] },
+  { label: 'Govern', ids: ['policies', 'policy-history', 'workflow-builder', 'governance', 'permissions', 'assurance', 'compliance'] },
   { label: 'Fleet', ids: ['agents', 'devices', 'fleet', 'marketplace'] },
   { label: 'Account', ids: ['billing', 'settings'] },
 ]

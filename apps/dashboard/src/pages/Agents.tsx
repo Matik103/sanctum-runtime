@@ -268,6 +268,11 @@ export function Agents({ onOpenDevices, onPage }: Props) {
             ))}
           </select>
         )}
+        {onPage && (
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => onPage('permissions')}>
+            Permission graph
+          </button>
+        )}
       </header>
 
       <AgentPathsExplainer onPage={onPage} compact />

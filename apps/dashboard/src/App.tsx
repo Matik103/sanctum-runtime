@@ -29,6 +29,7 @@ const PolicyHistory = lazy(() => import('./pages/PolicyHistory').then((m) => ({ 
 const WorkflowBuilder = lazy(() => import('./pages/WorkflowBuilder').then((m) => ({ default: m.WorkflowBuilder })))
 const Assurance = lazy(() => import('./pages/Assurance').then((m) => ({ default: m.Assurance })))
 const Governance = lazy(() => import('./pages/Governance').then((m) => ({ default: m.Governance })))
+const Permissions = lazy(() => import('./pages/Permissions').then((m) => ({ default: m.Permissions })))
 const Compliance = lazy(() => import('./pages/Compliance').then((m) => ({ default: m.Compliance })))
 const Devices = lazy(() => import('./pages/Devices').then((m) => ({ default: m.Devices })))
 const Fleet = lazy(() => import('./pages/Fleet').then((m) => ({ default: m.Fleet })))
@@ -51,6 +52,7 @@ const PAGE_IDS: PageId[] = [
   'workflow-builder',
   'assurance',
   'governance',
+  'permissions',
   'compliance',
   'agents',
   'devices',
@@ -247,6 +249,7 @@ export function App() {
           {page === 'workflow-builder' && <ErrorBoundary page="Policy Composer"><WorkflowBuilder /></ErrorBoundary>}
           {page === 'assurance' && <ErrorBoundary page="Assurance"><Assurance /></ErrorBoundary>}
           {page === 'governance' && <ErrorBoundary page="Governance"><Governance /></ErrorBoundary>}
+          {page === 'permissions' && <ErrorBoundary page="Permission graph"><Permissions onPage={onPage} /></ErrorBoundary>}
           {page === 'compliance' && <ErrorBoundary page="Compliance"><Compliance /></ErrorBoundary>}
           {page === 'devices' && <ErrorBoundary page="Devices"><Devices status={status} /></ErrorBoundary>}
           {page === 'fleet' && <ErrorBoundary page="Runtime Fleet"><Fleet onPage={onPage} /></ErrorBoundary>}
