@@ -10,6 +10,7 @@ import { decisionLabel } from '../lib/labels'
 import { PlanGateAlert } from '../components/PlanGateAlert'
 import { formatApiError } from '../lib/sanitize-error'
 import type { PageId } from '../layout/Sidebar'
+import type { NavigateQuery } from '../lib/navigate'
 
 const PLATFORM_LABELS: Record<string, string> = {
   openai: 'OpenAI',
@@ -104,7 +105,7 @@ function EventRow({
   onSelect: (e: ProxyEvent) => void
   onResolve: (e: ProxyEvent, decision: 'APPROVED' | 'BLOCKED') => void
   onPolicy: (e: ProxyEvent, mode: 'verify' | 'block' | 'approve') => void
-  onPage: (p: PageId) => void
+  onPage: (p: PageId, query?: NavigateQuery) => void
   resolving: string | null
   policySaving: string | null
 }) {
@@ -158,7 +159,16 @@ function EventRow({
               <button type="button" className="btn btn-ghost btn-sm" disabled={resolving === event.id} title="Deny" onClick={() => onResolve(event, 'BLOCKED')}>
                 <X size={14} />
               </button>
-              <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: '0.62rem', padding: '0.08rem 0.35rem' }} title="Open governance approvals" onClick={() => onPage('governance')}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                style={{ fontSize: '0.62rem', padding: '0.08rem 0.35rem' }}
+                title="Open governance workflow for this action"
+                onClick={() => onPage('governance', {
+                  focus_action: event.action,
+                  correlation: event.correlation_id ?? event.id,
+                })}
+              >
                 <CheckSquare size={11} />
               </button>
             </div>
@@ -214,7 +224,7 @@ function DetailDrawer({ event, onClose }: { event: ProxyEvent; onClose: () => vo
 
 type Props = {
   orgId?: string | null
-  onPage: (p: PageId) => void
+  onPage: (p: PageId, query?: NavigateQuery) => void
   onHeldChange?: () => void
 }
 

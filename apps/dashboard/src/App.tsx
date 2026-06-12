@@ -17,6 +17,7 @@ import { fetchMyOrgs } from './lib/fleet'
 import { useOfflineQueue } from './hooks/useOfflineQueue'
 import { PlanGateAlert } from './components/PlanGateAlert'
 import { formatApiError } from './lib/sanitize-error'
+import { buildPageUrl, type NavigateQuery } from './lib/navigate'
 
 const RuntimeActivity = lazy(() => import('./pages/RuntimeActivity').then((m) => ({ default: m.RuntimeActivity })))
 const ThreatMonitor = lazy(() => import('./pages/ThreatMonitor').then((m) => ({ default: m.ThreatMonitor })))
@@ -137,14 +138,12 @@ export function App() {
   const { pendingCount: offlinePending, syncing: offlineSyncing } = useOfflineQueue(() => { void refresh() })
 
   const onSelect = (e: ActionResult) => setSelected(e)
-  const onPage = useCallback((nextPage: PageId) => {
-    if (nextPage === page) {
+  const onPage = useCallback((nextPage: PageId, query?: NavigateQuery) => {
+    if (nextPage === page && !query) {
       scrollPageToTop()
       return
     }
-    const params = new URLSearchParams(window.location.search)
-    params.set('page', nextPage)
-    window.history.pushState(null, '', `${window.location.pathname}?${params.toString()}`)
+    window.history.pushState(null, '', buildPageUrl(nextPage, query))
     setPage(nextPage)
     scrollPageToTop()
   }, [page])

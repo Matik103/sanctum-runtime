@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiBaseUrl } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
+import { isAuditRealtimeEnabled, useAuditEventsRealtime } from './useAuditEventsRealtime'
 
 export type ProxyEvent = {
   id: string
@@ -81,6 +82,8 @@ export function useLiveFeed(orgId: string | null | undefined, filters: LiveFeedF
     setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)))
   }, [])
 
+  const loadRef = useRef<(showLoading?: boolean) => Promise<void>>(async () => {})
+
   useEffect(() => {
     if (!orgId) return
     let cancelled = false
@@ -103,8 +106,10 @@ export function useLiveFeed(orgId: string | null | undefined, filters: LiveFeedF
       setConnected(true)
     }
 
+    loadRef.current = load
     void load(true)
-    const pollId = window.setInterval(() => void load(false), 2000)
+    const pollMs = isAuditRealtimeEnabled() ? 15_000 : 2_000
+    const pollId = window.setInterval(() => void load(false), pollMs)
 
     return () => {
       cancelled = true
@@ -112,6 +117,10 @@ export function useLiveFeed(orgId: string | null | undefined, filters: LiveFeedF
       setConnected(false)
     }
   }, [orgId, filtersKey])
+
+  useAuditEventsRealtime(orgId, () => {
+    void loadRef.current(false)
+  })
 
   return { events, connected, loading, heldCount, patchEvent }
 }

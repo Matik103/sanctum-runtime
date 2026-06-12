@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { fetchHeldConnectCount } from '../lib/agents-api'
+import { isAuditRealtimeEnabled, useAuditEventsRealtime } from './useAuditEventsRealtime'
 
 /** Poll held Connect verification count for sidebar badge + notifications. */
 export function useHeldCount(orgId: string | null | undefined) {
@@ -26,9 +27,14 @@ export function useHeldCount(orgId: string | null | undefined) {
 
   useEffect(() => {
     void refresh()
-    const id = window.setInterval(() => void refresh(), 8000)
+    const pollMs = isAuditRealtimeEnabled() ? 20_000 : 8_000
+    const id = window.setInterval(() => void refresh(), pollMs)
     return () => window.clearInterval(id)
   }, [refresh])
+
+  useAuditEventsRealtime(orgId, () => {
+    void refresh()
+  })
 
   return { held, refreshHeld: refresh }
 }

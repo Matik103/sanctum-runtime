@@ -199,6 +199,50 @@
   line-height: 1.45;
 }
 
+.sf-persona {
+  padding: 0.55rem 0.85rem 0.65rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.sf-persona__label {
+  display: block;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 0.35rem;
+}
+
+.sf-persona__toggle {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.sf-persona__btn {
+  flex: 1;
+  font-size: 0.68rem;
+  padding: 0.25rem 0.35rem;
+  border-radius: 0.35rem;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.sf-persona__btn--active {
+  border-color: var(--link);
+  color: var(--link);
+  background: rgba(79, 124, 255, 0.08);
+}
+
+.governance-row--focus {
+  background: rgba(251, 191, 36, 0.08);
+}
+
+.governance-row--focus td:first-child {
+  box-shadow: inset 3px 0 0 var(--warning, #f59e0b);
+}
+
 .permission-graph {
   display: flex;
   flex-wrap: wrap;

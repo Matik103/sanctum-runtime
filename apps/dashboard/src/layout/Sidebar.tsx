@@ -29,6 +29,7 @@ import { useAuth } from '../auth/AuthProvider'
 import { riskModelStatusLine } from '../lib/risk-label'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { useInAppNotifications } from '../hooks/useInAppNotifications'
+import { useConsolePersona, type ConsolePersona, PERSONA_NAV } from '../hooks/useConsolePersona'
 import { NotificationPanel } from '../components/NotificationPanel'
 
 export type PageId =
@@ -101,7 +102,7 @@ const NAV_BY_ID = Object.fromEntries(NAV.map((n) => [n.id, n])) as Record<PageId
 
 type Props = {
   page: PageId
-  onPage: (p: PageId) => void
+  onPage: (p: PageId, query?: Record<string, string>) => void
   status: RuntimeStatus | null
   orgId?: string | null
   companionMode?: boolean
@@ -110,11 +111,18 @@ type Props = {
 
 export function Sidebar({ page, onPage, status, orgId, companionMode, heldCount = 0 }: Props) {
   const { user, signOut } = useAuth()
+  const { persona, setPersona, label: personaLabel } = useConsolePersona()
   const risk = riskModelStatusLine(status)
   const [panelOpen, setPanelOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
 
   const { notifications, unread, seenIds, markAllRead } = useInAppNotifications(orgId)
+  const allowedNav = PERSONA_NAV[persona]
+  const filteredGroups = companionMode
+    ? NAV_GROUPS
+    : allowedNav
+      ? NAV_GROUPS.map((g) => ({ ...g, ids: g.ids.filter((id) => allowedNav.includes(id)) })).filter((g) => g.ids.length > 0)
+      : NAV_GROUPS
   const navItems = companionMode ? NAV.filter((n) => COMPANION_NAV_IDS.includes(n.id)) : NAV
   const overflowItems = companionMode ? NAV.filter((n) => !COMPANION_NAV_IDS.includes(n.id)) : []
 
@@ -158,7 +166,7 @@ export function Sidebar({ page, onPage, status, orgId, companionMode, heldCount 
               </button>
             ))
           ) : (
-            NAV_GROUPS.map((group) => (
+            filteredGroups.map((group) => (
               <div key={group.label} className="nav-group">
                 <div className="nav-group__label">{group.label}</div>
                 {group.ids.map((id) => {
@@ -208,6 +216,23 @@ export function Sidebar({ page, onPage, status, orgId, companionMode, heldCount 
         </nav>
 
         <div className="sidebar-footer">
+          {!companionMode && (
+            <div className="sf-persona" aria-label="Console persona">
+              <span className="sf-persona__label">View as {personaLabel}</span>
+              <div className="sf-persona__toggle">
+                {(['developer', 'operator', 'compliance'] as ConsolePersona[]).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    className={`sf-persona__btn${persona === p ? ' sf-persona__btn--active' : ''}`}
+                    onClick={() => setPersona(p)}
+                  >
+                    {p === 'developer' ? 'Dev' : p === 'compliance' ? 'Comply' : 'Ops'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {/* Notifications row */}
           <button
             type="button"

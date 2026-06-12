@@ -8,6 +8,7 @@ import { Alert } from '../components/ui/Alert'
 import { PlanGateAlert } from '../components/PlanGateAlert'
 import { TabBar } from '../components/ui/TabBar'
 import { fetchMyOrgs } from '../lib/fleet'
+import { readPageQuery } from '../lib/navigate'
 
 type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'expired' | 'escalated'
 
@@ -71,6 +72,17 @@ export function Governance() {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ text: string; variant: 'success' | 'error' } | null>(null)
   const [newWf, setNewWf] = useState<Partial<Workflow> | null>(null)
+  const [focusAction, setFocusAction] = useState<string | null>(null)
+
+  useEffect(() => {
+    const params = readPageQuery()
+    const action = params.get('focus_action')
+    if (action) {
+      setTab('approvals')
+      setStatusFilter('pending')
+      setFocusAction(action)
+    }
+  }, [])
 
   useEffect(() => {
     fetchMyOrgs().then((orgs) => { if (orgs[0]) setOrgId(orgs[0].org_id) }).catch(() => {})
@@ -161,6 +173,12 @@ export function Governance() {
         </div>
       </header>
 
+      {focusAction && (
+        <Alert variant="info" onDismiss={() => setFocusAction(null)} style={{ marginBottom: '1rem' }}>
+          Showing pending approvals matching <code>{focusAction}</code> from Live Feed.
+        </Alert>
+      )}
+
       {msg && (
         msg.variant === 'error'
           ? <PlanGateAlert message={msg.text} onDismiss={() => setMsg(null)} style={{ marginBottom: '1rem' }} />
@@ -206,7 +224,10 @@ export function Governance() {
                 {approvals.length === 0 ? (
                   <tr><td colSpan={7} className="empty">No approvals {statusFilter !== 'all' ? `with status "${statusFilter}"` : ''}</td></tr>
                 ) : approvals.map((a) => (
-                  <tr key={a.id}>
+                  <tr
+                    key={a.id}
+                    className={focusAction && a.action === focusAction ? 'governance-row--focus' : undefined}
+                  >
                     <td>
                       <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                         {statusIcon(a.status)}
