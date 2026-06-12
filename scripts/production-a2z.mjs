@@ -497,6 +497,18 @@ async function main() {
     r.skip('module write flows (bootstrap required)')
   }
 
+  r.section('H2 — Console pages (per-sidebar API smoke)')
+  if (orgId && key) {
+    try {
+      await run('node', ['scripts/test-pages-production.mjs'], { SANCTUM_API_URL: PROD_API })
+      r.ok('console page smoke (22 pages)')
+    } catch (e) {
+      r.bad('console page smoke', e.message)
+    }
+  } else {
+    r.skip('console page smoke (bootstrap required)')
+  }
+
   r.section('G — Fleet & attestation (inline)')
   if (key && orgId) {
     const challenge = await apiJson(

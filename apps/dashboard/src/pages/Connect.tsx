@@ -35,6 +35,7 @@ import {
   type PlatformId,
 } from '../lib/platform-credentials'
 import type { PageId } from '../layout/Sidebar'
+import { Alert } from '../components/ui/Alert'
 import { PlanGateAlert } from '../components/PlanGateAlert'
 import { formatApiError } from '../lib/sanitize-error'
 
@@ -540,7 +541,13 @@ export function Connect({ orgId, onPage }: Props) {
     try {
       const next = await promoteConnectToGate(orgId)
       setSettings(next)
-      setTestMsg('Promoted to gate mode — tool calls are now verified.')
+      const [presetRes, settingsRes] = await Promise.all([
+        fetchConnectPresets(orgId).catch(() => null),
+        fetchConnectSettings(orgId).catch(() => null),
+      ])
+      if (presetRes) setPresets(presetRes.presets)
+      if (settingsRes) setSettings(settingsRes)
+      setTestMsg('Promoted to gate mode with Strict policies — transfers and shell commands are blocked by default.')
     } catch (e) {
       setError(formatApiError(e, 'Promote failed'))
     } finally {
@@ -606,6 +613,8 @@ export function Connect({ orgId, onPage }: Props) {
   }
 
   const testMessageIsError = Boolean(testMsg && /fail|error|unreachable|blocked|denied|forbidden/i.test(testMsg))
+  const gateAllowed = canUseConnectGate(planId)
+  const strictPresetActive = presets.some((p) => p.id === 'strict' && p.active)
 
   return (
     <div className="page">
@@ -619,6 +628,32 @@ export function Connect({ orgId, onPage }: Props) {
 
       {error && (
         <PlanGateAlert message={error} onDismiss={() => setError(null)} style={{ marginBottom: '1rem' }} />
+      )}
+
+      {!gateAllowed && (
+        <Alert variant="info" style={{ marginBottom: '1rem' }}>
+          <strong>Developer plan is observe-only.</strong> Traffic through the proxy is logged to Live Feed but not blocked or held.
+          Upgrade to <strong>Personal</strong> or higher to enforce approve, block, and gate on tool calls.{' '}
+          <button type="button" className="btn btn-ghost btn-sm" style={{ marginTop: '0.5rem' }} onClick={() => onPage('billing')}>
+            View plans
+          </button>
+        </Alert>
+      )}
+
+      {gateAllowed && settings?.proxy_mode === 'gate' && !strictPresetActive && setupReady && (
+        <Alert variant="warn" style={{ marginBottom: '1rem' }}>
+          <strong>Production tip:</strong> Apply the <strong>Strict</strong> policy preset so transfers and shell commands are blocked by default — not only held for review.{' '}
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            style={{ marginTop: '0.5rem' }}
+            disabled={presetApplying !== null}
+            onClick={() => void handleApplyPreset('strict')}
+          >
+            {presetApplying === 'strict' ? <Loader2 size={14} className="spin" /> : null}
+            Apply Strict preset
+          </button>
+        </Alert>
       )}
 
       {orgId && (

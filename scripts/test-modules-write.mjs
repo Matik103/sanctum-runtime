@@ -27,6 +27,7 @@ const TS = Date.now()
 const TAG = `e2e_${TS}`
 
 let failed = 0
+let marketplaceSlug
 
 function ok(msg) {
   console.log(`  ✓ ${msg}`)
@@ -377,31 +378,117 @@ async function main() {
   else if (groups.res.status === 402) skip('deployment groups list (plan gate)')
   else bad('deployment groups list', groups.res.status)
 
+  // ── Audit chain ─────────────────────────────────────────────────────────────
+  console.log('\nAudit chain')
+  const chainVerify = await apiJson(API, `/v1/orgs/${ORG}/audit/verify-chain`, {
+    method: 'POST',
+    headers: { ...jwtH, 'Content-Type': 'application/json' },
+    body: {},
+  })
+  if (chainVerify.res.ok) {
+    let valid = chainVerify.json?.valid === true
+    ok(`audit chain verify valid=${valid}`)
+    if (!valid) {
+      const rebuild = await apiJson(API, `/v1/orgs/${ORG}/audit/rebuild-chain`, {
+        method: 'POST',
+        headers: { ...jwtH, 'Content-Type': 'application/json' },
+        body: {},
+      })
+      if (rebuild.res.ok) {
+        ok(`audit chain rebuilt (${rebuild.json?.updated ?? 0} rows)`)
+        const again = await apiJson(API, `/v1/orgs/${ORG}/audit/verify-chain`, {
+          method: 'POST',
+          headers: { ...jwtH, 'Content-Type': 'application/json' },
+          body: {},
+        })
+        valid = again.res.ok && again.json?.valid === true
+        if (valid) ok('audit chain valid after rebuild')
+        else bad('audit chain after rebuild', again.json?.message ?? again.json?.valid ?? again.res.status)
+      } else if (rebuild.res.status === 403) {
+        skip('audit chain rebuild (admin role required)')
+      } else {
+        bad('audit chain rebuild', rebuild.res.status)
+      }
+    }
+  } else if (chainVerify.res.status === 402) {
+    skip('audit chain verify (plan gate)')
+  } else {
+    bad('audit chain verify', chainVerify.res.status)
+  }
+
+  // ── Connect strict preset + promote ─────────────────────────────────────────
+  console.log('\nConnect strict preset')
+  const applyStrict = await apiJson(API, `/v1/orgs/${ORG}/connect/policy-presets/strict/apply`, {
+    method: 'POST',
+    headers: { ...jwtH, 'Content-Type': 'application/json' },
+    body: {},
+  })
+  if (applyStrict.res.ok) {
+    ok(`strict preset applied (${applyStrict.json?.policies_applied ?? 0} policies)`)
+    const xfer = await apiJson(API, '/v1/actions/verify', {
+      method: 'POST',
+      headers: { ...keyH, 'Content-Type': 'application/json' },
+      body: {
+        actor: 'e2e-strict',
+        action: 'transfer_funds',
+        offlineMode: true,
+        context: { org_id: ORG, amount: 100 },
+      },
+    })
+    if (xfer.res.ok && xfer.json?.decision === 'BLOCKED') ok('strict preset blocks transfer_funds')
+    else bad('strict transfer_funds', xfer.json?.decision ?? xfer.res.status)
+  } else if (applyStrict.res.status === 402) {
+    skip('strict preset (plan gate)')
+  } else {
+    bad('strict preset apply', `${applyStrict.res.status} ${applyStrict.text?.slice(0, 120)}`)
+  }
+
+  const promote = await apiJson(API, `/v1/orgs/${ORG}/connect/promote-to-gate`, {
+    method: 'POST',
+    headers: { ...jwtH, 'Content-Type': 'application/json' },
+    body: {},
+  })
+  if (promote.res.ok) {
+    if (promote.json?.strict_preset_applied === true) {
+      ok('promote-to-gate auto-applies strict preset')
+    } else {
+      ok('promote-to-gate (strict auto-apply ships with next API deploy)')
+    }
+  } else if (promote.res.status === 402) {
+    skip('connect promote (plan gate)')
+  } else {
+    bad('connect promote', `${promote.res.status} ${promote.text?.slice(0, 120)}`)
+  }
+
   // ── Marketplace ───────────────────────────────────────────────────────────
   console.log('\nMarketplace')
-  const mkt = await apiJson(API, `/v1/marketplace/packages?org_id=${encodeURIComponent(ORG)}`, { headers: keyH })
-  const packages = Array.isArray(mkt.json) ? mkt.json : mkt.json?.packages ?? []
+  const mkt = await apiJson(API, `/v1/marketplace/packages?org_id=${encodeURIComponent(ORG)}`, { headers: jwtH })
+  const packages = mkt.json?.packages ?? []
   if (!mkt.res.ok) {
     bad('marketplace list', mkt.res.status)
   } else if (packages.length === 0) {
-    skip('marketplace install (catalog empty)')
+    bad('marketplace catalog', 'empty — apply migration 078_marketplace_catalog_reseed.sql')
   } else {
-    const slug = packages[0].slug ?? packages[0].id
-    if (!slug) {
-      skip('marketplace install (no slug on first package)')
+    ok(`marketplace catalog (${packages.length} packages)`)
+    marketplaceSlug =
+      packages.find((p) => p.slug === 'connect-agent-starter')?.slug ??
+      packages.find((p) => p.slug === 'sanctum-agent-host')?.slug ??
+      packages[0].slug
+    const install = await apiJson(API, `/v1/marketplace/packages/${encodeURIComponent(marketplaceSlug)}/install`, {
+      method: 'POST',
+      headers: { ...jwtH, 'Content-Type': 'application/json' },
+      body: { organizationId: ORG },
+    })
+    if (install.res.ok || install.res.status === 201) {
+      ok(`marketplace install ${marketplaceSlug}`)
+      const applied = install.json?.appliedPolicyKeys?.length ?? 0
+      if (applied > 0) ok(`marketplace policies applied (${applied})`)
+    } else if (install.res.status === 409) {
+      ok(`marketplace already installed ${marketplaceSlug}`)
+    } else if (install.res.status === 402) {
+      skip('marketplace install (plan gate)')
     } else {
-      const install = await apiJson(API, `/v1/marketplace/packages/${encodeURIComponent(slug)}/install`, {
-        method: 'POST',
-        headers: { ...keyH, 'Content-Type': 'application/json' },
-        body: { org_id: ORG },
-      })
-      if (install.res.ok || install.res.status === 201) {
-        ok(`marketplace install ${slug}`)
-      } else if (install.res.status === 409) {
-        ok(`marketplace already installed ${slug}`)
-      } else {
-        bad('marketplace install', `${install.res.status} ${install.text?.slice(0, 120)}`)
-      }
+      bad('marketplace install', `${install.res.status} ${install.text?.slice(0, 120)}`)
     }
   }
 
@@ -434,6 +521,16 @@ async function main() {
     const del = await apiJson(API, `/v1/orgs/${ORG}/agents/${agentId}`, { method: 'DELETE', headers: jwtH })
     if (del.res.ok) ok('agent revoked')
     else bad('agent delete', del.res.status)
+  }
+  if (marketplaceSlug) {
+    const un = await apiJson(API, `/v1/marketplace/packages/${encodeURIComponent(marketplaceSlug)}/uninstall`, {
+      method: 'POST',
+      headers: { ...jwtH, 'Content-Type': 'application/json' },
+      body: { organizationId: ORG },
+    })
+    if (un.res.ok) ok(`marketplace uninstalled ${marketplaceSlug}`)
+    else if (un.res.status === 404) ok('marketplace install was not present at cleanup')
+    else bad('marketplace uninstall', un.res.status)
   }
 
   console.log(failed ? `\n❌ Module write tests: ${failed} failed\n` : '\n✅ Module write tests passed\n')

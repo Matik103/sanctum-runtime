@@ -46,7 +46,8 @@ Proposal gating is automatic. Local execution requires an explicit verify call u
 ## Proxy modes
 
 - **Gate** — verify every tool call; block or hold per policy.
-- **Observe** — log to audit only; no blocking. Use for onboarding, then **Promote observe → gate** on the Connect page.
+- **Observe** — log to audit only; no blocking. Use for onboarding, then **Promote observe → gate** on the Connect page (applies gate mode and the **Strict** preset automatically).
+- **Developer (observer) plan** — observe-only until Personal+; the Connect page shows an upgrade banner before gated proxy traffic.
 
 ## Org settings
 

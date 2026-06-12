@@ -212,12 +212,18 @@ export function Marketplace() {
         </div>
       ) : packages.length === 0 ? (
         <EmptyState
-          title={orgId ? 'No packages available' : 'Select an organization'}
+          title={orgId ? 'Catalog loading or unavailable' : 'Select an organization'}
           description={
             orgId
-              ? 'No packages are available for this organization. Contact your administrator to enable the package catalog.'
+              ? 'The public template catalog should include Connect Agent Starter and Sanctum Agent Host. Refresh in a moment — if this persists, your workspace may need the latest database migration (marketplace catalog).'
               : 'Choose an organization above to browse available packages.'
           }
+
+          {orgId ? (
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => void refresh()}>
+              Retry loading catalog
+            </button>
+          ) : null}
         />
       ) : (
         <>

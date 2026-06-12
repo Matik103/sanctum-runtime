@@ -28,6 +28,30 @@ import {
 } from './entitlements-gate.js'
 import { policyStorageKey } from './scoped-policy-audit.js'
 
+async function applyConnectPolicyPreset(
+  runtime: RuntimeEngine,
+  cfg: SupabaseAuthConfig,
+  orgId: string,
+  presetId: string,
+): Promise<{ preset: string; policies_applied: number }> {
+  const preset = getConnectPreset(presetId)
+  if (!preset) throw new Error('preset_not_found')
+  const engine = runtime.getPolicyEngine()
+  for (const [action, policy] of Object.entries(preset.policies)) {
+    const key = policyStorageKey(action, orgId, [orgId])
+    await engine.updatePolicy(key, {
+      requiresVerification: policy.requiresVerification,
+      autoBlock: policy.autoBlock,
+      reasoning: policy.reasoning,
+    })
+  }
+  await upsertConnectSettings(cfg, orgId, {
+    proxy_mode: preset.proxy_mode,
+    applied_policy_preset: presetId,
+  })
+  return { preset: presetId, policies_applied: Object.keys(preset.policies).length }
+}
+
 type SanctumReq = import('fastify').FastifyRequest & {
   sanctumUser?: { id: string; email?: string }
 }
@@ -201,22 +225,8 @@ export async function registerConnectRoutes(
       return
     }
 
-    const engine = runtime.getPolicyEngine()
-    for (const [action, policy] of Object.entries(preset.policies)) {
-      const key = policyStorageKey(action, orgId, [orgId])
-      await engine.updatePolicy(key, {
-        requiresVerification: policy.requiresVerification,
-        autoBlock: policy.autoBlock,
-        reasoning: policy.reasoning,
-      })
-    }
-
-    await upsertConnectSettings(cfg, orgId, {
-      proxy_mode: preset.proxy_mode,
-      applied_policy_preset: presetId,
-    })
-
-    return { ok: true, preset: presetId, policies_applied: Object.keys(preset.policies).length }
+    const applied = await applyConnectPolicyPreset(runtime, cfg, orgId, presetId)
+    return { ok: true, ...applied }
   })
 
   app.get('/v1/orgs/:orgId/connect/suggest-policies', async (req, reply) => {
@@ -408,7 +418,10 @@ export async function registerConnectRoutes(
       sendPlanFeatureRequired(reply, limits, 'light_gates')
       return
     }
-    return upsertConnectSettings(cfg, orgId, { proxy_mode: 'gate', wait_verification: true })
+    await upsertConnectSettings(cfg, orgId, { proxy_mode: 'gate', wait_verification: true })
+    const applied = await applyConnectPolicyPreset(runtime, cfg, orgId, 'strict')
+    const settings = await getConnectSettings(cfg, orgId)
+    return { ...settings, promoted: true, strict_preset_applied: applied.preset === 'strict', policies_applied: applied.policies_applied }
   })
 
   app.get('/v1/connect/verifications/:correlationId', async (req, reply) => {

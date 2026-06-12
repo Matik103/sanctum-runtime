@@ -50,8 +50,9 @@ export function ConnectSetupChecklist({
         ))}
       </ol>
       {!gateAllowed && (
-        <p style={{ fontSize: '0.78rem', opacity: 0.65, margin: '0.75rem 0 0' }}>
-          Current plan: <strong>{normalizePlanId(planId)}</strong>. Observe mode logs tool calls; upgrade to enforce approve / block.
+        <p style={{ fontSize: '0.78rem', opacity: 0.72, margin: '0.75rem 0 0', lineHeight: 1.45 }}>
+          Current plan: <strong>{normalizePlanId(planId)}</strong> (observe-only). Connect proxy traffic is audited in Live Feed;
+          tool calls are <strong>not</strong> blocked or held until you upgrade to Personal+.
         </p>
       )}
     </section>
