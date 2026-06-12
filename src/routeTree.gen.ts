@@ -39,6 +39,7 @@ import { Route as BlogMobilePwaRuntimeVerificationRouteImport } from './routes/b
 import { Route as BlogMcpServerActionGateRouteImport } from './routes/blog/mcp-server-action-gate'
 import { Route as BlogLocalOllamaOfflineRuntimeTrustRouteImport } from './routes/blog/local-ollama-offline-runtime-trust'
 import { Route as BlogLangchainAgentMiddlewareVerificationRouteImport } from './routes/blog/langchain-agent-middleware-verification'
+import { Route as BlogIntroducingSanctumRuntimeRouteImport } from './routes/blog/introducing-sanctum-runtime'
 import { Route as BlogIndirectPromptInjectionSourceTrustRouteImport } from './routes/blog/indirect-prompt-injection-source-trust'
 import { Route as BlogHumanoidRobotPhysicalActionGateRouteImport } from './routes/blog/humanoid-robot-physical-action-gate'
 import { Route as BlogHealthcareRoboticsPhiPolicyPacksRouteImport } from './routes/blog/healthcare-robotics-phi-policy-packs'
@@ -206,6 +207,12 @@ const BlogLangchainAgentMiddlewareVerificationRoute =
     path: '/blog/langchain-agent-middleware-verification',
     getParentRoute: () => rootRouteImport,
   } as any)
+const BlogIntroducingSanctumRuntimeRoute =
+  BlogIntroducingSanctumRuntimeRouteImport.update({
+    id: '/blog/introducing-sanctum-runtime',
+    path: '/blog/introducing-sanctum-runtime',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const BlogIndirectPromptInjectionSourceTrustRoute =
   BlogIndirectPromptInjectionSourceTrustRouteImport.update({
     id: '/blog/indirect-prompt-injection-source-trust',
@@ -273,6 +280,7 @@ export interface FileRoutesByFullPath {
   '/blog/healthcare-robotics-phi-policy-packs': typeof BlogHealthcareRoboticsPhiPolicyPacksRoute
   '/blog/humanoid-robot-physical-action-gate': typeof BlogHumanoidRobotPhysicalActionGateRoute
   '/blog/indirect-prompt-injection-source-trust': typeof BlogIndirectPromptInjectionSourceTrustRoute
+  '/blog/introducing-sanctum-runtime': typeof BlogIntroducingSanctumRuntimeRoute
   '/blog/langchain-agent-middleware-verification': typeof BlogLangchainAgentMiddlewareVerificationRoute
   '/blog/local-ollama-offline-runtime-trust': typeof BlogLocalOllamaOfflineRuntimeTrustRoute
   '/blog/mcp-server-action-gate': typeof BlogMcpServerActionGateRoute
@@ -312,6 +320,7 @@ export interface FileRoutesByTo {
   '/blog/healthcare-robotics-phi-policy-packs': typeof BlogHealthcareRoboticsPhiPolicyPacksRoute
   '/blog/humanoid-robot-physical-action-gate': typeof BlogHumanoidRobotPhysicalActionGateRoute
   '/blog/indirect-prompt-injection-source-trust': typeof BlogIndirectPromptInjectionSourceTrustRoute
+  '/blog/introducing-sanctum-runtime': typeof BlogIntroducingSanctumRuntimeRoute
   '/blog/langchain-agent-middleware-verification': typeof BlogLangchainAgentMiddlewareVerificationRoute
   '/blog/local-ollama-offline-runtime-trust': typeof BlogLocalOllamaOfflineRuntimeTrustRoute
   '/blog/mcp-server-action-gate': typeof BlogMcpServerActionGateRoute
@@ -352,6 +361,7 @@ export interface FileRoutesById {
   '/blog/healthcare-robotics-phi-policy-packs': typeof BlogHealthcareRoboticsPhiPolicyPacksRoute
   '/blog/humanoid-robot-physical-action-gate': typeof BlogHumanoidRobotPhysicalActionGateRoute
   '/blog/indirect-prompt-injection-source-trust': typeof BlogIndirectPromptInjectionSourceTrustRoute
+  '/blog/introducing-sanctum-runtime': typeof BlogIntroducingSanctumRuntimeRoute
   '/blog/langchain-agent-middleware-verification': typeof BlogLangchainAgentMiddlewareVerificationRoute
   '/blog/local-ollama-offline-runtime-trust': typeof BlogLocalOllamaOfflineRuntimeTrustRoute
   '/blog/mcp-server-action-gate': typeof BlogMcpServerActionGateRoute
@@ -393,6 +403,7 @@ export interface FileRouteTypes {
     | '/blog/healthcare-robotics-phi-policy-packs'
     | '/blog/humanoid-robot-physical-action-gate'
     | '/blog/indirect-prompt-injection-source-trust'
+    | '/blog/introducing-sanctum-runtime'
     | '/blog/langchain-agent-middleware-verification'
     | '/blog/local-ollama-offline-runtime-trust'
     | '/blog/mcp-server-action-gate'
@@ -432,6 +443,7 @@ export interface FileRouteTypes {
     | '/blog/healthcare-robotics-phi-policy-packs'
     | '/blog/humanoid-robot-physical-action-gate'
     | '/blog/indirect-prompt-injection-source-trust'
+    | '/blog/introducing-sanctum-runtime'
     | '/blog/langchain-agent-middleware-verification'
     | '/blog/local-ollama-offline-runtime-trust'
     | '/blog/mcp-server-action-gate'
@@ -471,6 +483,7 @@ export interface FileRouteTypes {
     | '/blog/healthcare-robotics-phi-policy-packs'
     | '/blog/humanoid-robot-physical-action-gate'
     | '/blog/indirect-prompt-injection-source-trust'
+    | '/blog/introducing-sanctum-runtime'
     | '/blog/langchain-agent-middleware-verification'
     | '/blog/local-ollama-offline-runtime-trust'
     | '/blog/mcp-server-action-gate'
@@ -511,6 +524,7 @@ export interface RootRouteChildren {
   BlogHealthcareRoboticsPhiPolicyPacksRoute: typeof BlogHealthcareRoboticsPhiPolicyPacksRoute
   BlogHumanoidRobotPhysicalActionGateRoute: typeof BlogHumanoidRobotPhysicalActionGateRoute
   BlogIndirectPromptInjectionSourceTrustRoute: typeof BlogIndirectPromptInjectionSourceTrustRoute
+  BlogIntroducingSanctumRuntimeRoute: typeof BlogIntroducingSanctumRuntimeRoute
   BlogLangchainAgentMiddlewareVerificationRoute: typeof BlogLangchainAgentMiddlewareVerificationRoute
   BlogLocalOllamaOfflineRuntimeTrustRoute: typeof BlogLocalOllamaOfflineRuntimeTrustRoute
   BlogMcpServerActionGateRoute: typeof BlogMcpServerActionGateRoute
@@ -738,6 +752,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogLangchainAgentMiddlewareVerificationRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/blog/introducing-sanctum-runtime': {
+      id: '/blog/introducing-sanctum-runtime'
+      path: '/blog/introducing-sanctum-runtime'
+      fullPath: '/blog/introducing-sanctum-runtime'
+      preLoaderRoute: typeof BlogIntroducingSanctumRuntimeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/blog/indirect-prompt-injection-source-trust': {
       id: '/blog/indirect-prompt-injection-source-trust'
       path: '/blog/indirect-prompt-injection-source-trust'
@@ -820,6 +841,7 @@ const rootRouteChildren: RootRouteChildren = {
     BlogHumanoidRobotPhysicalActionGateRoute,
   BlogIndirectPromptInjectionSourceTrustRoute:
     BlogIndirectPromptInjectionSourceTrustRoute,
+  BlogIntroducingSanctumRuntimeRoute: BlogIntroducingSanctumRuntimeRoute,
   BlogLangchainAgentMiddlewareVerificationRoute:
     BlogLangchainAgentMiddlewareVerificationRoute,
   BlogLocalOllamaOfflineRuntimeTrustRoute:

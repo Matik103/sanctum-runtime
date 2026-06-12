@@ -17,6 +17,16 @@ export type BlogPostMeta = {
 
 export const BLOG_POSTS: BlogPostMeta[] = [
   {
+    slug: 'introducing-sanctum-runtime',
+    title: 'The execution layer is the new attack surface — and autonomous AI has no trust boundary yet',
+    description:
+      'The risk shifted from chat outputs to unauthorized execution. Introducing Sanctum Runtime — observe, verify, and gate every autonomous action before it runs.',
+    publishedAt: '2026-06-11',
+    tags: ['runtime-trust', 'ai-agents', 'ai-infrastructure', 'launch', 'agentic-ai'],
+    readTime: 10,
+    featured: true,
+  },
+  {
     slug: 'runtime-trust-layer-for-ai-agents',
     title: 'What is a runtime trust layer for AI agents?',
     description:
