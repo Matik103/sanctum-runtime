@@ -1,7 +1,18 @@
 import { apiBaseUrl } from './api-url'
 import { getAccessToken } from './supabase'
 
-export type PlatformId = 'openai' | 'deepseek' | 'qwen' | 'kimi' | 'doubao' | 'gemini' | 'claude' | 'azure'
+export type PlatformId =
+  | 'openai'
+  | 'deepseek'
+  | 'qwen'
+  | 'kimi'
+  | 'doubao'
+  | 'gemini'
+  | 'claude'
+  | 'grok'
+  | 'nvidia'
+  | 'azure'
+  | 'bedrock'
 
 export type PlatformCredential = {
   id: string
@@ -83,11 +94,14 @@ export async function testPlatformCredential(
   platform: PlatformId,
   secret?: string,
   environment?: 'development' | 'staging' | 'production',
+  proxyBaseUrl?: string | null,
 ): Promise<{ ok: boolean; detail?: string; status?: number }> {
+  const body: Record<string, unknown> = secret ? { secret, environment } : { environment }
+  if (proxyBaseUrl?.trim()) body.proxy_base_url = proxyBaseUrl.trim()
   const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/platform-credentials/${platform}/test`, {
     method: 'POST',
     headers: await authHeaders(true),
-    body: JSON.stringify(secret ? { secret, environment } : { environment }),
+    body: JSON.stringify(body),
   })
   const data = await res.json().catch(() => ({})) as { ok?: boolean; detail?: string; status?: number; error?: string }
   if (!res.ok && !data.ok) throw new Error(data.error ?? `test_platform_credential_${res.status}`)

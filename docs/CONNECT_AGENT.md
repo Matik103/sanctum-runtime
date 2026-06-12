@@ -19,6 +19,20 @@ client = OpenAI(
 
 4. **Watch Live Feed** — each model `tool_call` is verified before your client receives it.
 
+## Supported proxy platforms
+
+| Platform | Proxy path | Notes |
+|----------|------------|-------|
+| OpenAI | `/v1/proxy/openai` | Default upstream |
+| Claude | `/v1/proxy/claude` | Anthropic API key |
+| Azure OpenAI | `/v1/proxy/azure` | Requires deployment base URL in Connect |
+| AWS Bedrock | `/v1/proxy/bedrock` | Bedrock OpenAI-compatible runtime URL + API key |
+| Grok (xAI) | `/v1/proxy/grok` | OpenAI-compatible |
+| NVIDIA NIM | `/v1/proxy/nvidia` | integrate.api.nvidia.com or custom NIM URL |
+| DeepSeek, Qwen, Kimi, Doubao, Gemini | `/v1/proxy/{platform}` | OpenAI-compatible upstreams |
+
+Generic HTTP or non-OpenAI-compatible endpoints still use the SDK or `@sanctum-runtime/connect` verify-execution path.
+
 ## Three gating layers
 
 | Layer | When | How |

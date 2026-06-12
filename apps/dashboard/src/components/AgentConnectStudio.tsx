@@ -32,9 +32,9 @@ const PROVIDERS: Provider[] = [
   { id: 'qwen', label: 'Qwen', family: 'Alibaba tool calling', providerCode: 'qwen', boundary: 'model-tools', proxySupported: true },
   { id: 'kimi', label: 'Kimi', family: 'Moonshot tool calling', providerCode: 'kimi', boundary: 'model-tools', proxySupported: true },
   { id: 'doubao', label: 'Doubao', family: 'ByteDance tool calling', providerCode: 'doubao', boundary: 'model-tools', proxySupported: true },
-  { id: 'grok', label: 'Grok', family: 'Tool calling (SDK verify)', providerCode: 'xai-grok', boundary: 'model-tools' },
-  { id: 'nvidia', label: 'NVIDIA NIM', family: 'Hosted / local models (SDK)', providerCode: 'nvidia-nim', boundary: 'model-tools' },
-  { id: 'bedrock', label: 'AWS Bedrock', family: 'Agent actions (SDK adapter)', providerCode: 'aws-bedrock', boundary: 'model-tools' },
+  { id: 'grok', label: 'Grok', family: 'xAI tool calling', providerCode: 'xai-grok', boundary: 'model-tools', proxySupported: true },
+  { id: 'nvidia', label: 'NVIDIA NIM', family: 'Hosted / local models', providerCode: 'nvidia-nim', boundary: 'model-tools', proxySupported: true },
+  { id: 'bedrock', label: 'AWS Bedrock', family: 'Bedrock OpenAI-compatible', providerCode: 'aws-bedrock', boundary: 'model-tools', proxySupported: true },
   { id: 'custom', label: 'Any model', family: 'Generic HTTP / local', providerCode: 'custom', boundary: 'http' },
 ]
 

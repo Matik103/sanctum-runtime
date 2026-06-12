@@ -42,12 +42,22 @@ const PLATFORMS: { id: PlatformId; name: string; flag: string }[] = [
   { id: 'openai', name: 'OpenAI', flag: '🤖' },
   { id: 'claude', name: 'Claude', flag: '🧠' },
   { id: 'azure', name: 'Azure OpenAI', flag: '☁️' },
+  { id: 'bedrock', name: 'AWS Bedrock', flag: '🟠' },
+  { id: 'grok', name: 'Grok', flag: '⚡' },
+  { id: 'nvidia', name: 'NVIDIA NIM', flag: '🟢' },
   { id: 'deepseek', name: 'DeepSeek', flag: '🐋' },
   { id: 'qwen', name: 'Qwen / Alibaba', flag: '☁️' },
   { id: 'kimi', name: 'Kimi / Moonshot', flag: '🌙' },
   { id: 'doubao', name: 'Doubao / ByteDance', flag: '🎵' },
   { id: 'gemini', name: 'Gemini', flag: '✨' },
 ]
+
+const PLATFORMS_REQUIRING_BASE_URL = new Set<PlatformId>(['azure', 'bedrock'])
+
+const PLATFORM_BASE_URL_PLACEHOLDERS: Partial<Record<PlatformId, string>> = {
+  azure: 'Azure deployment base URL (required)',
+  bedrock: 'https://bedrock-runtime.us-east-1.amazonaws.com/openai/v1',
+}
 
 type AgentOption = {
   id: string
@@ -230,7 +240,7 @@ export function Connect({ orgId, onPage }: Props) {
   const [agents, setAgents] = useState<AgentOption[]>([])
   const [credentials, setCredentials] = useState<PlatformCredential[]>([])
   const [platformKeyInput, setPlatformKeyInput] = useState('')
-  const [azureBaseUrl, setAzureBaseUrl] = useState('')
+  const [proxyBaseUrl, setProxyBaseUrl] = useState('')
   const [keyEntryOpen, setKeyEntryOpen] = useState(false)
   const [verifyTestOk, setVerifyTestOk] = useState(false)
   const [lang, setLang] = useState<'python' | 'typescript'>('python')
@@ -371,10 +381,10 @@ export function Connect({ orgId, onPage }: Props) {
       setPlatformKeyInput('')
       setKeyEntryOpen(false)
       setTestMsg(null)
-      if (platform === 'azure' && savedCred?.proxy_base_url) {
-        setAzureBaseUrl(savedCred.proxy_base_url)
-      } else if (platform !== 'azure') {
-        setAzureBaseUrl('')
+      if (PLATFORMS_REQUIRING_BASE_URL.has(platform) && savedCred?.proxy_base_url) {
+        setProxyBaseUrl(savedCred.proxy_base_url)
+      } else if (!PLATFORMS_REQUIRING_BASE_URL.has(platform)) {
+        setProxyBaseUrl('')
       }
     }, 0)
     return () => window.clearTimeout(timer)
@@ -394,7 +404,7 @@ export function Connect({ orgId, onPage }: Props) {
         platformKeyInput.trim(),
         selectedAgentId || null,
         credEnvironment,
-        platform === 'azure' ? azureBaseUrl.trim() : null,
+        PLATFORMS_REQUIRING_BASE_URL.has(platform) ? proxyBaseUrl.trim() : null,
       )
       setCredentials((prev) => {
         const rest = prev.filter(
@@ -424,7 +434,13 @@ export function Connect({ orgId, onPage }: Props) {
     setTestMsg(null)
     setError(null)
     try {
-      const result = await testPlatformCredential(orgId, platform, secret, credEnvironment)
+      const result = await testPlatformCredential(
+        orgId,
+        platform,
+        secret,
+        credEnvironment,
+        PLATFORMS_REQUIRING_BASE_URL.has(platform) ? proxyBaseUrl.trim() : null,
+      )
       setTestMsg(result.ok ? 'Connection successful.' : `Test failed: ${result.detail ?? 'unknown error'}`)
       if (useSaved) void load()
     } catch (e) {
@@ -555,7 +571,17 @@ export function Connect({ orgId, onPage }: Props) {
     setSaving(true)
     setError(null)
     try {
-      await savePlatformCredential(orgId, rotationPlatform, rotationKey.trim(), selectedAgentId || null, credEnvironment)
+      const rotationCred = credentials.find(
+        (c) => c.platform === rotationPlatform && (c.environment ?? 'production') === credEnvironment,
+      )
+      await savePlatformCredential(
+        orgId,
+        rotationPlatform,
+        rotationKey.trim(),
+        selectedAgentId || null,
+        credEnvironment,
+        rotationCred?.proxy_base_url ?? null,
+      )
       const result = await testPlatformCredential(orgId, rotationPlatform, undefined, credEnvironment)
       if (result.ok) {
         setRotationStep(3)
@@ -910,13 +936,13 @@ export function Connect({ orgId, onPage }: Props) {
 
           {keyEntryOpen && (
             <div className="connect-key-entry">
-              {platform === 'azure' && (
+              {PLATFORMS_REQUIRING_BASE_URL.has(platform) && (
                 <input
                   type="url"
                   className="input"
-                  placeholder="Azure deployment base URL (required)"
-                  value={azureBaseUrl}
-                  onChange={(e) => setAzureBaseUrl(e.target.value)}
+                  placeholder={PLATFORM_BASE_URL_PLACEHOLDERS[platform] ?? 'Upstream base URL (required)'}
+                  value={proxyBaseUrl}
+                  onChange={(e) => setProxyBaseUrl(e.target.value)}
                   style={{ marginBottom: '0.5rem' }}
                 />
               )}
@@ -932,11 +958,11 @@ export function Connect({ orgId, onPage }: Props) {
                 spellCheck={false}
               />
               <div className="responsive-action-row">
-                <button type="button" className="btn btn-primary btn-sm" disabled={saving || !platformKeyInput.trim() || (platform === 'azure' && !azureBaseUrl.trim())} onClick={() => void handleSaveKey()}>
+                <button type="button" className="btn btn-primary btn-sm" disabled={saving || !platformKeyInput.trim() || (PLATFORMS_REQUIRING_BASE_URL.has(platform) && !proxyBaseUrl.trim())} onClick={() => void handleSaveKey()}>
                   {saving ? <Loader2 size={14} className="spin" /> : null}
                   {savedCred ? 'Update saved key' : 'Save platform key'}
                 </button>
-                <button type="button" className="btn btn-ghost btn-sm" disabled={testing || !platformKeyInput.trim()} onClick={() => void handleTestKey(false)}>
+                <button type="button" className="btn btn-ghost btn-sm" disabled={testing || !platformKeyInput.trim() || (PLATFORMS_REQUIRING_BASE_URL.has(platform) && !proxyBaseUrl.trim())} onClick={() => void handleTestKey(false)}>
                   {testing ? <Loader2 size={14} className="spin" /> : <Zap size={14} />}
                   Test key
                 </button>

@@ -1,7 +1,7 @@
 import { createSupabaseAdmin, type SupabaseAuthConfig } from './auth.js'
 import { encryptSecret, decryptSecret, getEncryptionKey } from './crypto-utils.js'
 import { logger } from './logger.js'
-import { PROXY_PLATFORMS } from './proxy-routes.js'
+import { PROXY_PLATFORMS, platformRequiresCustomBase } from './proxy-platforms.js'
 
 const log = logger.child({ module: 'platform-credentials' })
 
@@ -44,7 +44,7 @@ export function resolvePlatformUpstreamBase(
   proxyBaseUrl?: string | null,
 ): string | null {
   const custom = proxyBaseUrl?.trim().replace(/\/$/, '')
-  if (platform === 'azure') return custom ?? null
+  if (platformRequiresCustomBase(platform)) return custom ?? null
   if (custom) return custom
   const base = PROXY_PLATFORMS[platform]
   return base?.trim() ? base.replace(/\/$/, '') : null
@@ -100,8 +100,8 @@ export async function upsertPlatformCredential(
   if (!isSupportedPlatform(input.platform)) {
     throw new Error('unsupported_platform')
   }
-  if (input.platform === 'azure' && !input.proxyBaseUrl?.trim()) {
-    throw new Error('azure_base_url_required')
+  if (platformRequiresCustomBase(input.platform) && !input.proxyBaseUrl?.trim()) {
+    throw new Error(input.platform === 'bedrock' ? 'bedrock_base_url_required' : 'azure_base_url_required')
   }
   const encKey = getEncryptionKey()
   const secretEnc = await encryptSecret(input.secret.trim(), encKey)
@@ -221,7 +221,10 @@ export async function testPlatformSecret(
   }
   const base = resolvePlatformUpstreamBase(platform, proxyBaseUrl)
   if (!base) {
-    return { ok: false, detail: platform === 'azure' ? 'azure_base_url_required' : 'missing_base_url' }
+    return {
+      ok: false,
+      detail: platformRequiresCustomBase(platform) ? `${platform}_base_url_required` : 'missing_base_url',
+    }
   }
   const headers = platformUpstreamAuthHeaders(platform, secret)
   const controller = new AbortController()

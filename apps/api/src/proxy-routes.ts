@@ -11,6 +11,7 @@ import { logger } from './logger.js'
 import { createSupabaseAdmin, getSupabaseAuthConfig } from './auth.js'
 import { verifyAgentToken } from './agent-tokens.js'
 import { getPlatformCredentialMeta } from './platform-credentials.js'
+import { PROXY_PLATFORMS, platformRequiresCustomBase } from './proxy-platforms.js'
 import { getConnectSettings } from './connect-settings.js'
 import { extractToolsFromChatBody, upsertConnectTool } from './connect-tool-registry.js'
 import { recordUsage, UsageMetrics } from './usage-store.js'
@@ -44,16 +45,7 @@ function publicApiBase(): string {
 
 const log = logger.child({ module: 'proxy-routes' })
 
-export const PROXY_PLATFORMS: Record<string, string> = {
-  openai:   'https://api.openai.com/v1',
-  deepseek: 'https://api.deepseek.com/v1',
-  qwen:     'https://dashscope.aliyuncs.com/compatible-mode/v1',
-  kimi:     'https://api.moonshot.cn/v1',
-  doubao:   'https://ark.cn-beijing.volces.com/api/v3',
-  gemini:   'https://generativelanguage.googleapis.com/v1beta/openai',
-  claude:   'https://api.anthropic.com/v1',
-  azure:    '', // requires org-scoped proxy_base_url on platform_credentials
-}
+export { PROXY_PLATFORMS } from './proxy-platforms.js'
 
 function toolsFromChunk(chunk: string): ProxyToolCall[] {
   const out: ProxyToolCall[] = []
@@ -222,7 +214,7 @@ export function registerProxyRoutes(app: FastifyInstance, runtime: RuntimeEngine
         if (req.raw.socket) req.raw.socket.setTimeout(socketTimeout)
 
         const baseUrlDefault = PROXY_PLATFORMS[platform]
-        if (!baseUrlDefault && platform !== 'azure') {
+        if (!(platform in PROXY_PLATFORMS)) {
           return reply.code(400).send({
             error: `Unknown platform "${platform}"`,
             supported: Object.keys(PROXY_PLATFORMS),
@@ -230,13 +222,17 @@ export function registerProxyRoutes(app: FastifyInstance, runtime: RuntimeEngine
         }
 
         const credMeta = await getPlatformCredentialMeta(cfg, orgId, platform, credEnvironment)
-        const baseUrl = (platform === 'azure'
-          ? credMeta?.proxy_base_url?.replace(/\/$/, '')
-          : credMeta?.proxy_base_url?.replace(/\/$/, '') || baseUrlDefault) ?? baseUrlDefault
+        const customBase = credMeta?.proxy_base_url?.replace(/\/$/, '')
+        const baseUrl = platformRequiresCustomBase(platform)
+          ? customBase ?? null
+          : customBase || baseUrlDefault || null
         if (!baseUrl) {
+          const hint = platform === 'bedrock'
+            ? 'Save a Bedrock OpenAI-compatible runtime base URL in Connect (Platform API key step).'
+            : 'Save an Azure OpenAI deployment base URL in Connect (Platform API key step).'
           return reply.code(400).send({
-            error: 'azure_base_url_required',
-            hint: 'Save an Azure OpenAI deployment base URL in Connect (Platform API key step).',
+            error: platform === 'bedrock' ? 'bedrock_base_url_required' : 'azure_base_url_required',
+            hint,
           })
         }
 
