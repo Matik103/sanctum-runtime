@@ -88,14 +88,13 @@ export function useLiveFeed(orgId: string | null | undefined, filters: LiveFeedF
     const load = async (showLoading = false) => {
       if (showLoading) setLoading(true)
       const parsedFilters = JSON.parse(filtersKey) as LiveFeedFilters
+      const token = await getAccessToken()
+      const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
       const [rows, heldRes] = await Promise.all([
         fetchLiveFeedEvents(orgId, parsedFilters),
-        fetch(`${apiBaseUrl}/v1/orgs/${orgId}/connect/held-count`, {
-          headers: await (async () => {
-            const token = await getAccessToken()
-            return token ? { Authorization: `Bearer ${token}` } : {}
-          })(),
-        }).then((r) => (r.ok ? r.json() as Promise<{ held?: number }> : { held: 0 })).catch(() => ({ held: 0 })),
+        fetch(`${apiBaseUrl}/v1/orgs/${orgId}/connect/held-count`, { headers: authHeaders })
+          .then((r) => (r.ok ? r.json() as Promise<{ held?: number }> : { held: 0 }))
+          .catch(() => ({ held: 0 })),
       ])
       if (cancelled) return
       setEvents(rows)
