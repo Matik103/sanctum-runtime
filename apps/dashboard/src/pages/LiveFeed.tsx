@@ -72,12 +72,26 @@ function ArgView({ value }: { value: unknown }) {
   if (typeof value === 'string') {
     return <span style={{ fontFamily: 'monospace', fontSize: '0.78rem', opacity: 0.85 }}>{value.slice(0, 120)}{value.length > 120 ? '…' : ''}</span>
   }
-  const json = JSON.stringify(value, null, 2)
+  let json: string
+  try {
+    json = JSON.stringify(value, null, 2)
+  } catch {
+    return <span style={{ opacity: 0.55, fontSize: '0.78rem' }}>[unserializable value]</span>
+  }
   return (
     <pre className="live-feed-args" style={{ margin: 0, fontSize: '0.75rem', maxHeight: 120, overflowY: 'auto', background: 'var(--surface-2, #1a1a2e)', borderRadius: '0.3rem', padding: '0.4rem 0.6rem', border: '1px solid var(--border, #2a2a3e)' }}>
       {json.length > 400 ? json.slice(0, 400) + '\n…' : json}
     </pre>
   )
+}
+
+function blastDisplay(event: ProxyEvent): { level: string; score: number } | null {
+  const br = event.blastRadius
+  if (!br || typeof br !== 'object') return null
+  const level = typeof br.level === 'string' ? br.level : undefined
+  const score = typeof br.score === 'number' ? br.score : undefined
+  if (!level && score == null) return null
+  return { level: level ?? 'unknown', score: score ?? 0 }
 }
 
 function blastTone(level?: string) {
@@ -113,7 +127,7 @@ function EventRow({
   policySaving: string | null
   focused?: boolean
 }) {
-  const ctx = event.context
+  const ctx = event.context ?? { proxy: true as const, platform: 'unknown', tool_call_id: '', arguments: undefined }
   const platform = ctx.platform ?? 'unknown'
   const agentId = ctx.agent_id ?? event.actor
   const agentLabel = ctx.agent_name ?? agentNames[agentId] ?? `${String(agentId).slice(0, 8)}…`
@@ -145,11 +159,15 @@ function EventRow({
               {readable(event.sourceTrust)}
             </span>
           )}
-          {event.blastRadius && (
-            <span className={`badge ${blastTone(event.blastRadius.level)}`}>
-              blast {event.blastRadius.level} · {event.blastRadius.score}/100
-            </span>
-          )}
+          {(() => {
+            const blast = blastDisplay(event)
+            if (!blast) return null
+            return (
+              <span className={`badge ${blastTone(blast.level)}`}>
+                blast {blast.level} · {blast.score}/100
+              </span>
+            )
+          })()}
         </div>
         <ArgView value={ctx.arguments} />
       </div>
@@ -214,11 +232,11 @@ function DetailDrawer({ event, onClose }: { event: ProxyEvent; onClose: () => vo
         <dl style={{ fontSize: '0.82rem', display: 'grid', gap: '0.65rem' }}>
           <div><dt style={{ opacity: 0.55 }}>Action</dt><dd><code>{event.action}</code></dd></div>
           <div><dt style={{ opacity: 0.55 }}>Decision</dt><dd><DecisionBadge decision={event.decision} /></dd></div>
-          <div><dt style={{ opacity: 0.55 }}>Platform</dt><dd>{event.context.platform}</dd></div>
-          <div><dt style={{ opacity: 0.55 }}>Agent</dt><dd>{event.context.agent_name ?? event.actor}</dd></div>
+          <div><dt style={{ opacity: 0.55 }}>Platform</dt><dd>{event.context?.platform ?? 'unknown'}</dd></div>
+          <div><dt style={{ opacity: 0.55 }}>Agent</dt><dd>{event.context?.agent_name ?? event.actor}</dd></div>
           {event.correlation_id && <div><dt style={{ opacity: 0.55 }}>Correlation</dt><dd style={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{event.correlation_id}</dd></div>}
           {event.reasoning && <div><dt style={{ opacity: 0.55 }}>Reasoning</dt><dd>{event.reasoning}</dd></div>}
-          <div><dt style={{ opacity: 0.55 }}>Arguments</dt><dd><ArgView value={event.context.arguments} /></dd></div>
+          <div><dt style={{ opacity: 0.55 }}>Arguments</dt><dd><ArgView value={event.context?.arguments} /></dd></div>
           <div><dt style={{ opacity: 0.55 }}>When</dt><dd>{new Date(event.created_at).toLocaleString()}</dd></div>
         </dl>
       </div>

@@ -85,7 +85,13 @@ export function useLiveFeed(orgId: string | null | undefined, filters: LiveFeedF
   const loadRef = useRef<(showLoading?: boolean) => Promise<void>>(async () => {})
 
   useEffect(() => {
-    if (!orgId) return
+    if (!orgId) {
+      setEvents([])
+      setHeldCount(0)
+      setConnected(false)
+      setLoading(false)
+      return
+    }
     let cancelled = false
 
     const load = async (showLoading = false) => {

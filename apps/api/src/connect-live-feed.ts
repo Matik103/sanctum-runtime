@@ -27,9 +27,50 @@ export type ConnectProxyEvent = {
   created_at: string
 }
 
+function nestedRecord(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined
+}
+
+function pickString(raw: Record<string, unknown>, ...keys: string[]): string | undefined {
+  for (const key of keys) {
+    const v = raw[key]
+    if (typeof v === 'string' && v) return v
+  }
+  return undefined
+}
+
+function fieldsFromPayload(raw: Record<string, unknown>): {
+  blastRadius?: Record<string, unknown>
+  actionIdentity?: Record<string, unknown>
+  sourceTrust?: string
+} {
+  const payload = nestedRecord(raw.payload) ?? {}
+  const blastRaw =
+    raw.blastRadius ??
+    raw.blast_radius ??
+    payload.blastRadius ??
+    payload.blast_radius
+  const identityRaw =
+    raw.actionIdentity ??
+    raw.action_identity ??
+    payload.actionIdentity ??
+    payload.action_identity
+  const sourceTrust =
+    pickString(raw, 'sourceTrust', 'source_trust') ??
+    pickString(payload, 'sourceTrust', 'source_trust')
+  return {
+    blastRadius: nestedRecord(blastRaw),
+    actionIdentity: nestedRecord(identityRaw),
+    sourceTrust,
+  }
+}
+
 export function normalizeConnectProxyRow(raw: Record<string, unknown>): ConnectProxyEvent | null {
   const ctx = (raw.context as Record<string, unknown> | undefined) ?? {}
   if (ctx.proxy !== true) return null
+  const payloadFields = fieldsFromPayload(raw)
   const created =
     (typeof raw.created_at === 'string' && raw.created_at) ||
     (typeof raw.timestamp === 'string' && raw.timestamp) ||
@@ -48,13 +89,9 @@ export function normalizeConnectProxyRow(raw: Record<string, unknown>): ConnectP
           ? raw.correlationId
           : undefined,
     sourceTrust:
-      typeof raw.sourceTrust === 'string'
-        ? raw.sourceTrust
-        : typeof raw.source_trust === 'string'
-          ? raw.source_trust
-          : undefined,
-    blastRadius: (raw.blastRadius ?? raw.blast_radius) as Record<string, unknown> | undefined,
-    actionIdentity: (raw.actionIdentity ?? raw.action_identity) as Record<string, unknown> | undefined,
+      pickString(raw, 'sourceTrust', 'source_trust') ?? payloadFields.sourceTrust,
+    blastRadius: payloadFields.blastRadius,
+    actionIdentity: payloadFields.actionIdentity,
     context: {
       proxy: true,
       platform: String(ctx.platform ?? 'unknown'),

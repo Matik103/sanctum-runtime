@@ -166,6 +166,74 @@ async function main() {
     const found = Array.isArray(wfList.json) && wfList.json.some((w) => w.id === workflowId)
     if (wfList.res.ok && found) ok('workflow listed')
     else bad('workflow list', wfList.res.status)
+
+    const govAction = `e2e.wf.${TAG}.held`
+    const polGov = await apiJson(API, '/v1/policies', {
+      method: 'POST',
+      headers: { ...keyH, 'Content-Type': 'application/json' },
+      body: { action: govAction, org_id: ORG, requiresVerification: true },
+    })
+    if (polGov.res.ok) ok(`governance policy ${govAction}`)
+    else if (polGov.res.status !== 402) bad('governance policy', polGov.res.status)
+
+    const held = await apiJson(API, '/v1/actions/verify', {
+      method: 'POST',
+      headers: keyH,
+      body: {
+        actor: 'e2e-governance',
+        action: govAction,
+        offlineMode: true,
+        context: {
+          org_id: ORG,
+          proxy: true,
+          platform: 'openai',
+          tool_call_id: `e2e-${TAG}`,
+          arguments: { note: 'governance e2e' },
+        },
+      },
+    })
+    const auditId = held.json?.id
+    if (held.res.ok && held.json?.decision === 'REQUIRE_VERIFICATION' && auditId) {
+      ok('connect-style verify held for governance')
+    } else {
+      bad('governance held verify', held.json?.decision ?? held.res.status)
+    }
+
+    if (auditId) {
+      await new Promise((r) => setTimeout(r, 1500))
+      const pending = await apiJson(API, `/v1/orgs/${ORG}/approvals?status=pending`, { headers: jwtH })
+      const approval = Array.isArray(pending.json)
+        ? pending.json.find((a) => a.audit_event_id === auditId || a.action === govAction)
+        : null
+      if (approval?.id) {
+        ok(`pending approval linked (${approval.id.slice(0, 8)}…)`)
+        const decided = await apiJson(API, `/v1/orgs/${ORG}/approvals/${approval.id}/decide`, {
+          method: 'POST',
+          headers: { ...jwtH, 'Content-Type': 'application/json' },
+          body: { decision: 'approve', note: 'e2e governance release' },
+        })
+        if (decided.res.ok && decided.json?.status === 'approved') {
+          ok('governance approve decision recorded')
+        } else {
+          bad('governance decide', decided.res.status)
+        }
+
+        await new Promise((r) => setTimeout(r, 1000))
+        const auditPage = await apiJson(API, `/v1/orgs/${ORG}/audit?limit=20`, { headers: jwtH })
+        const entry = auditPage.json?.entries?.find((e) => e.id === auditId)
+        if (entry?.decision === 'APPROVED') ok('governance approval released audit entry')
+        else bad('governance audit release', entry?.decision ?? 'missing entry')
+      } else {
+        skip('pending approval not linked (workflow pattern may not match)')
+      }
+    }
+
+    if (polGov.res.ok) {
+      await apiJson(API, `/v1/policies/${encodeURIComponent(govAction)}?org_id=${encodeURIComponent(ORG)}`, {
+        method: 'DELETE',
+        headers: keyH,
+      })
+    }
   }
 
   // ── Alert rules ───────────────────────────────────────────────────────────

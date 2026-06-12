@@ -121,6 +121,7 @@ export function Governance({ onPage }: { onPage?: (p: PageId, query?: NavigateQu
 
   const decide = async (id: string, decision: 'approve' | 'reject') => {
     if (!orgId) return
+    const approval = approvals.find((a) => a.id === id)
     setBusy(true)
     try {
       const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/approvals/${id}/decide`, {
@@ -129,7 +130,15 @@ export function Governance({ onPage }: { onPage?: (p: PageId, query?: NavigateQu
         body: JSON.stringify({ decision, note: decideNote }),
       })
       if (!res.ok) await throwResponseError(res, 'Request failed')
-      setMsg({ text: `Action ${decision === 'approve' ? 'approved' : 'rejected'}.`, variant: 'success' })
+      const released = decision === 'approve' && approval?.audit_event_id
+      setMsg({
+        text: released
+          ? 'Approved — held Connect tool released. Check Live Feed for the updated decision.'
+          : decision === 'approve'
+            ? 'Action approved.'
+            : 'Action rejected.',
+        variant: 'success',
+      })
       setDecideId(null)
       setDecideNote('')
       await load()

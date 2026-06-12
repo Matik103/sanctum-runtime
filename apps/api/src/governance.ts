@@ -526,6 +526,13 @@ export async function registerGovernanceRoutes(
     if (!access.ok) return reply.status(403).send({ error: 'admin_required' })
     if (!(await requireGovernancePlan(orgId, reply))) return
 
+    // Unlink historical approvals so FK does not block workflow removal.
+    await admin
+      .from('pending_approvals')
+      .update({ workflow_id: null, updated_at: new Date().toISOString() })
+      .eq('workflow_id', workflowId)
+      .eq('org_id', orgId)
+
     const { error, count } = await admin
       .from('approval_workflows')
       .delete({ count: 'exact' })
