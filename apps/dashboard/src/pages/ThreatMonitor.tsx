@@ -4,6 +4,7 @@ import type { ActionResult } from '@sanctum-runtime/sdk/browser'
 import { useOrgAudit } from '../hooks/useOrgAudit'
 import type { ConsolePersona } from '../hooks/useConsolePersona'
 import { EmptyState } from '../components/ui/EmptyState'
+import { PlanGateAlert } from '../components/PlanGateAlert'
 import { decisionTone, timeAgo } from '../lib/format'
 import {
   actionLabel,
@@ -76,7 +77,7 @@ type Props = {
 }
 
 export function ThreatMonitor({ orgId, sessionAudit = [], onSelect, onPage, persona = 'operator' }: Props) {
-  const { entries: orgAudit, loading } = useOrgAudit(orgId, {}, { limit: 200, pollMs: 15_000 })
+  const { entries: orgAudit, loading, error: auditError, refresh: refreshAudit } = useOrgAudit(orgId, {}, { limit: 200, pollMs: 15_000 })
   const audit = orgId ? orgAudit : sessionAudit
   const [severityFilter, setSeverityFilter] = useState<'all' | Severity>('all')
   const [threatTypeFilter, setThreatTypeFilter] = useState<string | null>(null)
@@ -131,6 +132,13 @@ export function ThreatMonitor({ orgId, sessionAudit = [], onSelect, onPage, pers
           </button>
         )}
       </header>
+
+      {auditError && (
+        <PlanGateAlert
+          message={`Could not load org audit for Threat Monitor: ${auditError}`}
+          style={{ marginBottom: '0.75rem' }}
+        />
+      )}
 
       <section className="shield-overview" aria-label="Sanctum Shield status">
         <div className="shield-overview__identity">
@@ -255,6 +263,15 @@ export function ThreatMonitor({ orgId, sessionAudit = [], onSelect, onPage, pers
                 <td colSpan={4}>
                   {loading ? (
                     <span className="empty">Loading org threats…</span>
+                  ) : auditError ? (
+                    <EmptyState
+                      title="Audit data unavailable"
+                      description={auditError}
+                    >
+                      <button type="button" className="btn btn-primary btn-sm" onClick={() => void refreshAudit()}>
+                        Retry
+                      </button>
+                    </EmptyState>
                   ) : threats.length === 0 ? (
                     <EmptyState
                       title="No threats detected"

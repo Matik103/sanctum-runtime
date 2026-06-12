@@ -160,7 +160,7 @@ export async function listOrgAuditPage(
   opts: OrgAuditQuery = {},
   retentionDays = 30,
 ): Promise<OrgAuditPage> {
-  const limit = Math.min(100, Math.max(1, opts.limit ?? 50))
+  const limit = Math.min(200, Math.max(1, opts.limit ?? 50))
   const admin = createSupabaseAdmin(cfg)
 
   const sinceDefault = new Date(Date.now() - retentionDays * 86_400_000).toISOString()

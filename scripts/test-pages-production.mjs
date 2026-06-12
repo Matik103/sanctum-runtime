@@ -107,8 +107,10 @@ async function main() {
       label: 'Audit Logs',
       run: async () => {
         const audit = await apiJson(API, `/v1/orgs/${ORG}/audit?limit=5`, { headers: jwtH })
+        const auditWide = await apiJson(API, `/v1/orgs/${ORG}/audit?limit=200`, { headers: jwtH })
         let chain = await apiJson(API, `/v1/orgs/${ORG}/audit/verify-chain`, { method: 'POST', headers: jwtH, body: {} })
         if (!audit.res.ok) bad('audit', `list ${audit.res.status}`)
+        else if (!auditWide.res.ok) bad('audit', `limit=200 ${auditWide.res.status}`)
         else if (!chain.res.ok) bad('audit', `chain ${chain.res.status}`)
         else if (chain.json?.valid !== true) {
           const rebuild = await apiJson(API, `/v1/orgs/${ORG}/audit/rebuild-chain`, { method: 'POST', headers: jwtH, body: {} })
@@ -116,17 +118,22 @@ async function main() {
             chain = await apiJson(API, `/v1/orgs/${ORG}/audit/verify-chain`, { method: 'POST', headers: jwtH, body: {} })
           }
           ok('audit', `entries + chain valid=${chain.json?.valid ?? false}${rebuild.res.ok ? ' (rebuilt)' : ''}`)
-        } else ok('audit', 'entries + chain valid=true')
+        } else ok('audit', 'entries + chain valid=true · limit=200 ok')
       },
     },
     {
       id: 'threats',
       label: 'Threat Monitor',
       run: async () => {
-        const alerts = await apiJson(API, `/v1/alerts?org_id=${encodeURIComponent(ORG)}`, { headers: keyH })
-        if (alerts.res.ok) ok('threats', 'alerts feed')
-        else if (alerts.res.status === 402) skip('threats', 'plan gate')
-        else bad('threats', alerts.res.status)
+        const [auditWide, alerts] = await Promise.all([
+          apiJson(API, `/v1/orgs/${ORG}/audit?limit=200`, { headers: jwtH }),
+          apiJson(API, `/v1/alerts?org_id=${encodeURIComponent(ORG)}`, { headers: keyH }),
+        ])
+        if (!auditWide.res.ok) bad('threats', `audit limit=200 → ${auditWide.res.status}`)
+        else ok('threats', `${auditWide.json?.entries?.length ?? 0} audit events (limit=200)`)
+        if (alerts.res.ok) ok('threats-alerts', 'alerts feed')
+        else if (alerts.res.status === 402) skip('threats-alerts', 'plan gate')
+        else bad('threats-alerts', alerts.res.status)
       },
     },
     {

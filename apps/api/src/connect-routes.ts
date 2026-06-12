@@ -655,7 +655,7 @@ export async function registerConnectRoutes(
     if (!(await requireRole(cfg, orgId, user.id, 'viewer', reply))) return
     const q = z
       .object({
-        limit: z.coerce.number().int().min(1).max(100).optional(),
+        limit: z.coerce.number().int().min(1).max(200).optional(),
         cursor: z.string().optional(),
         decision: z.string().optional(),
         actor: z.string().optional(),
