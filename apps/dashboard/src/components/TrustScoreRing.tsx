@@ -1,16 +1,9 @@
 type Props = {
   score: number | null
-  label?: string
-  subtitle?: string
   tone?: 'ok' | 'warn' | 'danger' | 'neutral'
 }
 
-export function TrustScoreRing({
-  score,
-  label = 'Trust score',
-  subtitle,
-  tone,
-}: Props) {
+export function TrustScoreRing({ score, tone }: Props) {
   const hasScore = score != null
   const clamped = hasScore ? Math.max(0, Math.min(100, Math.round(score))) : 0
   const deg = hasScore ? (clamped / 100) * 360 : 0
@@ -21,7 +14,7 @@ export function TrustScoreRing({
     <div
       className={`trust-ring trust-ring--${resolvedTone}`}
       role="img"
-      aria-label={hasScore ? `${label}: ${clamped} percent` : `${label}: no data`}
+      aria-label={hasScore ? `Behavioral health: ${clamped} percent` : 'Behavioral health: no data'}
     >
       <div
         className="trust-ring__arc"
@@ -33,12 +26,6 @@ export function TrustScoreRing({
       />
       <div className="trust-ring__inner">
         <span className="trust-ring__value">{hasScore ? `${clamped}%` : '—'}</span>
-        <span className="trust-ring__label">{label}</span>
-        {subtitle && (
-          <span className="trust-ring__label" style={{ fontSize: '0.65rem', opacity: 0.75, marginTop: '0.15rem' }}>
-            {subtitle}
-          </span>
-        )}
       </div>
     </div>
   )

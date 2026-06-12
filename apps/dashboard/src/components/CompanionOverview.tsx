@@ -49,12 +49,13 @@ export function CompanionOverview({ audit, pendingReviewCount, onSelect, onOpenR
   return (
     <section className="companion-panel" aria-label="Mobile companion overview">
       <div className="companion-panel__hero">
-        <TrustScoreRing
-          score={score}
-          label="Behavioral health"
-          subtitle={score == null ? 'No actions in last 24h' : 'Last 24h · audit-weighted'}
-          tone={trustScoreTone(score)}
-        />
+        <div className="companion-panel__score">
+          <TrustScoreRing score={score} tone={trustScoreTone(score)} />
+          <span className="companion-score__caption">Behavioral health</span>
+          <span className="companion-score__hint">
+            {score == null ? 'No actions in 24h' : 'Last 24h'}
+          </span>
+        </div>
         <div className="companion-panel__stats">
           <div>
             <span className="companion-stat__value">{audit.length}</span>
