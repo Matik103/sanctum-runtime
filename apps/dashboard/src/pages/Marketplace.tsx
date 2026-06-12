@@ -218,13 +218,13 @@ export function Marketplace() {
               ? 'The public template catalog should include Connect Agent Starter and Sanctum Agent Host. Refresh in a moment — if this persists, your workspace may need the latest database migration (marketplace catalog).'
               : 'Choose an organization above to browse available packages.'
           }
-
+        >
           {orgId ? (
             <button type="button" className="btn btn-primary btn-sm" onClick={() => void refresh()}>
               Retry loading catalog
             </button>
           ) : null}
-        />
+        </EmptyState>
       ) : (
         <>
           <div className="marketplace-starter-packs">
