@@ -27,6 +27,7 @@ const EMAIL = process.env.TEST_USER_EMAIL?.trim() || process.env.A2Z_USER_EMAIL?
 const TS = Date.now()
 
 const REQUIRED_SLUGS = ['connect-agent-starter', 'sanctum-agent-host', 'warehouse-robot']
+const MIN_CATALOG_PACKAGES = 20
 
 let failed = 0
 let passed = 0
@@ -186,8 +187,10 @@ async function main() {
   const orgList = await apiJson(API, `/v1/marketplace/packages?org_id=${encodeURIComponent(ORG)}`, { headers: jwtH })
   const packages = orgList.json?.packages ?? []
   if (!orgList.res.ok) bad('org catalog', orgList.res.status)
-  else if (packages.length === 0) bad('org catalog', 'empty — run migration 078')
-  else ok(`org catalog (${packages.length} packages)`)
+  else if (packages.length === 0) bad('org catalog', 'empty — run migration 079')
+  else if (packages.length < MIN_CATALOG_PACKAGES) {
+    bad('org catalog', `expected ≥${MIN_CATALOG_PACKAGES} packages — run migration 079 (got ${packages.length})`)
+  } else ok(`org catalog (${packages.length} packages)`)
 
   for (const slug of REQUIRED_SLUGS) {
     if (packages.some((p) => p.slug === slug)) ok(`catalog includes ${slug}`)

@@ -54,13 +54,14 @@ test.describe('Marketplace UI', () => {
     await expect(page.getByRole('heading', { name: /^marketplace$/i })).toBeVisible({ timeout: 25_000 })
 
     const allCards = page.locator('.marketplace-card')
-    const allCount = await allCards.count()
-    test.skip(allCount < 2, 'Need multiple packages for filter test')
+    await expect.poll(async () => allCards.count(), { timeout: 30_000 }).toBeGreaterThanOrEqual(6)
 
+    const allCount = await allCards.count()
     await page.getByRole('button', { name: /Physical & access control/i }).click()
-    await expect(allCards.first()).toBeVisible()
+    await expect.poll(async () => allCards.count(), { timeout: 10_000 }).toBeLessThan(allCount)
+
     const filtered = await allCards.count()
     expect(filtered).toBeGreaterThan(0)
-    expect(filtered).toBeLessThanOrEqual(allCount)
+    expect(filtered).toBeLessThan(allCount)
   })
 })
