@@ -13,6 +13,8 @@ type Provider = {
   family: string
   providerCode: string
   boundary: Boundary
+  /** Managed /v1/proxy/:platform route in Connect Agent */
+  proxySupported?: boolean
 }
 
 type Props = {
@@ -22,13 +24,13 @@ type Props = {
 }
 
 const PROVIDERS: Provider[] = [
-  { id: 'openai', label: 'OpenAI', family: 'Agents / Responses API', providerCode: 'openai', boundary: 'model-tools' },
-  { id: 'claude', label: 'Claude', family: 'MCP / tool use', providerCode: 'anthropic', boundary: 'mcp' },
-  { id: 'gemini', label: 'Gemini', family: 'Function calling', providerCode: 'google-gemini', boundary: 'model-tools' },
-  { id: 'grok', label: 'Grok', family: 'Tool calling', providerCode: 'xai-grok', boundary: 'model-tools' },
-  { id: 'deepseek', label: 'DeepSeek', family: 'Tool calling', providerCode: 'deepseek', boundary: 'model-tools' },
-  { id: 'nvidia', label: 'NVIDIA NIM', family: 'Hosted / local models', providerCode: 'nvidia-nim', boundary: 'model-tools' },
-  { id: 'bedrock', label: 'AWS Bedrock', family: 'Agent actions', providerCode: 'aws-bedrock', boundary: 'model-tools' },
+  { id: 'openai', label: 'OpenAI', family: 'Agents / Responses API', providerCode: 'openai', boundary: 'model-tools', proxySupported: true },
+  { id: 'claude', label: 'Claude', family: 'MCP / tool use', providerCode: 'anthropic', boundary: 'mcp', proxySupported: true },
+  { id: 'gemini', label: 'Gemini', family: 'Function calling', providerCode: 'google-gemini', boundary: 'model-tools', proxySupported: true },
+  { id: 'grok', label: 'Grok', family: 'Tool calling (SDK verify)', providerCode: 'xai-grok', boundary: 'model-tools' },
+  { id: 'deepseek', label: 'DeepSeek', family: 'Tool calling', providerCode: 'deepseek', boundary: 'model-tools', proxySupported: true },
+  { id: 'nvidia', label: 'NVIDIA NIM', family: 'Hosted / local models (SDK)', providerCode: 'nvidia-nim', boundary: 'model-tools' },
+  { id: 'bedrock', label: 'AWS Bedrock', family: 'Agent actions (SDK adapter)', providerCode: 'aws-bedrock', boundary: 'model-tools' },
   { id: 'custom', label: 'Any model', family: 'Generic HTTP / local', providerCode: 'custom', boundary: 'http' },
 ]
 
@@ -208,6 +210,9 @@ export function AgentConnectStudio({ agentToken, orgId, onOpenDevices }: Props) 
                 >
                   <strong>{provider.label}</strong>
                   <span>{provider.family}</span>
+                  {provider.proxySupported && (
+                    <span className="badge neutral" style={{ marginTop: '0.25rem', fontSize: '0.62rem' }}>Connect proxy</span>
+                  )}
                 </button>
               ))}
             </div>

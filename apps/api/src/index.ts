@@ -529,7 +529,7 @@ if (supabaseAuth) {
   await registerOrgDomainsRoutes(app)
   await registerHardwareAttestationRoutes(app)
   await registerPolicyVersionRoutes(app, supabaseAuth)
-  await registerGovernanceRoutes(app, supabaseAuth)
+  await registerGovernanceRoutes(app, supabaseAuth, runtime)
   await registerComplianceRoutes(app, supabaseAuth)
   await registerDelegationRoutes(app, supabaseAuth)
   await registerAlertRoutes(app)

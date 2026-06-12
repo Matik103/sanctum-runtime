@@ -204,3 +204,19 @@ export async function fetchAuditById(id: string): Promise<ActionResult | null> {
   if (error || !data) return null
   return rowToActionResult(data as AuditRow)
 }
+
+/** Latest audit row for a correlation id (Connect proxy wait loop, cross-instance resolve). */
+export async function fetchAuditByCorrelationId(correlationId: string): Promise<ActionResult | null> {
+  const sb = getSupabaseServiceClient()
+  if (!sb) return null
+
+  const { data, error } = await sb
+    .from('audit_events')
+    .select('*')
+    .eq('correlation_id', correlationId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error || !data) return null
+  return rowToActionResult(data as AuditRow)
+}

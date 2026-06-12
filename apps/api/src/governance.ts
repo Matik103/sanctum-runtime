@@ -396,6 +396,7 @@ type SanctumReq = FastifyRequest & {
 export async function registerGovernanceRoutes(
   app: FastifyInstance,
   cfg: SupabaseAuthConfig,
+  runtime: import('@sanctum/runtime-engine').RuntimeEngine,
 ): Promise<void> {
   const admin = createSupabaseAdmin(cfg)
   const store = new ControlPlaneStore(cfg)
@@ -602,6 +603,20 @@ export async function registerGovernanceRoutes(
         body.decision,
         body.note,
       )
+
+      // Release held Connect / verify actions when governance workflow completes.
+      if (
+        updated.audit_event_id &&
+        (updated.status === 'approved' || updated.status === 'rejected')
+      ) {
+        const auditDecision = updated.status === 'approved' ? 'APPROVED' : 'BLOCKED'
+        await runtime.resolveAuditEntry(updated.audit_event_id, {
+          decision: auditDecision,
+          resolvedBy: access.userId,
+          note: body.note ?? `Governance workflow ${updated.status}`,
+        })
+      }
+
       return updated
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)

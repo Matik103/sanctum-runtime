@@ -217,7 +217,7 @@ export async function gateProxyToolCall(
   if (entry.decision === 'REQUIRE_VERIFICATION' && opts.waitVerification) {
     const deadline = Date.now() + (opts.waitTimeoutMs ?? DEFAULT_WAIT_MS)
     while (Date.now() < deadline) {
-      const status = runtime.getVerificationStatus(correlationId)
+      const status = await runtime.getVerificationStatusFresh(correlationId)
       if (status.status === 'approved' && status.entry) {
         entry = status.entry
         break

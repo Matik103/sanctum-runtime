@@ -22,6 +22,7 @@ import {
   type VerificationStatus,
 } from '@sanctum-runtime/sdk'
 import {
+  fetchAuditByCorrelationId,
   fetchAuditById,
   loadAuditFromSupabase,
   maybeSyncAuditToSupabase,
@@ -245,6 +246,24 @@ export class RuntimeEngine {
       correlationId,
       status: verificationStateFromDecision(entry.decision),
       entry,
+    }
+  }
+
+  /** Poll in-memory store, then Supabase — for Connect proxy wait across API instances. */
+  async getVerificationStatusFresh(correlationId: string): Promise<VerificationStatus> {
+    const local = this.getVerificationStatus(correlationId)
+    if (local.status === 'approved' || local.status === 'blocked') return local
+
+    if (!isSupabaseConfigured()) return local
+
+    const fromDb = await fetchAuditByCorrelationId(correlationId)
+    if (!fromDb) return local
+
+    this.auditStore.hydrate([fromDb], 500)
+    return {
+      correlationId,
+      status: verificationStateFromDecision(fromDb.decision),
+      entry: fromDb,
     }
   }
 
