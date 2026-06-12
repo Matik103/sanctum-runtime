@@ -328,10 +328,11 @@ type Props = {
   supabaseConfigured?: boolean
   onSetPolicy: (action: string, response: PolicyResponse) => Promise<void>
   onPoliciesChange: (policies: PolicyMap) => void
+  onPage?: (p: import('../layout/Sidebar').PageId) => void
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export function Policies({ policies, audit, onSetPolicy, onPoliciesChange }: Props) {
+export function Policies({ policies, audit, onSetPolicy, onPoliciesChange, onPage }: Props) {
   const { orgId, canEditPolicies, loading: planLoading } = useWorkspacePlan()
   const [inputValue, setInputValue] = useState('')
   const [newMode, setNewMode] = useState<PolicyResponse>('verify')
@@ -401,6 +402,9 @@ export function Policies({ policies, audit, onSetPolicy, onPoliciesChange }: Pro
           <p>Define what your AI agents are allowed to do — and when they need your sign-off</p>
         </div>
         <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap' }}>
+          {onPage && (
+            <button type="button" className="response-btn" onClick={() => onPage('policy-history')}>Policy history</button>
+          )}
           <button type="button" className="response-btn" disabled={yamlBusy} onClick={() => void exportYaml()}>Export YAML</button>
           <label className="response-btn" style={{ cursor: yamlBusy || !canEditPolicies ? 'not-allowed' : 'pointer', opacity: canEditPolicies ? 1 : 0.55 }}>
             Import YAML

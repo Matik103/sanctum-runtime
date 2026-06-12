@@ -88,7 +88,7 @@ export function Overview({
           <span className="pill" title="Open-source runtime preview">
             v0.1
           </span>
-          <span className="pill" title="Auto-refreshes every 5s">
+          <span className="pill" title="Auto-refreshes every ~10s">
             {lastRefreshed
               ? `Updated ${lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`
               : 'Connecting…'}
@@ -97,6 +97,21 @@ export function Overview({
       </header>
 
       <ActionInterceptDemo orgId={orgId} onPage={onPage} />
+
+      {(pendingReviewCount > 0 || !status?.runtimeOnline) && onPage && (
+        <div className="overview-quick-actions" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+          {pendingReviewCount > 0 && onOpenReview && (
+            <button type="button" className="btn btn-primary btn-sm" onClick={onOpenReview}>
+              Review {pendingReviewCount} held action{pendingReviewCount === 1 ? '' : 's'}
+            </button>
+          )}
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => onPage('live-feed')}>Live Feed</button>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => onPage('connect')}>Connect Agent</button>
+          {status?.runtimeOnline === false && (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => onPage('devices')}>Connect runtime</button>
+          )}
+        </div>
+      )}
 
       <div className="grid-4">
         <div className="card glow-success">

@@ -68,6 +68,7 @@ type Props = { audit: ActionResult[]; onSelect: (e: ActionResult) => void }
 
 export function ThreatMonitor({ audit, onSelect }: Props) {
   const [severityFilter, setSeverityFilter] = useState<'all' | Severity>('all')
+  const [threatTypeFilter, setThreatTypeFilter] = useState<string | null>(null)
 
   const withAnomalies = audit.filter((e) => e.anomalyFlags.length > 0)
   const blocked = audit.filter((e) => e.decision === 'BLOCKED')
@@ -80,9 +81,11 @@ export function ThreatMonitor({ audit, onSelect }: Props) {
     (e) => e.decision !== 'APPROVED' || e.anomalyFlags.length > 0,
   )
 
-  const filtered = threats.filter((e) =>
-    severityFilter === 'all' ? true : eventSeverity(e) === severityFilter,
-  )
+  const filtered = threats.filter((e) => {
+    if (severityFilter !== 'all' && eventSeverity(e) !== severityFilter) return false
+    if (threatTypeFilter && !e.anomalyFlags.includes(threatTypeFilter)) return false
+    return true
+  })
 
   // Real trailing-24h histogram: 24 one-hour buckets ending at the current hour.
   // (Previously this grouped events by hour-of-day across the entire log and
@@ -159,7 +162,15 @@ export function ThreatMonitor({ audit, onSelect }: Props) {
         {THREAT_TYPES.map((t) => {
           const count = audit.filter((e) => e.anomalyFlags.includes(t.id)).length
           return (
-            <div key={t.id} className="threat-type-card">
+            <div
+              key={t.id}
+              role="button"
+              tabIndex={0}
+              className={`threat-type-card${threatTypeFilter === t.id ? ' threat-type-card--active' : ''}`}
+              style={{ cursor: 'pointer' }}
+              onClick={() => setThreatTypeFilter((cur) => (cur === t.id ? null : t.id))}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setThreatTypeFilter((cur) => (cur === t.id ? null : t.id)) }}
+            >
               <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{t.label}</div>
               <div style={{ color: 'var(--muted)', fontSize: '0.75rem', marginTop: '0.25rem' }}>
                 {count} {count === 1 ? 'event' : 'events'} · {riskLabel(t.severity)}

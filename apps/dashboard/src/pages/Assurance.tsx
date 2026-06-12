@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Play, FileCheck, KeyRound, Download } from 'lucide-react'
 import { PlanGateAlert } from '../components/PlanGateAlert'
+import { PlanFeatureBanner } from '../components/PlanFeatureBanner'
+import { useWorkspacePlan } from '../hooks/useWorkspacePlan'
+import { normalizePlanId } from '../lib/billing'
 import { formatApiError } from '../lib/sanitize-error'
 import { TabBar } from '../components/ui/TabBar'
 import {
@@ -10,6 +13,10 @@ import {
 import { fetchMyOrgs, type FleetOrg } from '../lib/fleet'
 
 export function Assurance() {
+  const { planId } = useWorkspacePlan()
+  const plan = normalizePlanId(planId)
+  const canReplay = plan !== 'observer'
+  const canExportEvidence = plan === 'team' || plan === 'enterprise'
   const [orgs, setOrgs] = useState<FleetOrg[]>([])
   const [orgId, setOrgId] = useState('')
   const [tab, setTab] = useState<'replay' | 'evidence' | 'token'>('replay')
@@ -74,6 +81,21 @@ export function Assurance() {
           </select>
         )}
       </header>
+
+      {tab === 'replay' && (
+        <PlanFeatureBanner
+          feature="Policy replay"
+          message="Replay requires Personal or higher. Developer plan is observe-only."
+          allowed={canReplay}
+        />
+      )}
+      {tab === 'evidence' && (
+        <PlanFeatureBanner
+          feature="Evidence export"
+          message="SOC2/NIST evidence bundles require Team plan or higher."
+          allowed={canExportEvidence}
+        />
+      )}
 
       {error && <PlanGateAlert message={error} onDismiss={() => setError(null)} style={{ marginBottom: '1rem' }} />}
 

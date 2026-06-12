@@ -144,6 +144,7 @@ export async function simulateAction(
   actor: string,
   action: string,
   context: Record<string, unknown>,
+  draftYaml?: string,
 ): Promise<SimulateResult> {
   const token = await getAccessToken()
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
@@ -151,7 +152,12 @@ export async function simulateAction(
   const res = await fetch(`${apiBaseUrl}/v1/policies/simulate`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ actor, action, context }),
+    body: JSON.stringify({
+      actor,
+      action,
+      context,
+      ...(draftYaml?.trim() ? { draft_yaml: draftYaml } : {}),
+    }),
   })
   if (!res.ok) await throwResponseError(res, 'Simulation failed')
   return res.json() as Promise<SimulateResult>

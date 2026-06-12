@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, Play, Save, FileCode } from "lucide-react";
-import type { ActionPolicy, PolicyCondition } from "@sanctum-runtime/sdk/browser";
-import { api, simulateAction, exportPoliciesYaml, importPoliciesYaml } from "../lib/api";
+import { Plus, Trash2, Play, Save, Copy, Check } from "lucide-react";
+import type { ActionPolicy, PolicyCondition, PolicyMap } from "@sanctum-runtime/sdk/browser";
+import { api, policyToResponse, simulateAction, importPoliciesYaml } from "../lib/api";
 import { PlanGateAlert } from "../components/PlanGateAlert";
+import { PlanFeatureBanner } from "../components/PlanFeatureBanner";
 import { formatApiError } from "../lib/sanitize-error";
 import { Alert } from "../components/ui/Alert";
+import { useWorkspacePlan } from "../hooks/useWorkspacePlan";
+import { canUsePolicyEditor } from "../lib/billing";
 
 type Rule = {
   id: string;
@@ -53,8 +56,36 @@ function ruleToPolicy(rule: Rule): Partial<ActionPolicy> {
   };
 }
 
+function policyKeyToAction(key: string): string {
+  const idx = key.indexOf(":")
+  return idx >= 0 ? key.slice(idx + 1) : key
+}
+
+function policyToRule(action: string, policy: ActionPolicy): Rule {
+  return {
+    id: crypto.randomUUID(),
+    action,
+    response: policyToResponse(policy),
+    requireSecondApprover: Boolean(policy.requireSecondApprover),
+    blockWhenOffline: Boolean(policy.blockWhenOffline),
+    conditions: policy.conditions ? [...policy.conditions] : [],
+    autoEscalateAfterMinutes: policy.autoEscalateAfterMinutes,
+  }
+}
+
+function policiesToRules(policies: PolicyMap): Rule[] {
+  const rules = Object.entries(policies)
+    .filter(([key]) => !key.startsWith("__"))
+    .map(([key, policy]) => policyToRule(policyKeyToAction(key), policy))
+  return rules.length > 0 ? rules : [newRule("")]
+}
+
 export function WorkflowBuilder() {
+  const { planId } = useWorkspacePlan()
+  const canEdit = canUsePolicyEditor(planId)
   const [rules, setRules] = useState<Rule[]>([newRule("")]);
+  const [loaded, setLoaded] = useState(false);
+  const [yamlCopied, setYamlCopied] = useState(false);
   const [simActor, setSimActor] = useState("agent:test");
   const [simAction, setSimAction] = useState("");
   const [simContext, setSimContext] = useState(
@@ -129,6 +160,7 @@ export function WorkflowBuilder() {
         simActor,
         simAction || rules[0]?.action || "unknown",
         ctx,
+        yaml,
       );
       setSimResult(result);
     } catch (e) {
@@ -147,38 +179,56 @@ export function WorkflowBuilder() {
     }
   };
 
-  const loadExisting = async () => {
+  const copyYaml = async () => {
     try {
-      const existing = await exportPoliciesYaml();
-      void existing;
-      alert(
-        'Loaded YAML view shows your in-progress workflow. Use "Policies" page to see current saved policies.',
-      );
+      await navigator.clipboard.writeText(yaml);
+      setYamlCopied(true);
+      window.setTimeout(() => setYamlCopied(false), 2000);
     } catch {
       /* ignore */
     }
   };
 
   useEffect(() => {
-    void api;
+    void (async () => {
+      try {
+        const policies = await api.getPolicies();
+        setRules(policiesToRules(policies));
+      } catch {
+        /* keep empty rule */
+      } finally {
+        setLoaded(true);
+      }
+    })();
   }, []);
 
   return (
     <>
       <header className="page-header">
         <div>
-          <h1>Workflow Builder</h1>
-          <p>Compose policies visually, simulate against sample contexts, save as YAML.</p>
+          <h1>Policy Composer</h1>
+          <p>Compose policies visually, simulate draft rules before save, export as YAML.</p>
         </div>
         <div className="responsive-action-row">
-          <button type="button" className="btn btn-ghost" onClick={() => void loadExisting()}>
-            <FileCode size={14} style={{ marginRight: "0.35rem" }} /> View YAML
+          <button type="button" className="btn btn-ghost" onClick={() => void copyYaml()} disabled={!yaml.trim()}>
+            {yamlCopied ? <Check size={14} style={{ marginRight: "0.35rem" }} /> : <Copy size={14} style={{ marginRight: "0.35rem" }} />}
+            {yamlCopied ? "Copied" : "Copy YAML"}
           </button>
-          <button type="button" className="btn btn-primary" onClick={() => void saveWorkflow()}>
+          <button type="button" className="btn btn-primary" onClick={() => void saveWorkflow()} disabled={!canEdit}>
             <Save size={14} style={{ marginRight: "0.35rem" }} /> Save workflow
           </button>
         </div>
       </header>
+
+      <PlanFeatureBanner
+        feature="Policy editing"
+        message="Developer plan is observe-only. Upgrade to save composed workflows."
+        allowed={canEdit}
+      />
+
+      {!loaded && (
+        <p style={{ fontSize: "0.84rem", opacity: 0.6, marginBottom: "0.75rem" }}>Loading current policies…</p>
+      )}
 
       {saveError && (
         <PlanGateAlert message={saveError} onDismiss={() => setSaveError(null)} />
@@ -371,7 +421,7 @@ export function WorkflowBuilder() {
           <div className="workflow-panel__header">
             <div>
               <h2>Simulator</h2>
-              <p>Test a proposed action before saving policy changes.</p>
+              <p>Test the draft rules above — simulation merges YAML with saved policies without writing.</p>
             </div>
           </div>
           <div className="workflow-simulator">

@@ -11,6 +11,7 @@ import { CONNECT_POLICY_PRESETS, getConnectPreset } from './connect-presets.js'
 import { CONNECT_SHIELD_PRESETS, getConnectShieldPreset } from './connect-shield-presets.js'
 import { listConnectTools } from './connect-tool-registry.js'
 import { countHeldConnectEvents, listConnectProxyEvents } from './connect-live-feed.js'
+import { listOrgAuditPage } from './org-audit.js'
 import { invalidateShieldRulesCache } from './shield-routes.js'
 import { issueAgentToken, verifyAgentToken } from './agent-tokens.js'
 import { gateProxyToolCall } from './proxy-gate.js'
@@ -631,6 +632,48 @@ export async function registerConnectRoutes(
       heldOnly: q.held_only,
     })
     return { ok: true, events, count: events.length }
+  })
+
+  app.get('/v1/orgs/:orgId/audit', async (req, reply) => {
+    const user = (req as SanctumReq).sanctumUser
+    if (!user) return reply.status(403).send({ error: 'dashboard_auth_required' })
+    const { orgId } = req.params as { orgId: string }
+    if (!(await requireRole(cfg, orgId, user.id, 'viewer', reply))) return
+    const q = z
+      .object({
+        limit: z.coerce.number().int().min(1).max(100).optional(),
+        cursor: z.string().optional(),
+        decision: z.string().optional(),
+        actor: z.string().optional(),
+        action: z.string().optional(),
+        search: z.string().optional(),
+        held_only: z.coerce.boolean().optional(),
+        high_risk: z.coerce.boolean().optional(),
+      })
+      .parse(req.query ?? {})
+    const entitlements = getEntitlementEngine(cfg)
+    const limits = await entitlements.getLimits(orgId)
+    const page = await listOrgAuditPage(
+      cfg,
+      orgId,
+      {
+        limit: q.limit,
+        cursor: q.cursor,
+        decision: q.decision,
+        actor: q.actor,
+        action: q.action,
+        search: q.search,
+        heldOnly: q.held_only,
+        highRiskOnly: q.high_risk,
+      },
+      limits.retentionDays ?? 30,
+    )
+    return {
+      entries: page.entries,
+      nextCursor: page.nextCursor,
+      totalApprox: page.totalApprox,
+      retentionDays: page.retentionDays,
+    }
   })
 
   app.get('/v1/orgs/:orgId/connect/live-feed/stream', async (req, reply) => {

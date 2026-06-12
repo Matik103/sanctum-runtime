@@ -4,7 +4,7 @@ import rateLimit from '@fastify/rate-limit'
 import websocket from '@fastify/websocket'
 import { RuntimeEngine } from '@sanctum/runtime-engine'
 import { ActionRequestSchema, PolicyConditionSchema } from '@sanctum-runtime/sdk'
-import { policiesFromYaml, policiesToYaml } from '@sanctum/policy-engine'
+import { policiesFromYaml, policiesToYaml, PolicyEngine } from '@sanctum/policy-engine'
 import Fastify from 'fastify'
 import { createHash } from 'node:crypto'
 import { ZodError } from 'zod'
@@ -736,9 +736,18 @@ app.post('/v1/policies/simulate', async (req) => {
       actor: z.string().min(1),
       action: z.string().min(1),
       context: z.record(z.string(), z.unknown()).default({}),
+      draft_yaml: z.string().optional(),
     })
     .parse(req.body)
   const request = ActionRequestSchema.parse(body)
+  if (body.draft_yaml?.trim()) {
+    const merged = {
+      ...runtime.getPolicyEngine().getPolicies(),
+      ...policiesFromYaml(body.draft_yaml),
+    }
+    const draftEngine = new PolicyEngine(merged)
+    return runtime.simulateAction(request, { policyEngine: draftEngine })
+  }
   return runtime.simulateAction(request)
 })
 

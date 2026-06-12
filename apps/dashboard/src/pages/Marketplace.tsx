@@ -24,6 +24,7 @@ export function Marketplace() {
   const [success, setSuccess] = useState<string | null>(null)
   const [busySlug, setBusySlug] = useState<string | null>(null)
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
+  const [detailPkg, setDetailPkg] = useState<MarketplacePackage | null>(null)
   const loadingRef = useRef(false)
   const orgIdRef = useRef(orgId)
   orgIdRef.current = orgId
@@ -250,7 +251,10 @@ export function Marketplace() {
                     {pkg.description}
                   </p>
                 )}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setDetailPkg(pkg)}>
+                    Details
+                  </button>
                   <button
                     type="button"
                     className={`btn btn-sm ${installed ? 'btn-danger' : 'btn-primary'}`}
@@ -272,6 +276,40 @@ export function Marketplace() {
           })}
         </div>
         </>
+      )}
+
+      {detailPkg && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={() => setDetailPkg(null)}>
+          <div className="card" style={{ width: 'min(520px, 100%)', maxHeight: '85vh', overflow: 'auto', padding: '1.25rem' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.75rem' }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{detailPkg.name}</h2>
+                <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: 'var(--muted)' }}>{detailPkg.category} · v{detailPkg.version} · {detailPkg.publisher}</p>
+              </div>
+              {detailPkg.installed && <span className="badge success">Installed</span>}
+            </div>
+            {detailPkg.description && <p style={{ fontSize: '0.88rem', lineHeight: 1.55 }}>{detailPkg.description}</p>}
+            {detailPkg.readme && (
+              <pre style={{ fontSize: '0.78rem', whiteSpace: 'pre-wrap', marginTop: '0.75rem', background: 'var(--surface-2)', padding: '0.75rem', borderRadius: 8 }}>{detailPkg.readme}</pre>
+            )}
+            {Array.isArray(detailPkg.policyTemplates) && detailPkg.policyTemplates.length > 0 && (
+              <div style={{ marginTop: '0.85rem' }}>
+                <strong style={{ fontSize: '0.82rem' }}>Policy templates ({detailPkg.policyTemplates.length})</strong>
+                <ul style={{ margin: '0.4rem 0 0', paddingLeft: '1.1rem', fontSize: '0.8rem' }}>
+                  {detailPkg.policyTemplates.slice(0, 12).map((t, i) => (
+                    <li key={i}>{typeof t === 'object' && t && 'action' in t ? String((t as { action?: string }).action) : `Policy ${i + 1}`}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+              <button type="button" className={`btn ${detailPkg.installed ? 'btn-danger' : 'btn-primary'}`} onClick={() => { void toggleInstall(detailPkg); setDetailPkg(null) }}>
+                {detailPkg.installed ? 'Uninstall' : 'Install to org'}
+              </button>
+              <button type="button" className="btn btn-ghost" onClick={() => setDetailPkg(null)}>Close</button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   )

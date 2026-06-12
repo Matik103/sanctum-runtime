@@ -184,6 +184,11 @@ export function Alerts({ onPage }: { onPage?: (p: PageId) => void }) {
     void loadIncidents()
     void loadStats()
     void loadRules()
+    const id = window.setInterval(() => {
+      void loadIncidents()
+      void loadStats()
+    }, 20_000)
+    return () => window.clearInterval(id)
   }, [loadIncidents, loadRules, loadStats])
 
   const acknowledge = async (id: string) => {

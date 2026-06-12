@@ -111,6 +111,7 @@ type Props = {
 }
 
 export function ActionInterceptDemo({ orgId, onPage }: Props) {
+  const [expanded, setExpanded] = useState(false)
   const [activeId, setActiveId] = useState(scenarios[0].id)
   const [result, setResult] = useState<SimulateResult | null>(null)
   const [running, setRunning] = useState(false)
@@ -138,21 +139,29 @@ export function ActionInterceptDemo({ orgId, onPage }: Props) {
 
   return (
     <section className="card action-intercept">
-      <div className="action-intercept__copy">
-        <div className="card-label">Runtime trust boundary</div>
-        <h2>See Sanctum stop risky AI actions before execution</h2>
-        <p>
-          Run a harmless simulation of a real agent action. Sanctum returns the same decision envelope used by SDK
-          and Connect Agent flows: source trust, blast radius, action identity, policy path, and the execution gate.
-        </p>
-        <div className="action-intercept__flow" aria-label="Sanctum action control flow">
+      <div className="action-intercept__copy" style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+        <div>
+          <div className="card-label">Runtime trust boundary</div>
+          <h2>See Sanctum stop risky AI actions before execution</h2>
+          <p>
+            Run a harmless simulation of a real agent action. Sanctum returns the same decision envelope used by SDK
+            and Connect Agent flows: source trust, blast radius, action identity, policy path, and the execution gate.
+          </p>
+        </div>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setExpanded((v) => !v)}>
+          {expanded ? 'Hide simulator' : 'Try intercept demo'}
+        </button>
+      </div>
+
+      {expanded && (
+      <>
+        <div className="action-intercept__flow" aria-label="Sanctum action control flow" style={{ margin: '0 1rem 0.75rem' }}>
           <span>Agent proposes</span>
           <ArrowRight size={14} />
           <span>Sanctum evaluates</span>
           <ArrowRight size={14} />
           <span>Approve, block, or token</span>
         </div>
-      </div>
 
       <div className="action-intercept__workspace">
         <div className="action-intercept__scenarios" role="tablist" aria-label="Risk scenario">
@@ -251,6 +260,8 @@ export function ActionInterceptDemo({ orgId, onPage }: Props) {
           </button>
         </div>
       </div>
+      </>
+      )}
     </section>
   )
 }

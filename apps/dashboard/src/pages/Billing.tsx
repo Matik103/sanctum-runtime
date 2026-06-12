@@ -407,6 +407,15 @@ export function Billing() {
           {governedQuota.pct >= 100
             ? 'New gated actions may be held or blocked until you upgrade.'
             : `You have used ${formatNumber(governedUsed)} of ${formatLimit(governedLimit)} governed actions this month.`}
+          {' '}
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            style={{ marginLeft: '0.35rem', verticalAlign: 'middle' }}
+            onClick={() => document.getElementById('plan-grid')?.scrollIntoView({ behavior: 'smooth' })}
+          >
+            View upgrade options ↓
+          </button>
         </Alert>
       )}
 
@@ -535,7 +544,7 @@ export function Billing() {
               <p>We do not charge you to watch your agents. Upgrade when you need to stop or approve real-world actions.</p>
             </div>
             <div className="section__body">
-              <div className="policy-grid">
+              <div className="policy-grid" id="plan-grid">
                 {PLAN_CARDS.map((pc) => {
                   const isCurrent = isSamePlanTier(pc.id, currentPlanId)
                     || (pc.id === 'observer' && plan?.plan.name?.toLowerCase() === 'developer')

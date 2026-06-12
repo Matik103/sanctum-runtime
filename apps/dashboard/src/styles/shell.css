@@ -405,3 +405,24 @@ a:hover {
   border-radius: 999px;
   background: linear-gradient(90deg, var(--accent, #6366f1), var(--success, #22c55e));
 }
+
+.agent-paths__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.agent-paths__item {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+}
+
+.agent-paths--compact .agent-paths__grid {
+  gap: 0.5rem;
+}
+
+.threat-type-card--active {
+  outline: 2px solid var(--accent, #6366f1);
+  background: rgba(99, 102, 241, 0.08);
+}

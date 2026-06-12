@@ -641,7 +641,7 @@ export class RuntimeEngine {
 
   simulateAction(
     request: ActionRequest,
-    options: { offlineMode?: boolean } = {},
+    options: { offlineMode?: boolean; policyEngine?: PolicyEngine } = {},
   ) {
     const sourceTrust = deriveSourceTrust(request)
     const blastRadius = estimateBlastRadius(request)
@@ -656,7 +656,8 @@ export class RuntimeEngine {
       ...new Set([...detectedAnomalies, ...shield.signals.map((signal) => signal.id)]),
     ]
     const useHeuristicsOnly = options.offlineMode === true || this.forceOfflineMode
-    const policyEval = this.policyEngine.evaluate(request, useHeuristicsOnly)
+    const engine = options.policyEngine ?? this.policyEngine
+    const policyEval = engine.evaluate(request, useHeuristicsOnly)
     const risk = mergeRisk(
       heuristicRiskFloor(request, anomalyFlags),
       riskFromBlastRadius(blastRadius.level),

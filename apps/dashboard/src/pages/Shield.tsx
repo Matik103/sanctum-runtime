@@ -99,21 +99,28 @@ export function Shield({ audit, onPage }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [resolving, setResolving] = useState<string | null>(null)
   const [resolveError, setResolveError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const loadStatus = useCallback(async () => {
+    setLoadError(null)
     try {
       const headers = await authHeaders()
       const [statusRes, eventsRes] = await Promise.all([
         fetch(`${API_BASE}/v1/shield/status`, { headers }),
         fetch(`${API_BASE}/v1/shield/containment?limit=20`, { headers }),
       ])
+      if (statusRes.status === 402 || eventsRes.status === 402) {
+        setLoadError('Shield requires Operator or higher. Upgrade on Billing to view containment.')
+        return
+      }
       if (statusRes.ok) setStatus(await statusRes.json() as ShieldStatus)
+      else if (statusRes.status === 403) setLoadError('Insufficient permissions for Shield status.')
       if (eventsRes.ok) {
         const d = await eventsRes.json() as { events: ContainmentEvent[] }
         setEvents(d.events ?? [])
       }
     } catch {
-      // non-fatal — status shows as unknown
+      setLoadError('Could not load Shield status. Check API connection and retry.')
     } finally {
       setLoadingStatus(false)
     }
@@ -123,6 +130,9 @@ export function Shield({ audit, onPage }: Props) {
 
   const toggleFleet = useCallback(async () => {
     if (!status) return
+    if (!status.fleetPaused && !window.confirm('Pause the entire fleet? All agent approvals will be suspended org-wide until resumed.')) {
+      return
+    }
     setPauseLoading(true)
     setError(null)
     try {
@@ -193,6 +203,10 @@ export function Shield({ audit, onPage }: Props) {
           </button>
         </div>
       </header>
+
+      {loadError && (
+        <PlanGateAlert message={loadError} onDismiss={() => setLoadError(null)} style={{ marginBottom: '0.75rem' }} />
+      )}
 
       {/* Shield health banner */}
       <div

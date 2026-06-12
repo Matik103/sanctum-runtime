@@ -26,7 +26,39 @@ async function authHeaders(json = false): Promise<Record<string, string>> {
   return h
 }
 
-export function PolicyHistory() {
+import { api } from '../lib/api'
+import type { PolicyMap } from '@sanctum-runtime/sdk/browser'
+import type { PageId } from '../layout/Sidebar'
+import { PlanFeatureBanner } from '../components/PlanFeatureBanner'
+import { useWorkspacePlan } from '../hooks/useWorkspacePlan'
+import { canUsePolicyEditor } from '../lib/billing'
+
+type PolicyDiff = {
+  added: string[]
+  removed: string[]
+  changed: string[]
+}
+
+function policyKeyLabel(key: string): string {
+  const idx = key.indexOf(':')
+  return idx >= 0 ? key.slice(idx + 1) : key
+}
+
+function diffPolicies(live: PolicyMap, snapshot: Record<string, unknown>): PolicyDiff {
+  const snap = snapshot as PolicyMap
+  const liveKeys = new Set(Object.keys(live).filter((k) => !k.startsWith('__')))
+  const snapKeys = new Set(Object.keys(snap).filter((k) => !k.startsWith('__')))
+  const added = [...snapKeys].filter((k) => !liveKeys.has(k)).map(policyKeyLabel)
+  const removed = [...liveKeys].filter((k) => !snapKeys.has(k)).map(policyKeyLabel)
+  const changed = [...snapKeys]
+    .filter((k) => liveKeys.has(k) && JSON.stringify(live[k]) !== JSON.stringify(snap[k]))
+    .map(policyKeyLabel)
+  return { added, removed, changed }
+}
+
+export function PolicyHistory({ onPage }: { onPage?: (p: PageId) => void }) {
+  const { planId } = useWorkspacePlan()
+  const canSnapshot = canUsePolicyEditor(planId)
   const [orgId, setOrgId] = useState('')
   const [snapshots, setSnapshots] = useState<PolicySnapshot[]>([])
   const [selected, setSelected] = useState<PolicySnapshot | null>(null)
@@ -35,10 +67,16 @@ export function PolicyHistory() {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ text: string; variant: 'success' | 'error' } | null>(null)
   const [showSave, setShowSave] = useState(false)
+  const [livePolicies, setLivePolicies] = useState<PolicyMap>({})
 
   useEffect(() => {
     fetchMyOrgs().then((orgs) => { if (orgs[0]) setOrgId(orgs[0].org_id) }).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (!orgId) return
+    void api.getPolicies(orgId).then(setLivePolicies).catch(() => setLivePolicies({}))
+  }, [orgId])
 
   const load = useCallback(async () => {
     if (!orgId) return
@@ -88,7 +126,8 @@ export function PolicyHistory() {
     }
   }
 
-  const policyCount = (snap: PolicySnapshot) => Object.keys(snap.snapshot).length
+  const policyCount = (snap: PolicySnapshot) => Object.keys(snap.snapshot).filter((k) => !k.startsWith('__')).length
+  const selectedDiff = selected ? diffPolicies(livePolicies, selected.snapshot) : null
 
   return (
     <>
@@ -97,11 +136,23 @@ export function PolicyHistory() {
           <h1>Policy History</h1>
           <p>Version-controlled policy snapshots with one-click rollback</p>
         </div>
-        <button type="button" className="btn btn-primary" onClick={() => setShowSave(true)}>
+        <button type="button" className="btn btn-primary" onClick={() => setShowSave(true)} disabled={!canSnapshot}>
           <Tag size={14} style={{ marginRight: '0.3rem', verticalAlign: 'middle' }} />
           Save snapshot
         </button>
+        {onPage && (
+          <button type="button" className="btn btn-ghost" onClick={() => onPage('policies')}>
+            Edit policies
+          </button>
+        )}
       </header>
+
+      <PlanFeatureBanner
+        feature="Policy snapshots"
+        message="Saving and restoring snapshots requires Personal or higher."
+        allowed={canSnapshot}
+        onPage={onPage}
+      />
 
       {msg && (
         msg.variant === 'error'
@@ -205,6 +256,19 @@ export function PolicyHistory() {
               </button>
             </div>
             <div style={{ overflow: 'auto', maxHeight: '400px' }}>
+              {selectedDiff && (selectedDiff.added.length + selectedDiff.removed.length + selectedDiff.changed.length > 0) && (
+                <div style={{ marginBottom: '0.85rem', fontSize: '0.82rem' }}>
+                  <strong>Diff vs live policies</strong>
+                  <ul style={{ margin: '0.45rem 0 0', paddingLeft: '1.1rem', lineHeight: 1.55 }}>
+                    {selectedDiff.added.map((a) => <li key={`a-${a}`}><span className="badge success" style={{ marginRight: 6 }}>+</span>{a}</li>)}
+                    {selectedDiff.removed.map((a) => <li key={`r-${a}`}><span className="badge danger" style={{ marginRight: 6 }}>−</span>{a}</li>)}
+                    {selectedDiff.changed.map((a) => <li key={`c-${a}`}><span className="badge warning" style={{ marginRight: 6 }}>~</span>{a}</li>)}
+                  </ul>
+                </div>
+              )}
+              {selectedDiff && selectedDiff.added.length === 0 && selectedDiff.removed.length === 0 && selectedDiff.changed.length === 0 && (
+                <p style={{ fontSize: '0.82rem', color: 'var(--muted)', marginBottom: '0.75rem' }}>Matches current live policies.</p>
+              )}
               <pre style={{ fontSize: '0.75rem', color: 'var(--muted)', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
                 {JSON.stringify(selected.snapshot, null, 2)}
               </pre>

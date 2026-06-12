@@ -155,7 +155,7 @@ export function Compliance() {
           <button type="button" className="btn btn-primary" onClick={() => void loadReport()} disabled={loading}>
             {loading ? 'Loading…' : 'Run report'}
           </button>
-          <button type="button" className="btn" onClick={() => void downloadReport()} title="Download report">
+          <button type="button" className="btn" onClick={() => void downloadReport()} title="Download compliance report (JSON)">
             <Download size={15} />
           </button>
         </div>

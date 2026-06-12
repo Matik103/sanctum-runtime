@@ -183,7 +183,7 @@ export function Governance() {
       {tab === 'approvals' && (
         <>
           <div className="toolbar" style={{ marginBottom: '1rem' }}>
-            {([['all', 'All'], ['pending', 'Pending'], ['approved', 'Approved'], ['rejected', 'Rejected'], ['expired', 'Expired']] as const).map(([s, label]) => (
+            {([['all', 'All'], ['pending', 'Pending'], ['approved', 'Approved'], ['rejected', 'Rejected'], ['expired', 'Expired'], ['escalated', 'Escalated']] as const).map(([s, label]) => (
               <button key={s} type="button" className={`chip ${statusFilter === s ? 'active' : ''}`} onClick={() => setStatusFilter(s)}>
                 {label}
               </button>

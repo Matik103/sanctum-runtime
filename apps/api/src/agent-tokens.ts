@@ -414,4 +414,29 @@ export async function registerAgentTokenRoutes(
     if (error || !data) return reply.status(500).send({ error: error?.message ?? 'Failed to create grant' })
     return reply.status(201).send({ grant: data })
   })
+
+  app.delete('/v1/orgs/:orgId/agents/:agentId/grants/:grantId', async (req, reply) => {
+    const { orgId, agentId, grantId } = req.params as { orgId: string; agentId: string; grantId: string }
+    orgIdSchema.parse(orgId)
+    const access = await resolveUser(req as SanctumReq, orgId, 'admin')
+    if (!access.ok) return reply.status(403).send({ error: 'org_forbidden' })
+
+    const { data: reg } = await admin
+      .from('agent_registrations')
+      .select('name')
+      .eq('id', agentId)
+      .eq('org_id', orgId)
+      .maybeSingle()
+    if (!reg) return reply.status(404).send({ error: 'agent_not_found' })
+
+    const { error } = await admin
+      .from('policy_grants')
+      .delete()
+      .eq('id', grantId)
+      .eq('org_id', orgId)
+      .eq('actor', reg.name)
+
+    if (error) return reply.status(500).send({ error: error.message })
+    return { ok: true }
+  })
 }

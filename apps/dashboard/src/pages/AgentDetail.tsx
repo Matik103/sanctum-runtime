@@ -116,6 +116,18 @@ export function AgentDetail({ agentId, agentName, orgId }: Props) {
     finally { setCreatingGrant(false) }
   }
 
+  const revokeGrant = async (grantId: string) => {
+    if (!window.confirm('Revoke this grant? The agent will need approval again for this action.')) return
+    try {
+      const res = await fetch(`${apiBaseUrl}/v1/orgs/${orgId}/agents/${agentId}/grants/${grantId}`, {
+        method: 'DELETE',
+        headers: await authHeaders(),
+      })
+      if (!res.ok) { setGrantError((await responseError(res, 'Could not revoke grant')).message); return }
+      await load()
+    } catch (e) { setGrantError(formatApiError(e, 'Failed to revoke grant')) }
+  }
+
   const shieldColor = (level: string | null) => {
     if (level === 'critical') return '#ef4444'
     if (level === 'high') return '#f97316'
@@ -230,9 +242,12 @@ export function AgentDetail({ agentId, agentName, orgId }: Props) {
                     <span style={{ fontSize: '0.82rem', fontWeight: 500 }}>{g.action}</span>
                     <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--muted)' }}>by {g.granted_by} · {g.duration_minutes}m</span>
                   </div>
-                  <span style={{ fontSize: '0.72rem', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <Clock size={11} /> expires {new Date(g.expires_at).toLocaleTimeString()}
-                  </span>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.72rem', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <Clock size={11} /> expires {new Date(g.expires_at).toLocaleTimeString()}
+                    </span>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => void revokeGrant(g.id)}>Revoke</button>
+                  </div>
                 </div>
               ))}
             </div>

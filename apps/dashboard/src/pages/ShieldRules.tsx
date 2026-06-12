@@ -115,6 +115,7 @@ export function ShieldRules() {
   const [deleting, setDeleting] = useState<string | null>(null)
   const [toggling, setToggling] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [formError, setFormError] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
@@ -158,8 +159,9 @@ export function ShieldRules() {
         const n = parseFloat(form.minAmount)
         if (!isNaN(n) && n > 0) body.minAmount = n
       }
-      const res = await fetch(`${API_BASE}/v1/shield/rules`, {
-        method: 'POST',
+      const url = editingId ? `${API_BASE}/v1/shield/rules/${editingId}` : `${API_BASE}/v1/shield/rules`
+      const res = await fetch(url, {
+        method: editingId ? 'PATCH' : 'POST',
         headers,
         body: JSON.stringify(body),
       })
@@ -167,20 +169,35 @@ export function ShieldRules() {
         const err = await res.json().catch(() => ({})) as Record<string, unknown>
         throw new Error(
           typeof err.message === 'string' ? err.message
-            : typeof err.error === 'string' ? err.error : 'Failed to create rule.',
+            : typeof err.error === 'string' ? err.error : editingId ? 'Failed to update rule.' : 'Failed to create rule.',
         )
       }
       await loadRules()
       setForm(EMPTY_FORM)
+      setEditingId(null)
       setShowForm(false)
-      setSuccessMsg('Rule created.')
+      setSuccessMsg(editingId ? 'Rule updated.' : 'Rule created.')
       setTimeout(() => setSuccessMsg(null), 3000)
     } catch (e) {
-      setFormError(formatApiError(e, 'Failed to create rule.'))
+      setFormError(formatApiError(e, editingId ? 'Failed to update rule.' : 'Failed to create rule.'))
     } finally {
       setSaving(false)
     }
-  }, [form, loadRules])
+  }, [form, loadRules, editingId])
+
+  const startEdit = useCallback((rule: ShieldRule) => {
+    setEditingId(rule.id)
+    setForm({
+      actionPattern: rule.action_pattern,
+      label: rule.label,
+      response: rule.response,
+      category: rule.category ?? '',
+      minAmount: rule.min_amount != null ? String(rule.min_amount) : '',
+      enabled: rule.enabled,
+    })
+    setShowForm(true)
+    setFormError(null)
+  }, [])
 
   const deleteRule = useCallback(async (id: string) => {
     if (!confirm('Delete this shield rule? Actions it was blocking or holding will no longer be gated.')) return
@@ -237,7 +254,7 @@ export function ShieldRules() {
         <button
           type="button"
           className="btn btn-primary"
-          onClick={() => { setShowForm(true); setFormError(null) }}
+          onClick={() => { setShowForm(true); setEditingId(null); setForm(EMPTY_FORM); setFormError(null) }}
           style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
         >
           <Plus size={15} />
@@ -258,7 +275,7 @@ export function ShieldRules() {
       {/* Add rule form */}
       {showForm && (
         <section className="card" style={{ marginBottom: '1.25rem', border: '1px solid var(--primary, #6366f1)' }}>
-          <h2 className="card-label" style={{ marginBottom: '0.75rem' }}>New Shield Rule</h2>
+          <h2 className="card-label" style={{ marginBottom: '0.75rem' }}>{editingId ? 'Edit Shield Rule' : 'New Shield Rule'}</h2>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
             <label>
@@ -477,6 +494,13 @@ export function ShieldRules() {
                         </button>
                       </td>
                       <td>
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => startEdit(rule)}
+                        >
+                          Edit
+                        </button>
                         <button
                           type="button"
                           className="btn btn-ghost"

@@ -5,7 +5,10 @@ import { formatApiError, responseError } from '../lib/sanitize-error'
 import { fetchMyOrgs } from '../lib/fleet'
 import { PlanGateAlert } from '../components/PlanGateAlert'
 import { AgentConnectStudio } from '../components/AgentConnectStudio'
+import { AgentPathsExplainer } from '../components/AgentPathsExplainer'
+import { EmptyState } from '../components/ui/EmptyState'
 import { AgentDetail } from './AgentDetail'
+import type { PageId } from '../layout/Sidebar'
 import { RefreshCw, RotateCcw, Download, Wifi, WifiOff, Clock, AlertTriangle } from 'lucide-react'
 
 type AgentReg = {
@@ -107,9 +110,9 @@ function AgentTrustBadge({ stats }: { stats?: AgentStats }) {
   )
 }
 
-type Props = { onOpenDevices: () => void }
+type Props = { onOpenDevices: () => void; onPage?: (p: PageId) => void }
 
-export function Agents({ onOpenDevices }: Props) {
+export function Agents({ onOpenDevices, onPage }: Props) {
   const [orgs, setOrgs] = useState<OrgOption[]>([])
   const [orgId, setOrgId] = useState('')
   const [agents, setAgents] = useState<AgentReg[]>([])
@@ -267,6 +270,8 @@ export function Agents({ onOpenDevices }: Props) {
         )}
       </header>
 
+      <AgentPathsExplainer onPage={onPage} compact />
+
       {/* Zero-install callout */}
       <div className="card" style={{ marginBottom: '1.25rem', borderLeft: '3px solid var(--primary, #6366f1)', padding: '0.75rem 1rem' }}>
         <p style={{ margin: '0 0 0.25rem', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text)' }}>
@@ -312,10 +317,14 @@ export function Agents({ onOpenDevices }: Props) {
       {loading ? (
         <p style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>Loading…</p>
       ) : agents.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--muted)' }}>
-          <p style={{ fontSize: '1rem', marginBottom: '0.4rem' }}>No agents registered yet</p>
-          <p style={{ fontSize: '0.82rem' }}>Register your first agent above to get a signed token.</p>
-        </div>
+        <EmptyState title="No agents registered yet" description="Register your first agent above to get a signed token for HTTP verify.">
+          {onPage && (
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => onPage('connect')}>Set up Connect proxy</button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => onPage('live-feed')}>Open Live Feed</button>
+            </div>
+          )}
+        </EmptyState>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>

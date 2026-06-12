@@ -42,7 +42,9 @@ function trustBadge(status: FleetRuntime['attestation_status']) {
   return { label: 'Unverified', className: 'neutral' as const }
 }
 
-export function Fleet() {
+import type { PageId } from '../layout/Sidebar'
+
+export function Fleet({ onPage }: { onPage?: (p: PageId) => void } = {}) {
   const { planId } = useWorkspacePlan()
   const advancedFleet = canUseAdvancedFleet(planId)
   const [runtimes, setRuntimes] = useState<FleetRuntime[]>([])
@@ -386,7 +388,11 @@ export function Fleet() {
             <EmptyState
               title="Advanced fleet controls"
               description="Regional map, deployment groups, and dispatch require Team plan or higher. Kill switch and runtime list are available on all plans."
-            />
+            >
+              <button type="button" className="btn btn-primary btn-sm" style={{ marginTop: '0.5rem' }} onClick={() => onPage?.('billing')}>
+                View plans on Billing
+              </button>
+            </EmptyState>
           ) : !fleetMap ? (
             <p className="hint-line">Loading fleet map…</p>
           ) : (

@@ -12,6 +12,7 @@ import { fetchUsage, usageMetricLabel, type UsageSummary } from '../lib/usage'
 import { apiBaseUrl as apiBase } from '../lib/api-url'
 import { getAccessToken } from '../lib/supabase'
 import { throwResponseError } from '../lib/sanitize-error'
+import { TabBar } from '../components/ui/TabBar'
 import { usePushNotifications } from '../hooks/usePushNotifications'
 
 async function authHeaders(json = false): Promise<Record<string, string>> {
@@ -45,6 +46,7 @@ export function Settings({ status }: Props) {
   const [editSlack, setEditSlack] = useState('')
   const [editWebhook, setEditWebhook] = useState('')
   const [editPct, setEditPct] = useState(80)
+  const [tab, setTab] = useState<'runtime' | 'workspace' | 'notifications' | 'data'>('workspace')
 
   useEffect(() => {
     void (async () => {
@@ -231,6 +233,19 @@ export function Settings({ status }: Props) {
         </div>
       </header>
 
+      <TabBar
+        tabs={[
+          { id: 'runtime' as const, label: 'Runtime' },
+          { id: 'workspace' as const, label: 'Workspace' },
+          { id: 'notifications' as const, label: 'Notifications' },
+          { id: 'data' as const, label: 'Data & usage' },
+        ]}
+        active={tab}
+        onChange={setTab}
+      />
+
+      {(tab === 'runtime') && (
+      <>
       <section className="section">
         <div className="section__header">
           <h2>
@@ -262,8 +277,10 @@ export function Settings({ status }: Props) {
       </section>
 
       <AIModelCard status={status} />
+      </>
+      )}
 
-      {orgs.length > 0 && (
+      {tab === 'workspace' && orgs.length > 0 && (
         <>
           {orgs.length > 1 && (
             <section className="section">
@@ -295,7 +312,10 @@ export function Settings({ status }: Props) {
             editable={['owner', 'admin'].includes(orgs.find((o) => o.org_id === orgId)?.role ?? '')}
             isPersonalWorkspace={orgId.startsWith('personal-')}
           />
+        </>
+      )}
 
+      {tab === 'notifications' && orgs.length > 0 && (
           <section className="section" id="notifications">
             <div className="section__header">
               <h2>
@@ -507,7 +527,10 @@ export function Settings({ status }: Props) {
               </div>
             </div>
           </section>
+      )}
 
+      {tab === 'data' && orgs.length > 0 && (
+        <>
           <section className="section">
             <div className="section__header">
               <h2>

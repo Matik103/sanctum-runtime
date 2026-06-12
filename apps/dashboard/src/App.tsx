@@ -225,12 +225,12 @@ export function App() {
           </ErrorBoundary>
         )}
         <Suspense fallback={<div className="page-loading" role="status">Loading view…</div>}>
-          {page === 'activity' && <ErrorBoundary page="Runtime Activity"><RuntimeActivity audit={audit} onSelect={onSelect} /></ErrorBoundary>}
+          {page === 'activity' && <ErrorBoundary page="Runtime Activity"><RuntimeActivity orgId={orgId} onSelect={onSelect} onPage={onPage} /></ErrorBoundary>}
           {page === 'threats' && <ErrorBoundary page="Threat Monitor"><ThreatMonitor audit={audit} onSelect={onSelect} /></ErrorBoundary>}
           {page === 'shield' && <ErrorBoundary page="Sanctum Shield"><ShieldPage audit={audit} onPage={onPage} /></ErrorBoundary>}
           {page === 'shield-rules' && <ErrorBoundary page="Shield Rules"><ShieldRulesPage /></ErrorBoundary>}
-          {page === 'agents' && <ErrorBoundary page="Agents"><Agents onOpenDevices={() => onPage('devices')} /></ErrorBoundary>}
-          {page === 'alerts' && <ErrorBoundary page="Alerts"><Alerts /></ErrorBoundary>}
+          {page === 'agents' && <ErrorBoundary page="Agents"><Agents onOpenDevices={() => onPage('devices')} onPage={onPage} /></ErrorBoundary>}
+          {page === 'alerts' && <ErrorBoundary page="Alerts"><Alerts onPage={onPage} /></ErrorBoundary>}
           {page === 'policies' && (
             <ErrorBoundary page="Policies">
               <Policies
@@ -239,18 +239,19 @@ export function App() {
                 supabaseConfigured={status?.supabaseConfigured}
                 onSetPolicy={setPolicy}
                 onPoliciesChange={replacePolicies}
+                onPage={onPage}
               />
             </ErrorBoundary>
           )}
-          {page === 'policy-history' && <ErrorBoundary page="Policy History"><PolicyHistory /></ErrorBoundary>}
+          {page === 'policy-history' && <ErrorBoundary page="Policy History"><PolicyHistory onPage={onPage} /></ErrorBoundary>}
           {page === 'workflow-builder' && <ErrorBoundary page="Workflow Builder"><WorkflowBuilder /></ErrorBoundary>}
           {page === 'assurance' && <ErrorBoundary page="Assurance"><Assurance /></ErrorBoundary>}
           {page === 'governance' && <ErrorBoundary page="Governance"><Governance /></ErrorBoundary>}
           {page === 'compliance' && <ErrorBoundary page="Compliance"><Compliance /></ErrorBoundary>}
           {page === 'devices' && <ErrorBoundary page="Devices"><Devices status={status} /></ErrorBoundary>}
-          {page === 'fleet' && <ErrorBoundary page="Runtime Fleet"><Fleet /></ErrorBoundary>}
+          {page === 'fleet' && <ErrorBoundary page="Runtime Fleet"><Fleet onPage={onPage} /></ErrorBoundary>}
           {page === 'marketplace' && <ErrorBoundary page="Marketplace"><Marketplace /></ErrorBoundary>}
-          {page === 'audit' && <ErrorBoundary page="Audit Logs"><AuditLogs audit={audit} onSelect={onSelect} status={status} /></ErrorBoundary>}
+          {page === 'audit' && <ErrorBoundary page="Audit Logs"><AuditLogs orgId={orgId} onSelect={onSelect} onPage={onPage} /></ErrorBoundary>}
           {page === 'billing' && <ErrorBoundary page="Billing"><Billing /></ErrorBoundary>}
           {page === 'settings' && <ErrorBoundary page="Settings"><Settings status={status} /></ErrorBoundary>}
           {page === 'connect' && <ErrorBoundary page="Connect Agent"><Connect orgId={orgId} onPage={onPage} /></ErrorBoundary>}
