@@ -6,6 +6,7 @@ import { BLOG_ANSWER_POSTS } from '@/lib/blog-answers'
 import { getExpandedSections } from '@/lib/blog-expanded-sections'
 import { blogPostHead, getBlogPostSeo } from '@/lib/blog-seo'
 import { blogPostPath, getBlogPost } from '@/lib/blog-posts'
+import { getRelatedSlugs } from '@/lib/blog-related'
 import { docsPath } from '@/lib/site-links'
 
 function faqJsonLd(slug: string) {
@@ -77,7 +78,7 @@ function PostPage() {
   const displayPost = seo ? { ...post, title: seo.displayTitle, description: seo.description } : post
 
   return (
-    <BlogLayout post={displayPost} slug={slug} showConsoleCta={false}>
+    <BlogLayout post={displayPost} slug={slug} showConsoleCta={false} showRelatedGuides={false}>
       <p className="text-lg">{content.intro}</p>
 
       {expanded.map((section) => (
@@ -119,7 +120,7 @@ function PostPage() {
       ))}
 
       <BlogConsoleCta slug={slug} />
-      <BlogRelatedGuides slug={slug} relatedSlugs={content.related} />
+      <BlogRelatedGuides slug={slug} relatedSlugs={getRelatedSlugs(slug)} />
     </BlogLayout>
   )
 }

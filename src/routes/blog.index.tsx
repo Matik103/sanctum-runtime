@@ -2,7 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { ArrowRight, Calendar } from 'lucide-react'
 import { Navbar } from '@/components/Navbar'
 import { CtaFooter } from '@/components/CtaFooter'
-import { BLOG_HUBS } from '@/lib/blog-hubs'
+import { getHubForSlug, getPostsForHub, BLOG_HUBS } from '@/lib/blog-hubs'
 import { BLOG_POSTS, blogPostPath, getBlogPost } from '@/lib/blog-posts'
 import { blogIndexJsonLd, pageSeo } from '@/lib/seo'
 import { llmsTxtUrl } from '@/lib/site-links'
@@ -46,8 +46,11 @@ export const Route = createFileRoute('/blog/')({
 
 function BlogIndexPage() {
   const featured = BLOG_POSTS.filter((p) => p.featured)
-  const hubSlugs = new Set(BLOG_HUBS.flatMap((h) => h.slugs))
-  const rest = BLOG_POSTS.filter((p) => !p.featured && !hubSlugs.has(p.slug))
+  const assignedSlugs = new Set<string>()
+  for (const hub of BLOG_HUBS) {
+    for (const p of getPostsForHub(hub)) assignedSlugs.add(p.slug)
+  }
+  const rest = BLOG_POSTS.filter((p) => !p.featured && !assignedSlugs.has(p.slug))
 
   return (
     <div className="min-h-screen bg-background">
@@ -123,9 +126,7 @@ function BlogIndexPage() {
 
 function HubSection({ hub }: { hub: (typeof BLOG_HUBS)[number] }) {
   const anchor = getBlogPost(hub.anchorSlug)
-  const posts = hub.slugs
-    .map((s) => getBlogPost(s))
-    .filter((p): p is NonNullable<typeof p> => Boolean(p))
+  const posts = getPostsForHub(hub)
 
   return (
     <section id={hub.id} className="scroll-mt-28 glass rounded-xl p-6 md:p-8">

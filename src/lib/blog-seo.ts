@@ -1,5 +1,6 @@
 import type { BlogPostMeta } from './blog-posts'
 import { blogPostPath } from './blog-posts'
+import { autoSeoFromPost } from './blog-seo-auto'
 import { articleJsonLd, pageSeo } from './seo'
 
 /** CTR-optimized SERP titles and descriptions — keyed by slug. */
@@ -243,23 +244,17 @@ export const BLOG_SEO_OVERRIDES: Record<string, { title: string; description: st
 
 export function getBlogPostSeo(
   slug: string,
-  fallback: Pick<BlogPostMeta, 'title' | 'description'>,
+  fallback: Pick<BlogPostMeta, 'title' | 'description' | 'tags' | 'readTime'>,
 ): { title: string; description: string; displayTitle: string } {
   const override = BLOG_SEO_OVERRIDES[slug]
-  if (!override) {
-    return {
-      title: `${fallback.title} — Sanctum`,
-      description: fallback.description,
-      displayTitle: fallback.title,
-    }
-  }
-  const title = override.title.includes('— Sanctum')
-    ? override.title
-    : `${override.title} — Sanctum`
+  const optimized = override ?? autoSeoFromPost(fallback as BlogPostMeta)
+  const title = optimized.title.includes('— Sanctum')
+    ? optimized.title
+    : `${optimized.title} — Sanctum`
   return {
     title,
-    description: override.description,
-    displayTitle: override.title,
+    description: optimized.description,
+    displayTitle: optimized.title,
   }
 }
 

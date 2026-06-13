@@ -1,5 +1,8 @@
 /** Deep content sections for high-impression posts — merged into BLOG_ANSWER_POSTS at render time. */
 
+import { BLOG_ANSWER_POSTS } from './blog-answers'
+import { getBlogPost } from './blog-posts'
+
 export type BlogExpandedSection = {
   heading: string
   paragraphs: string[]
@@ -236,6 +239,53 @@ export const BLOG_EXPANDED_SECTIONS: Record<string, BlogExpandedSection[]> = {
   ],
 }
 
+function sectionHeadingFromTitle(title: string): string {
+  const cleaned = title.replace(/\s*\(20\d{2}\)\s*$/, '').replace(/\?$/, '').trim()
+  if (/^what is /i.test(cleaned)) return cleaned
+  if (/^how to /i.test(cleaned)) return cleaned
+  return `${cleaned}: what teams should know`
+}
+
+function autoExpandedFromPost(slug: string): BlogExpandedSection[] {
+  const post = getBlogPost(slug)
+  if (!post) return []
+  return [
+    {
+      heading: sectionHeadingFromTitle(post.title),
+      paragraphs: [
+        post.description,
+        `Practical ${post.readTime}-minute guidance for teams using runtime authorization, policy gates, and audit trails with Sanctum Runtime.`,
+      ],
+    },
+  ]
+}
+
+function autoExpandedSections(slug: string): BlogExpandedSection[] {
+  const content = BLOG_ANSWER_POSTS[slug]
+  const post = getBlogPost(slug)
+  if (!content || !post) return autoExpandedFromPost(slug)
+
+  const sections: BlogExpandedSection[] = []
+
+  if (content.answers[0]) {
+    sections.push({
+      heading: sectionHeadingFromTitle(post.title),
+      paragraphs: [content.answers[0].answer],
+    })
+  }
+
+  if (content.answers[1]) {
+    sections.push({
+      heading: content.answers[1].question,
+      paragraphs: [content.answers[1].answer],
+    })
+  }
+
+  return sections
+}
+
 export function getExpandedSections(slug: string): BlogExpandedSection[] {
-  return BLOG_EXPANDED_SECTIONS[slug] ?? []
+  const manual = BLOG_EXPANDED_SECTIONS[slug]
+  if (manual?.length) return manual
+  return autoExpandedSections(slug)
 }

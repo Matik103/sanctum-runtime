@@ -6,7 +6,9 @@ import { BlogConsoleCta } from '@/components/BlogConsoleCta'
 import { CtaFooter } from '@/components/CtaFooter'
 import type { BlogPostMeta } from '@/lib/blog-posts'
 import { blogPostPath } from '@/lib/blog-posts'
+import { BlogRelatedGuides } from '@/components/BlogRelatedGuides'
 import { getHubForSlug } from '@/lib/blog-hubs'
+import { getRelatedSlugs } from '@/lib/blog-related'
 import { consoleUrl } from '@/lib/site-links'
 
 type Props = {
@@ -15,9 +17,17 @@ type Props = {
   slug?: string
   /** Set false when the article body renders its own console CTA (e.g. before related links). */
   showConsoleCta?: boolean
+  /** Set false when the article body renders its own related-guides block. */
+  showRelatedGuides?: boolean
 }
 
-export function BlogLayout({ post, children, slug, showConsoleCta = true }: Props) {
+export function BlogLayout({
+  post,
+  children,
+  slug,
+  showConsoleCta = true,
+  showRelatedGuides = true,
+}: Props) {
   const hub = slug ? getHubForSlug(slug) : undefined
   const date = new Date(post.publishedAt).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -70,6 +80,9 @@ export function BlogLayout({ post, children, slug, showConsoleCta = true }: Prop
             {children}
           </div>
           {showConsoleCta ? <BlogConsoleCta slug={post.slug} /> : null}
+          {slug && showRelatedGuides ? (
+            <BlogRelatedGuides slug={slug} relatedSlugs={getRelatedSlugs(slug)} />
+          ) : null}
           <p className="mt-12 pt-8 border-t border-border text-sm text-muted-foreground">
             Guides:{' '}
             <Link to="/blog/" hash="agentic-risk" className="text-primary hover:underline">
@@ -86,6 +99,14 @@ export function BlogLayout({ post, children, slug, showConsoleCta = true }: Prop
             {' · '}
             <Link to="/blog/" hash="hitl-approvals" className="text-primary hover:underline">
               HITL approvals
+            </Link>
+            {' · '}
+            <Link to="/blog/" hash="developer-agents" className="text-primary hover:underline">
+              coding agents
+            </Link>
+            {' · '}
+            <Link to="/blog/" hash="get-started" className="text-primary hover:underline">
+              get started
             </Link>
             <br className="hidden sm:block" />
             <span className="sm:ml-0">
