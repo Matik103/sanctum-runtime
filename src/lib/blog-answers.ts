@@ -141,7 +141,7 @@ export const BLOG_ANSWER_POSTS: Record<string, BlogAnswerPost> = {
           'Combine static tool manifest review with runtime controls that do not trust tool metadata alone.',
       },
     ],
-    related: ['mcp-server-action-gate', 'indirect-prompt-injection-source-trust'],
+    related: ['how-to-validate-tool-arguments-in-mcp', 'what-is-confused-deputy-in-ai-agents', 'mcp-server-action-gate'],
   },
   'what-is-human-in-the-loop-for-ai-agents': {
     intro:
@@ -365,7 +365,7 @@ export const BLOG_ANSWER_POSTS: Record<string, BlogAnswerPost> = {
           'Execution gating on irreversible actions usually delivers the biggest immediate reduction in worst-case risk.',
       },
     ],
-    related: ['sanctum-vs-guardrails', 'runtime-trust-layer-for-ai-agents'],
+    related: ['runtime-authorization-vs-guardrails-explained', 'how-to-prevent-ai-agent-data-exfiltration', 'ai-agent-rbac-for-tool-permissions'],
   },
   'how-to-audit-ai-agent-decisions': {
     intro:
@@ -687,7 +687,7 @@ export const BLOG_ANSWER_POSTS: Record<string, BlogAnswerPost> = {
           'Track high-risk action attempts and how many are blocked or held before execution.',
       },
     ],
-    related: ['runtime-trust-layer-for-ai-agents', 'can-ai-agents-be-soc2-compliant'],
+    related: ['what-is-agentic-ai-risk-management', 'how-to-design-ai-agent-policies-that-scale', 'ai-agent-security-checklist-for-production'],
   },
   'best-practices-for-ai-agent-tool-calling': {
     intro:

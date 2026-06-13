@@ -28,9 +28,9 @@ export const BLOG_POSTS: BlogPostMeta[] = [
   },
   {
     slug: 'runtime-trust-layer-for-ai-agents',
-    title: 'What is a runtime trust layer for AI agents?',
+    title: 'AI Trust Layer for Agents: Runtime Verification Explained',
     description:
-      'Why execution-time verification beats chat guardrails for agents, robots, and workflows — and how Sanctum gates actions before they run.',
+      'A runtime trust layer gates every side effect — APPROVE, REQUIRE_VERIFICATION, or BLOCKED — before APIs, devices, and robots execute.',
     publishedAt: '2026-05-20',
     tags: ['ai-agents', 'runtime-trust', 'policy-engine', 'human-in-the-loop'],
     readTime: 8,
@@ -38,9 +38,9 @@ export const BLOG_POSTS: BlogPostMeta[] = [
   },
   {
     slug: 'ai-agent-action-approval-before-execution',
-    title: 'AI agent action approval: gate side effects before execution',
+    title: 'AI Agent Action Approval: Gate Side Effects Before Execution',
     description:
-      'Approve, verify, or block tool calls, API writes, and file operations with a single verifyAction() — patterns for LangChain, MCP, and custom agents.',
+      'Approve, verify, or block tool calls, API writes, and file ops with verifyAction(). Patterns for LangChain, MCP, and custom agents.',
     publishedAt: '2026-05-19',
     tags: ['ai-agents', 'tool-use', 'verification', 'sdk'],
     readTime: 7,
@@ -195,27 +195,27 @@ export const BLOG_POSTS: BlogPostMeta[] = [
   },
   {
     slug: 'how-to-stop-ai-agents-from-sending-emails-without-approval',
-    title: 'How to stop AI agents from sending emails without approval',
+    title: 'Stop AI Agents Sending Emails Without Approval (2026)',
     description:
-      'Use execution-time policy gates and human verification to prevent accidental or malicious outbound email from autonomous agents.',
+      'Prompt rules fail. Route send_email through runtime policy gates, human verification, and SLA escalation — with audit trails operators can defend.',
     publishedAt: '2026-05-27',
     tags: ['ai-agents', 'human-in-the-loop', 'email-automation', 'policy-engine'],
     readTime: 6,
   },
   {
     slug: 'can-ai-agents-be-soc2-compliant',
-    title: 'Can AI agents be SOC 2 compliant?',
+    title: 'Can AI Agents Be SOC 2 Compliant? (Practical Answer)',
     description:
-      'A practical SOC 2 answer for autonomous systems: map runtime controls, approval logs, policy versions, and exportable evidence.',
+      'Map runtime controls, approval logs, policy versions, and exportable evidence to SOC 2 expectations for autonomous systems.',
     publishedAt: '2026-05-27',
     tags: ['soc2', 'compliance', 'ai-governance', 'audit-log'],
     readTime: 7,
   },
   {
     slug: 'mcp-server-security-checklist-2026',
-    title: 'MCP server security checklist (2026): what to lock down first',
+    title: 'MCP Server Security Best Practices & Checklist (2026)',
     description:
-      'A practical MCP hardening guide for tool poisoning, prompt injection, argument validation, and pre-execution policy gates.',
+      'Lock down MCP servers first: tool poisoning, argument validation, least privilege, dispatcher hardening, and pre-execution policy gates.',
     publishedAt: '2026-05-27',
     tags: ['mcp', 'llm-security', 'tool-use', 'prompt-injection'],
     readTime: 7,
@@ -249,18 +249,18 @@ export const BLOG_POSTS: BlogPostMeta[] = [
   },
   {
     slug: 'how-to-prevent-ai-agent-data-exfiltration',
-    title: 'How to prevent AI agent data exfiltration',
+    title: 'Prevent AI Agent Data Exfiltration: 7 Controls That Work',
     description:
-      'Stop exfiltration chains with least-privilege tools, source-trust classification, pre-execution verification, and export controls.',
+      'Stop exfiltration chains with least-privilege tools, source-trust classification, export gates, and human verification for outbound transfers.',
     publishedAt: '2026-05-27',
     tags: ['data-security', 'llm-security', 'policy-engine', 'ai-agents'],
     readTime: 7,
   },
   {
     slug: 'what-is-confused-deputy-in-ai-agents',
-    title: 'What is confused deputy risk in AI agents?',
+    title: 'Confused Deputy in AI Agents: What It Is & How to Stop It',
     description:
-      'How untrusted intent can exploit trusted credentials in agent systems — and how runtime authorization breaks the attack path.',
+      'Untrusted intent can hijack trusted credentials in MCP and agent systems. Runtime authorization patterns that break the attack path.',
     publishedAt: '2026-05-27',
     tags: ['security', 'ai-agents', 'mcp', 'runtime-trust'],
     readTime: 6,
@@ -276,9 +276,9 @@ export const BLOG_POSTS: BlogPostMeta[] = [
   },
   {
     slug: 'runtime-authorization-vs-guardrails-explained',
-    title: 'Runtime authorization vs guardrails, explained simply',
+    title: 'What Is Runtime Authorization? (vs Guardrails, Explained)',
     description:
-      'Guardrails filter language. Runtime authorization controls side effects. Why production teams need both layers together.',
+      'Runtime authorization controls side effects before they execute. Guardrails filter language. Learn why production teams need both layers.',
     publishedAt: '2026-05-27',
     tags: ['guardrails', 'runtime-trust', 'ai-safety', 'comparison'],
     readTime: 6,
@@ -321,9 +321,9 @@ export const BLOG_POSTS: BlogPostMeta[] = [
   },
   {
     slug: 'how-to-validate-tool-arguments-in-mcp',
-    title: 'How to validate tool arguments in MCP servers',
+    title: 'How to Validate MCP Tool Arguments (2026 Security Guide)',
     description:
-      'Treat model-generated parameters as untrusted input. Validate shape, ranges, and paths before policy and execution.',
+      '7-step checklist: schema validation, path allowlists, range checks, and pre-execution gates. Stop confused-deputy paths before MCP tools run.',
     publishedAt: '2026-05-27',
     tags: ['mcp', 'input-validation', 'security', 'tool-use'],
     readTime: 6,
@@ -366,18 +366,18 @@ export const BLOG_POSTS: BlogPostMeta[] = [
   },
   {
     slug: 'what-is-agentic-ai-risk-management',
-    title: 'What is agentic AI risk management?',
+    title: 'Agentic AI Risk Management: Framework for Production Teams',
     description:
-      'A simple framework for governing autonomous AI across policy, verification, execution control, and audit evidence.',
+      'Govern autonomous AI across planning, verification, approval, execution, and audit. Action-centric risk management — not prompt safety alone.',
     publishedAt: '2026-05-27',
     tags: ['ai-governance', 'risk-management', 'ai-agents', 'compliance'],
     readTime: 6,
   },
   {
     slug: 'best-practices-for-ai-agent-tool-calling',
-    title: 'Best practices for AI agent tool calling in production',
+    title: 'AI Agent Tool Calling Best Practices for Production (2026)',
     description:
-      'Standardize tool wrappers, verify actions, validate arguments, and bind approvals to signed execution tokens.',
+      'Standardize tool wrappers, validate arguments, bind approvals to signed tokens, and log execution receipts — patterns that scale.',
     publishedAt: '2026-05-27',
     tags: ['tool-use', 'ai-agents', 'sdk', 'security'],
     readTime: 6,

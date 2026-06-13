@@ -18,8 +18,9 @@ export const Route = createFileRoute("/")({
   component: Index,
   head: () => ({
     ...pageSeo({
-      title: `${siteName} — Runtime Trust for Autonomous AI`,
-      description: defaultDescription,
+      title: `${siteName} — AI Agent Security & Runtime Authorization`,
+      description:
+        "Gate AI agent actions before they execute. Runtime authorization, MCP security, human-in-the-loop approvals, and SOC 2 audit trails for autonomous systems.",
       path: "/",
     }),
     scripts: [

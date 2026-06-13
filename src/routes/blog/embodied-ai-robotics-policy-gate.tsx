@@ -1,22 +1,21 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { BlogLayout } from '@/components/BlogLayout'
 import { getBlogPost, blogPostPath } from '@/lib/blog-posts'
-import { articleJsonLd, pageSeo } from '@/lib/seo'
+import { blogPostHead, getBlogPostSeo } from '@/lib/blog-seo'
 
 const slug = 'embodied-ai-robotics-policy-gate'
 const post = getBlogPost(slug)!
 
 export const Route = createFileRoute('/blog/embodied-ai-robotics-policy-gate')({
   component: PostPage,
-  head: () => ({
-    ...pageSeo({ title: `${post.title} — Sanctum`, description: post.description, path: blogPostPath(slug), ogType: 'article' }),
-    scripts: [{ type: 'application/ld+json', children: JSON.stringify(articleJsonLd(post)) }],
-  }),
+  head: () => blogPostHead(slug, post),
 })
 
 function PostPage() {
+  const seo = getBlogPostSeo(slug, post)
+  const displayPost = { ...post, title: seo.displayTitle, description: seo.description }
   return (
-    <BlogLayout post={post}>
+    <BlogLayout post={displayPost} slug={slug}>
       <p>
         <strong>Embodied AI</strong> closes the loop between perception and physics. Trust failures are not abstract —
         they are doors, arms, drones, and production lines. A <strong>policy gate</strong> at the action layer is

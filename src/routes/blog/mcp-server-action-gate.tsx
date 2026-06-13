@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { BlogLayout } from '@/components/BlogLayout'
 import { getBlogPost, blogPostPath } from '@/lib/blog-posts'
-import { articleJsonLd, pageSeo } from '@/lib/seo'
+import { blogPostHead, getBlogPostSeo } from '@/lib/blog-seo'
 import { docsPath, githubUrl } from '@/lib/site-links'
 
 const slug = 'mcp-server-action-gate'
@@ -9,15 +9,14 @@ const post = getBlogPost(slug)!
 
 export const Route = createFileRoute('/blog/mcp-server-action-gate')({
   component: PostPage,
-  head: () => ({
-    ...pageSeo({ title: `${post.title} — Sanctum`, description: post.description, path: blogPostPath(slug), ogType: 'article' }),
-    scripts: [{ type: 'application/ld+json', children: JSON.stringify(articleJsonLd(post)) }],
-  }),
+  head: () => blogPostHead(slug, post),
 })
 
 function PostPage() {
+  const seo = getBlogPostSeo(slug, post)
+  const displayPost = { ...post, title: seo.displayTitle, description: seo.description }
   return (
-    <BlogLayout post={post}>
+    <BlogLayout post={displayPost} slug={slug}>
       <p>
         <strong>Model Context Protocol (MCP)</strong> gives LLMs structured access to tools — files, databases,
         browsers, smart devices. Each tool call is an execution event. Sanctum gates MCP actions before your server

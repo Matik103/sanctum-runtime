@@ -1,22 +1,21 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { BlogLayout } from '@/components/BlogLayout'
 import { getBlogPost, blogPostPath } from '@/lib/blog-posts'
-import { articleJsonLd, pageSeo } from '@/lib/seo'
+import { blogPostHead, getBlogPostSeo } from '@/lib/blog-seo'
 
 const slug = 'smart-home-ai-unlock-door-policy'
 const post = getBlogPost(slug)!
 
 export const Route = createFileRoute('/blog/smart-home-ai-unlock-door-policy')({
   component: PostPage,
-  head: () => ({
-    ...pageSeo({ title: `${post.title} — Sanctum`, description: post.description, path: blogPostPath(slug), ogType: 'article' }),
-    scripts: [{ type: 'application/ld+json', children: JSON.stringify(articleJsonLd(post)) }],
-  }),
+  head: () => blogPostHead(slug, post),
 })
 
 function PostPage() {
+  const seo = getBlogPostSeo(slug, post)
+  const displayPost = { ...post, title: seo.displayTitle, description: seo.description }
   return (
-    <BlogLayout post={post}>
+    <BlogLayout post={displayPost} slug={slug}>
       <p>
         “Unlock the front door” from a voice assistant is a <strong>physical side effect</strong>. Smart home AI
         must treat locks, alarms, and thermostats like production APIs — with policies and human verify when context

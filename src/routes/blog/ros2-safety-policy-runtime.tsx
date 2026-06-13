@@ -1,22 +1,21 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { BlogLayout } from '@/components/BlogLayout'
 import { getBlogPost, blogPostPath } from '@/lib/blog-posts'
-import { articleJsonLd, pageSeo } from '@/lib/seo'
+import { blogPostHead, getBlogPostSeo } from '@/lib/blog-seo'
 
 const slug = 'ros2-safety-policy-runtime'
 const post = getBlogPost(slug)!
 
 export const Route = createFileRoute('/blog/ros2-safety-policy-runtime')({
   component: PostPage,
-  head: () => ({
-    ...pageSeo({ title: `${post.title} — Sanctum`, description: post.description, path: blogPostPath(slug), ogType: 'article' }),
-    scripts: [{ type: 'application/ld+json', children: JSON.stringify(articleJsonLd(post)) }],
-  }),
+  head: () => blogPostHead(slug, post),
 })
 
 function PostPage() {
+  const seo = getBlogPostSeo(slug, post)
+  const displayPost = { ...post, title: seo.displayTitle, description: seo.description }
   return (
-    <BlogLayout post={post}>
+    <BlogLayout post={displayPost} slug={slug}>
       <p>
         <strong>ROS2</strong> fleets depend on timely commands — and timely stops. A safety policy runtime sits
         between your planner and the motor stack, authorizing navigation, manipulation, and safety-critical actions.

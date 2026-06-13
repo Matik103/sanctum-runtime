@@ -75,6 +75,16 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
   return brandedErrorResponse();
 }
 
+/** Strip trailing slashes (canonical host uses trailingSlash: false). */
+function redirectTrailingSlash(request: Request): Response | null {
+  const url = new URL(request.url);
+  if (url.pathname.length > 1 && url.pathname.endsWith("/")) {
+    url.pathname = url.pathname.replace(/\/+$/, "");
+    return Response.redirect(url.toString(), 308);
+  }
+  return null;
+}
+
 /** Apex → www (Search Console / canonical host is www.sanctumruntime.com). */
 function redirectApexToWww(request: Request): Response | null {
   const url = new URL(request.url);
@@ -107,6 +117,9 @@ export default {
 
     const faviconRedirect = redirectFavicon(request);
     if (faviconRedirect) return faviconRedirect;
+
+    const slashRedirect = redirectTrailingSlash(request);
+    if (slashRedirect) return slashRedirect;
 
     const apexRedirect = redirectApexToWww(request);
     if (apexRedirect) return apexRedirect;

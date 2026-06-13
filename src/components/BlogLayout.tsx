@@ -6,16 +6,19 @@ import { BlogConsoleCta } from '@/components/BlogConsoleCta'
 import { CtaFooter } from '@/components/CtaFooter'
 import type { BlogPostMeta } from '@/lib/blog-posts'
 import { blogPostPath } from '@/lib/blog-posts'
+import { getHubForSlug } from '@/lib/blog-hubs'
 import { consoleUrl } from '@/lib/site-links'
 
 type Props = {
   post: BlogPostMeta
   children: ReactNode
+  slug?: string
   /** Set false when the article body renders its own console CTA (e.g. before related links). */
   showConsoleCta?: boolean
 }
 
-export function BlogLayout({ post, children, showConsoleCta = true }: Props) {
+export function BlogLayout({ post, children, slug, showConsoleCta = true }: Props) {
+  const hub = slug ? getHubForSlug(slug) : undefined
   const date = new Date(post.publishedAt).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
@@ -34,6 +37,13 @@ export function BlogLayout({ post, children, showConsoleCta = true }: Props) {
             <ArrowLeft className="h-4 w-4" />
             Blog
           </Link>
+          {hub && (
+            <p className="text-xs font-medium text-primary uppercase tracking-wider mb-3">
+              <Link to="/blog/" hash={hub.id} className="hover:underline">
+                {hub.title}
+              </Link>
+            </p>
+          )}
           <div className="flex flex-wrap gap-2 mb-4">
             {post.tags.map((tag) => (
               <span
@@ -61,18 +71,37 @@ export function BlogLayout({ post, children, showConsoleCta = true }: Props) {
           </div>
           {showConsoleCta ? <BlogConsoleCta slug={post.slug} /> : null}
           <p className="mt-12 pt-8 border-t border-border text-sm text-muted-foreground">
-            More:{' '}
-            <Link to="/blog/" className="text-primary hover:underline">
-              all posts
+            Guides:{' '}
+            <Link to="/blog/" hash="agentic-risk" className="text-primary hover:underline">
+              agentic AI risk
             </Link>
             {' · '}
-            <Link to={blogPostPath('runtime-trust-layer-for-ai-agents')} className="text-primary hover:underline">
-              runtime trust layer
+            <Link to="/blog/" hash="mcp-security" className="text-primary hover:underline">
+              MCP security
             </Link>
             {' · '}
-            <a href={consoleUrl} className="text-primary hover:underline">
-              open Sanctum Console
-            </a>
+            <Link to="/blog/" hash="runtime-authorization" className="text-primary hover:underline">
+              runtime authorization
+            </Link>
+            {' · '}
+            <Link to="/blog/" hash="hitl-approvals" className="text-primary hover:underline">
+              HITL approvals
+            </Link>
+            <br className="hidden sm:block" />
+            <span className="sm:ml-0">
+              More:{' '}
+              <Link to="/blog/" className="text-primary hover:underline">
+                all posts
+              </Link>
+              {' · '}
+              <Link to={blogPostPath('runtime-trust-layer-for-ai-agents')} className="text-primary hover:underline">
+                AI trust layer
+              </Link>
+              {' · '}
+              <a href={consoleUrl} className="text-primary hover:underline">
+                open Sanctum Console
+              </a>
+            </span>
           </p>
         </article>
       </main>

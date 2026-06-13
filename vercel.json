@@ -12,6 +12,11 @@
       "statusCode": 308
     },
     {
+      "source": "/:path+/",
+      "destination": "/:path+",
+      "statusCode": 308
+    },
+    {
       "source": "/:file([^/]+\\.[a-z0-9]+)/",
       "destination": "/:file",
       "statusCode": 308

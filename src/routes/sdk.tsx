@@ -5,9 +5,9 @@ import { pageSeo, webPageJsonLd } from "@/lib/seo";
 import { docsPath, githubUrl } from "@/lib/site-links";
 
 const path = "/sdk";
-const title = "Sanctum Runtime SDK";
+const title = "Sanctum Runtime SDK — npm, Python & Agent Adapters";
 const description =
-  "JavaScript and Python SDKs, agent-runtime adapter, CLI, and telemetry for integrating Sanctum into autonomous systems.";
+  "Install @sanctum-runtime/sdk in minutes. JavaScript, Python, LangChain middleware, MCP gates, CLI, and telemetry for production AI agent security.";
 
 export const Route = createFileRoute("/sdk")({
   component: SdkPage,

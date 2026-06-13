@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { BlogLayout } from '@/components/BlogLayout'
 import { getBlogPost, blogPostPath } from '@/lib/blog-posts'
-import { articleJsonLd, pageSeo } from '@/lib/seo'
+import { blogPostHead, getBlogPostSeo } from '@/lib/blog-seo'
 import { consoleUrl } from '@/lib/site-links'
 
 const slug = 'mobile-pwa-runtime-verification'
@@ -9,15 +9,14 @@ const post = getBlogPost(slug)!
 
 export const Route = createFileRoute('/blog/mobile-pwa-runtime-verification')({
   component: PostPage,
-  head: () => ({
-    ...pageSeo({ title: `${post.title} — Sanctum`, description: post.description, path: blogPostPath(slug), ogType: 'article' }),
-    scripts: [{ type: 'application/ld+json', children: JSON.stringify(articleJsonLd(post)) }],
-  }),
+  head: () => blogPostHead(slug, post),
 })
 
 function PostPage() {
+  const seo = getBlogPostSeo(slug, post)
+  const displayPost = { ...post, title: seo.displayTitle, description: seo.description }
   return (
-    <BlogLayout post={post}>
+    <BlogLayout post={displayPost} slug={slug}>
       <p>
         Autonomous systems run 24/7. Operators do not. A <strong>mobile runtime verification</strong> layer —
         installable PWA, push alerts, one-tap approve/deny — turns your phone into the human control plane for AI

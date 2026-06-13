@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { BlogLayout } from '@/components/BlogLayout'
 import { BlogConsoleCta } from '@/components/BlogConsoleCta'
+import { BlogRelatedGuides } from '@/components/BlogRelatedGuides'
 import { BLOG_ANSWER_POSTS } from '@/lib/blog-answers'
+import { getExpandedSections } from '@/lib/blog-expanded-sections'
+import { blogPostHead, getBlogPostSeo } from '@/lib/blog-seo'
 import { blogPostPath, getBlogPost } from '@/lib/blog-posts'
-import { articleJsonLd, pageSeo } from '@/lib/seo'
 import { docsPath } from '@/lib/site-links'
 
 function faqJsonLd(slug: string) {
@@ -29,23 +31,11 @@ export const Route = createFileRoute('/blog/$slug')({
     const post = getBlogPost(params.slug)
     if (!post) return {}
     const faq = faqJsonLd(params.slug)
-    const seo = pageSeo({
-      title: `${post.title} — Sanctum`,
-      description: post.description,
-      path: blogPostPath(params.slug),
-      ogType: 'article',
-    })
-    return {
-      ...seo,
-      meta: [...seo.meta, { name: 'keywords', content: post.tags.join(', ') }],
-      scripts: [
-        {
-          type: 'application/ld+json',
-          children: JSON.stringify(articleJsonLd({ ...post, tags: post.tags })),
-        },
-        ...(faq ? [{ type: 'application/ld+json', children: JSON.stringify(faq) }] : []),
-      ],
-    }
+    return blogPostHead(
+      params.slug,
+      post,
+      faq ? [{ type: 'application/ld+json', children: JSON.stringify(faq) }] : [],
+    )
   },
 })
 
@@ -53,6 +43,8 @@ function PostPage() {
   const { slug } = Route.useParams()
   const post = getBlogPost(slug)
   const content = BLOG_ANSWER_POSTS[slug]
+  const expanded = getExpandedSections(slug)
+  const seo = post ? getBlogPostSeo(slug, post) : null
 
   if (!post || !content) {
     return (
@@ -82,9 +74,28 @@ function PostPage() {
     )
   }
 
+  const displayPost = seo ? { ...post, title: seo.displayTitle, description: seo.description } : post
+
   return (
-    <BlogLayout post={post} showConsoleCta={false}>
-      <p>{content.intro}</p>
+    <BlogLayout post={displayPost} slug={slug} showConsoleCta={false}>
+      <p className="text-lg">{content.intro}</p>
+
+      {expanded.map((section) => (
+        <div key={section.heading}>
+          <h2>{section.heading}</h2>
+          {section.paragraphs.map((p) => (
+            <p key={p.slice(0, 40)}>{p}</p>
+          ))}
+          {section.bullets && (
+            <ul>
+              {section.bullets.map((b) => (
+                <li key={b}>{b}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ))}
+
       <h2>Key takeaways</h2>
       <ul>
         {content.keyPoints.map((point) => (
@@ -108,18 +119,7 @@ function PostPage() {
       ))}
 
       <BlogConsoleCta slug={slug} />
-
-      <p className="!mt-8">
-        Related:{' '}
-        {content.related.map((slugItem, index) => (
-          <span key={slugItem}>
-            <Link to={blogPostPath(slugItem)} className="text-primary hover:underline">
-              {getBlogPost(slugItem)?.title ?? slugItem}
-            </Link>
-            {index < content.related.length - 1 ? ', ' : '.'}
-          </span>
-        ))}
-      </p>
+      <BlogRelatedGuides slug={slug} relatedSlugs={content.related} />
     </BlogLayout>
   )
 }

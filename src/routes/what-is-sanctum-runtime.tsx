@@ -4,9 +4,9 @@ import { pageSeo, webPageJsonLd } from "@/lib/seo";
 import { consoleUrl, docsPath, githubUrl } from "@/lib/site-links";
 
 const path = "/what-is-sanctum-runtime";
-const title = "What is Sanctum Runtime?";
+const title = "What is Sanctum Runtime? AI Trust Layer for Autonomous Systems";
 const description =
-  "Sanctum Runtime is a trusted execution layer between AI reasoning and real-world actions — verification, policy, audit, and governance for agents and robots.";
+  "Sanctum Runtime is the execution trust layer between AI reasoning and real-world actions — runtime authorization, policy gates, audit trails, and human-in-the-loop verification.";
 
 export const Route = createFileRoute("/what-is-sanctum-runtime")({
   component: WhatIsPage,

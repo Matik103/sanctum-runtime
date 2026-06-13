@@ -8,9 +8,9 @@ export const Route = createFileRoute("/docs")({
   component: DocsPage,
   head: () =>
     pageSeo({
-      title: "Documentation — Sanctum Runtime",
+      title: "Sanctum Runtime Docs: SDK, verifyAction() & Agent Security",
       description:
-        "Sanctum Runtime documentation: action verification, policies, SDK integration, quick start, and open-core boundaries.",
+        "Developer documentation for Sanctum Runtime — verifyAction() API, policy engine, MCP integration, quick start, npm SDK, and production agent security patterns.",
       path: "/docs",
       ogType: "article",
     }),
