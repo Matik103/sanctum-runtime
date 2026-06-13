@@ -4,6 +4,7 @@ import type { RuntimeStatus } from '@sanctum-runtime/sdk/browser'
 export function riskModelStatusLine(status: RuntimeStatus | null): {
   dot: 'ok' | 'warn'
   label: string
+  detail?: string
 } {
   if (!status) {
     return { dot: 'warn', label: 'Connecting…' }
@@ -13,25 +14,19 @@ export function riskModelStatusLine(status: RuntimeStatus | null): {
   const provider = status.riskProvider ?? (status.ollamaConnected ? 'ollama' : 'none')
   const model = status.riskModel ?? status.ollamaModel
 
-  if (connected && provider === 'openai') {
-    return { dot: 'ok', label: model ? `OpenAI · ${model}` : 'OpenAI connected' }
-  }
-  if (connected && provider === 'ollama') {
-    return { dot: 'ok', label: model ? `Ollama · ${model}` : 'Ollama connected' }
-  }
   if (connected) {
-    return { dot: 'ok', label: model ? `Risk model · ${model}` : 'Risk model connected' }
+    return { dot: 'ok', label: 'Risk scoring active', detail: riskModelMetaLine(status) }
   }
   if (provider === 'none') {
-    return { dot: 'ok', label: 'Offline mode · heuristics only' }
+    return { dot: 'ok', label: 'Policy scoring active', detail: 'Offline mode · heuristics only' }
   }
   if (provider === 'openai') {
-    return { dot: 'warn', label: 'OpenAI disconnected' }
+    return { dot: 'warn', label: 'Risk scoring degraded', detail: 'OpenAI disconnected' }
   }
   if (provider === 'ollama') {
-    return { dot: 'warn', label: 'Ollama offline' }
+    return { dot: 'warn', label: 'Risk scoring degraded', detail: 'Ollama offline' }
   }
-  return { dot: 'warn', label: 'Configure risk model (OPENAI or OLLAMA)' }
+  return { dot: 'warn', label: 'Risk scoring not configured' }
 }
 
 export function riskModelMetaLine(status: RuntimeStatus | null): string {

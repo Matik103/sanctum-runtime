@@ -248,7 +248,7 @@ export function Sidebar({ page, onPage, status, orgId, companionMode, heldCount 
           </button>
 
           {/* Runtime status */}
-          <div className="sf-row">
+          <div className="sf-row" title={risk.detail ?? risk.label}>
             <span className={`status-dot ${risk.dot}`} style={{ flexShrink: 0 }} />
             <span className="sf-row__label">{risk.label}</span>
             <span className={`sf-status-pill ${status?.runtimeOnline === false ? 'sf-status-pill--off' : 'sf-status-pill--on'}`}>
@@ -335,7 +335,7 @@ export function Sidebar({ page, onPage, status, orgId, companionMode, heldCount 
             </button>
 
             {/* Runtime status */}
-            <div className="more-panel__status">
+            <div className="more-panel__status" title={risk.detail ?? risk.label}>
               <div>
                 <span className={`status-dot ${risk.dot}`} />
                 {risk.label}
