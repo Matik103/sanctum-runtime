@@ -563,38 +563,29 @@ function DocsPage() {
               </Section>
 
               <Section id="stack" title="Technology Stack">
-                <p>Sanctum is intentionally designed with practical, scalable, and developer-friendly infrastructure.</p>
+                <p>Sanctum is intentionally built as practical runtime infrastructure: SDK-first for teams that own their agent code, and Connect Agent for teams that want a hosted proxy path.</p>
 
                 <H3>Frontend</H3>
                 <H4>Marketing Platform</H4>
-                <List items={["Next.js", "TailwindCSS", "Framer Motion", "shadcn/ui"]} />
-                <H4>Dashboard</H4>
-                <List items={["Next.js App Router", "TypeScript", "Zustand", "TanStack Query"]} />
-                <p>Dashboard capabilities include runtime sessions, anomaly logs, action approvals, trust monitoring, offline state visibility, and permission management.</p>
+                <List items={["Vite", "TanStack Start", "React", "Tailwind CSS"]} />
+                <H4>Operator Console</H4>
+                <List items={["Vite", "React", "TypeScript", "Supabase Auth", "PWA service worker"]} />
+                <p>The console covers Live Feed, approval review, policy editing, Shield containment, audit evidence, marketplace policy packs, fleet health, and billing gates.</p>
 
                 <H3>Backend</H3>
                 <H4>Core Infrastructure</H4>
-                <List items={["Node.js", "TypeScript", "Fastify"]} />
-                <H4>Database</H4>
-                <List items={["PostgreSQL", "Prisma ORM"]} />
+                <List items={["Node.js", "TypeScript", "Fastify", "Supabase Postgres"]} />
                 <H4>Realtime Layer</H4>
-                <List items={["WebSockets", "NATS planned for future distributed runtime messaging"]} />
+                <List items={["Supabase Realtime", "runtime WebSocket hub", "push notification delivery"]} />
 
                 <H3>AI Runtime Layer</H3>
-                <p>Sanctum is designed around local inference compatibility.</p>
-                <p>Supported local runtime directions include:</p>
-                <List items={["Ollama", "llama.cpp", "DeepSeek local models", "and Qwen local models"]} />
-                <p>This architecture prioritizes local execution, low latency, privacy, and runtime resilience.</p>
+                <p>Sanctum gates actions, not model tokens. The same verify path works with OpenAI, Claude/MCP, Gemini-style function calling, DeepSeek, Grok, Bedrock-compatible endpoints, NVIDIA NIM, custom agents, and local runtimes.</p>
 
                 <H3>Security Layer</H3>
-                <p>Planned security directions include:</p>
-                <List items={["JWT authentication", "device keys", "Rust-based runtime services", "and hardware trust integrations"]} />
+                <List items={["Signed agent tokens", "signed action tokens", "short-lived approvals", "source-trust context", "blast-radius scoring", "audit-chain verification", "encrypted platform keys"]} />
 
-                <H3>Robotics Compatibility</H3>
-                <H4>Phase 1</H4>
-                <List items={["Python SDK", "Node SDK"]} />
-                <H4>Phase 2</H4>
-                <List items={["ROS2 integration", "NVIDIA Jetson support", "Raspberry Pi support", "Unitree support"]} />
+                <H3>Robotics and Edge Compatibility</H3>
+                <List items={["Node SDK", "Python SDK", "MCP wrapper", "ROS2-oriented policy packs", "smart-home and embodied-agent templates"]} />
               </Section>
 
               <Section id="access" eyebrow="Architecture" title="How You Access Sanctum">
@@ -610,17 +601,18 @@ function DocsPage() {
                 </p>
                 <Code lang="bash" code={`npm install @sanctum-runtime/sdk`} />
 
-                <H3>B — Local runtime service (roadmap)</H3>
+                <H3>B — Connect Agent hosted proxy</H3>
                 <p>
-                  Optional daemon on a device: intercepts actions, connects to Ollama, enforces
-                  policies — think “Docker daemon for AI trust.”
+                  Register an agent, save a platform key, and route OpenAI-compatible traffic through
+                  Sanctum. Tool calls appear in Live Feed and can be observed or governed based on plan.
                 </p>
-                <Code lang="bash" code={`npx sanctum init   # coming soon`} />
+                <Code lang="bash" code={`base_url="https://api.sanctumruntime.com/v1/proxy/openai"
+X-Sanctum-Agent-Token="sk_agent_..."`} />
 
-                <H3>C — Cloud dashboard (optional)</H3>
+                <H3>C — Cloud dashboard</H3>
                 <p>
-                  Policy management, logs, and threat views. Visibility and control —{" "}
-                  <strong>not</strong> the runtime itself.
+                  Policy management, Live Feed, approval review, audit evidence, Shield containment,
+                  and billing gates for the operator team.
                 </p>
 
                 <H3>Execution flow</H3>

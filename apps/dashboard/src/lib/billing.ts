@@ -329,13 +329,17 @@ export async function changePlan(orgId: string, planId: PlanId): Promise<PlanCha
   const hint = body.hint?.trim() || ''
   const detail = body.detail?.trim()
   const errCode = body.error ?? `http_${res.status}`
+  const safeDetail =
+    detail && !detail.startsWith('{') && !/CREEM_|SUPABASE_|SANCTUM_|docs\/|creem:/i.test(detail)
+      ? detail
+      : ''
   return {
     checkoutUrl: null,
     billingProvider: null,
     message: hint
-      || (detail && !detail.startsWith('{')
-        ? `Billing change failed (${errCode}): ${detail}`
-        : `Billing change failed (${errCode}). Run creem:verify-remote or see docs/CREEM_SUPABASE.md.`),
+      || (safeDetail
+        ? `Billing change failed (${errCode}): ${safeDetail}`
+        : 'Billing checkout is temporarily unavailable. Try again shortly or contact billing@sanctumruntime.com.'),
     contactEmail: 'billing@sanctumruntime.com',
   }
 }

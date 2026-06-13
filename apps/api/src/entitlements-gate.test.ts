@@ -17,6 +17,7 @@ import {
   canUseMarketplacePublishing,
   canUseOrchestration,
   canUsePolicyVersioning,
+  upgradePlanHint,
 } from './entitlements-gate.js'
 
 describe('entitlements-gate', () => {
@@ -88,5 +89,14 @@ describe('entitlements-gate', () => {
     expect(canUsePolicyVersioning(t)).toBe(true)
     expect(canUseMarketplaceInstalls(t)).toBe(true)
     expect(canUseMarketplacePublishing(t)).toBe(true)
+  })
+
+  it('returns the correct next plan for gated feature prompts', () => {
+    expect(upgradePlanHint('observer', 'connect')).toBe('Personal')
+    expect(upgradePlanHint('observer', 'marketplace_install')).toBe('Personal')
+    expect(upgradePlanHint('observer', 'policy_editor')).toBe('Personal')
+    expect(upgradePlanHint('personal', 'shield_rules')).toBe('Operator')
+    expect(upgradePlanHint('operator', 'sso')).toBe('Team')
+    expect(upgradePlanHint('team', 'cloud_sync')).toBe('Enterprise')
   })
 })

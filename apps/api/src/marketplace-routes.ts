@@ -39,8 +39,8 @@ export async function registerMarketplaceRoutes(app: FastifyInstance, runtime: R
     sendPlanFeatureRequired(
       reply,
       limits,
-      "light_gates",
-      "Installing or removing policy templates requires Personal or higher.",
+      "marketplace_install",
+      "Developer is observe-only. Upgrade to Personal or higher to install or remove policy templates.",
     );
     return false;
   }

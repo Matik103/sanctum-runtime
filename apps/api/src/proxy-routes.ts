@@ -20,6 +20,7 @@ import {
   assertGovernedQuotaForReply,
   assertObserveQuotaForReply,
   canUseConnectGate,
+  sendPlanFeatureRequired,
 } from './entitlements-gate.js'
 import type { RuntimeEngine } from '@sanctum/runtime-engine'
 import {
@@ -193,13 +194,13 @@ export function registerProxyRoutes(app: FastifyInstance, runtime: RuntimeEngine
         const gateRequested = proxyGateEnabledFromMode(proxyMode)
         const gateEnabled = gateRequested && canUseConnectGate(planLimits)
         if (gateRequested && !gateEnabled) {
-          return reply.code(402).send({
-            error: 'plan_feature_required',
-            feature: 'light_gates',
-            currentPlan: planLimits.planId,
-            message:
-              'Connect gate mode requires Personal or higher. Use observe mode on Developer, or upgrade at /billing.',
-          })
+          sendPlanFeatureRequired(
+            reply,
+            planLimits,
+            'connect',
+            'Developer is observe-only. Upgrade to Personal or higher to hold, approve, block, or gate Connect Agent tool calls.',
+          )
+          return
         }
         if (gateEnabled) {
           if (!(await assertGovernedQuotaForReply(entitlements, orgId, reply))) return

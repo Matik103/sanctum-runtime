@@ -20,6 +20,10 @@ const FEATURE_LABELS: Record<string, string> = {
   rbac: 'RBAC',
   alerts: 'Alert rules',
   audit_logs: 'Audit logs',
+  connect: 'Connect Agent gate mode',
+  marketplace_install: 'Marketplace policy installs',
+  policy_editor: 'Policy editing',
+  audit_replay: 'Policy replay and simulation',
 }
 
 const PLAN_FEATURES_WITH_INHERITANCE: Record<PlanId, string[]> = {
@@ -133,7 +137,11 @@ export function canApproveHolds(limits: PlanLimits): boolean {
 export function upgradePlanHint(current: PlanId, feature: string): string {
   const order: PlanId[] = ['observer', 'personal', 'operator', 'team', 'enterprise']
   const need =
-    feature === 'light_gates' || feature === 'connect'
+    feature === 'light_gates' ||
+    feature === 'connect' ||
+    feature === 'marketplace_install' ||
+    feature === 'policy_editor' ||
+    feature === 'audit_replay'
       ? 'personal'
       : feature === 'shield_rules' || feature === 'holds_approve' || feature === 'webhooks' || feature === 'api_access' || feature === 'cloud_sync'
         ? 'operator'
@@ -143,7 +151,7 @@ export function upgradePlanHint(current: PlanId, feature: string): string {
   const idx = order.indexOf(current)
   const targetIdx = order.indexOf(need)
   if (targetIdx > idx) return PLAN_DEFAULTS[need].planName
-  return PLAN_DEFAULTS.operator.planName
+  return PLAN_DEFAULTS.enterprise.planName
 }
 
 function featureLabel(feature: string): string {
@@ -152,7 +160,10 @@ function featureLabel(feature: string): string {
 
 function planFeatureMessage(limits: PlanLimits, feature: string): string {
   const neededPlan = upgradePlanHint(limits.planId, feature)
-  return `${featureLabel(feature)} is not included on ${limits.planName}. Upgrade to ${neededPlan} to use this feature.`
+  if (limits.planId === 'observer') {
+    return `${limits.planName} is observe-only. Upgrade to ${neededPlan} to use ${featureLabel(feature).toLowerCase()}.`
+  }
+  return `${featureLabel(feature)} is not included on ${limits.planName}. Upgrade to ${neededPlan} to use it.`
 }
 
 export function sendPlanFeatureRequired(
