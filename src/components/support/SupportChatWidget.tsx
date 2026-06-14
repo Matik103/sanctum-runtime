@@ -1,14 +1,14 @@
 import * as React from "react";
 import {
   ExternalLink,
-  MessageCircle,
   Minus,
   Send,
-  Shield,
   Sparkles,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SanctumGuideAvatar, VisitorChatAvatar } from "@/components/support/SupportChatAvatar";
+import logo from "@/assets/sanctum-logo.png";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   createSupportSession,
@@ -107,9 +107,7 @@ function CitationList({ citations }: { citations: SupportCitation[] }) {
 function TypingIndicator() {
   return (
     <div className="flex items-start gap-2.5">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-primary/30 bg-primary/10">
-        <Sparkles className="h-3.5 w-3.5 text-primary" />
-      </div>
+      <SanctumGuideAvatar size="sm" />
       <div className="rounded-2xl rounded-tl-md border border-border/60 bg-elevated/80 px-4 py-3">
         <div className="flex gap-1">
           {[0, 1, 2].map((i) => (
@@ -262,10 +260,7 @@ export function SupportChatWidget() {
 
         {/* Header */}
         <header className="relative flex shrink-0 items-center gap-3 border-b border-border/60 px-4 py-3.5">
-          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-primary shadow-glow">
-            <Shield className="h-5 w-5 text-primary-foreground" />
-            <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-elevated bg-success" />
-          </div>
+          <SanctumGuideAvatar size="md" online />
           <div className="min-w-0 flex-1">
             <p className="font-display text-sm font-semibold tracking-tight text-foreground">
               Sanctum Guide
@@ -345,16 +340,15 @@ export function SupportChatWidget() {
             <div className="space-y-4">
               {messages.map((m) =>
                 m.role === "user" ? (
-                  <div key={m.id} className="flex justify-end">
-                    <div className="max-w-[88%] rounded-2xl rounded-tr-md bg-gradient-primary px-3.5 py-2.5 text-[13px] leading-relaxed text-primary-foreground shadow-glow/30">
+                  <div key={m.id} className="flex items-end justify-end gap-2.5">
+                    <div className="max-w-[calc(100%-2.5rem)] rounded-2xl rounded-tr-md bg-gradient-primary px-3.5 py-2.5 text-[13px] leading-relaxed text-primary-foreground shadow-glow/30">
                       {m.content}
                     </div>
+                    <VisitorChatAvatar />
                   </div>
                 ) : (
                   <div key={m.id} className="flex items-start gap-2.5">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-primary/25 bg-primary/10">
-                      <Sparkles className="h-3.5 w-3.5 text-primary" />
-                    </div>
+                    <SanctumGuideAvatar size="sm" />
                     <div className="min-w-0 max-w-[calc(100%-2.5rem)] rounded-2xl rounded-tl-md border border-border/60 bg-elevated/70 px-3.5 py-2.5">
                       <MessageBody content={m.content} />
                       {m.citations?.length ? <CitationList citations={m.citations} /> : null}
@@ -418,7 +412,7 @@ export function SupportChatWidget() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "pointer-events-auto relative flex items-center justify-center rounded-full bg-gradient-primary text-primary-foreground shadow-glow transition-all duration-300 hover:scale-105 hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+          "pointer-events-auto relative flex items-center justify-center overflow-hidden rounded-full border border-primary/30 bg-surface shadow-glow transition-all duration-300 hover:scale-105 hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           isMobile ? "m-4 h-14 w-14" : "h-14 w-14",
           open && (isMobile ? "hidden" : "scale-0 opacity-0"),
         )}
@@ -431,7 +425,7 @@ export function SupportChatWidget() {
             style={{ animationDuration: "2.5s" }}
           />
         )}
-        <MessageCircle className="relative h-6 w-6" />
+        <img src={logo} alt="" className="relative h-8 w-8 object-contain" aria-hidden />
       </button>
     </div>
   );
