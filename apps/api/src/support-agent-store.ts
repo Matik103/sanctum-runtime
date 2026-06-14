@@ -73,8 +73,8 @@ const DEFAULT_CONFIG: SupportAgentConfig = {
   },
   retrieval: {
     match_count: 8,
-    match_threshold: 0.72,
-    sales_intent_min_weight: 6,
+    match_threshold: 0.65,
+    sales_intent_min_weight: 4,
     educational_source_types: ['blog', 'docs', 'faq', 'glossary'],
     conversion_source_types: ['pricing', 'product', 'sales_playbook', 'comparison'],
   },
@@ -199,11 +199,15 @@ export class SupportAgentStore {
 
   /** Text fallback when embeddings are not yet ingested. */
   async searchKbByText(query: string, limit = 6): Promise<SupportKbChunkMatch[]> {
-    const terms = query
+    const rawTerms = query
       .toLowerCase()
       .split(/\W+/)
       .filter((t) => t.length > 2)
-      .slice(0, 4)
+    const extra: string[] = []
+    if (/\b(cheap|cheapest|cost|price|pricing|plan|free)\b/i.test(query)) {
+      extra.push('pricing', 'observer', 'plan', 'free')
+    }
+    const terms = [...new Set([...rawTerms, ...extra])].slice(0, 6)
     if (!terms.length) return []
 
     const orFilter = terms

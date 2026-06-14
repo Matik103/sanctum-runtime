@@ -1,4 +1,5 @@
 import type { SupabaseAuthConfig } from './auth.js'
+import { embedTexts } from './support-embeddings.js'
 import {
   SupportAgentStore,
   type SupportAgentConfig,
@@ -62,38 +63,14 @@ function buildSystemPrompt(config: SupportAgentConfig, context: string): string 
   ].join('\n')
 }
 
-function fitEmbeddingVector(vec: number[], targetDims: number): number[] {
-  if (vec.length === targetDims) return vec
-  // Nemotron free model outputs 2048 dims (MRL); slice + L2-normalize for our vector(1536) column.
-  const sliced = vec.slice(0, targetDims)
-  let sumSq = 0
-  for (const v of sliced) sumSq += v * v
-  const norm = Math.sqrt(sumSq)
-  if (!norm) return sliced
-  return sliced.map((v) => v / norm)
-}
-
 async function embedQuery(
   apiKey: string,
   model: string,
   text: string,
   targetDims: number,
 ): Promise<number[] | null> {
-  const res = await fetch(`${OPENROUTER_URL}/embeddings`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': 'https://www.sanctumruntime.com',
-      'X-Title': 'Sanctum Guide',
-    },
-    body: JSON.stringify({ model, input: text }),
-  })
-  if (!res.ok) return null
-  const json = (await res.json()) as { data?: { embedding?: number[] }[] }
-  const raw = json.data?.[0]?.embedding
-  if (!raw?.length) return null
-  return fitEmbeddingVector(raw, targetDims)
+  const [embedding] = await embedTexts(apiKey, model, [text], targetDims)
+  return embedding
 }
 
 async function chatCompletion(
@@ -122,7 +99,43 @@ async function chatCompletion(
   return { content, usage: json.usage ?? {} }
 }
 
-function fallbackReply(message: string, citations: SupportCitation[]): string {
+function mergeChunks(...lists: SupportKbChunkMatch[][]): SupportKbChunkMatch[] {
+  const seen = new Set<string>()
+  const out: SupportKbChunkMatch[] = []
+  for (const list of lists) {
+    for (const c of list) {
+      const key = c.chunk_id.startsWith('text-') ? c.source_slug : c.chunk_id
+      if (seen.has(key)) continue
+      seen.add(key)
+      out.push(c)
+    }
+  }
+  return out
+}
+
+function composeFromChunks(chunks: SupportKbChunkMatch[], citations: SupportCitation[]): string {
+  const top = chunks.slice(0, 4)
+  const intro = top[0]?.source_type === 'pricing'
+    ? 'Here is what our pricing page says:'
+    : 'Based on our knowledge base:'
+  const body = top
+    .map((c) => {
+      const link = c.canonical_url ? ` [Read more](${c.canonical_url})` : ''
+      return `**${c.source_title}**${link}\n${c.content.slice(0, 650)}`
+    })
+    .join('\n\n')
+  const citeExtra =
+    citations.length > 1
+      ? `\n\n**Related:** ${citations
+          .slice(0, 3)
+          .map((c) => (c.url ? `[${c.title}](${c.url})` : c.title))
+          .join(' · ')}`
+      : ''
+  return `${intro}\n\n${body}${citeExtra}`
+}
+
+function fallbackReply(message: string, citations: SupportCitation[], chunks: SupportKbChunkMatch[]): string {
+  if (chunks.length) return composeFromChunks(chunks, citations)
   const citeBlock =
     citations.length > 0
       ? `\n\n**Related:**\n${citations
@@ -159,6 +172,10 @@ export class SupportAgentService {
     const salesIntent = detectSalesIntent(message)
     const apiKey = resolveOpenRouterApiKey(config)
     const { retrieval, openrouter } = config
+    const limit = retrieval.match_count
+
+    const textMatches = await this.store.searchKbByText(message, limit)
+    let vectorMatches: SupportKbChunkMatch[] = []
 
     if (apiKey) {
       const embedding = await embedQuery(
@@ -168,19 +185,38 @@ export class SupportAgentService {
         openrouter.embedding_dimensions,
       )
       if (embedding?.length) {
-        const vectorMatches = await this.store.matchKbChunks(embedding, {
-          match_count: retrieval.match_count,
+        const types = salesIntent
+          ? [...retrieval.conversion_source_types, ...retrieval.educational_source_types]
+          : [...retrieval.educational_source_types, ...retrieval.conversion_source_types]
+
+        vectorMatches = await this.store.matchKbChunks(embedding, {
+          match_count: limit,
           match_threshold: retrieval.match_threshold,
-          filter_source_types: salesIntent
-            ? [...retrieval.conversion_source_types, ...retrieval.educational_source_types]
-            : retrieval.educational_source_types,
+          filter_source_types: types,
           min_sales_weight: salesIntent ? retrieval.sales_intent_min_weight : null,
         })
-        if (vectorMatches.length) return vectorMatches
+
+        if (!vectorMatches.length && salesIntent) {
+          vectorMatches = await this.store.matchKbChunks(embedding, {
+            match_count: limit,
+            match_threshold: Math.min(retrieval.match_threshold, 0.6),
+            filter_source_types: types,
+            min_sales_weight: null,
+          })
+        }
+
+        if (!vectorMatches.length) {
+          vectorMatches = await this.store.matchKbChunks(embedding, {
+            match_count: limit,
+            match_threshold: Math.min(retrieval.match_threshold, 0.6),
+            filter_source_types: null,
+            min_sales_weight: null,
+          })
+        }
       }
     }
 
-    return this.store.searchKbByText(message, retrieval.match_count)
+    return mergeChunks(vectorMatches, textMatches).slice(0, limit)
   }
 
   async handleChat(input: {
@@ -234,10 +270,14 @@ export class SupportAgentService {
         model = config.openrouter.chat_model
         tokenUsage = completion.usage
       } else {
-        assistantContent = fallbackReply(trimmed, citations)
+        assistantContent = chunks.length
+          ? composeFromChunks(chunks, citations)
+          : fallbackReply(trimmed, citations, chunks)
       }
     } else {
-      assistantContent = fallbackReply(trimmed, citations)
+      assistantContent = chunks.length
+        ? composeFromChunks(chunks, citations)
+        : fallbackReply(trimmed, citations, chunks)
     }
 
     const reply = await this.store.addMessage({
