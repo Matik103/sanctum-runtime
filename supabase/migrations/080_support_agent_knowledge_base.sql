@@ -340,7 +340,7 @@ values
   (
     'openrouter',
     jsonb_build_object(
-      'chat_model', 'google/gemini-2.0-flash-001',
+      'chat_model', 'google/gemini-2.5-flash',
       'embedding_model', 'openai/text-embedding-3-small',
       'embedding_dimensions', 1536,
       'temperature', 0.35,
