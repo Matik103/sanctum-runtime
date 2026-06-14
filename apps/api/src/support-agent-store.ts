@@ -50,7 +50,7 @@ export type SupportAgentConfig = {
 
 const DEFAULT_CONFIG: SupportAgentConfig = {
   openrouter: {
-    chat_model: 'openrouter/free',
+    chat_model: 'meta-llama/llama-3.3-70b-instruct:free',
     embedding_model: 'nvidia/llama-nemotron-embed-vl-1b-v2:free',
     embedding_dimensions: 1536,
     temperature: 0.35,
