@@ -387,7 +387,11 @@ export class SupportAgentService {
     sessionPublicId: string
     reason: string
     visitorMessage: string
-  }): Promise<{ status: SupportSessionStatus; alreadyQueued: boolean }> {
+  }): Promise<{
+    status: SupportSessionStatus
+    alreadyQueued: boolean
+    confirmation: { id: string; content: string; created_at: string } | null
+  }> {
     const session = await this.store.getSessionByPublicId(input.sessionPublicId)
     if (!session) throw new Error('session_not_found')
 
@@ -414,7 +418,18 @@ export class SupportAgentService {
       })
     }
 
-    return { status: 'queued', alreadyQueued }
+    const confirmationRow = await this.store.addQueueConfirmation(session.id)
+    return {
+      status: 'queued',
+      alreadyQueued,
+      confirmation: confirmationRow
+        ? {
+            id: confirmationRow.id as string,
+            content: confirmationRow.content as string,
+            created_at: confirmationRow.created_at as string,
+          }
+        : null,
+    }
   }
 
   private async saveAssistantReply(input: {

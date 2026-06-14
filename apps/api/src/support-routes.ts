@@ -192,7 +192,12 @@ export async function registerSupportRoutes(
         reason: 'requested',
         visitorMessage: body.success ? (body.data.message ?? 'Visitor requested human help') : 'Visitor requested human help',
       })
-      return { session_id: sessionId, status: result.status, already_queued: result.alreadyQueued }
+      return {
+        session_id: sessionId,
+        status: result.status,
+        already_queued: result.alreadyQueued,
+        confirmation: result.confirmation,
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'unknown'
       if (msg === 'session_not_found') return reply.status(404).send({ error: msg })

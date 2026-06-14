@@ -266,6 +266,23 @@ export class SupportAgentStore {
     return { alreadyQueued: false }
   }
 
+  async addQueueConfirmation(sessionId: string) {
+    const recent = await this.listMessages(sessionId, 6)
+    const lastAssistant = [...recent].reverse().find((m) => m.role === 'assistant')
+    const queueMarker = 'in the queue'
+    if (lastAssistant && (lastAssistant.content as string).toLowerCase().includes(queueMarker)) {
+      return lastAssistant
+    }
+
+    return this.addMessage({
+      session_id: sessionId,
+      role: 'assistant',
+      content:
+        'You are in the queue — a Sanctum teammate will join this chat shortly. Keep typing here; they will see your messages.',
+      metadata: { handoff: null, follow_ups: [], sender: 'system' },
+    })
+  }
+
   async claimSession(input: {
     session_id: string
     operator_id: string

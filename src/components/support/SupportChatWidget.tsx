@@ -18,6 +18,7 @@ import {
   escalateSupportSession,
   fetchSupportMessages,
   getStoredSessionId,
+  sendSupportMessage,
   sendSupportMessageStream,
   storeSessionId,
   submitSupportFeedback,
@@ -140,7 +141,10 @@ function HandoffCard({
             <button
               type="button"
               disabled={!sessionId || escalating}
-              onClick={onEscalate}
+              onClick={(e) => {
+                e.stopPropagation();
+                onEscalate();
+              }}
               className="inline-flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1.5 text-[11px] font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
             >
               {escalating ? "Connecting…" : "Chat with a human"}
@@ -172,36 +176,64 @@ function FeedbackRow({
 }: {
   messageId: string;
   rating?: -1 | 1 | null;
-  onRate: (id: string, r: -1 | 1) => void;
+  onRate: (id: string, r: -1 | 1) => Promise<void>;
 }) {
+  const [localRating, setLocalRating] = React.useState<-1 | 1 | null>(rating ?? null);
+  const [failed, setFailed] = React.useState(false);
+
+  React.useEffect(() => {
+    if (rating != null) setLocalRating(rating);
+  }, [rating]);
+
   if (messageId.startsWith("local-") || messageId.startsWith("stream-")) return null;
+
+  const submit = (value: -1 | 1) => {
+    void (async () => {
+      setFailed(false);
+      setLocalRating(value);
+      try {
+        await onRate(messageId, value);
+      } catch {
+        setLocalRating(null);
+        setFailed(true);
+      }
+    })();
+  };
+
   return (
     <div className="mt-2 flex items-center gap-1.5 border-t border-border/40 pt-2">
-      <span className="text-[10px] text-muted-foreground">Helpful?</span>
-      <button
-        type="button"
-        aria-label="Thumbs up"
-        disabled={rating != null}
-        onClick={() => onRate(messageId, 1)}
-        className={cn(
-          "rounded-md p-1 transition-colors",
-          rating === 1 ? "text-primary" : "text-muted-foreground hover:text-primary",
-        )}
-      >
-        <ThumbsUp className="h-3.5 w-3.5" />
-      </button>
-      <button
-        type="button"
-        aria-label="Thumbs down"
-        disabled={rating != null}
-        onClick={() => onRate(messageId, -1)}
-        className={cn(
-          "rounded-md p-1 transition-colors",
-          rating === -1 ? "text-destructive" : "text-muted-foreground hover:text-destructive",
-        )}
-      >
-        <ThumbsDown className="h-3.5 w-3.5" />
-      </button>
+      {localRating != null ? (
+        <span className="text-[10px] text-muted-foreground">Thanks for the feedback.</span>
+      ) : (
+        <>
+          <span className="text-[10px] text-muted-foreground">Helpful?</span>
+          <button
+            type="button"
+            aria-label="Thumbs up"
+            onClick={(e) => {
+              e.stopPropagation();
+              submit(1);
+            }}
+            className="rounded-md p-1 text-muted-foreground transition-colors hover:text-primary"
+          >
+            <ThumbsUp className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            aria-label="Thumbs down"
+            onClick={(e) => {
+              e.stopPropagation();
+              submit(-1);
+            }}
+            className="rounded-md p-1 text-muted-foreground transition-colors hover:text-destructive"
+          >
+            <ThumbsDown className="h-3.5 w-3.5" />
+          </button>
+          {failed ? (
+            <span className="text-[10px] text-destructive">Could not save — try again</span>
+          ) : null}
+        </>
+      )}
     </div>
   );
 }
@@ -346,27 +378,32 @@ export function SupportChatWidget() {
     setEscalating(true);
     setError(null);
     try {
-      const { status } = await escalateSupportSession(sessionId);
+      const lastUser = [...messages].reverse().find((m) => m.role === "user");
+      const { status, confirmation } = await escalateSupportSession(
+        sessionId,
+        lastUser?.content,
+      );
       setSessionStatus(status);
-      await refreshMessages(sessionId);
+      if (confirmation) {
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === confirmation.id)) return prev;
+          return [...prev, confirmation];
+        });
+      } else {
+        await refreshMessages(sessionId);
+      }
     } catch {
       setError("Could not reach the team. Try email or contact form.");
     } finally {
       setEscalating(false);
     }
-  }, [sessionId, escalating, refreshMessages]);
+  }, [sessionId, escalating, messages, refreshMessages]);
 
   const handleFeedback = React.useCallback(async (messageId: string, rating: -1 | 1) => {
     setMessages((prev) =>
       prev.map((m) => (m.id === messageId ? { ...m, feedback: rating } : m)),
     );
-    try {
-      await submitSupportFeedback(messageId, rating);
-    } catch {
-      setMessages((prev) =>
-        prev.map((m) => (m.id === messageId ? { ...m, feedback: null } : m)),
-      );
-    }
+    await submitSupportFeedback(messageId, rating);
   }, []);
 
   const send = React.useCallback(
@@ -397,19 +434,28 @@ export function SupportChatWidget() {
 
         let assembled = "";
 
-        const result = await sendSupportMessageStream(sid, trimmed, (token) => {
-          assembled += token;
-          setStreamingText(assembled);
-        });
+        try {
+          const result = await sendSupportMessageStream(sid, trimmed, (token) => {
+            assembled += token;
+            setStreamingText(assembled);
+          });
 
-        setStreamingText("");
-        setSessionStatus(result.sessionStatus);
-        setFollowUps(result.followUps);
+          setStreamingText("");
+          setSessionStatus(result.sessionStatus);
+          setFollowUps(result.followUps);
 
-        if (result.message) {
-          setMessages((prev) => [...prev, result.message!]);
-        } else if (result.sessionStatus === "human_active" || result.sessionStatus === "queued") {
-          await refreshMessages(sid);
+          if (result.message) {
+            setMessages((prev) => [...prev, result.message!]);
+          } else if (result.sessionStatus === "human_active" || result.sessionStatus === "queued") {
+            await refreshMessages(sid);
+          }
+        } catch {
+          const result = await sendSupportMessage(sid, trimmed);
+          setSessionStatus(result.sessionStatus);
+          setFollowUps(result.followUps);
+          if (result.message) {
+            setMessages((prev) => [...prev, result.message!]);
+          }
         }
       } catch {
         setError("Message failed to send. Please try again.");
@@ -564,7 +610,7 @@ export function SupportChatWidget() {
                         escalating={escalating}
                       />
                       {m.role === "assistant" && m.sender !== "system" ? (
-                        <FeedbackRow messageId={m.id} rating={m.feedback} onRate={(id, r) => void handleFeedback(id, r)} />
+                        <FeedbackRow messageId={m.id} rating={m.feedback} onRate={handleFeedback} />
                       ) : null}
                     </div>
                   </div>

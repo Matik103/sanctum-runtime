@@ -122,14 +122,49 @@ export async function fetchSupportMessages(sessionId: string): Promise<{
 export async function escalateSupportSession(
   sessionId: string,
   message?: string,
-): Promise<{ status: SupportSessionStatus }> {
+): Promise<{
+  status: SupportSessionStatus;
+  confirmation?: SupportChatMessage | null;
+}> {
   const res = await fetch(`${getBase()}/v1/support/sessions/${encodeURIComponent(sessionId)}/escalate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message }),
   });
-  const data = await parseJson<{ status: SupportSessionStatus }>(res);
-  return { status: data.status };
+
+  if (res.ok) {
+    const data = await parseJson<{
+      status: SupportSessionStatus;
+      confirmation?: { id: string; content: string; created_at: string } | null;
+    }>(res);
+    return {
+      status: data.status,
+      confirmation: data.confirmation
+        ? {
+            id: data.confirmation.id,
+            role: "assistant",
+            content: data.confirmation.content,
+            sender: "system",
+            created_at: data.confirmation.created_at,
+          }
+        : null,
+    };
+  }
+
+  // Older API builds may not have /escalate yet — trigger handoff through chat instead.
+  if (res.status === 404 || res.status === 405) {
+    const result = await sendSupportMessage(
+      sessionId,
+      message?.trim() || "I would like to chat with a human.",
+    );
+    return {
+      status: result.sessionStatus === "queued" ? "queued" : result.sessionStatus,
+      confirmation: result.message,
+    };
+  }
+
+  const body = (await res.json().catch(() => ({}))) as { error?: string };
+  throw new Error(body.error ?? `request_failed_${res.status}`);
 }
 
 export async function submitSupportFeedback(
@@ -141,7 +176,11 @@ export async function submitSupportFeedback(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ rating }),
   });
-  await parseJson(res);
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? `feedback_failed_${res.status}`);
+  }
+  await res.json().catch(() => undefined);
 }
 
 type StreamDonePayload = {
@@ -207,7 +246,8 @@ export async function sendSupportMessageStream(
         if (event === "done") donePayload = data as StreamDonePayload;
         if (event === "error") throw new Error((data.error as string) ?? "chat_failed");
       } catch (e) {
-        if (e instanceof Error && e.message !== "chat_failed") throw e;
+        if (e instanceof SyntaxError) continue;
+        throw e;
       }
     }
   }
