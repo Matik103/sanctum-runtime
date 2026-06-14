@@ -40,6 +40,23 @@ export type SupportHandoff = {
   email: string
 }
 
+export type SupportSessionStatus = 'bot' | 'queued' | 'human_active' | 'resolved'
+
+export type SupportInboxSession = {
+  id: string
+  public_id: string
+  status: SupportSessionStatus
+  handoff_reason: string | null
+  assigned_operator_id: string | null
+  assigned_operator_email: string | null
+  landing_path: string | null
+  escalated_at: string | null
+  resolved_at: string | null
+  last_message_at: string | null
+  created_at: string
+  preview?: string | null
+}
+
 export type SupportAgentConfig = {
   openrouter: {
     chat_model: string
@@ -142,11 +159,272 @@ export class SupportAgentStore {
   async getSessionByPublicId(publicId: string) {
     const { data, error } = await this.admin
       .from('support_agent_sessions')
-      .select('id, public_id, created_at, last_message_at')
+      .select(
+        'id, public_id, created_at, last_message_at, status, handoff_reason, assigned_operator_id, assigned_operator_email, landing_path, escalated_at, resolved_at',
+      )
       .eq('public_id', publicId)
       .maybeSingle()
     if (error) throw error
     return data
+  }
+
+  async loadInboxConfig(): Promise<{
+    allowed_emails: string[]
+    notify_email: string
+    slack_webhook_url: string | null
+  }> {
+    const { data } = await this.admin
+      .from('support_agent_config')
+      .select('value')
+      .eq('key', 'inbox')
+      .maybeSingle()
+    const v = (data?.value ?? {}) as Record<string, unknown>
+    return {
+      allowed_emails: Array.isArray(v.allowed_emails)
+        ? (v.allowed_emails as string[]).map((e) => e.trim().toLowerCase()).filter(Boolean)
+        : [],
+      notify_email:
+        typeof v.notify_email === 'string' && v.notify_email.trim()
+          ? v.notify_email.trim()
+          : 'support@sanctumruntime.com',
+      slack_webhook_url:
+        typeof v.slack_webhook_url === 'string' && v.slack_webhook_url.trim()
+          ? v.slack_webhook_url.trim()
+          : null,
+    }
+  }
+
+  async recordEvent(input: {
+    session_id?: string | null
+    message_id?: string | null
+    event_type: string
+    payload?: Record<string, unknown>
+  }) {
+    const { error } = await this.admin.from('support_agent_events').insert({
+      session_id: input.session_id ?? null,
+      message_id: input.message_id ?? null,
+      event_type: input.event_type,
+      payload: input.payload ?? {},
+    })
+    if (error) throw error
+  }
+
+  async recordFeedback(input: {
+    message_id: string
+    session_id: string
+    rating: -1 | 1
+    comment?: string
+  }) {
+    const { data, error } = await this.admin
+      .from('support_agent_message_feedback')
+      .upsert(
+        {
+          message_id: input.message_id,
+          session_id: input.session_id,
+          rating: input.rating,
+          comment: input.comment ?? null,
+        },
+        { onConflict: 'message_id' },
+      )
+      .select('id, rating, created_at')
+      .single()
+    if (error) throw error
+    return data
+  }
+
+  async escalateSession(input: {
+    session_id: string
+    reason: string
+    notify?: boolean
+  }): Promise<{ alreadyQueued: boolean }> {
+    const { data: current } = await this.admin
+      .from('support_agent_sessions')
+      .select('status')
+      .eq('id', input.session_id)
+      .maybeSingle()
+
+    if (current?.status === 'queued' || current?.status === 'human_active') {
+      return { alreadyQueued: true }
+    }
+
+    const { error } = await this.admin
+      .from('support_agent_sessions')
+      .update({
+        status: 'queued',
+        handoff_reason: input.reason,
+        escalated_at: new Date().toISOString(),
+        resolved_at: null,
+      })
+      .eq('id', input.session_id)
+    if (error) throw error
+
+    await this.recordEvent({
+      session_id: input.session_id,
+      event_type: 'handoff_requested',
+      payload: { reason: input.reason, notify: input.notify ?? true },
+    })
+    return { alreadyQueued: false }
+  }
+
+  async claimSession(input: {
+    session_id: string
+    operator_id: string
+    operator_email: string
+  }) {
+    const { data, error } = await this.admin
+      .from('support_agent_sessions')
+      .update({
+        status: 'human_active',
+        assigned_operator_id: input.operator_id,
+        assigned_operator_email: input.operator_email,
+      })
+      .eq('id', input.session_id)
+      .in('status', ['queued', 'human_active'])
+      .select('id, public_id, status')
+      .maybeSingle()
+    if (error) throw error
+    if (data) {
+      await this.recordEvent({
+        session_id: input.session_id,
+        event_type: 'operator_claimed',
+        payload: { operator_email: input.operator_email },
+      })
+    }
+    return data
+  }
+
+  async resolveSession(sessionId: string, operatorEmail?: string) {
+    const { data, error } = await this.admin
+      .from('support_agent_sessions')
+      .update({
+        status: 'resolved',
+        resolved_at: new Date().toISOString(),
+      })
+      .eq('id', sessionId)
+      .select('id, public_id, status')
+      .maybeSingle()
+    if (error) throw error
+    if (data) {
+      await this.recordEvent({
+        session_id: sessionId,
+        event_type: 'session_resolved',
+        payload: { operator_email: operatorEmail ?? null },
+      })
+    }
+    return data
+  }
+
+  async addOperatorMessage(input: {
+    session_id: string
+    content: string
+    operator_id: string
+    operator_email: string
+  }) {
+    return this.addMessage({
+      session_id: input.session_id,
+      role: 'assistant',
+      content: input.content,
+      metadata: {
+        sender: 'operator',
+        operator_id: input.operator_id,
+        operator_email: input.operator_email,
+      },
+    })
+  }
+
+  async listInboxSessions(opts: { status?: SupportSessionStatus[]; limit?: number }) {
+    const statuses = opts.status ?? ['queued', 'human_active']
+    const { data, error } = await this.admin
+      .from('support_agent_sessions')
+      .select(
+        'id, public_id, status, handoff_reason, assigned_operator_id, assigned_operator_email, landing_path, escalated_at, resolved_at, last_message_at, created_at',
+      )
+      .in('status', statuses)
+      .order('escalated_at', { ascending: false, nullsFirst: false })
+      .order('last_message_at', { ascending: false })
+      .limit(opts.limit ?? 50)
+    if (error) throw error
+    return (data ?? []) as SupportInboxSession[]
+  }
+
+  async getSessionPreview(sessionId: string): Promise<string | null> {
+    const { data } = await this.admin
+      .from('support_agent_messages')
+      .select('content, role')
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    return (data?.content as string | undefined)?.slice(0, 160) ?? null
+  }
+
+  async getMessageById(messageId: string) {
+    const { data, error } = await this.admin
+      .from('support_agent_messages')
+      .select('id, session_id, role')
+      .eq('id', messageId)
+      .maybeSingle()
+    if (error) throw error
+    return data as { id: string; session_id: string; role: string } | null
+  }
+
+  async getInboxAnalytics(days = 7) {
+    const since = new Date(Date.now() - days * 86_400_000).toISOString()
+
+    const [sessions, events, feedback] = await Promise.all([
+      this.admin
+        .from('support_agent_sessions')
+        .select('id, status, created_at', { count: 'exact' })
+        .gte('created_at', since),
+      this.admin
+        .from('support_agent_events')
+        .select('event_type, payload, created_at')
+        .gte('created_at', since),
+      this.admin
+        .from('support_agent_message_feedback')
+        .select('rating')
+        .gte('created_at', since),
+    ])
+
+    const sessionRows = sessions.data ?? []
+    const eventRows = events.data ?? []
+    const feedbackRows = feedback.data ?? []
+
+    const handoffs = eventRows.filter((e) => e.event_type === 'handoff_requested').length
+    const chats = eventRows.filter((e) => e.event_type === 'chat_completed').length
+    const latencies = eventRows
+      .filter((e) => e.event_type === 'chat_completed')
+      .map((e) => (e.payload as { latency_ms?: number })?.latency_ms)
+      .filter((n): n is number => typeof n === 'number')
+
+    const avgLatencyMs =
+      latencies.length > 0
+        ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length)
+        : null
+
+    const thumbsUp = feedbackRows.filter((f) => f.rating === 1).length
+    const thumbsDown = feedbackRows.filter((f) => f.rating === -1).length
+
+    return {
+      period_days: days,
+      sessions_started: sessionRows.length,
+      chats_completed: chats,
+      handoffs: handoffs,
+      handoff_rate: chats > 0 ? Math.round((handoffs / chats) * 1000) / 10 : 0,
+      avg_latency_ms: avgLatencyMs,
+      feedback_up: thumbsUp,
+      feedback_down: thumbsDown,
+      queued: sessionRows.filter((s) => s.status === 'queued').length,
+      human_active: sessionRows.filter((s) => s.status === 'human_active').length,
+      resolved: sessionRows.filter((s) => s.status === 'resolved').length,
+    }
+  }
+
+  async touchVisitorSeen(sessionId: string) {
+    await this.admin
+      .from('support_agent_sessions')
+      .update({ visitor_last_seen_at: new Date().toISOString() })
+      .eq('id', sessionId)
   }
 
   async listMessages(sessionId: string, limit = 40) {
@@ -320,5 +598,20 @@ export class SupportAgentStore {
       merged.push(c)
     }
     return merged.slice(0, limit)
+  }
+
+  async adminResetSessionToBot(sessionId: string) {
+    const { error } = await this.admin
+      .from('support_agent_sessions')
+      .update({
+        status: 'bot',
+        handoff_reason: null,
+        assigned_operator_id: null,
+        assigned_operator_email: null,
+        escalated_at: null,
+        resolved_at: null,
+      })
+      .eq('id', sessionId)
+    if (error) throw error
   }
 }

@@ -8,6 +8,7 @@ import {
   Eye,
   FileText,
   GitBranch,
+  Headphones,
   History,
   KeyRound,
   LayoutDashboard,
@@ -55,6 +56,7 @@ export type PageId =
   | 'settings'
   | 'connect'
   | 'live-feed'
+  | 'support-inbox'
 
 /** Reduced nav for mobile companion (installed PWA / narrow viewport). */
 export const COMPANION_NAV_IDS: PageId[] = [
@@ -86,6 +88,7 @@ const NAV: { id: PageId; label: string; shortLabel: string; icon: typeof LayoutD
   { id: 'devices',          label: 'Devices',           shortLabel: 'Devices',   icon: Monitor },
   { id: 'fleet',            label: 'Runtime Fleet',     shortLabel: 'Fleet',     icon: Radio },
   { id: 'marketplace',      label: 'Marketplace',       shortLabel: 'Market',    icon: Package },
+  { id: 'support-inbox',  label: 'Support Inbox',     shortLabel: 'Inbox',     icon: Headphones },
   { id: 'billing',          label: 'Billing',           shortLabel: 'Billing',   icon: CreditCard },
   { id: 'settings',         label: 'Settings',          shortLabel: 'Settings',  icon: Settings },
 ]
@@ -95,7 +98,7 @@ const NAV_GROUPS: { label: string; ids: PageId[] }[] = [
   { label: 'Observe', ids: ['activity', 'audit', 'threats', 'alerts', 'shield', 'shield-rules'] },
   { label: 'Govern', ids: ['policies', 'policy-history', 'workflow-builder', 'governance', 'permissions', 'assurance', 'compliance'] },
   { label: 'Fleet', ids: ['agents', 'devices', 'fleet', 'marketplace'] },
-  { label: 'Account', ids: ['billing', 'settings'] },
+  { label: 'Account', ids: ['billing', 'settings', 'support-inbox'] },
 ]
 
 const NAV_BY_ID = Object.fromEntries(NAV.map((n) => [n.id, n])) as Record<PageId, (typeof NAV)[number]>

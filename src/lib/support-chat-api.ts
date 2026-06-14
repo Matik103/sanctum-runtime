@@ -17,13 +17,18 @@ export type SupportHandoff = {
   email: string;
 };
 
+export type SupportSessionStatus = "bot" | "queued" | "human_active" | "resolved";
+
 export type SupportChatMessage = {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
   citations?: SupportCitation[];
   handoff?: SupportHandoff | null;
+  follow_ups?: string[];
+  sender?: "bot" | "operator" | "system";
   created_at: string;
+  feedback?: -1 | 1 | null;
 };
 
 const SESSION_KEY = "sanctum_support_session_id";
@@ -81,46 +86,202 @@ export async function ensureSupportSession(): Promise<string> {
   return createSupportSession();
 }
 
-export async function fetchSupportMessages(sessionId: string): Promise<SupportChatMessage[]> {
+export async function fetchSupportMessages(sessionId: string): Promise<{
+  messages: SupportChatMessage[];
+  status: SupportSessionStatus;
+}> {
   const res = await fetch(`${getBase()}/v1/support/sessions/${encodeURIComponent(sessionId)}/messages`);
   const data = await parseJson<{
+    status?: SupportSessionStatus;
     messages: Array<{
       id: string;
       role: SupportChatMessage["role"];
       content: string;
       citations?: SupportCitation[];
       handoff?: SupportHandoff | null;
+      follow_ups?: string[];
+      sender?: string;
       created_at: string;
     }>;
   }>(res);
-  return data.messages;
+  return {
+    status: data.status ?? "bot",
+    messages: data.messages.map((m) => ({
+      id: m.id,
+      role: m.role,
+      content: m.content,
+      citations: m.citations,
+      handoff: m.handoff,
+      follow_ups: m.follow_ups,
+      sender: (m.sender as SupportChatMessage["sender"]) ?? "bot",
+      created_at: m.created_at,
+    })),
+  };
 }
 
+export async function escalateSupportSession(
+  sessionId: string,
+  message?: string,
+): Promise<{ status: SupportSessionStatus }> {
+  const res = await fetch(`${getBase()}/v1/support/sessions/${encodeURIComponent(sessionId)}/escalate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message }),
+  });
+  const data = await parseJson<{ status: SupportSessionStatus }>(res);
+  return { status: data.status };
+}
+
+export async function submitSupportFeedback(
+  messageId: string,
+  rating: -1 | 1,
+): Promise<void> {
+  const res = await fetch(`${getBase()}/v1/support/messages/${encodeURIComponent(messageId)}/feedback`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ rating }),
+  });
+  await parseJson(res);
+}
+
+type StreamDonePayload = {
+  message?: {
+    id: string;
+    role: "assistant";
+    content: string;
+    citation_sources?: SupportCitation[];
+    handoff?: SupportHandoff | null;
+    follow_ups?: string[];
+    created_at: string;
+  };
+  citations?: SupportCitation[];
+  handoff?: SupportHandoff | null;
+  follow_ups?: string[];
+  session_status?: SupportSessionStatus;
+};
+
+export async function sendSupportMessageStream(
+  sessionId: string,
+  message: string,
+  onToken: (text: string) => void,
+): Promise<{
+  message: SupportChatMessage | null;
+  sessionStatus: SupportSessionStatus;
+  followUps: string[];
+}> {
+  const res = await fetch(`${getBase()}/v1/support/chat/stream`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ session_id: sessionId, message }),
+  });
+
+  if (!res.ok || !res.body) {
+    const err = await res.json().catch(() => ({ error: "chat_failed" })) as { error?: string };
+    throw new Error(err.error ?? "chat_failed");
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let donePayload: StreamDonePayload | null = null;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const parts = buffer.split("\n\n");
+    buffer = parts.pop() ?? "";
+
+    for (const part of parts) {
+      const lines = part.split("\n");
+      let event = "message";
+      let dataLine = "";
+      for (const line of lines) {
+        if (line.startsWith("event:")) event = line.slice(6).trim();
+        if (line.startsWith("data:")) dataLine = line.slice(5).trim();
+      }
+      if (!dataLine) continue;
+      try {
+        const data = JSON.parse(dataLine) as Record<string, unknown>;
+        if (event === "token" && typeof data.text === "string") onToken(data.text);
+        if (event === "done") donePayload = data as StreamDonePayload;
+        if (event === "error") throw new Error((data.error as string) ?? "chat_failed");
+      } catch (e) {
+        if (e instanceof Error && e.message !== "chat_failed") throw e;
+      }
+    }
+  }
+
+  const sessionStatus = donePayload?.session_status ?? "bot";
+  const followUps = donePayload?.follow_ups ?? donePayload?.message?.follow_ups ?? [];
+
+  if (!donePayload?.message) {
+    return { message: null, sessionStatus, followUps };
+  }
+
+  const m = donePayload.message;
+  return {
+    message: {
+      id: m.id,
+      role: "assistant",
+      content: m.content,
+      citations: m.citation_sources ?? donePayload.citations,
+      handoff: m.handoff ?? donePayload.handoff,
+      follow_ups: followUps,
+      created_at: m.created_at,
+    },
+    sessionStatus,
+    followUps,
+  };
+}
+
+/** Non-streaming fallback */
 export async function sendSupportMessage(
   sessionId: string,
   message: string,
-): Promise<SupportChatMessage> {
+): Promise<{
+  message: SupportChatMessage | null;
+  sessionStatus: SupportSessionStatus;
+  followUps: string[];
+}> {
   const res = await fetch(`${getBase()}/v1/support/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ session_id: sessionId, message }),
   });
   const data = await parseJson<{
+    session_status?: SupportSessionStatus;
+    follow_ups?: string[];
     message: {
       id: string;
       role: "assistant";
       content: string;
       citation_sources: SupportCitation[];
       handoff?: SupportHandoff | null;
+      follow_ups?: string[];
       created_at: string;
-    };
+    } | null;
   }>(res);
+
+  if (!data.message) {
+    return {
+      message: null,
+      sessionStatus: data.session_status ?? "bot",
+      followUps: data.follow_ups ?? [],
+    };
+  }
+
   return {
-    id: data.message.id,
-    role: "assistant",
-    content: data.message.content,
-    citations: data.message.citation_sources,
-    handoff: data.message.handoff,
-    created_at: data.message.created_at,
+    message: {
+      id: data.message.id,
+      role: "assistant",
+      content: data.message.content,
+      citations: data.message.citation_sources,
+      handoff: data.message.handoff,
+      follow_ups: data.follow_ups ?? data.message.follow_ups,
+      created_at: data.message.created_at,
+    },
+    sessionStatus: data.session_status ?? "bot",
+    followUps: data.follow_ups ?? data.message.follow_ups ?? [],
   };
 }

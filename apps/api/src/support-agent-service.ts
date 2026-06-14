@@ -15,12 +15,16 @@ import {
   wantsCheapestPlanAnswer,
 } from './support-agent-retrieval.js'
 import { embedTexts } from './support-embeddings.js'
+import { suggestFollowUps } from './support-agent-followups.js'
+import { loadInboxConfig } from './support-inbox-auth.js'
+import { notifySupportHandoff } from './support-handoff-notify.js'
 import {
   SupportAgentStore,
   type SupportAgentConfig,
   type SupportCitation,
   type SupportHandoff,
   type SupportKbChunkMatch,
+  type SupportSessionStatus,
 } from './support-agent-store.js'
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1'
@@ -125,6 +129,57 @@ async function chatCompletion(
   const content = json.choices?.[0]?.message?.content?.trim()
   if (!content) return null
   return { content, usage: json.usage ?? {} }
+}
+
+async function* chatCompletionStream(
+  apiKey: string,
+  model: string,
+  temperature: number,
+  messages: { role: string; content: string }[],
+): AsyncGenerator<string, { usage: Record<string, unknown> } | null, void> {
+  const res = await fetch(`${OPENROUTER_URL}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': 'https://www.sanctumruntime.com',
+      'X-Title': 'Sanctum Guide',
+    },
+    body: JSON.stringify({ model, temperature, messages, stream: true }),
+  })
+  if (!res.ok || !res.body) return null
+
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let usage: Record<string, unknown> = {}
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (!trimmed.startsWith('data:')) continue
+      const payload = trimmed.slice(5).trim()
+      if (payload === '[DONE]') continue
+      try {
+        const json = JSON.parse(payload) as {
+          choices?: { delta?: { content?: string } }[]
+          usage?: Record<string, unknown>
+        }
+        if (json.usage) usage = json.usage
+        const delta = json.choices?.[0]?.delta?.content
+        if (delta) yield delta
+      } catch {
+        /* ignore malformed SSE chunks */
+      }
+    }
+  }
+  return { usage }
 }
 
 function mergeChunks(...lists: SupportKbChunkMatch[][]): SupportKbChunkMatch[] {
@@ -324,6 +379,145 @@ export class SupportAgentService {
     this.store = new SupportAgentStore(cfg)
   }
 
+  getStore(): SupportAgentStore {
+    return this.store
+  }
+
+  async escalateWithNotify(input: {
+    sessionPublicId: string
+    reason: string
+    visitorMessage: string
+  }): Promise<{ status: SupportSessionStatus; alreadyQueued: boolean }> {
+    const session = await this.store.getSessionByPublicId(input.sessionPublicId)
+    if (!session) throw new Error('session_not_found')
+
+    const { alreadyQueued } = await this.store.escalateSession({
+      session_id: session.id,
+      reason: input.reason,
+    })
+
+    if (!alreadyQueued) {
+      const messages = await this.store.listMessages(session.id, 20)
+      const inbox = await loadInboxConfig(this.store)
+      void notifySupportHandoff({
+        sessionPublicId: session.public_id,
+        reason: input.reason,
+        visitorMessage: input.visitorMessage,
+        landingPath: (session as { landing_path?: string | null }).landing_path ?? null,
+        transcript: messages.map((m) => ({
+          role: m.role as string,
+          content: m.content as string,
+          created_at: m.created_at as string,
+        })),
+        inbox,
+        consoleBaseUrl: process.env.VITE_CONSOLE_URL ?? process.env.CONSOLE_URL,
+      })
+    }
+
+    return { status: 'queued', alreadyQueued }
+  }
+
+  private async saveAssistantReply(input: {
+    session: {
+      id: string
+      public_id: string
+      landing_path?: string | null
+      status?: SupportSessionStatus
+    }
+    trimmed: string
+    assistantContent: string
+    chunks: SupportKbChunkMatch[]
+    replyChunks: SupportKbChunkMatch[]
+    citations: SupportCitation[]
+    handoff: SupportHandoff | null
+    model?: string
+    tokenUsage?: Record<string, unknown>
+    latencyMs: number
+  }) {
+    const followUps = suggestFollowUps(input.trimmed, input.assistantContent, input.handoff)
+
+    const reply = await this.store.addMessage({
+      session_id: input.session.id,
+      role: 'assistant',
+      content: input.assistantContent,
+      citation_chunk_ids: input.chunks.map((c) => c.chunk_id).filter((id) => !id.startsWith('text-')),
+      citation_sources: input.citations,
+      model: input.model,
+      token_usage: input.tokenUsage ?? {},
+      metadata: {
+        handoff: input.handoff,
+        follow_ups: followUps,
+        retrieval: {
+          matched_chunks: input.chunks.length,
+          reply_chunks: input.replyChunks.length,
+          top_similarity: input.chunks[0]?.similarity ?? null,
+        },
+      },
+    })
+
+    if (input.handoff?.recommended) {
+      const { alreadyQueued } = await this.store.escalateSession({
+        session_id: input.session.id,
+        reason: input.handoff.reason,
+      })
+      if (!alreadyQueued) {
+        const messages = await this.store.listMessages(input.session.id, 20)
+        const inbox = await loadInboxConfig(this.store)
+        void notifySupportHandoff({
+          sessionPublicId: input.session.public_id,
+          reason: input.handoff.reason,
+          visitorMessage: input.trimmed,
+          landingPath: input.session.landing_path ?? null,
+          transcript: messages.map((m) => ({
+            role: m.role as string,
+            content: m.content as string,
+            created_at: m.created_at as string,
+          })),
+          inbox,
+          consoleBaseUrl: process.env.VITE_CONSOLE_URL ?? process.env.CONSOLE_URL,
+        })
+      }
+    }
+
+    await this.store.recordEvent({
+      session_id: input.session.id,
+      message_id: reply.id as string,
+      event_type: 'chat_completed',
+      payload: {
+        latency_ms: input.latencyMs,
+        matched_chunks: input.chunks.length,
+        handoff: Boolean(input.handoff?.recommended),
+        model: input.model ?? null,
+      },
+    })
+
+    return { reply, followUps }
+  }
+
+  private formatReply(
+    reply: { id: unknown; role: unknown; content: unknown; citation_sources: unknown; metadata: unknown; created_at: unknown },
+    handoff: SupportHandoff | null,
+    followUps: string[],
+    sessionStatus: SupportSessionStatus,
+  ) {
+    const meta = (reply.metadata ?? {}) as { follow_ups?: string[] }
+    return {
+      reply: {
+        id: reply.id as string,
+        role: reply.role as string,
+        content: reply.content as string,
+        citation_sources: (reply.citation_sources as SupportCitation[]) ?? [],
+        handoff,
+        follow_ups: meta.follow_ups ?? followUps,
+        created_at: reply.created_at as string,
+      },
+      citations: (reply.citation_sources as SupportCitation[]) ?? [],
+      handoff,
+      follow_ups: meta.follow_ups ?? followUps,
+      session_status: sessionStatus,
+    }
+  }
+
   async retrieveChunks(message: string, config: SupportAgentConfig): Promise<SupportKbChunkMatch[]> {
     const salesIntent = detectSalesIntent(message)
     const apiKey = resolveOpenRouterApiKey(config)
@@ -378,29 +572,68 @@ export class SupportAgentService {
   async handleChat(input: {
     sessionPublicId: string
     message: string
-  }): Promise<{
-    reply: {
-      id: string
-      role: string
-      content: string
-      citation_sources: SupportCitation[]
-      handoff: SupportHandoff | null
-      created_at: string
-    }
-    citations: SupportCitation[]
-    handoff: SupportHandoff | null
-  }> {
+  }) {
+    const started = Date.now()
     const session = await this.store.getSessionByPublicId(input.sessionPublicId)
     if (!session) throw new Error('session_not_found')
 
     const trimmed = input.message.trim()
     if (!trimmed || trimmed.length > 4000) throw new Error('invalid_message')
 
+    const status = (session.status ?? 'bot') as SupportSessionStatus
+    if (status === 'resolved') {
+      await this.store.adminResetSessionToBot(session.id)
+    }
+
     await this.store.addMessage({
       session_id: session.id,
       role: 'user',
       content: trimmed,
     })
+    await this.store.touchVisitorSeen(session.id)
+
+    const currentStatus = ((await this.store.getSessionByPublicId(input.sessionPublicId))?.status ??
+      'bot') as SupportSessionStatus
+
+    if (currentStatus === 'human_active') {
+      return {
+        reply: null,
+        citations: [],
+        handoff: null,
+        follow_ups: [],
+        session_status: currentStatus,
+      }
+    }
+
+    if (currentStatus === 'queued') {
+      const history = await this.store.listMessages(session.id, 4)
+      const lastAssistant = [...history].reverse().find((m) => m.role === 'assistant')
+      const alreadyNotified =
+        lastAssistant &&
+        (lastAssistant.content as string).includes('in the queue')
+
+      if (!alreadyNotified) {
+        const queueReply = sanitizeReplyForChat(
+          'You are in the queue — a Sanctum teammate will join this chat shortly. You can keep typing; they will see your messages.',
+        )
+        const followUps = ['Request urgent help']
+        const reply = await this.store.addMessage({
+          session_id: session.id,
+          role: 'assistant',
+          content: queueReply,
+          metadata: { handoff: null, follow_ups: followUps, sender: 'system' },
+        })
+        return this.formatReply(reply, null, followUps, 'queued')
+      }
+
+      return {
+        reply: null,
+        citations: [],
+        handoff: null,
+        follow_ups: [],
+        session_status: 'queued' as SupportSessionStatus,
+      }
+    }
 
     const config = await this.store.loadConfig()
     const apiKey = resolveOpenRouterApiKey(config)
@@ -408,50 +641,50 @@ export class SupportAgentService {
 
     if (isGreeting(trimmed)) {
       const assistantContent = greetingReply()
+      const followUps = suggestFollowUps(trimmed, assistantContent, null)
       const reply = await this.store.addMessage({
         session_id: session.id,
         role: 'assistant',
         content: assistantContent,
         citation_chunk_ids: [],
         citation_sources: [],
-        metadata: { handoff: null, retrieval: { matched_chunks: 0, reply_chunks: 0, top_similarity: null } },
-      })
-      return {
-        reply: {
-          id: reply.id,
-          role: reply.role,
-          content: reply.content as string,
-          citation_sources: [],
+        metadata: {
           handoff: null,
-          created_at: reply.created_at as string,
+          follow_ups: followUps,
+          retrieval: { matched_chunks: 0, reply_chunks: 0, top_similarity: null },
         },
-        citations: [],
-        handoff: null,
-      }
+      })
+      await this.store.recordEvent({
+        session_id: session.id,
+        message_id: reply.id as string,
+        event_type: 'chat_completed',
+        payload: { latency_ms: Date.now() - started, matched_chunks: 0, handoff: false },
+      })
+      return this.formatReply(reply, null, followUps, 'bot')
     }
 
     if (isGeneralHelpQuery(trimmed)) {
       const assistantContent = generalHelpReply()
+      const followUps = suggestFollowUps(trimmed, assistantContent, null)
       const reply = await this.store.addMessage({
         session_id: session.id,
         role: 'assistant',
         content: assistantContent,
         citation_chunk_ids: [],
         citation_sources: [],
-        metadata: { handoff: null, retrieval: { matched_chunks: 0, reply_chunks: 0, top_similarity: null } },
-      })
-      return {
-        reply: {
-          id: reply.id,
-          role: reply.role,
-          content: reply.content as string,
-          citation_sources: [],
+        metadata: {
           handoff: null,
-          created_at: reply.created_at as string,
+          follow_ups: followUps,
+          retrieval: { matched_chunks: 0, reply_chunks: 0, top_similarity: null },
         },
-        citations: [],
-        handoff: null,
-      }
+      })
+      await this.store.recordEvent({
+        session_id: session.id,
+        message_id: reply.id as string,
+        event_type: 'chat_completed',
+        payload: { latency_ms: Date.now() - started, matched_chunks: 0, handoff: false },
+      })
+      return this.formatReply(reply, null, followUps, 'bot')
     }
 
     const chunks = await this.retrieveChunks(trimmed, config)
@@ -508,35 +741,58 @@ export class SupportAgentService {
 
     assistantContent = sanitizeReplyForChat(assistantContent)
 
-    const reply = await this.store.addMessage({
-      session_id: session.id,
-      role: 'assistant',
-      content: assistantContent,
-      citation_chunk_ids: chunks.map((c) => c.chunk_id).filter((id) => !id.startsWith('text-')),
-      citation_sources: citations,
-      model,
-      token_usage: tokenUsage,
-      metadata: {
-        handoff,
-        retrieval: {
-          matched_chunks: chunks.length,
-          reply_chunks: replyChunks.length,
-          top_similarity: chunks[0]?.similarity ?? null,
-        },
+    const { reply, followUps } = await this.saveAssistantReply({
+      session: {
+        id: session.id,
+        public_id: session.public_id,
+        landing_path: (session as { landing_path?: string | null }).landing_path,
+        status: currentStatus,
       },
-    })
-
-    return {
-      reply: {
-        id: reply.id,
-        role: reply.role,
-        content: reply.content as string,
-        citation_sources: (reply.citation_sources as SupportCitation[]) ?? [],
-        handoff,
-        created_at: reply.created_at as string,
-      },
+      trimmed,
+      assistantContent,
+      chunks,
+      replyChunks,
       citations,
       handoff,
+      model,
+      tokenUsage,
+      latencyMs: Date.now() - started,
+    })
+
+    const sessionStatus = handoff?.recommended ? 'queued' : 'bot'
+    return this.formatReply(reply, handoff, followUps, sessionStatus)
+  }
+
+  async handleChatStream(
+    input: { sessionPublicId: string; message: string },
+    onEvent: (event: string, data: Record<string, unknown>) => void,
+  ) {
+    const started = Date.now()
+    const result = await this.handleChat(input).catch(async (err) => {
+      const msg = err instanceof Error ? err.message : 'unknown'
+      if (msg === 'session_not_found' || msg === 'invalid_message') throw err
+      throw err
+    })
+
+    if (!result.reply) {
+      onEvent('done', { session_status: result.session_status })
+      return result
     }
+
+    const content = result.reply.content
+    const chunkSize = Math.max(12, Math.floor(content.length / 24))
+    for (let i = 0; i < content.length; i += chunkSize) {
+      onEvent('token', { text: content.slice(i, i + chunkSize) })
+    }
+
+    onEvent('done', {
+      message: result.reply,
+      citations: result.citations,
+      handoff: result.handoff,
+      follow_ups: result.follow_ups,
+      session_status: result.session_status,
+    })
+    void started
+    return result
   }
 }

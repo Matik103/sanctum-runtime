@@ -238,6 +238,7 @@ async function resolveOpenRouterKey(sb: ReturnType<typeof createClient>): Promis
 }
 
 async function main() {
+  const forceReembed = process.argv.includes('--reembed')
   const url = process.env.SUPABASE_URL?.trim() || process.env.VITE_SUPABASE_URL?.trim()
   const serviceKey =
     process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || process.env.SUPABASE_SECRET_KEY?.trim()
@@ -309,7 +310,7 @@ async function main() {
     sourcesUpserted++
 
     const sourceId = upserted.id as string
-    const unchanged = existing?.content_hash === contentHash
+    const unchanged = !forceReembed && existing?.content_hash === contentHash
     if (unchanged) continue
 
     await sb.from('support_kb_chunks').delete().eq('source_id', sourceId)

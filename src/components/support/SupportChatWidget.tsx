@@ -4,6 +4,8 @@ import {
   Minus,
   Send,
   Sparkles,
+  ThumbsDown,
+  ThumbsUp,
   UserRoundCheck,
   X,
 } from "lucide-react";
@@ -13,13 +15,16 @@ import logo from "@/assets/sanctum-logo.png";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   createSupportSession,
+  escalateSupportSession,
   fetchSupportMessages,
   getStoredSessionId,
-  sendSupportMessage,
+  sendSupportMessageStream,
   storeSessionId,
+  submitSupportFeedback,
   type SupportChatMessage,
   type SupportCitation,
   type SupportHandoff,
+  type SupportSessionStatus,
 } from "@/lib/support-chat-api";
 import { consoleUrl, contactUrl, docsPath } from "@/lib/site-links";
 
@@ -106,7 +111,17 @@ function CitationList({ citations }: { citations: SupportCitation[] }) {
   );
 }
 
-function HandoffCard({ handoff }: { handoff?: SupportHandoff | null }) {
+function HandoffCard({
+  handoff,
+  sessionId,
+  onEscalate,
+  escalating,
+}: {
+  handoff?: SupportHandoff | null;
+  sessionId: string | null;
+  onEscalate: () => void;
+  escalating: boolean;
+}) {
   if (!handoff?.recommended) return null;
   return (
     <div className="mt-3 rounded-xl border border-primary/25 bg-primary/10 p-3">
@@ -122,9 +137,17 @@ function HandoffCard({ handoff }: { handoff?: SupportHandoff | null }) {
               : "A human can help with pilots, account questions, or anything the guide did not resolve."}
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={!sessionId || escalating}
+              onClick={onEscalate}
+              className="inline-flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1.5 text-[11px] font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
+            >
+              {escalating ? "Connecting…" : "Chat with a human"}
+            </button>
             <a
               href={handoff.url}
-              className="inline-flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1.5 text-[11px] font-semibold text-primary-foreground hover:opacity-90"
+              className="inline-flex items-center gap-1 rounded-lg border border-border/80 px-2.5 py-1.5 text-[11px] font-semibold text-foreground hover:border-primary/50 hover:text-primary"
             >
               {handoff.label}
               <ExternalLink className="h-3 w-3" />
@@ -138,6 +161,74 @@ function HandoffCard({ handoff }: { handoff?: SupportHandoff | null }) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function FeedbackRow({
+  messageId,
+  rating,
+  onRate,
+}: {
+  messageId: string;
+  rating?: -1 | 1 | null;
+  onRate: (id: string, r: -1 | 1) => void;
+}) {
+  if (messageId.startsWith("local-") || messageId.startsWith("stream-")) return null;
+  return (
+    <div className="mt-2 flex items-center gap-1.5 border-t border-border/40 pt-2">
+      <span className="text-[10px] text-muted-foreground">Helpful?</span>
+      <button
+        type="button"
+        aria-label="Thumbs up"
+        disabled={rating != null}
+        onClick={() => onRate(messageId, 1)}
+        className={cn(
+          "rounded-md p-1 transition-colors",
+          rating === 1 ? "text-primary" : "text-muted-foreground hover:text-primary",
+        )}
+      >
+        <ThumbsUp className="h-3.5 w-3.5" />
+      </button>
+      <button
+        type="button"
+        aria-label="Thumbs down"
+        disabled={rating != null}
+        onClick={() => onRate(messageId, -1)}
+        className={cn(
+          "rounded-md p-1 transition-colors",
+          rating === -1 ? "text-destructive" : "text-muted-foreground hover:text-destructive",
+        )}
+      >
+        <ThumbsDown className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
+function FollowUpChips({
+  suggestions,
+  disabled,
+  onSelect,
+}: {
+  suggestions: string[];
+  disabled: boolean;
+  onSelect: (text: string) => void;
+}) {
+  if (!suggestions.length) return null;
+  return (
+    <div className="mt-2.5 flex flex-wrap gap-1.5">
+      {suggestions.map((s) => (
+        <button
+          key={s}
+          type="button"
+          disabled={disabled}
+          onClick={() => onSelect(s)}
+          className="rounded-full border border-border/70 bg-background/50 px-2.5 py-1 text-[10px] font-medium text-foreground/90 transition-colors hover:border-primary/50 hover:bg-primary/10 hover:text-primary disabled:opacity-50"
+        >
+          {s}
+        </button>
+      ))}
     </div>
   );
 }
@@ -165,10 +256,14 @@ export function SupportChatWidget() {
   const isMobile = useIsMobile();
   const [open, setOpen] = React.useState(false);
   const [sessionId, setSessionId] = React.useState<string | null>(null);
+  const [sessionStatus, setSessionStatus] = React.useState<SupportSessionStatus>("bot");
   const [messages, setMessages] = React.useState<SupportChatMessage[]>([]);
+  const [followUps, setFollowUps] = React.useState<string[]>([]);
   const [input, setInput] = React.useState("");
   const [loading, setLoading] = React.useState(false);
+  const [streamingText, setStreamingText] = React.useState("");
   const [booting, setBooting] = React.useState(false);
+  const [escalating, setEscalating] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [connectAttempt, setConnectAttempt] = React.useState(0);
   const scrollRef = React.useRef<HTMLDivElement>(null);
@@ -181,7 +276,14 @@ export function SupportChatWidget() {
 
   React.useEffect(() => {
     if (open) scrollToBottom();
-  }, [open, messages, loading, scrollToBottom]);
+  }, [open, messages, loading, streamingText, scrollToBottom]);
+
+  const refreshMessages = React.useCallback(async (sid: string) => {
+    const data = await fetchSupportMessages(sid);
+    setMessages(data.messages);
+    setSessionStatus(data.status);
+    return data;
+  }, []);
 
   React.useEffect(() => {
     if (!open || sessionId) return;
@@ -193,10 +295,11 @@ export function SupportChatWidget() {
         const stored = getStoredSessionId();
         if (stored) {
           try {
-            const history = await fetchSupportMessages(stored);
+            const data = await refreshMessages(stored);
             if (cancelled) return;
             setSessionId(stored);
-            setMessages(history);
+            setMessages(data.messages);
+            setSessionStatus(data.status);
             return;
           } catch {
             try {
@@ -220,11 +323,51 @@ export function SupportChatWidget() {
     return () => {
       cancelled = true;
     };
-  }, [open, sessionId, connectAttempt]);
+  }, [open, sessionId, connectAttempt, refreshMessages]);
+
+  React.useEffect(() => {
+    if (!open || !sessionId) return;
+    if (sessionStatus !== "human_active" && sessionStatus !== "queued") return;
+
+    const poll = () => {
+      void refreshMessages(sessionId).catch(() => {});
+    };
+    poll();
+    const id = setInterval(poll, 3000);
+    return () => clearInterval(id);
+  }, [open, sessionId, sessionStatus, refreshMessages]);
 
   React.useEffect(() => {
     if (open && !loading) inputRef.current?.focus();
   }, [open, loading]);
+
+  const handleEscalate = React.useCallback(async () => {
+    if (!sessionId || escalating) return;
+    setEscalating(true);
+    setError(null);
+    try {
+      const { status } = await escalateSupportSession(sessionId);
+      setSessionStatus(status);
+      await refreshMessages(sessionId);
+    } catch {
+      setError("Could not reach the team. Try email or contact form.");
+    } finally {
+      setEscalating(false);
+    }
+  }, [sessionId, escalating, refreshMessages]);
+
+  const handleFeedback = React.useCallback(async (messageId: string, rating: -1 | 1) => {
+    setMessages((prev) =>
+      prev.map((m) => (m.id === messageId ? { ...m, feedback: rating } : m)),
+    );
+    try {
+      await submitSupportFeedback(messageId, rating);
+    } catch {
+      setMessages((prev) =>
+        prev.map((m) => (m.id === messageId ? { ...m, feedback: null } : m)),
+      );
+    }
+  }, []);
 
   const send = React.useCallback(
     async (text: string) => {
@@ -233,7 +376,9 @@ export function SupportChatWidget() {
 
       setError(null);
       setInput("");
+      setFollowUps([]);
       setLoading(true);
+      setStreamingText("");
 
       const optimistic: SupportChatMessage = {
         id: `local-${Date.now()}`,
@@ -249,17 +394,33 @@ export function SupportChatWidget() {
           sid = await createSupportSession();
           setSessionId(sid);
         }
-        const reply = await sendSupportMessage(sid, trimmed);
-        setMessages((prev) => [...prev, reply]);
+
+        let assembled = "";
+
+        const result = await sendSupportMessageStream(sid, trimmed, (token) => {
+          assembled += token;
+          setStreamingText(assembled);
+        });
+
+        setStreamingText("");
+        setSessionStatus(result.sessionStatus);
+        setFollowUps(result.followUps);
+
+        if (result.message) {
+          setMessages((prev) => [...prev, result.message!]);
+        } else if (result.sessionStatus === "human_active" || result.sessionStatus === "queued") {
+          await refreshMessages(sid);
+        }
       } catch {
         setError("Message failed to send. Please try again.");
         setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
+        setStreamingText("");
         setInput(trimmed);
       } finally {
         setLoading(false);
       }
     },
-    [loading, sessionId],
+    [loading, sessionId, refreshMessages],
   );
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -305,6 +466,7 @@ export function SupportChatWidget() {
             </p>
             <p className="text-[11px] text-muted-foreground">
               Runtime trust · docs · sales
+              {sessionStatus === "human_active" ? " · Human connected" : sessionStatus === "queued" ? " · In queue" : ""}
             </p>
           </div>
           <button
@@ -388,14 +550,48 @@ export function SupportChatWidget() {
                   <div key={m.id} className="flex items-start gap-2.5">
                     <SanctumGuideAvatar size="sm" />
                     <div className="min-w-0 max-w-[calc(100%-2.5rem)] rounded-2xl rounded-tl-md border border-border/60 bg-elevated/70 px-3.5 py-2.5">
+                      {m.sender === "operator" ? (
+                        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                          Sanctum team
+                        </p>
+                      ) : null}
                       <MessageBody content={m.content} />
                       {m.citations?.length ? <CitationList citations={m.citations} /> : null}
-                      <HandoffCard handoff={m.handoff} />
+                      <HandoffCard
+                        handoff={m.handoff}
+                        sessionId={sessionId}
+                        onEscalate={() => void handleEscalate()}
+                        escalating={escalating}
+                      />
+                      {m.role === "assistant" && m.sender !== "system" ? (
+                        <FeedbackRow messageId={m.id} rating={m.feedback} onRate={(id, r) => void handleFeedback(id, r)} />
+                      ) : null}
                     </div>
                   </div>
                 ),
               )}
-              {loading ? <TypingIndicator /> : null}
+              {loading && streamingText ? (
+                <div className="flex items-start gap-2.5">
+                  <SanctumGuideAvatar size="sm" />
+                  <div className="min-w-0 max-w-[calc(100%-2.5rem)] rounded-2xl rounded-tl-md border border-border/60 bg-elevated/70 px-3.5 py-2.5">
+                    <MessageBody content={streamingText} />
+                  </div>
+                </div>
+              ) : null}
+              {loading && !streamingText ? <TypingIndicator /> : null}
+              {!loading && followUps.length ? (
+                <FollowUpChips
+                  suggestions={followUps}
+                  disabled={loading || booting}
+                  onSelect={(s) => {
+                    if (s === "Request a human in this chat" || s === "Request urgent help") {
+                      void handleEscalate();
+                    } else {
+                      void send(s);
+                    }
+                  }}
+                />
+              ) : null}
             </div>
           )}
           {error ? (
