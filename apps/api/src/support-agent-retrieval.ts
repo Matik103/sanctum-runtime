@@ -90,11 +90,61 @@ export function extractPhrases(query: string): string[] {
 export const CHEAPEST_INTENT_RE =
   /\b(cheap|cheapest|free|lowest|observer|beginner|hobby|indie)\b/i
 
-export const HUMAN_HANDOFF_INTENT_RE =
-  /\b(human|person|someone|sales|founder|operator|engineer|support|contact|call|demo|pilot|email|talk|speak|not\s+satisfied|doesn'?t\s+help|wrong|confusing|unclear|escalate)\b/i
+/** Explicit visitor request for a person — not product vocabulary (plans, MCP, support features). */
+const EXPLICIT_HANDOFF_PATTERNS: RegExp[] = [
+  /\b(talk|speak|chat)\s+(to|with)\s+(a\s+)?(human|person|someone|real\s+person|representative)\b/i,
+  /\b(get|reach|connect)\s+(me\s+)?(to|with)\s+(a\s+)?(human|person|sales\s+team|support\s+team)\b/i,
+  /\b(want|need)\s+(to\s+)?(talk|speak)\s+(to|with)\s+(a\s+)?(human|person|sales|someone)\b/i,
+  /\b(talk|speak)\s+to\s+(sales|founder|an?\s+engineer)\b/i,
+  /\bschedule\s+(a\s+)?(demo|call|meeting)\b/i,
+  /\b(book|request)\s+(a\s+)?(demo|pilot)\b/i,
+  /\b(escalate|transfer)\b/i,
+  /\bconnect\s+me\b/i,
+  /\bhuman\s+(please|agent|rep)\b/i,
+  /\bnot\s+(helpful|satisfied|working)\b/i,
+  /\bdoesn'?t\s+help\b/i,
+  /\bstill\s+need\s+(a\s+)?(human|person)\b/i,
+  /\blet\s+me\s+talk\s+to\b/i,
+  /\btalk\s+to\s+sales\b/i,
+]
+
+export function isGreeting(message: string): boolean {
+  const m = message.trim()
+  return /^(hi|hello|hey|howdy|yo|good\s+(morning|afternoon|evening))[\s!.?]*$/i.test(m)
+}
+
+export function isGeneralHelpQuery(message: string): boolean {
+  return /\b(what can you (do|help with)|how can you help|help me|need help)\b/i.test(message.trim())
+}
 
 export function detectHumanHandoffIntent(message: string): boolean {
-  return HUMAN_HANDOFF_INTENT_RE.test(message)
+  const m = message.trim()
+  if (!m) return false
+
+  // Product/pricing questions — never treat plan names or feature "support" as escalation.
+  if (detectPlanTier(m)) return false
+  if (
+    /\b(how much|price|cost|pricing|plan|observer|operator|personal|team|enterprise)\b/i.test(m) &&
+    !/\b(talk|speak|human|person|connect\s+me|schedule)\b/i.test(m)
+  ) {
+    return false
+  }
+  if (/\b(priority|technical)\s+support\b/i.test(m)) return false
+  if (/\b(send|verify|agent).*\b(email|contact)\b/i.test(m)) return false
+  if (/\b(email|contact).*\b(agent|approval|verify)\b/i.test(m)) return false
+
+  return EXPLICIT_HANDOFF_PATTERNS.some((re) => re.test(m))
+}
+
+/** Auto handoff only when retrieval is empty on a substantive question (no-LLM fallback path). */
+export function shouldAutoHandoffForLowConfidence(
+  message: string,
+  chunks: SupportKbChunkMatch[],
+): boolean {
+  if (isGreeting(message) || isGeneralHelpQuery(message)) return false
+  if (chunks.length > 0) return false
+  const terms = extractSearchTerms(message, detectSalesIntent(message))
+  return terms.length >= 2
 }
 
 export function wantsCheapestPlanAnswer(message: string): boolean {
@@ -132,6 +182,7 @@ const TOPIC_HINTS: { pattern: RegExp; slugs: string[] }[] = [
   { pattern: /\b(observer|operator|personal|team)\b.*\b(vs|versus|compare)\b|\bcompare\b.*\b(observer|operator|personal|team|plan|pricing)\b/i, slugs: ['page/pricing'] },
   { pattern: /\bteam\s+plan\b|\bhow\s+much\b.*\bteam\b/i, slugs: ['page/pricing'] },
   { pattern: /\bopen[\s-]*core\b/i, slugs: ['blog/open-core-ai-agent-security-vs-enterprise-suite', 'product/overview', 'docs/index'] },
+  { pattern: /^(hi|hello|hey)\b|\bwhat can you (do|help)/i, slugs: ['product/overview', 'docs/index'] },
 ]
 
 export function phraseSourceHints(phrases: string[], terms: string[]): string[] {

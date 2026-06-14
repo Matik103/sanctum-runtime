@@ -5,10 +5,12 @@ import {
   detectHumanHandoffIntent,
   extractSearchTerms,
   filterChunksForReply,
+  isGreeting,
   planComparisonSummary,
   planSectionFromChunk,
   rankChunksForQuery,
   scoreKbSource,
+  shouldAutoHandoffForLowConfidence,
   termsForSourceQuery,
   topicHintsForMessage,
 } from './support-agent-retrieval.js'
@@ -53,10 +55,24 @@ describe('support-agent-retrieval', () => {
     expect(detectSalesIntent('compare Observer vs Operator')).toBe(true)
   })
 
-  it('detects human handoff requests and dissatisfaction', () => {
+  it('detects explicit human handoff requests only', () => {
     expect(detectHumanHandoffIntent('can I talk to a human about a pilot?')).toBe(true)
-    expect(detectHumanHandoffIntent('this answer is confusing and does not help')).toBe(true)
+    expect(detectHumanHandoffIntent('talk to sales')).toBe(true)
+    expect(detectHumanHandoffIntent('how much does Operator cost?')).toBe(false)
     expect(detectHumanHandoffIntent('how do action tokens work?')).toBe(false)
+    expect(detectHumanHandoffIntent('what is included in Team plan priority support?')).toBe(false)
+    expect(detectHumanHandoffIntent('how do I stop agents sending emails without approval?')).toBe(false)
+  })
+
+  it('does not auto-handoff greetings or substantive KB hits', () => {
+    expect(isGreeting('hi')).toBe(true)
+    expect(shouldAutoHandoffForLowConfidence('hi', [])).toBe(false)
+    expect(
+      shouldAutoHandoffForLowConfidence('how do action tokens work?', [
+        chunk({ source_type: 'blog', source_slug: 'blog/signed-action-tokens', similarity: 0.55 }),
+      ]),
+    ).toBe(false)
+    expect(shouldAutoHandoffForLowConfidence('how do action tokens work?', [])).toBe(true)
   })
 
   it('drops stop words from search terms', () => {

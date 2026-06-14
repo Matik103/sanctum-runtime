@@ -19,6 +19,7 @@ const SCENARIOS = [
     message: 'how much does Operator cost?',
     expectSlug: /page\/pricing/,
     expectContent: /\$59|Operator/i,
+    rejectHandoff: true,
   },
   {
     category: 'pricing',
@@ -100,6 +101,7 @@ const SCENARIOS = [
     expectSlug: /mcp-server-action-gate|mcp-server-security/,
     expectContent: /MCP|Model Context Protocol|tool/i,
     rejectSlug: /page\/pricing/,
+    rejectHandoff: true,
   },
   {
     category: 'technical',
@@ -212,7 +214,14 @@ const SCENARIOS = [
     category: 'edge',
     message: 'hi',
     expectSlug: null,
-    expectContent: /Sanctum|docs|contact|knowledge/i,
+    expectContent: /Sanctum|runtime trust|dig into|help/i,
+    allowEmptyCitations: true,
+    rejectHandoff: true,
+  },
+  {
+    category: 'edge',
+    message: 'talk to sales',
+    expectHandoff: true,
     allowEmptyCitations: true,
   },
 ]
@@ -245,6 +254,7 @@ function evaluate(scenario, result) {
   const msg = result.message
   const slugs = (msg.citation_sources ?? []).map((c) => c.slug)
   const content = msg.content ?? ''
+  const handoff = result.handoff ?? msg.handoff
   const issues = []
 
   if (scenario.expectSlug && !slugs.some((s) => scenario.expectSlug.test(s))) {
@@ -258,6 +268,12 @@ function evaluate(scenario, result) {
   }
   if (scenario.rejectContent && scenario.rejectContent.test(content)) {
     issues.push(`content matched rejected pattern`)
+  }
+  if (scenario.rejectHandoff && handoff?.recommended) {
+    issues.push(`unexpected human handoff (reason: ${handoff.reason})`)
+  }
+  if (scenario.expectHandoff && !handoff?.recommended) {
+    issues.push('expected handoff but none returned')
   }
   if (!scenario.allowEmptyCitations && slugs.length === 0) {
     issues.push('no citations returned')
