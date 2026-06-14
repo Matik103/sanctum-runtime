@@ -319,6 +319,8 @@ function isPublicPath(path: string): boolean {
     path === '/v1/client-errors'
   ) return true
   if (path.startsWith('/v1/sso/')) return true
+  // Marketing-site visitor support agent (anonymous; rate-limited in route config).
+  if (path.startsWith('/v1/support/')) return true
   if (!isProduction()) {
     if (path === '/' || path === '/metrics' || path === '/v1/status') return true
   }

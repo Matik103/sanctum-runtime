@@ -31,6 +31,7 @@ export type SupportAgentConfig = {
     temperature: number
     max_context_chunks: number
     sales_chunk_boost: number
+    api_key?: string
   }
   persona: {
     name: string

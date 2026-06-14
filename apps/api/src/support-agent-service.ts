@@ -127,6 +127,13 @@ function fallbackReply(message: string, citations: SupportCitation[]): string {
   )
 }
 
+function resolveOpenRouterApiKey(config: SupportAgentConfig): string | null {
+  const fromEnv = process.env.OPENROUTER_API_KEY?.trim()
+  if (fromEnv) return fromEnv
+  const fromConfig = config.openrouter.api_key?.trim()
+  return fromConfig || null
+}
+
 export class SupportAgentService {
   private store: SupportAgentStore
 
@@ -136,7 +143,7 @@ export class SupportAgentService {
 
   async retrieveChunks(message: string, config: SupportAgentConfig): Promise<SupportKbChunkMatch[]> {
     const salesIntent = detectSalesIntent(message)
-    const apiKey = process.env.OPENROUTER_API_KEY?.trim()
+    const apiKey = resolveOpenRouterApiKey(config)
     const { retrieval, openrouter } = config
 
     if (apiKey) {
@@ -187,7 +194,7 @@ export class SupportAgentService {
       .slice(0, -1)
       .map((m) => ({ role: m.role, content: m.content as string }))
 
-    const apiKey = process.env.OPENROUTER_API_KEY?.trim()
+    const apiKey = resolveOpenRouterApiKey(config)
     let assistantContent: string
     let model: string | undefined
     let tokenUsage: Record<string, unknown> = {}

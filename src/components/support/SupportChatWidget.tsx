@@ -11,9 +11,11 @@ import {
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
-  ensureSupportSession,
+  createSupportSession,
   fetchSupportMessages,
+  getStoredSessionId,
   sendSupportMessage,
+  storeSessionId,
   type SupportChatMessage,
   type SupportCitation,
 } from "@/lib/support-chat-api";
@@ -151,11 +153,27 @@ export function SupportChatWidget() {
     setError(null);
     void (async () => {
       try {
-        const id = await ensureSupportSession();
+        const stored = getStoredSessionId();
+        if (stored) {
+          try {
+            const history = await fetchSupportMessages(stored);
+            if (cancelled) return;
+            setSessionId(stored);
+            setMessages(history);
+            return;
+          } catch {
+            try {
+              localStorage.removeItem("sanctum_support_session_id");
+            } catch {
+              /* ignore */
+            }
+          }
+        }
+
+        const id = await createSupportSession();
         if (cancelled) return;
         setSessionId(id);
-        const history = await fetchSupportMessages(id);
-        if (!cancelled) setMessages(history);
+        setMessages([]);
       } catch {
         if (!cancelled) setError("Could not connect. Try again in a moment.");
       } finally {
@@ -189,8 +207,11 @@ export function SupportChatWidget() {
       setMessages((prev) => [...prev, optimistic]);
 
       try {
-        const sid = sessionId ?? (await ensureSupportSession());
-        if (!sessionId) setSessionId(sid);
+        let sid = sessionId;
+        if (!sid) {
+          sid = await createSupportSession();
+          setSessionId(sid);
+        }
         const reply = await sendSupportMessage(sid, trimmed);
         setMessages((prev) => [...prev, reply]);
       } catch {
