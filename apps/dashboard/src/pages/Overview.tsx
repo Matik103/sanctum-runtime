@@ -4,7 +4,6 @@ import { OverviewOnboarding } from '../components/OverviewOnboarding'
 import { decisionTone, timeAgo } from '../lib/format'
 import { actionLabel, decisionLabel } from '../lib/labels'
 import { auditRecordHeadline } from '../lib/narrative'
-import { riskModelMetaLine } from '../lib/risk-label'
 import { sparkBars } from '../lib/spark'
 import { OctagonX, ShieldCheck } from 'lucide-react'
 import { ActionInterceptDemo } from '../components/ActionInterceptDemo'
@@ -150,7 +149,7 @@ export function Overview({
                 : 'Offline'}
           </div>
           <div className="card-meta">
-            {riskModelMetaLine(status)} · {Object.keys(policies).length} policies
+            {Object.keys(policies).length} policies loaded
           </div>
         </div>
 

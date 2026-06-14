@@ -251,9 +251,6 @@ export function Sidebar({ page, onPage, status, orgId, companionMode, heldCount 
           <div className="sf-row" title={risk.detail ?? risk.label}>
             <span className={`status-dot ${risk.dot}`} style={{ flexShrink: 0 }} />
             <span className="sf-row__label">{risk.label}</span>
-            <span className={`sf-status-pill ${status?.runtimeOnline === false ? 'sf-status-pill--off' : 'sf-status-pill--on'}`}>
-              {status?.runtimeOnline === false ? 'offline' : 'active'}
-            </span>
           </div>
 
           {/* Account identity — AWS/GCP style: no avatar, plain text rows */}

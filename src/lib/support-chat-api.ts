@@ -9,11 +9,20 @@ export type SupportCitation = {
   chunk_id: string;
 };
 
+export type SupportHandoff = {
+  recommended: boolean;
+  reason: "requested" | "low_confidence" | "sales" | "fallback";
+  label: string;
+  url: string;
+  email: string;
+};
+
 export type SupportChatMessage = {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
   citations?: SupportCitation[];
+  handoff?: SupportHandoff | null;
   created_at: string;
 };
 
@@ -80,6 +89,7 @@ export async function fetchSupportMessages(sessionId: string): Promise<SupportCh
       role: SupportChatMessage["role"];
       content: string;
       citations?: SupportCitation[];
+      handoff?: SupportHandoff | null;
       created_at: string;
     }>;
   }>(res);
@@ -101,6 +111,7 @@ export async function sendSupportMessage(
       role: "assistant";
       content: string;
       citation_sources: SupportCitation[];
+      handoff?: SupportHandoff | null;
       created_at: string;
     };
   }>(res);
@@ -109,6 +120,7 @@ export async function sendSupportMessage(
     role: "assistant",
     content: data.message.content,
     citations: data.message.citation_sources,
+    handoff: data.message.handoff,
     created_at: data.message.created_at,
   };
 }

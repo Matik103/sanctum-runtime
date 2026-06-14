@@ -69,6 +69,7 @@ export async function registerSupportRoutes(
         role: m.role,
         content: m.content,
         citations: m.citation_sources ?? [],
+        handoff: (m.metadata as { handoff?: unknown } | null)?.handoff ?? null,
         created_at: m.created_at,
       })),
     }
@@ -89,6 +90,7 @@ export async function registerSupportRoutes(
         session_id: body.data.session_id,
         message: result.reply,
         citations: result.citations,
+        handoff: result.handoff,
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'unknown'

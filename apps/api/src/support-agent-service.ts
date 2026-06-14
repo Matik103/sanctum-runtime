@@ -1,6 +1,7 @@
 import type { SupabaseAuthConfig } from './auth.js'
 import {
   detectSalesIntent,
+  detectHumanHandoffIntent,
   detectPlanTier,
   enterprisePricingSummary,
   filterChunksForReply,
@@ -15,6 +16,7 @@ import {
   SupportAgentStore,
   type SupportAgentConfig,
   type SupportCitation,
+  type SupportHandoff,
   type SupportKbChunkMatch,
 } from './support-agent-store.js'
 
@@ -37,7 +39,7 @@ function chunksToCitations(chunks: SupportKbChunkMatch[]): SupportCitation[] {
 }
 
 function buildContextBlock(chunks: SupportKbChunkMatch[]): string {
-  if (!chunks.length) return '(No knowledge base matches yet — answer from general Sanctum positioning only.)'
+  if (!chunks.length) return '(No reliable knowledge base matches for this question.)'
   return chunks
     .map((c, i) => {
       const url = c.canonical_url ? ` | ${c.canonical_url}` : ''
@@ -59,9 +61,11 @@ function buildSystemPrompt(config: SupportAgentConfig, context: string): string 
     ...persona.never.map((n) => `- ${n}`),
     '',
     'Use ONLY the knowledge base excerpts below for product facts, pricing, and feature claims.',
+    'If excerpts do not directly support the answer, say what is missing and offer a human handoff.',
+    'Do not include internal model names, provider names, implementation guesses, IDs, keys, database details, or stack traces unless the excerpts explicitly say to.',
     'When citing, mention the article or doc title and include the URL if present.',
-    'Keep replies concise (2–4 short paragraphs max). Use markdown links for URLs.',
-    'If the KB lacks an answer, say so and suggest /docs or /contact — do not invent details.',
+    'Keep replies concise: answer first, then one concrete next step. Use markdown links for URLs.',
+    'If the visitor is frustrated, asks for a human, asks for a pilot, or needs account-specific help, acknowledge it and route them to contact.',
     '',
     'Knowledge base excerpts:',
     context,
@@ -116,6 +120,34 @@ function mergeChunks(...lists: SupportKbChunkMatch[][]): SupportKbChunkMatch[] {
     }
   }
   return out
+}
+
+function supportHandoff(input: {
+  message: string
+  chunks: SupportKbChunkMatch[]
+  salesIntent: boolean
+}): SupportHandoff | null {
+  const requested = detectHumanHandoffIntent(input.message)
+  const lowConfidence = input.chunks.length === 0 || input.chunks.every((c) => c.similarity < 0.62)
+  if (!requested && !lowConfidence) return null
+
+  const sales = input.salesIntent && /\b(sales|pilot|demo|enterprise|quote|call)\b/i.test(input.message)
+  return {
+    recommended: true,
+    reason: requested ? (sales ? 'sales' : 'requested') : 'low_confidence',
+    label: sales ? 'Talk to sales' : 'Connect to a human',
+    url: sales ? 'https://www.sanctumruntime.com/enterprise' : 'https://www.sanctumruntime.com/contact',
+    email: sales ? 'sales@sanctumruntime.com' : 'support@sanctumruntime.com',
+  }
+}
+
+function appendHandoff(content: string, handoff: SupportHandoff | null): string {
+  if (!handoff?.recommended) return content
+  const line =
+    handoff.reason === 'low_confidence'
+      ? `I do not have enough matching Sanctum knowledge-base context to answer that confidently.`
+      : `If you want a person to take this from here, I can route you to the team.`
+  return `${content}\n\n${line} [${handoff.label}](${handoff.url}) or email ${handoff.email}.`
 }
 
 function composeFromChunks(
@@ -184,7 +216,7 @@ function composeFromChunks(
   return body ? `${intro}\n\n${body}${citeExtra}` : `${intro}${citeExtra}`
 }
 
-function fallbackReply(message: string, citations: SupportCitation[], chunks: SupportKbChunkMatch[]): string {
+function fallbackReply(message: string, citations: SupportCitation[], chunks: SupportKbChunkMatch[], handoff?: SupportHandoff | null): string {
   if (chunks.length) return composeFromChunks(message, chunks, citations)
   const citeBlock =
     citations.length > 0
@@ -194,14 +226,13 @@ function fallbackReply(message: string, citations: SupportCitation[], chunks: Su
           .join('\n')}`
       : '\n\nBrowse [docs](https://www.sanctumruntime.com/docs) or [contact us](https://www.sanctumruntime.com/contact).'
 
-  return (
-    `Thanks for your question about Sanctum Runtime. I'm syncing our knowledge base — ` +
-    `for now, here's a quick pointer:\n\n` +
-    `Sanctum is the **runtime trust boundary** for AI agents: verify tool calls before execution, ` +
-    `pause for human approval, issue signed action tokens, and keep audit evidence.\n\n` +
+  const base = (
+    `I do not have a strong knowledge-base match for that exact question yet.\n\n` +
+    `What I can say safely: Sanctum is the **runtime trust boundary** for AI agents. It verifies tool calls before execution, can pause risky actions for human approval, issues signed action tokens, and keeps audit evidence.\n\n` +
     `Your question: "${message.slice(0, 200)}"` +
     citeBlock
   )
+  return appendHandoff(base, handoff ?? null)
 }
 
 function resolveOpenRouterApiKey(config: SupportAgentConfig): string | null {
@@ -273,8 +304,16 @@ export class SupportAgentService {
     sessionPublicId: string
     message: string
   }): Promise<{
-    reply: { id: string; role: string; content: string; citation_sources: SupportCitation[]; created_at: string }
+    reply: {
+      id: string
+      role: string
+      content: string
+      citation_sources: SupportCitation[]
+      handoff: SupportHandoff | null
+      created_at: string
+    }
     citations: SupportCitation[]
+    handoff: SupportHandoff | null
   }> {
     const session = await this.store.getSessionByPublicId(input.sessionPublicId)
     if (!session) throw new Error('session_not_found')
@@ -293,6 +332,8 @@ export class SupportAgentService {
     const replyChunks = filterChunksForReply(trimmed, chunks)
     const citations = chunksToCitations(replyChunks.length ? replyChunks : chunks)
     const context = buildContextBlock(replyChunks.length ? replyChunks : chunks)
+    const salesIntent = detectSalesIntent(trimmed)
+    const handoff = supportHandoff({ message: trimmed, chunks: replyChunks.length ? replyChunks : chunks, salesIntent })
 
     const history = await this.store.listMessages(session.id, 12)
     const prior = history
@@ -317,19 +358,21 @@ export class SupportAgentService {
         ],
       )
       if (completion) {
-        assistantContent = completion.content
+        assistantContent = appendHandoff(completion.content, handoff)
         model = config.openrouter.chat_model
         tokenUsage = completion.usage
       } else {
         assistantContent = chunks.length
           ? composeFromChunks(trimmed, chunks, citations)
-          : fallbackReply(trimmed, citations, chunks)
+          : fallbackReply(trimmed, citations, chunks, handoff)
       }
     } else {
       assistantContent = chunks.length
         ? composeFromChunks(trimmed, chunks, citations)
-        : fallbackReply(trimmed, citations, chunks)
+        : fallbackReply(trimmed, citations, chunks, handoff)
     }
+
+    assistantContent = appendHandoff(assistantContent, handoff && !assistantContent.includes(handoff.url) ? handoff : null)
 
     const reply = await this.store.addMessage({
       session_id: session.id,
@@ -339,6 +382,14 @@ export class SupportAgentService {
       citation_sources: citations,
       model,
       token_usage: tokenUsage,
+      metadata: {
+        handoff,
+        retrieval: {
+          matched_chunks: chunks.length,
+          reply_chunks: replyChunks.length,
+          top_similarity: chunks[0]?.similarity ?? null,
+        },
+      },
     })
 
     return {
@@ -347,9 +398,11 @@ export class SupportAgentService {
         role: reply.role,
         content: reply.content as string,
         citation_sources: (reply.citation_sources as SupportCitation[]) ?? [],
+        handoff,
         created_at: reply.created_at as string,
       },
       citations,
+      handoff,
     }
   }
 }

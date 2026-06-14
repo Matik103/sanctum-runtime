@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   detectPlanTier,
   detectSalesIntent,
+  detectHumanHandoffIntent,
   extractSearchTerms,
   filterChunksForReply,
   planComparisonSummary,
@@ -50,6 +51,12 @@ describe('support-agent-retrieval', () => {
     expect(detectSalesIntent('can AI agents buy things online safely?')).toBe(false)
     expect(detectSalesIntent('what is the cheapest plan?')).toBe(true)
     expect(detectSalesIntent('compare Observer vs Operator')).toBe(true)
+  })
+
+  it('detects human handoff requests and dissatisfaction', () => {
+    expect(detectHumanHandoffIntent('can I talk to a human about a pilot?')).toBe(true)
+    expect(detectHumanHandoffIntent('this answer is confusing and does not help')).toBe(true)
+    expect(detectHumanHandoffIntent('how do action tokens work?')).toBe(false)
   })
 
   it('drops stop words from search terms', () => {

@@ -15,16 +15,16 @@ export function riskModelStatusLine(status: RuntimeStatus | null): {
   const model = status.riskModel ?? status.ollamaModel
 
   if (connected) {
-    return { dot: 'ok', label: 'Risk scoring active', detail: riskModelMetaLine(status) }
+    return { dot: 'ok', label: 'Risk scoring', detail: riskModelMetaLine(status) }
   }
   if (provider === 'none') {
     return { dot: 'ok', label: 'Policy scoring active', detail: 'Offline mode · heuristics only' }
   }
   if (provider === 'openai') {
-    return { dot: 'warn', label: 'Risk scoring degraded', detail: 'OpenAI disconnected' }
+    return { dot: 'warn', label: 'Risk scoring', detail: 'Provider disconnected' }
   }
   if (provider === 'ollama') {
-    return { dot: 'warn', label: 'Risk scoring degraded', detail: 'Ollama offline' }
+    return { dot: 'warn', label: 'Risk scoring', detail: 'Provider offline' }
   }
   return { dot: 'warn', label: 'Risk scoring not configured' }
 }

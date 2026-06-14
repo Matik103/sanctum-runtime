@@ -32,6 +32,14 @@ export type SupportCitation = {
   chunk_id: string
 }
 
+export type SupportHandoff = {
+  recommended: boolean
+  reason: 'requested' | 'low_confidence' | 'sales' | 'fallback'
+  label: string
+  url: string
+  email: string
+}
+
 export type SupportAgentConfig = {
   openrouter: {
     chat_model: string
@@ -142,7 +150,7 @@ export class SupportAgentStore {
   async listMessages(sessionId: string, limit = 40) {
     const { data, error } = await this.admin
       .from('support_agent_messages')
-      .select('id, role, content, citation_sources, created_at')
+      .select('id, role, content, citation_sources, metadata, created_at')
       .eq('session_id', sessionId)
       .order('created_at', { ascending: true })
       .limit(limit)
@@ -172,7 +180,7 @@ export class SupportAgentStore {
         token_usage: input.token_usage ?? {},
         metadata: input.metadata ?? {},
       })
-      .select('id, role, content, citation_sources, created_at')
+      .select('id, role, content, citation_sources, metadata, created_at')
       .single()
     if (error) throw error
 

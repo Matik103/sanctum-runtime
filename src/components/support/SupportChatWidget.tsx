@@ -4,6 +4,7 @@ import {
   Minus,
   Send,
   Sparkles,
+  UserRoundCheck,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,7 @@ import {
   storeSessionId,
   type SupportChatMessage,
   type SupportCitation,
+  type SupportHandoff,
 } from "@/lib/support-chat-api";
 import { consoleUrl, contactUrl, docsPath } from "@/lib/site-links";
 
@@ -100,6 +102,42 @@ function CitationList({ citations }: { citations: SupportCitation[] }) {
           </span>
         ),
       )}
+    </div>
+  );
+}
+
+function HandoffCard({ handoff }: { handoff?: SupportHandoff | null }) {
+  if (!handoff?.recommended) return null;
+  return (
+    <div className="mt-3 rounded-xl border border-primary/25 bg-primary/10 p-3">
+      <div className="flex items-start gap-2">
+        <UserRoundCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold text-foreground">
+            {handoff.reason === "low_confidence" ? "Bring in a human" : handoff.label}
+          </p>
+          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+            {handoff.reason === "low_confidence"
+              ? "The guide did not find enough matching Sanctum knowledge-base context for a confident answer."
+              : "A human can help with pilots, account questions, or anything the guide did not resolve."}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <a
+              href={handoff.url}
+              className="inline-flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1.5 text-[11px] font-semibold text-primary-foreground hover:opacity-90"
+            >
+              {handoff.label}
+              <ExternalLink className="h-3 w-3" />
+            </a>
+            <a
+              href={`mailto:${handoff.email}`}
+              className="inline-flex items-center rounded-lg border border-border/80 px-2.5 py-1.5 text-[11px] font-semibold text-foreground hover:border-primary/50 hover:text-primary"
+            >
+              {handoff.email}
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -352,6 +390,7 @@ export function SupportChatWidget() {
                     <div className="min-w-0 max-w-[calc(100%-2.5rem)] rounded-2xl rounded-tl-md border border-border/60 bg-elevated/70 px-3.5 py-2.5">
                       <MessageBody content={m.content} />
                       {m.citations?.length ? <CitationList citations={m.citations} /> : null}
+                      <HandoffCard handoff={m.handoff} />
                     </div>
                   </div>
                 ),

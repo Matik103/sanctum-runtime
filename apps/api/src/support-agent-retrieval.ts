@@ -90,6 +90,13 @@ export function extractPhrases(query: string): string[] {
 export const CHEAPEST_INTENT_RE =
   /\b(cheap|cheapest|free|lowest|observer|beginner|hobby|indie)\b/i
 
+export const HUMAN_HANDOFF_INTENT_RE =
+  /\b(human|person|someone|sales|founder|operator|engineer|support|contact|call|demo|pilot|email|talk|speak|not\s+satisfied|doesn'?t\s+help|wrong|confusing|unclear|escalate)\b/i
+
+export function detectHumanHandoffIntent(message: string): boolean {
+  return HUMAN_HANDOFF_INTENT_RE.test(message)
+}
+
 export function wantsCheapestPlanAnswer(message: string): boolean {
   if (/\benterprise\b/i.test(message)) return false
   return (
