@@ -1,3 +1,4 @@
+import { UserRound } from "lucide-react";
 import logo from "@/assets/sanctum-logo.png";
 import { cn } from "@/lib/utils";
 
@@ -34,16 +35,17 @@ export function SanctumGuideAvatar({
   );
 }
 
-/** Visitor message avatar — Sanctum logo mark (anonymous; no account). */
+/** Anonymous visitor — distinct from the Sanctum Guide logo. */
 export function VisitorChatAvatar({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-primary/35 bg-primary/10",
+        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border/80 bg-elevated/90",
         className,
       )}
+      aria-hidden
     >
-      <img src={logo} alt="" className="h-5 w-5 object-contain" aria-hidden />
+      <UserRound className="h-4 w-4 text-muted-foreground" strokeWidth={2} />
     </div>
   );
 }
