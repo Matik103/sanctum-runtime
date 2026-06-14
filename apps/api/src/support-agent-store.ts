@@ -50,7 +50,7 @@ export type SupportAgentConfig = {
 
 const DEFAULT_CONFIG: SupportAgentConfig = {
   openrouter: {
-    chat_model: 'google/gemini-2.5-flash',
+    chat_model: 'openrouter/free',
     embedding_model: 'openai/text-embedding-3-small',
     embedding_dimensions: 1536,
     temperature: 0.35,
