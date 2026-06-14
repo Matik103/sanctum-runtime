@@ -134,6 +134,7 @@ export function SupportChatWidget() {
   const [loading, setLoading] = React.useState(false);
   const [booting, setBooting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [connectAttempt, setConnectAttempt] = React.useState(0);
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLTextAreaElement>(null);
 
@@ -183,7 +184,7 @@ export function SupportChatWidget() {
     return () => {
       cancelled = true;
     };
-  }, [open, sessionId]);
+  }, [open, sessionId, connectAttempt]);
 
   React.useEffect(() => {
     if (open && !loading) inputRef.current?.focus();
