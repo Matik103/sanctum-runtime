@@ -1,3 +1,7 @@
+/**
+ * Public marketing-site support agent — no login, no API key.
+ * Anonymous visitors get a session id; rate limits apply per IP.
+ */
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import type { SupabaseAuthConfig } from './auth.js'

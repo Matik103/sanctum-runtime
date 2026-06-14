@@ -1,5 +1,7 @@
 import { apiUrl } from "@/lib/site-links";
 
+/** Anonymous visitor chat — no Supabase login or API key; session id only. */
+
 export type SupportCitation = {
   slug: string;
   title: string;

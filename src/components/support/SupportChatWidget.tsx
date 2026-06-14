@@ -311,7 +311,7 @@ export function SupportChatWidget() {
                   Ask anything about Sanctum
                 </p>
                 <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-                  Product, MCP verification, pricing, pilots — answers grounded in our docs and blog.
+                  Product, MCP verification, pricing, pilots — no account needed. Answers grounded in our docs and blog.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -366,9 +366,20 @@ export function SupportChatWidget() {
             </div>
           )}
           {error ? (
-            <p className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-              {error}
-            </p>
+            <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              <p>{error}</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSessionId(null);
+                  setError(null);
+                  setConnectAttempt((n) => n + 1);
+                }}
+                className="mt-2 font-medium underline-offset-2 hover:underline"
+              >
+                Retry connection
+              </button>
+            </div>
           ) : null}
         </div>
 
@@ -397,7 +408,7 @@ export function SupportChatWidget() {
             </button>
           </div>
           <p className="mt-2 text-center text-[10px] text-muted-foreground/80">
-            AI assistant · answers from Sanctum knowledge base
+            No sign-in required · AI answers from Sanctum docs &amp; blog
           </p>
         </div>
       </div>

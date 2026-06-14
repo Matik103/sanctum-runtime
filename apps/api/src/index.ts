@@ -55,6 +55,7 @@ import { registerShieldRoutes, loadShieldRules, evaluateShieldRules, logContainm
 import { registerPlatformCredentialRoutes } from './platform-credential-routes.js'
 import { registerConnectRoutes } from './connect-routes.js'
 import { registerSupportRoutes } from './support-routes.js'
+import { isPublicApiPath } from './public-api-paths.js'
 import { maybeCreateConnectWorkflowApproval } from './connect-governance-hook.js'
 import { emitConnectWebhook } from './connect-notify.js'
 import { getConnectSettings } from './connect-settings.js'
@@ -308,25 +309,6 @@ app.setErrorHandler((err, _req, reply) => {
   return reply.status(500).send(internalErrorBody(err))
 })
 
-function isPublicPath(path: string): boolean {
-  if (
-    path === '/health' ||
-    path === '/readiness' ||
-    path === '/v1/billing/webhook' ||
-    path === '/v1/verify-action' ||
-    path === '/v1/push/vapid-key' ||
-    path === '/.well-known/security.txt' ||
-    path === '/v1/client-errors'
-  ) return true
-  if (path.startsWith('/v1/sso/')) return true
-  // Marketing-site visitor support agent (anonymous; rate-limited in route config).
-  if (path.startsWith('/v1/support/')) return true
-  if (!isProduction()) {
-    if (path === '/' || path === '/metrics' || path === '/v1/status') return true
-  }
-  return false
-}
-
 app.addHook('onRequest', async (req, reply) => {
   if (req.method === 'OPTIONS') return
 
@@ -334,7 +316,7 @@ app.addHook('onRequest', async (req, reply) => {
   if (path === '/metrics' && !metricsAuthorized(req.headers)) {
     return reply.status(404).send({ error: 'not_found' })
   }
-  if (isPublicPath(path)) return
+  if (isPublicApiPath(path)) return
   // Agent credentials are validated inside the only endpoint where they are
   // accepted, including registration revocation checks and organization
   // scoping. Let that route inspect the signed token instead of rejecting it
