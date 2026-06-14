@@ -186,6 +186,22 @@ h3 {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.sf-row__stack {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+}
+.sf-row__detail {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 0.66rem;
+  line-height: 1.2;
+}
 
 /* Unread count badge — minimal, no color bloat */
 .sf-badge {

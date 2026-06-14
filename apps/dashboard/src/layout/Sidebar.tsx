@@ -250,7 +250,10 @@ export function Sidebar({ page, onPage, status, orgId, companionMode, heldCount 
           {/* Runtime status */}
           <div className="sf-row" title={risk.detail ?? risk.label}>
             <span className={`status-dot ${risk.dot}`} style={{ flexShrink: 0 }} />
-            <span className="sf-row__label">{risk.label}</span>
+            <span className="sf-row__stack">
+              <span className="sf-row__label">{risk.label}</span>
+              {risk.detail && <span className="sf-row__detail">{risk.detail}</span>}
+            </span>
           </div>
 
           {/* Account identity — AWS/GCP style: no avatar, plain text rows */}
