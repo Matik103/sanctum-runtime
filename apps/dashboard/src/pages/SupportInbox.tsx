@@ -22,7 +22,13 @@ const STATUS_LABEL: Record<string, string> = {
   bot: 'Bot',
 }
 
-export function SupportInbox() {
+export function SupportInbox({
+  initialSessionId = null,
+  portalMode = false,
+}: {
+  initialSessionId?: string | null
+  portalMode?: boolean
+}) {
   const [sessions, setSessions] = useState<InboxSession[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [messages, setMessages] = useState<InboxMessage[]>([])
@@ -50,6 +56,10 @@ export function SupportInbox() {
   }, [])
 
   useEffect(() => {
+    if (initialSessionId) setSelectedId(initialSessionId)
+  }, [initialSessionId])
+
+  useEffect(() => {
     setLoading(true)
     void fetchInboxAnalytics(7)
       .then(setAnalytics)
@@ -60,11 +70,17 @@ export function SupportInbox() {
 
     const stop = pollInboxSessions((list) => {
       setSessions(list)
-      if (!selectedId && list[0]) setSelectedId(list[0].public_id)
+      setSelectedId((current) => {
+        if (current) return current
+        if (initialSessionId && list.some((s) => s.public_id === initialSessionId)) {
+          return initialSessionId
+        }
+        return list[0]?.public_id ?? null
+      })
     }, 3000)
 
     return stop
-  }, [selectedId])
+  }, [initialSessionId])
 
   useEffect(() => {
     if (!selectedId) return
@@ -109,24 +125,29 @@ export function SupportInbox() {
 
   if (forbidden) {
     return (
-      <div className="page">
+      <div className={portalMode ? 'support-portal-inbox page' : 'page'}>
         <Alert variant="warning" title="Support inbox access required">
-          Add your email to <code>SUPPORT_INBOX_ALLOWED_EMAILS</code> or{' '}
-          <code>support_agent_config.inbox.allowed_emails</code> to use the human inbox.
+          Your account is not on the support operator allowlist. Ask an admin to add{' '}
+          <code>SUPPORT_INBOX_ALLOWED_EMAILS</code> or update{' '}
+          <code>support_agent_config.inbox.allowed_emails</code>.
         </Alert>
       </div>
     )
   }
 
   return (
-    <div className="page">
+    <div className={portalMode ? 'support-portal-inbox page' : 'page'}>
       <header className="page-header">
         <div>
           <h1 className="page-title">
             <Inbox size={22} style={{ display: 'inline', marginRight: 8, verticalAlign: 'text-bottom' }} />
             Support Inbox
           </h1>
-          <p className="page-subtitle">Human takeover for marketing-site Sanctum Guide chats</p>
+          <p className="page-subtitle">
+            {portalMode
+              ? 'Reply to visitors who escalated from the marketing-site chat widget'
+              : 'Human takeover for marketing-site Sanctum Guide chats'}
+          </p>
         </div>
       </header>
 

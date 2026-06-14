@@ -41,7 +41,6 @@ const Billing = lazy(() => import('./pages/Billing').then((m) => ({ default: m.B
 const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })))
 const Connect = lazy(() => import('./pages/Connect').then((m) => ({ default: m.Connect })))
 const LiveFeed = lazy(() => import('./pages/LiveFeed').then((m) => ({ default: m.LiveFeed })))
-const SupportInbox = lazy(() => import('./pages/SupportInbox').then((m) => ({ default: m.SupportInbox })))
 
 const PAGE_IDS: PageId[] = [
   'overview',
@@ -66,11 +65,21 @@ const PAGE_IDS: PageId[] = [
   'settings',
   'connect',
   'live-feed',
-  'support-inbox',
 ]
+
+function redirectLegacySupportInbox() {
+  if (typeof window === 'undefined') return false
+  const params = new URLSearchParams(window.location.search)
+  if (params.get('page') !== 'support-inbox') return false
+  const session = params.get('session')
+  const target = `/support${session ? `?session=${encodeURIComponent(session)}` : ''}`
+  window.location.replace(target)
+  return true
+}
 
 function initialPage(): PageId {
   if (typeof window === 'undefined') return 'overview'
+  if (redirectLegacySupportInbox()) return 'overview'
   const requested = new URLSearchParams(window.location.search).get('page') as PageId | null
   return requested && PAGE_IDS.includes(requested) ? requested : 'overview'
 }
@@ -273,7 +282,6 @@ export function App() {
           {page === 'settings' && <ErrorBoundary page="Settings"><Settings status={status} /></ErrorBoundary>}
           {page === 'connect' && <ErrorBoundary page="Connect Agent"><Connect orgId={orgId} onPage={onPage} /></ErrorBoundary>}
           {page === 'live-feed' && <ErrorBoundary page="Live Feed"><LiveFeed orgId={orgId} onPage={onPage} onHeldChange={refreshHeld} /></ErrorBoundary>}
-          {page === 'support-inbox' && <ErrorBoundary page="Support Inbox"><SupportInbox /></ErrorBoundary>}
         </Suspense>
       </MainCanvas>
 

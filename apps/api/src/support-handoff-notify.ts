@@ -71,11 +71,20 @@ async function enqueueSupportHandoffEmail(input: {
   }
 }
 
+function supportPortalUrl(sessionPublicId: string, consoleBaseUrl?: string): string {
+  const base = (
+    consoleBaseUrl ??
+    process.env.SUPPORT_PORTAL_URL ??
+    process.env.VITE_CONSOLE_URL ??
+    process.env.CONSOLE_URL ??
+    'https://console.sanctumruntime.com'
+  ).replace(/\/$/, '')
+  return `${base}/support?session=${encodeURIComponent(sessionPublicId)}`
+}
+
 export async function notifySupportHandoff(input: HandoffNotifyInput): Promise<void> {
   const to = resolveSupportNotifyEmail(input.inbox.notify_email)
-  const inboxUrl =
-    (input.consoleBaseUrl ?? 'https://console.sanctumruntime.com').replace(/\/$/, '') +
-    '/?page=support-inbox'
+  const inboxUrl = supportPortalUrl(input.sessionPublicId, input.consoleBaseUrl)
 
   const title = `Support handoff: ${input.reason}`
   const summary = input.visitorMessage.slice(0, 280)
@@ -92,7 +101,7 @@ export async function notifySupportHandoff(input: HandoffNotifyInput): Promise<v
       `<p style="margin:0 0 16px;color:#94a3b8;font-size:12px;"><strong style="color:#e2e8f0;">Latest message:</strong> ${escapeHtml(summary)}</p>`,
       `<p style="margin:0 0 8px;color:#e2e8f0;font-size:13px;font-weight:600;">Recent transcript</p>`,
       transcriptHtml(input.transcript),
-      `<p style="margin:20px 0 0;"><a href="${escapeHtml(inboxUrl)}" style="display:inline-block;background:#3b82f6;color:#fff;text-decoration:none;padding:10px 16px;border-radius:8px;font-size:13px;font-weight:600;">Open Support Inbox</a></p>`,
+      `<p style="margin:20px 0 0;"><a href="${escapeHtml(inboxUrl)}" style="display:inline-block;background:#3b82f6;color:#fff;text-decoration:none;padding:10px 16px;border-radius:8px;font-size:13px;font-weight:600;">Open support portal</a></p>`,
     ],
   })
 
