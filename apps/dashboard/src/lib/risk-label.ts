@@ -12,7 +12,6 @@ export function riskModelStatusLine(status: RuntimeStatus | null): {
 
   const connected = status.riskModelConnected ?? status.ollamaConnected ?? false
   const provider = status.riskProvider ?? (status.ollamaConnected ? 'ollama' : 'none')
-  const model = status.riskModel ?? status.ollamaModel
 
   if (connected) {
     return { dot: 'ok', label: 'Risk scoring', detail: riskModelMetaLine(status) }
@@ -32,12 +31,11 @@ export function riskModelStatusLine(status: RuntimeStatus | null): {
 export function riskModelMetaLine(status: RuntimeStatus | null): string {
   if (!status) return '—'
   const provider = status.riskProvider ?? 'none'
-  const model = status.riskModel ?? status.ollamaModel
-  if (provider === 'openai') return model ? `OpenAI · ${model}` : 'OpenAI'
-  if (provider === 'ollama') return model ? `Ollama · ${model}` : 'Ollama'
-  if (provider === 'none') return 'Offline mode · heuristics only'
-  if (model) return model
-  return 'Risk model not configured'
+  const connected = status.riskModelConnected ?? status.ollamaConnected ?? false
+  if (provider === 'none') return 'Policy scoring online'
+  if (connected) return 'Risk scoring online'
+  if (provider === 'openai' || provider === 'ollama') return 'Risk scoring offline'
+  return 'Risk scoring not configured'
 }
 
 export function auditInferenceLabel(entry: { modelInvoked?: boolean }): string {
