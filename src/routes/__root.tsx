@@ -10,6 +10,7 @@ import {
 
 import appCss from "../styles.css?url";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
+import { SupportChatWidget } from "@/components/support/SupportChatWidget";
 import {
   defaultDescription,
   organizationJsonLd,
@@ -162,6 +163,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
+      <SupportChatWidget />
     </QueryClientProvider>
   );
 }

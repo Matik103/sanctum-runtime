@@ -54,6 +54,7 @@ import { registerPushRoutes, sendPushToUser } from './push-routes.js'
 import { registerShieldRoutes, loadShieldRules, evaluateShieldRules, logContainmentEvent } from './shield-routes.js'
 import { registerPlatformCredentialRoutes } from './platform-credential-routes.js'
 import { registerConnectRoutes } from './connect-routes.js'
+import { registerSupportRoutes } from './support-routes.js'
 import { maybeCreateConnectWorkflowApproval } from './connect-governance-hook.js'
 import { emitConnectWebhook } from './connect-notify.js'
 import { getConnectSettings } from './connect-settings.js'
@@ -538,6 +539,7 @@ if (supabaseAuth) {
   await registerAgentTokenRoutes(app, supabaseAuth)
   await registerPlatformCredentialRoutes(app, supabaseAuth)
   await registerConnectRoutes(app, supabaseAuth, runtime)
+  await registerSupportRoutes(app, supabaseAuth)
   registerProxyRoutes(app, runtime)
 }
 

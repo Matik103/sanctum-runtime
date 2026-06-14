@@ -42,6 +42,8 @@ function readPublicViteEnv(key: string): string | undefined {
       return import.meta.env.VITE_BILLING_EMAIL;
     case "VITE_SUPPORT_EMAIL":
       return import.meta.env.VITE_SUPPORT_EMAIL;
+    case "VITE_SANCTUM_API_URL":
+      return import.meta.env.VITE_SANCTUM_API_URL;
     case "VITE_COMPANY_LEGAL_NAME":
       return import.meta.env.VITE_COMPANY_LEGAL_NAME;
     case "VITE_PRODUCT_LEGAL_NAME":
@@ -66,6 +68,12 @@ export const consoleUrl = readEnv("VITE_CONSOLE_URL", "https://console.sanctumru
 
 /** Public marketing site (for cross-links from docs) */
 export const marketingUrl = readEnv("VITE_MARKETING_URL", "https://www.sanctumruntime.com/");
+
+/** Runtime API — support chat, health checks */
+export const apiUrl = readEnv("VITE_SANCTUM_API_URL", "https://api.sanctumruntime.com").replace(
+  /\/$/,
+  "",
+);
 
 /** Primary CTA: cloud console (same as n8n → app.n8n.io) */
 export const startUrl = consoleUrl;
