@@ -1950,6 +1950,80 @@ table.data td .badge + .badge {
   line-height: 1.25;
 }
 
+.connect-proof {
+  display: grid;
+  grid-template-columns: minmax(16rem, 1fr) minmax(22rem, 1.4fr);
+  gap: 1rem;
+  padding: 1.2rem;
+  border-color: rgba(79, 124, 255, 0.28);
+  background:
+    linear-gradient(135deg, rgba(79, 124, 255, 0.08), rgba(16, 185, 129, 0.04)),
+    var(--surface);
+}
+
+.connect-proof__copy h2 {
+  margin: 0.18rem 0 0.45rem;
+  font-size: 1.25rem;
+  letter-spacing: 0;
+}
+
+.connect-proof__copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+
+.connect-proof__metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.connect-proof__metrics > div {
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.52);
+}
+
+.connect-proof__metrics span,
+.connect-proof__metrics small,
+.connect-proof__metrics strong {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.connect-proof__metrics span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.connect-proof__metrics strong {
+  margin-top: 0.22rem;
+  font-size: 1.08rem;
+  line-height: 1.2;
+}
+
+.connect-proof__metrics small {
+  margin-top: 0.28rem;
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+.connect-proof__actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
 .connect-primary-grid {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
@@ -3023,6 +3097,7 @@ tr.key-row--pending td {
   .connect-steps,
   .boundary-picker,
   .connect-command,
+  .connect-proof,
   .connect-boundary,
   .connect-primary-grid {
     grid-template-columns: 1fr;
@@ -3038,6 +3113,10 @@ tr.key-row--pending td {
 
   .connect-command__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .connect-proof__metrics {
+    grid-template-columns: 1fr;
   }
 
   .connect-view-tabs {
@@ -3065,9 +3144,11 @@ tr.key-row--pending td {
   }
 
   .connect-saved-key__actions .btn,
-  .connect-command__actions .btn {
+  .connect-command__actions .btn,
+  .connect-proof__actions .btn {
     width: 100%;
     justify-content: center;
+    white-space: normal;
   }
 
   .provider-picker {

@@ -38,6 +38,7 @@ import type { PageId } from '../layout/Sidebar'
 import { Alert } from '../components/ui/Alert'
 import { PlanGateAlert } from '../components/PlanGateAlert'
 import { formatApiError } from '../lib/sanitize-error'
+import type { NavigateQuery } from '../lib/navigate'
 
 const PLATFORMS: { id: PlatformId; name: string; flag: string }[] = [
   { id: 'openai', name: 'OpenAI', flag: '🤖' },
@@ -231,7 +232,7 @@ const response = await client.chat.completions.create({
 
 type Props = {
   orgId?: string | null
-  onPage: (p: PageId) => void
+  onPage: (p: PageId, query?: NavigateQuery) => void
 }
 
 export function Connect({ orgId, onPage }: Props) {
@@ -278,6 +279,13 @@ export function Connect({ orgId, onPage }: Props) {
   const platformName = PLATFORMS.find((p) => p.id === platform)?.name ?? platform
   const hasRunnableAgent = Boolean(selectedAgent)
   const setupReady = Boolean(hasRunnableAgent && savedCred)
+  const heldCount = health?.events.by_decision.REQUIRE_VERIFICATION ?? 0
+  const blockedCount = health?.events.by_decision.BLOCKED ?? 0
+  const protectedCount = heldCount + blockedCount
+  const lastEventAt = health?.events.last_event_at ? new Date(health.events.last_event_at) : null
+  const lastEventLabel = lastEventAt
+    ? lastEventAt.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+    : 'No tool call yet'
   const nextStep = !hasRunnableAgent
     ? 'Choose an agent'
     : !savedCred
@@ -829,6 +837,51 @@ export function Connect({ orgId, onPage }: Props) {
               {idx < 3 && <ArrowRight size={14} aria-hidden />}
             </div>
           ))}
+        </section>
+
+        <section className="card connect-proof">
+          <div className="connect-proof__copy">
+            <span className="connect-command__eyebrow">First protected action</span>
+            <h2>Prove Sanctum is in the execution path</h2>
+            <p>
+              A real setup should show three things: the tool call reached Sanctum, policy or Shield made a decision,
+              and the executor cannot continue without approval or an action token.
+            </p>
+          </div>
+          <div className="connect-proof__metrics">
+            <div>
+              <span>Protected</span>
+              <strong>{protectedCount}</strong>
+              <small>held or blocked</small>
+            </div>
+            <div>
+              <span>Last call</span>
+              <strong>{lastEventLabel}</strong>
+              <small>{health?.events.total ?? 0} total in 7 days</small>
+            </div>
+            <div>
+              <span>Executor token</span>
+              <strong>{settings?.enforce_action_token ? 'Required' : 'Available'}</strong>
+              <small>{settings?.enforce_action_token ? 'local tools must prove approval' : 'turn on for stricter runtime control'}</small>
+            </div>
+          </div>
+          <div className="connect-proof__actions">
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={testRunning || !hasRunnableAgent}
+              onClick={() => void handleConnectTest()}
+            >
+              {testRunning ? <Loader2 size={14} className="spin" /> : <Zap size={14} />}
+              Send protected test
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={() => onPage('live-feed', { tab: 'held' })}>
+              Review held queue
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={() => onPage('assurance')}>
+              Replay policy impact
+            </button>
+          </div>
         </section>
 
         <div className="connect-primary-grid">

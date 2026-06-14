@@ -15,6 +15,8 @@ import { formatApiError } from '../lib/sanitize-error'
 import { readPageQuery } from '../lib/navigate'
 import type { PageId } from '../layout/Sidebar'
 import type { NavigateQuery } from '../lib/navigate'
+import { canUseConnectGate } from '../lib/billing'
+import { useWorkspacePlan } from '../hooks/useWorkspacePlan'
 
 const PLATFORM_LABELS: Record<string, string> = {
   openai: 'OpenAI',
@@ -118,6 +120,7 @@ function EventRow({
   onResolve,
   onPolicy,
   onPage,
+  gateAllowed,
   resolving,
   policySaving,
   focused,
@@ -129,6 +132,7 @@ function EventRow({
   onResolve: (e: ProxyEvent, decision: 'APPROVED' | 'BLOCKED') => void
   onPolicy: (e: ProxyEvent, mode: 'verify' | 'block' | 'approve') => void
   onPage: (p: PageId, query?: NavigateQuery) => void
+  gateAllowed: boolean
   resolving: string | null
   policySaving: string | null
   focused?: boolean
@@ -186,10 +190,22 @@ function EventRow({
         <div className="live-feed-actions" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }} onClick={(e) => e.stopPropagation()}>
           {held && (
             <div className="live-feed-decision-actions" style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
-              <button type="button" className="btn btn-primary btn-sm" disabled={resolving === event.id} title="Approve" onClick={() => onResolve(event, 'APPROVED')}>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                disabled={resolving === event.id}
+                title={gateAllowed ? 'Approve' : 'Upgrade to approve held actions'}
+                onClick={() => gateAllowed ? onResolve(event, 'APPROVED') : onPage('billing')}
+              >
                 <Check size={14} />
               </button>
-              <button type="button" className="btn btn-ghost btn-sm" disabled={resolving === event.id} title="Deny" onClick={() => onResolve(event, 'BLOCKED')}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                disabled={resolving === event.id}
+                title={gateAllowed ? 'Deny' : 'Upgrade to block held actions'}
+                onClick={() => gateAllowed ? onResolve(event, 'BLOCKED') : onPage('billing')}
+              >
                 <X size={14} />
               </button>
               <button
@@ -209,9 +225,9 @@ function EventRow({
           {orgId && (
             <>
               <div className="live-feed-policy-actions" style={{ display: 'flex', gap: '0.2rem', flexWrap: 'wrap' }}>
-                <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }} disabled={policySaving === event.id} onClick={() => onPolicy(event, 'verify')}>Hold tool</button>
-                <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }} disabled={policySaving === event.id} onClick={() => onPolicy(event, 'block')}>Block</button>
-                <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }} disabled={policySaving === event.id} onClick={() => onPolicy(event, 'approve')}>Auto-approve</button>
+                <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }} disabled={policySaving === event.id} title={gateAllowed ? 'Hold this tool by policy' : 'Upgrade to create tool policies'} onClick={() => gateAllowed ? onPolicy(event, 'verify') : onPage('billing')}>Hold tool</button>
+                <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }} disabled={policySaving === event.id} title={gateAllowed ? 'Block this tool by policy' : 'Upgrade to create tool policies'} onClick={() => gateAllowed ? onPolicy(event, 'block') : onPage('billing')}>Block</button>
+                <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }} disabled={policySaving === event.id} title={gateAllowed ? 'Auto-approve this tool by policy' : 'Upgrade to create tool policies'} onClick={() => gateAllowed ? onPolicy(event, 'approve') : onPage('billing')}>Auto-approve</button>
               </div>
               <div style={{ display: 'flex', gap: '0.2rem', flexWrap: 'wrap' }}>
                 <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: '0.62rem', padding: '0.08rem 0.3rem' }} title="View agent" onClick={() => onPage('agents')}>
@@ -262,6 +278,8 @@ type Props = {
 }
 
 export function LiveFeed({ orgId, onPage, onHeldChange }: Props) {
+  const { planId } = useWorkspacePlan()
+  const gateAllowed = canUseConnectGate(planId)
   const { prefs, setPrefs } = useLiveFeedPrefs(orgId)
   const { tab, platformFilter, agentFilter, toolFilter, decisionFilter } = prefs
   const [agentNames, setAgentNames] = useState<Record<string, string>>({})
@@ -381,7 +399,7 @@ export function LiveFeed({ orgId, onPage, onHeldChange }: Props) {
             )}
           </div>
           <p className="page-subtitle" style={{ marginTop: '0.25rem' }}>
-            Connect Agent gates each tool call through Sanctum verify. Approve held actions inline — the proxy releases waiting requests automatically.
+            Connect Agent records every tool call here. Paid gates can hold, approve, block, and turn live activity into policy.
           </p>
         </div>
         <button type="button" className="btn btn-ghost" onClick={() => onPage('connect')} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem' }}>
@@ -393,6 +411,15 @@ export function LiveFeed({ orgId, onPage, onHeldChange }: Props) {
       {focusKey && !focusDismissed && (
         <Alert variant="info" onDismiss={() => setFocusDismissed(true)} style={{ marginBottom: '0.75rem' }}>
           Highlighting event from Governance{focusKey.startsWith('action:') ? ` matching ${focusKey.slice(7)}` : ''}.
+        </Alert>
+      )}
+
+      {!gateAllowed && (
+        <Alert variant="info" style={{ marginBottom: '0.75rem' }}>
+          <strong>Developer plan is observe-only.</strong> Live Feed shows what agents touch, but approve, block, and policy controls require Personal or higher.{' '}
+          <button type="button" className="btn btn-ghost btn-sm" style={{ marginTop: '0.5rem' }} onClick={() => onPage('billing')}>
+            View plans
+          </button>
         </Alert>
       )}
 
@@ -459,6 +486,7 @@ export function LiveFeed({ orgId, onPage, onHeldChange }: Props) {
             onResolve={(ev, d) => void handleResolve(ev, d)}
             onPolicy={(ev, m) => void handlePolicy(ev, m)}
             onPage={onPage}
+            gateAllowed={gateAllowed}
             resolving={resolving}
             policySaving={policySaving}
             focused={eventMatchesFocus(e)}
