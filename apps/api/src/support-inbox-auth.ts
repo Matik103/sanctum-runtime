@@ -15,6 +15,8 @@ function parseAllowedEmails(raw: unknown): string[] {
     .filter(Boolean)
 }
 
+export const DEFAULT_SUPPORT_INBOX_NOTIFY_EMAIL = 'support@sanctumruntime.com'
+
 export function envAllowedInboxEmails(): string[] {
   const raw = process.env.SUPPORT_INBOX_ALLOWED_EMAILS?.trim()
   if (!raw) return []
@@ -24,13 +26,24 @@ export function envAllowedInboxEmails(): string[] {
     .filter(Boolean)
 }
 
+/** Resend recipient for human handoff alerts — always support@ unless overridden. */
+export function resolveSupportNotifyEmail(dbNotifyEmail?: string | null): string {
+  const fromEnv =
+    process.env.SUPPORT_INBOX_NOTIFY_EMAIL?.trim() ||
+    process.env.NOTIFICATION_TO_EMAIL?.trim()
+  if (fromEnv) return fromEnv
+  const fromDb = dbNotifyEmail?.trim()
+  if (fromDb) return fromDb
+  return DEFAULT_SUPPORT_INBOX_NOTIFY_EMAIL
+}
+
 export async function loadInboxConfig(store: SupportAgentStore): Promise<SupportInboxConfig> {
   const cfg = await store.loadInboxConfig()
   const envEmails = envAllowedInboxEmails()
   const dbEmails = parseAllowedEmails(cfg.allowed_emails)
   return {
     allowed_emails: [...new Set([...dbEmails, ...envEmails])],
-    notify_email: cfg.notify_email?.trim() || 'support@sanctumruntime.com',
+    notify_email: resolveSupportNotifyEmail(cfg.notify_email),
     slack_webhook_url: cfg.slack_webhook_url?.trim() || null,
   }
 }
