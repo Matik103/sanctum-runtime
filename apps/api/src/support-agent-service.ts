@@ -62,10 +62,22 @@ function buildSystemPrompt(config: SupportAgentConfig, context: string): string 
   ].join('\n')
 }
 
+function fitEmbeddingVector(vec: number[], targetDims: number): number[] {
+  if (vec.length === targetDims) return vec
+  // Nemotron free model outputs 2048 dims (MRL); slice + L2-normalize for our vector(1536) column.
+  const sliced = vec.slice(0, targetDims)
+  let sumSq = 0
+  for (const v of sliced) sumSq += v * v
+  const norm = Math.sqrt(sumSq)
+  if (!norm) return sliced
+  return sliced.map((v) => v / norm)
+}
+
 async function embedQuery(
   apiKey: string,
   model: string,
   text: string,
+  targetDims: number,
 ): Promise<number[] | null> {
   const res = await fetch(`${OPENROUTER_URL}/embeddings`, {
     method: 'POST',
@@ -79,7 +91,9 @@ async function embedQuery(
   })
   if (!res.ok) return null
   const json = (await res.json()) as { data?: { embedding?: number[] }[] }
-  return json.data?.[0]?.embedding ?? null
+  const raw = json.data?.[0]?.embedding
+  if (!raw?.length) return null
+  return fitEmbeddingVector(raw, targetDims)
 }
 
 async function chatCompletion(
@@ -147,7 +161,12 @@ export class SupportAgentService {
     const { retrieval, openrouter } = config
 
     if (apiKey) {
-      const embedding = await embedQuery(apiKey, openrouter.embedding_model, message)
+      const embedding = await embedQuery(
+        apiKey,
+        openrouter.embedding_model,
+        message,
+        openrouter.embedding_dimensions,
+      )
       if (embedding?.length) {
         const vectorMatches = await this.store.matchKbChunks(embedding, {
           match_count: retrieval.match_count,
