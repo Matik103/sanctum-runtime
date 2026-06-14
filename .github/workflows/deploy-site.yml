@@ -12,6 +12,7 @@ on:
       - "vercel.json"
       - ".vercelignore"
       - "scripts/generate-sitemap.ts"
+      - "scripts/generate-ai-discovery.ts"
       - "scripts/verify-crawl.mjs"
       - "package.json"
       - "package-lock.json"
