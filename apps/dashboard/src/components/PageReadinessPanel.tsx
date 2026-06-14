@@ -15,7 +15,10 @@ import {
   ShieldCheck,
   Sparkles,
 } from 'lucide-react'
+import type { RuntimeStatus } from '@sanctum-runtime/sdk/browser'
 import type { PageId } from '../layout/Sidebar'
+
+type ReadinessTone = 'ok' | 'warn' | 'danger'
 
 type ReadinessConfig = {
   eyebrow: string
@@ -25,6 +28,21 @@ type ReadinessConfig = {
   cta?: { label: string; page: PageId }
   secondary?: { label: string; page: PageId }
   icon: typeof ShieldCheck
+}
+
+export type ReadinessMetrics = {
+  apiError?: string | null
+  auditCount?: number
+  connectHeldCount?: number
+  fleetPaused?: boolean
+  pendingReviewCount?: number
+  policyCount?: number
+  runtimeStatus?: RuntimeStatus | null
+}
+
+type ReadinessVerdict = {
+  label: string
+  tone: ReadinessTone
 }
 
 const PAGE_READINESS: Record<PageId, ReadinessConfig> = {
@@ -230,39 +248,148 @@ const PAGE_READINESS: Record<PageId, ReadinessConfig> = {
 
 type Props = {
   page: PageId
+  metrics?: ReadinessMetrics
   onPage: (page: PageId) => void
 }
 
-export function PageReadinessPanel({ page, onPage }: Props) {
+function compactNumber(value: number) {
+  return new Intl.NumberFormat(undefined, { notation: value >= 1000 ? 'compact' : 'standard' }).format(value)
+}
+
+function runtimeVerdict(status: RuntimeStatus | null | undefined): ReadinessVerdict {
+  if (status === null || status === undefined) return { label: 'Checking runtime', tone: 'warn' }
+  if (status.runtimeOnline) return { label: 'Runtime online', tone: 'ok' }
+  return { label: 'Runtime offline', tone: 'danger' }
+}
+
+function buildLiveConfig(page: PageId, base: ReadinessConfig, metrics: ReadinessMetrics = {}): ReadinessConfig & { verdict: ReadinessVerdict } {
+  const pending = metrics.pendingReviewCount ?? 0
+  const connectHeld = metrics.connectHeldCount ?? 0
+  const auditCount = metrics.auditCount ?? 0
+  const policyCount = metrics.policyCount ?? 0
+  const runtime = runtimeVerdict(metrics.runtimeStatus)
+  const hasApiError = Boolean(metrics.apiError)
+  const fleetPaused = Boolean(metrics.fleetPaused)
+
+  if (hasApiError) {
+    return {
+      ...base,
+      eyebrow: 'Needs attention',
+      title: 'The control plane can see the page, but the API needs recovery.',
+      proof: 'Keep the operator in place, then restore API reachability before trusting live decisions.',
+      outcomes: ['api unreachable', 'cached view', 'retry ready'],
+      cta: { label: 'Open Settings', page: 'settings' },
+      secondary: { label: 'Runtime Fleet', page: 'fleet' },
+      verdict: { label: 'API attention', tone: 'danger' },
+    }
+  }
+
+  if (fleetPaused) {
+    return {
+      ...base,
+      eyebrow: 'Containment active',
+      title: 'The fleet is paused, so agent approvals are intentionally suspended.',
+      proof: 'This is the right state during incident review. Resume only after reviewing held actions and fleet health.',
+      outcomes: ['fleet paused', 'approvals suspended', 'incident mode'],
+      cta: { label: 'Open Fleet', page: 'fleet' },
+      secondary: { label: 'Review queue', page: 'live-feed' },
+      verdict: { label: 'Fleet paused', tone: 'warn' },
+    }
+  }
+
+  if ((page === 'overview' || page === 'live-feed') && pending > 0) {
+    return {
+      ...base,
+      eyebrow: 'Live queue',
+      title: `${compactNumber(pending)} action${pending === 1 ? '' : 's'} need an operator decision.`,
+      proof: 'Review the queue one at a time so approvals stay intentional and auditable.',
+      outcomes: ['held actions', 'operator decision', 'audit trail'],
+      cta: { label: 'Review held queue', page: 'live-feed' },
+      secondary: { label: 'Replay impact', page: 'assurance' },
+      verdict: { label: `${compactNumber(pending)} held`, tone: 'warn' },
+    }
+  }
+
+  if (page === 'connect' && connectHeld > 0) {
+    return {
+      ...base,
+      eyebrow: 'Connect proving value',
+      title: `${compactNumber(connectHeld)} Connect tool call${connectHeld === 1 ? '' : 's'} are held for review.`,
+      proof: 'The proxy is no longer just observing. It is intercepting side effects before local execution.',
+      outcomes: ['proxy active', 'held tools', 'operator gate'],
+      cta: { label: 'Open Live Feed', page: 'live-feed' },
+      secondary: { label: 'Tune policies', page: 'policies' },
+      verdict: { label: 'Gate working', tone: 'ok' },
+    }
+  }
+
+  if (page === 'overview') {
+    return {
+      ...base,
+      proof: `${runtime.label}. ${compactNumber(auditCount)} event${auditCount === 1 ? '' : 's'} loaded and ${compactNumber(policyCount)} polic${policyCount === 1 ? 'y' : 'ies'} ready.`,
+      outcomes: [runtime.label.toLowerCase(), `${compactNumber(policyCount)} policies`, `${compactNumber(auditCount)} events`],
+      verdict: runtime,
+    }
+  }
+
+  if (page === 'policies' || page === 'workflow-builder' || page === 'policy-history') {
+    return {
+      ...base,
+      proof: `${compactNumber(policyCount)} polic${policyCount === 1 ? 'y is' : 'ies are'} loaded. Simulate or replay before promoting behavior into production.`,
+      outcomes: [`${compactNumber(policyCount)} policies`, 'simulation', 'safe rollout'],
+      verdict: { label: policyCount > 0 ? 'Policy ready' : 'Add policy', tone: policyCount > 0 ? 'ok' : 'warn' },
+    }
+  }
+
+  if (page === 'audit' || page === 'activity' || page === 'assurance' || page === 'compliance') {
+    return {
+      ...base,
+      proof: `${compactNumber(auditCount)} decision event${auditCount === 1 ? '' : 's'} are available for timeline review, replay, and evidence packaging.`,
+      outcomes: [`${compactNumber(auditCount)} events`, 'replayable', 'export-ready'],
+      verdict: { label: auditCount > 0 ? 'Evidence ready' : 'Waiting for events', tone: auditCount > 0 ? 'ok' : 'warn' },
+    }
+  }
+
+  return {
+    ...base,
+    verdict: { label: 'Ready', tone: 'ok' },
+  }
+}
+
+export function PageReadinessPanel({ page, metrics, onPage }: Props) {
   const cfg = PAGE_READINESS[page]
   if (!cfg) return null
-  const Icon = cfg.icon
+  const live = buildLiveConfig(page, cfg, metrics)
+  const Icon = live.icon
 
   return (
-    <section className="readiness-panel" aria-label="Production readiness">
+    <section className={`readiness-panel readiness-panel--${live.verdict.tone}`} aria-label="Production readiness">
       <div className="readiness-panel__icon" aria-hidden>
         <Icon size={18} />
       </div>
       <div className="readiness-panel__body">
-        <span className="readiness-panel__eyebrow">{cfg.eyebrow}</span>
-        <strong>{cfg.title}</strong>
-        <p>{cfg.proof}</p>
+        <span className="readiness-panel__eyebrow">{live.eyebrow}</span>
+        <strong>{live.title}</strong>
+        <p>{live.proof}</p>
         <div className="readiness-panel__outcomes" aria-label="Readiness outcomes">
-          {cfg.outcomes.map((outcome) => (
+          {live.outcomes.map((outcome) => (
             <span key={outcome}>{outcome}</span>
           ))}
         </div>
       </div>
+      <span className={`readiness-panel__verdict readiness-panel__verdict--${live.verdict.tone}`}>
+        {live.verdict.label}
+      </span>
       <div className="readiness-panel__actions">
-        {cfg.cta && (
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => onPage(cfg.cta!.page)}>
-            {cfg.cta.label}
+        {live.cta && (
+          <button type="button" className="btn btn-primary btn-sm" onClick={() => onPage(live.cta!.page)}>
+            {live.cta.label}
             <ArrowRight size={13} aria-hidden />
           </button>
         )}
-        {cfg.secondary && (
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => onPage(cfg.secondary!.page)}>
-            {cfg.secondary.label}
+        {live.secondary && (
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => onPage(live.secondary!.page)}>
+            {live.secondary.label}
           </button>
         )}
       </div>

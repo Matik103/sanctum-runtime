@@ -233,7 +233,21 @@ export function App() {
           />
         )}
 
-        {!companionMode && <PageReadinessPanel page={page} onPage={onPage} />}
+        {!companionMode && (
+          <PageReadinessPanel
+            page={page}
+            metrics={{
+              apiError,
+              auditCount: audit.length,
+              connectHeldCount: heldConnectCount,
+              fleetPaused: fleetStatus?.paused,
+              pendingReviewCount,
+              policyCount: Object.keys(policies).length,
+              runtimeStatus: status,
+            }}
+            onPage={onPage}
+          />
+        )}
 
         {page === 'overview' && (
           <ErrorBoundary page="Overview">
