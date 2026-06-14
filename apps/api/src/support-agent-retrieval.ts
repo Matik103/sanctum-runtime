@@ -362,7 +362,7 @@ export function pricingSummaryFromChunk(content: string): string | null {
       .filter(Boolean)
       .slice(0, 6)
       .join('\n')
-    return `The cheapest plan is **Observer** — **$0 / free forever**.\n\n${line}`
+    return `The cheapest plan is Observer — $0 / free forever. Observer is observe-only: unlimited observe events and no governed actions (no verify, approve, block, or gate). Upgrade to Personal for governed actions.\n\n${line.replace(/\*\*/g, '')}`
   }
   return null
 }

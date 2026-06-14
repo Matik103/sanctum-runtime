@@ -30,14 +30,15 @@ type KbSourceInput = {
 
 const PRICING_MARKDOWN = `# Sanctum Runtime Pricing
 
-## Observer (cheapest plan — free forever)
+## Observer (cheapest plan — free forever, observe only)
 - Price: **$0** / free forever
-- Best for: watching agent side effects before paying
+- Best for: watching agent side effects before paying for production control
 - Agents: 2
-- Governed actions: 50/month
+- Runtimes: 3
+- Governed actions: none (observe only — no verify, approve, block, or gate)
 - Observe events: unlimited
 - Retention: 7 days
-- Features: Connect proxy observe mode, Live Feed, audit read, 3 SDK runtimes
+- Features: Connect proxy observe mode, Live Feed, audit read
 
 ## Personal
 - Price: **$12/month** or **$99/year** (indie builders)
@@ -140,7 +141,7 @@ function buildSources(): KbSourceInput[] {
       slug: 'page/pricing',
       source_type: 'pricing',
       title: 'Sanctum Runtime Pricing Plans',
-      summary: 'Observer free plan, Personal $12, Operator $59, Team $299, Enterprise custom.',
+      summary: 'Observer free observe-only plan, Personal $12, Operator $59, Team $299, Enterprise custom.',
       content_markdown: PRICING_MARKDOWN,
       canonical_url: `${MARKETING_URL}/pricing`,
       external_key: 'page/pricing',

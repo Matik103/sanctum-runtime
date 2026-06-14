@@ -83,8 +83,8 @@ function BillingPage() {
         <h2>6. Observer tier</h2>
         <p>
           Observer is the free plan for seeing what agents touch before paying for production control.
-          It includes live feed visibility, limited governed actions for evaluation, and no guaranteed
-          availability or support SLA. We may modify free-tier limits with reasonable notice.
+          It includes live feed visibility and observe-only Connect — no verify, approve, block, or gate
+          on governed actions. We may modify free-tier limits with reasonable notice.
         </p>
       </section>
 

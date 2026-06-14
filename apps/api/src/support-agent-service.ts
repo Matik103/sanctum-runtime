@@ -75,6 +75,12 @@ function buildSystemPrompt(config: SupportAgentConfig, context: string): string 
     '- Do not include internal model names, provider names, implementation guesses, IDs, keys, database details, or stack traces unless excerpts explicitly include them.',
     '- When citing, mention the article or doc title and include markdown links for URLs.',
     '',
+    'Format:',
+    '- Plain text only — no markdown headers (#), bold (**), or italic.',
+    '- Use short paragraphs and simple "Label: value" lines for lists.',
+    '- Links are OK as [title](url) for citations only.',
+    '- Quote pricing and limits exactly as in excerpts (Observer has no governed actions — observe only; Personal starts at 500/mo governed).',
+    '',
     'Human escalation (last resort only):',
     '- Do NOT offer human contact, sales routing, or "connect to a human" unless the visitor explicitly asks for a person or needs account-specific data you cannot infer from excerpts.',
     '- Never default to contact/sales when you can give a useful answer from excerpts or general Sanctum positioning (runtime trust, verify-before-execute, MCP gates, policies, audit).',
@@ -170,27 +176,38 @@ function supportHandoff(input: {
   }
 }
 
+/** Strip markdown the chat UI does not render (headings, bold). Keeps [label](url) links. */
+export function sanitizeReplyForChat(content: string): string {
+  let text = content.trim()
+  text = text.replace(/^#{1,6}\s+/gm, '')
+  text = text.replace(/\*\*([^*]+)\*\*/g, '$1')
+  text = text.replace(/__([^_]+)__/g, '$1')
+  text = text.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '$1')
+  text = text.replace(/_([^_\n]+)_/g, '$1')
+  return text.replace(/\n{3,}/g, '\n\n').trim()
+}
+
 function greetingReply(): string {
-  return (
-    `Hi — I'm **Sanctum Guide**. I can help with runtime trust, agent security, MCP hardening, pricing, and getting started.\n\n` +
-    `A few things visitors often ask:\n` +
-    `- What is Sanctum Runtime and how is it different from guardrails?\n` +
-    `- How does verify-before-execute / human approval work?\n` +
-    `- MCP security, action tokens, and policy design\n` +
-    `- Plans and pricing (Observer through Enterprise)\n\n` +
-    `What would you like to dig into?`
+  return sanitizeReplyForChat(
+    `Hi — I'm Sanctum Guide. I can help with runtime trust, agent security, MCP hardening, pricing, and getting started.\n\n` +
+      `A few things visitors often ask:\n` +
+      `- What is Sanctum Runtime and how is it different from guardrails?\n` +
+      `- How does verify-before-execute / human approval work?\n` +
+      `- MCP security, action tokens, and policy design\n` +
+      `- Plans and pricing (Observer through Enterprise)\n\n` +
+      `What would you like to dig into?`,
   )
 }
 
 function generalHelpReply(): string {
-  return (
-    `I can answer questions about **Sanctum Runtime** using our docs, blog, and product guides — no account needed.\n\n` +
-    `Try asking about:\n` +
-    `- **Getting started** — SDK install, console, quick start\n` +
-    `- **Runtime trust** — verifyAction, policies, approvals, audit trails\n` +
-    `- **Security** — MCP gates, prompt injection, SOC 2 evidence, kill switches\n` +
-    `- **Pricing** — Observer, Operator, Team, Enterprise\n\n` +
-    `What are you building or evaluating?`
+  return sanitizeReplyForChat(
+    `I can answer questions about Sanctum Runtime using our docs, blog, and product guides — no account needed.\n\n` +
+      `Try asking about:\n` +
+      `- Getting started — SDK install, console, quick start\n` +
+      `- Runtime trust — verifyAction, policies, approvals, audit trails\n` +
+      `- Security — MCP gates, prompt injection, SOC 2 evidence, kill switches\n` +
+      `- Pricing — Observer, Operator, Team, Enterprise\n\n` +
+      `What are you building or evaluating?`,
   )
 }
 
@@ -228,7 +245,7 @@ function composeFromChunks(
       ? pricingSummaryFromChunk(pricingChunk.content)
       : null
 
-  const pricingIntro = comparisonLead ?? (planTierLead ? `**${planTier} plan:**\n\n${planTierLead}` : null)
+  const pricingIntro = comparisonLead ?? (planTierLead ? `${planTier} plan:\n\n${planTierLead}` : null)
 
   const intro = pricingIntro
     ? pricingIntro
@@ -249,24 +266,24 @@ function composeFromChunks(
   const body = bodyChunks
     .map((c) => {
       const link = c.canonical_url ? ` [Read more](${c.canonical_url})` : ''
-      return `**${c.source_title}**${link}\n${c.content.slice(0, 550)}`
+      return `${c.source_title}${link}\n${c.content.slice(0, 550)}`
     })
     .join('\n\n')
 
   const citeList = chunksToCitations(top).slice(0, 3)
   const citeExtra =
     citeList.length > 0
-      ? `\n\n**Sources:** ${citeList
+      ? `\n\nSources: ${citeList
           .map((c) => (c.url ? `[${c.title}](${c.url})` : c.title))
           .join(' · ')}`
       : citations.length > 0
-        ? `\n\n**Sources:** ${citations
+        ? `\n\nSources: ${citations
             .slice(0, 3)
             .map((c) => (c.url ? `[${c.title}](${c.url})` : c.title))
             .join(' · ')}`
         : ''
 
-  return body ? `${intro}\n\n${body}${citeExtra}` : `${intro}${citeExtra}`
+  return sanitizeReplyForChat(body ? `${intro}\n\n${body}${citeExtra}` : `${intro}${citeExtra}`)
 }
 
 function fallbackReply(
@@ -278,16 +295,17 @@ function fallbackReply(
   if (chunks.length) return composeFromChunks(message, chunks, citations)
   const citeBlock =
     citations.length > 0
-      ? `\n\n**Related:**\n${citations
+      ? `\n\nRelated:\n${citations
           .slice(0, 3)
           .map((c) => (c.url ? `- [${c.title}](${c.url})` : `- ${c.title}`))
           .join('\n')}`
       : '\n\nBrowse [docs](https://www.sanctumruntime.com/docs) or our [blog](https://www.sanctumruntime.com/blog).'
 
-  const base =
+  const base = sanitizeReplyForChat(
     `I could not find a tight match in the knowledge base for that exact wording, but here is the safe overview:\n\n` +
-    `**Sanctum Runtime** is the runtime trust boundary for AI agents and autonomous systems. It verifies tool calls and side effects **before** they execute, applies policy and risk scoring, can pause risky actions for human approval, issues signed action tokens, and keeps audit evidence operators can defend.\n\n` +
-    `If you can rephrase with a bit more context (stack, use case, or action you are trying to gate), I can pull a more specific guide from our KB.${citeBlock}`
+      `Sanctum Runtime is the runtime trust boundary for AI agents and autonomous systems. It verifies tool calls and side effects before they execute, applies policy and risk scoring, can pause risky actions for human approval, issues signed action tokens, and keeps audit evidence operators can defend.\n\n` +
+      `If you can rephrase with a bit more context (stack, use case, or action you are trying to gate), I can pull a more specific guide from our KB.${citeBlock}`,
+  )
 
   return handoff?.recommended ? appendHandoff(base, handoff) : base
 }
@@ -487,6 +505,8 @@ export class SupportAgentService {
     if (handoff?.recommended) {
       assistantContent = appendHandoff(assistantContent, handoff)
     }
+
+    assistantContent = sanitizeReplyForChat(assistantContent)
 
     const reply = await this.store.addMessage({
       session_id: session.id,

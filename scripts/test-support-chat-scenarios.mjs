@@ -11,7 +11,8 @@ const SCENARIOS = [
     category: 'pricing',
     message: 'what is the cheapest plan?',
     expectSlug: /page\/pricing/,
-    expectContent: /\$0|Observer|free/i,
+    expectContent: /\$0|Observer|observe|none|no govern/i,
+    rejectContent: /50\/mo|50\/month|50 governed/i,
     rejectSlug: null,
   },
   {

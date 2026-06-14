@@ -46,10 +46,11 @@ const plans: Plan[] = [
     stats: [
       { label: "Agents", value: "2" },
       { label: "Observe events", value: "Unlimited" },
-      { label: "Governed actions", value: "50/mo" },
+      { label: "Governed actions", value: "None" },
       { label: "Retention", value: "7 days" },
     ],
     features: [
+      "Observe only — no verify, approve, block, or gate",
       "Connect proxy in observe mode",
       "Live Feed and audit read",
       "3 SDK runtimes",
@@ -142,7 +143,7 @@ const meters = [
 ];
 
 const upgradeTriggers = [
-  "51st governed action: upgrade to keep blocking.",
+  "Need to block or approve? Governed control starts at Personal ($12/mo).",
   "Day 8 on Observer: upgrade for 30-day history.",
   "Toggle Connect to gate: production control starts at Operator.",
   "Shadow mode: see which transfer would have been held.",

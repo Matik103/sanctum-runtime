@@ -8,6 +8,7 @@ import {
   isGreeting,
   planComparisonSummary,
   planSectionFromChunk,
+  pricingSummaryFromChunk,
   rankChunksForQuery,
   scoreKbSource,
   shouldAutoHandoffForLowConfidence,
@@ -18,8 +19,10 @@ import type { SupportKbChunkMatch } from './support-agent-store.js'
 
 const PRICING = `# Sanctum Runtime Pricing
 
-## Observer (cheapest plan — free forever)
+## Observer (cheapest plan — free forever, observe only)
 - Price: **$0** / free forever
+- Governed actions: none (observe only)
+- Observe events: unlimited
 
 ## Personal
 - Price: **$12/month**
@@ -176,6 +179,19 @@ describe('plan-aware replies', () => {
     expect(summary).toMatch(/Observer/)
     expect(summary).toMatch(/Operator/)
     expect(summary).toMatch(/\$59/)
+  })
+
+  it('cheapest plan summary says observe-only', () => {
+    const fullPricing = `# Sanctum Runtime Pricing
+
+## Observer (cheapest plan — free forever, observe only)
+- Price: **$0** / free forever
+- Governed actions: none (observe only)
+- Observe events: unlimited
+`
+    const summary = pricingSummaryFromChunk(fullPricing)
+    expect(summary).toMatch(/observe-only/i)
+    expect(summary).not.toMatch(/50/)
   })
 
   it('hints plan comparison to pricing page', () => {
