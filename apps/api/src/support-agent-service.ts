@@ -1,4 +1,15 @@
 import type { SupabaseAuthConfig } from './auth.js'
+import {
+  detectSalesIntent,
+  detectPlanTier,
+  enterprisePricingSummary,
+  filterChunksForReply,
+  planComparisonSummary,
+  planSectionFromChunk,
+  pricingSummaryFromChunk,
+  rankChunksForQuery,
+  wantsCheapestPlanAnswer,
+} from './support-agent-retrieval.js'
 import { embedTexts } from './support-embeddings.js'
 import {
   SupportAgentStore,
@@ -8,12 +19,6 @@ import {
 } from './support-agent-store.js'
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1'
-const SALES_INTENT_RE =
-  /\b(pric(e|ing)|plan|buy|purchase|enterprise|pilot|demo|sales|quote|cost|subscription|trial)\b/i
-
-function detectSalesIntent(message: string): boolean {
-  return SALES_INTENT_RE.test(message)
-}
 
 function chunksToCitations(chunks: SupportKbChunkMatch[]): SupportCitation[] {
   const seen = new Set<string>()
@@ -113,29 +118,74 @@ function mergeChunks(...lists: SupportKbChunkMatch[][]): SupportKbChunkMatch[] {
   return out
 }
 
-function composeFromChunks(chunks: SupportKbChunkMatch[], citations: SupportCitation[]): string {
-  const top = chunks.slice(0, 4)
-  const intro = top[0]?.source_type === 'pricing'
-    ? 'Here is what our pricing page says:'
-    : 'Based on our knowledge base:'
-  const body = top
+function composeFromChunks(
+  message: string,
+  chunks: SupportKbChunkMatch[],
+  citations: SupportCitation[],
+): string {
+  const top = filterChunksForReply(message, chunks)
+  const pricingChunk = top.find((c) => c.source_type === 'pricing')
+  const planTier = detectPlanTier(message)
+  const comparisonLead =
+    /\bcompare\b/i.test(message) && /\b(observer|operator|personal|team)\b/i.test(message) && pricingChunk
+      ? planComparisonSummary(pricingChunk.content)
+      : null
+  const planTierLead =
+    !comparisonLead && planTier && pricingChunk
+      ? planSectionFromChunk(pricingChunk.content, planTier)
+      : null
+  const enterpriseLead =
+    !comparisonLead && !planTierLead && /\benterprise\b/i.test(message) && pricingChunk
+      ? enterprisePricingSummary(pricingChunk.content)
+      : null
+  const pricingLead =
+    !comparisonLead && !planTierLead && !enterpriseLead && wantsCheapestPlanAnswer(message) && pricingChunk
+      ? pricingSummaryFromChunk(pricingChunk.content)
+      : null
+
+  const pricingIntro = comparisonLead ?? (planTierLead ? `**${planTier} plan:**\n\n${planTierLead}` : null)
+
+  const intro = pricingIntro
+    ? pricingIntro
+    : enterpriseLead
+      ? enterpriseLead
+      : pricingLead
+        ? pricingLead
+        : detectSalesIntent(message) && pricingChunk
+          ? 'Here is our pricing overview:'
+          : top[0]?.source_type === 'pricing'
+            ? 'Here is what our pricing page says:'
+            : 'Based on our knowledge base:'
+
+  const bodyChunks = pricingIntro || enterpriseLead || pricingLead
+    ? top.filter((c) => c.source_type !== 'pricing').slice(0, 2)
+    : top.slice(0, 3)
+
+  const body = bodyChunks
     .map((c) => {
       const link = c.canonical_url ? ` [Read more](${c.canonical_url})` : ''
-      return `**${c.source_title}**${link}\n${c.content.slice(0, 650)}`
+      return `**${c.source_title}**${link}\n${c.content.slice(0, 550)}`
     })
     .join('\n\n')
+
+  const citeList = chunksToCitations(top).slice(0, 3)
   const citeExtra =
-    citations.length > 1
-      ? `\n\n**Related:** ${citations
-          .slice(0, 3)
+    citeList.length > 0
+      ? `\n\n**Sources:** ${citeList
           .map((c) => (c.url ? `[${c.title}](${c.url})` : c.title))
           .join(' · ')}`
-      : ''
-  return `${intro}\n\n${body}${citeExtra}`
+      : citations.length > 0
+        ? `\n\n**Sources:** ${citations
+            .slice(0, 3)
+            .map((c) => (c.url ? `[${c.title}](${c.url})` : c.title))
+            .join(' · ')}`
+        : ''
+
+  return body ? `${intro}\n\n${body}${citeExtra}` : `${intro}${citeExtra}`
 }
 
 function fallbackReply(message: string, citations: SupportCitation[], chunks: SupportKbChunkMatch[]): string {
-  if (chunks.length) return composeFromChunks(chunks, citations)
+  if (chunks.length) return composeFromChunks(message, chunks, citations)
   const citeBlock =
     citations.length > 0
       ? `\n\n**Related:**\n${citations
@@ -216,7 +266,7 @@ export class SupportAgentService {
       }
     }
 
-    return mergeChunks(vectorMatches, textMatches).slice(0, limit)
+    return rankChunksForQuery(message, mergeChunks(vectorMatches, textMatches)).slice(0, limit)
   }
 
   async handleChat(input: {
@@ -240,8 +290,9 @@ export class SupportAgentService {
 
     const config = await this.store.loadConfig()
     const chunks = await this.retrieveChunks(trimmed, config)
-    const citations = chunksToCitations(chunks)
-    const context = buildContextBlock(chunks)
+    const replyChunks = filterChunksForReply(trimmed, chunks)
+    const citations = chunksToCitations(replyChunks.length ? replyChunks : chunks)
+    const context = buildContextBlock(replyChunks.length ? replyChunks : chunks)
 
     const history = await this.store.listMessages(session.id, 12)
     const prior = history
@@ -271,12 +322,12 @@ export class SupportAgentService {
         tokenUsage = completion.usage
       } else {
         assistantContent = chunks.length
-          ? composeFromChunks(chunks, citations)
+          ? composeFromChunks(trimmed, chunks, citations)
           : fallbackReply(trimmed, citations, chunks)
       }
     } else {
       assistantContent = chunks.length
-        ? composeFromChunks(chunks, citations)
+        ? composeFromChunks(trimmed, chunks, citations)
         : fallbackReply(trimmed, citations, chunks)
     }
 

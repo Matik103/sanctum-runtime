@@ -77,16 +77,17 @@ function sha256(text: string): string {
 
 function blogToMarkdown(slug: string): string | null {
   const post = BLOG_POSTS.find((p) => p.slug === slug)
+  if (!post) return null
   const content = BLOG_ANSWER_POSTS[slug]
-  if (!post || !content) return null
-
   const expanded = getExpandedSections(slug)
+
+  const intro = content?.intro ?? post.description
   const parts = [
     `# ${post.title}`,
     '',
     post.description,
     '',
-    content.intro,
+    intro,
     '',
     ...expanded.flatMap((s) => [
       `## ${s.heading}`,
@@ -96,14 +97,21 @@ function blogToMarkdown(slug: string): string | null {
       ...(s.bullets?.map((b) => `- ${b}`) ?? []),
       '',
     ]),
-    '## Key takeaways',
-    '',
-    ...content.keyPoints.map((p) => `- ${p}`),
-    '',
-    '## FAQ',
-    '',
-    ...content.answers.flatMap((a) => [`### ${a.question}`, '', a.answer, '']),
   ]
+
+  if (content) {
+    parts.push(
+      '## Key takeaways',
+      '',
+      ...content.keyPoints.map((p) => `- ${p}`),
+      '',
+      '## FAQ',
+      '',
+      ...content.answers.flatMap((a) => [`### ${a.question}`, '', a.answer, '']),
+    )
+  }
+
+  parts.push('', `Tags: ${post.tags.join(', ')}`)
   return parts.join('\n').trim()
 }
 

@@ -1,4 +1,13 @@
 import { createSupabaseAdmin, type SupabaseAuthConfig } from './auth.js'
+import {
+  detectSalesIntent,
+  extractPhrases,
+  extractSearchTerms,
+  phraseSourceHints,
+  scoreKbSource,
+  termsForSourceQuery,
+  topicHintsForMessage,
+} from './support-agent-retrieval.js'
 
 export type SupportKbChunkMatch = {
   chunk_id: string
@@ -197,55 +206,109 @@ export class SupportAgentStore {
     return (data ?? []) as SupportKbChunkMatch[]
   }
 
-  /** Text fallback when embeddings are not yet ingested. */
-  async searchKbByText(query: string, limit = 6): Promise<SupportKbChunkMatch[]> {
-    const rawTerms = query
-      .toLowerCase()
-      .split(/\W+/)
-      .filter((t) => t.length > 2)
-    const extra: string[] = []
-    if (/\b(cheap|cheapest|cost|price|pricing|plan|free)\b/i.test(query)) {
-      extra.push('pricing', 'observer', 'plan', 'free')
-    }
-    const terms = [...new Set([...rawTerms, ...extra])].slice(0, 6)
-    if (!terms.length) return []
-
-    const orFilter = terms
-      .flatMap((t) => [
-        `title.ilike.%${t}%`,
-        `summary.ilike.%${t}%`,
-        `content_markdown.ilike.%${t}%`,
-      ])
-      .join(',')
-
+  async fetchKbSourcesBySlugs(slugs: string[]): Promise<SupportKbChunkMatch[]> {
+    if (!slugs.length) return []
     const { data, error } = await this.admin
       .from('support_kb_sources')
       .select(
         'id, slug, source_type, title, canonical_url, content_markdown, intent_tags, sales_weight, sales_signals',
       )
       .eq('is_published', true)
-      .or(orFilter)
-      .order('sales_weight', { ascending: false })
-      .limit(limit)
+      .in('slug', slugs)
     if (error) throw error
 
-    return (data ?? []).map((s, i) => {
-      const excerpt = (s.content_markdown as string).slice(0, 1200)
-      return {
-        chunk_id: `text-${s.id}`,
-        source_id: s.id as string,
-        source_slug: s.slug as string,
-        source_type: s.source_type as string,
-        source_title: s.title as string,
-        canonical_url: (s.canonical_url as string | null) ?? null,
-        chunk_kind: 'paragraph',
-        heading: null,
-        content: excerpt,
-        similarity: 0.5 - i * 0.02,
-        intent_tags: (s.intent_tags as string[]) ?? [],
-        sales_weight: (s.sales_weight as number) ?? 0,
-        sales_signals: (s.sales_signals as Record<string, unknown>) ?? {},
-      }
-    })
+    const bySlug = new Map((data ?? []).map((s) => [s.slug as string, s]))
+    return slugs
+      .map((slug, i) => {
+        const s = bySlug.get(slug)
+        if (!s) return null
+        return this.sourceRowToTextMatch(s, 0.92 - i * 0.01)
+      })
+      .filter((c): c is SupportKbChunkMatch => c !== null)
+  }
+
+  private sourceRowToTextMatch(
+    s: Record<string, unknown>,
+    similarity: number,
+  ): SupportKbChunkMatch {
+    const excerpt = (s.content_markdown as string).slice(0, 1200)
+    return {
+      chunk_id: `text-${s.id}`,
+      source_id: s.id as string,
+      source_slug: s.slug as string,
+      source_type: s.source_type as string,
+      source_title: s.title as string,
+      canonical_url: (s.canonical_url as string | null) ?? null,
+      chunk_kind: 'paragraph',
+      heading: null,
+      content: excerpt,
+      similarity,
+      intent_tags: (s.intent_tags as string[]) ?? [],
+      sales_weight: (s.sales_weight as number) ?? 0,
+      sales_signals: (s.sales_signals as Record<string, unknown>) ?? {},
+    }
+  }
+
+  /** Text fallback when embeddings are not yet ingested. */
+  async searchKbByText(query: string, limit = 6): Promise<SupportKbChunkMatch[]> {
+    const salesIntent = detectSalesIntent(query)
+    const terms = extractSearchTerms(query, salesIntent)
+    const phrases = extractPhrases(query)
+    if (!terms.length) return []
+
+    const pinnedSlugs = [
+      ...(salesIntent ? ['page/pricing', 'product/overview'] : []),
+      ...phraseSourceHints(phrases, terms),
+      ...topicHintsForMessage(query),
+    ]
+    const pinned = await this.fetchKbSourcesBySlugs([...new Set(pinnedSlugs)])
+
+    const searchTerms = termsForSourceQuery(terms)
+    const orFilter = searchTerms
+      .flatMap((t) => [`title.ilike.%${t}%`, `summary.ilike.%${t}%`, `content_markdown.ilike.%${t}%`])
+      .join(',')
+
+    const { data, error } = await this.admin
+      .from('support_kb_sources')
+      .select(
+        'id, slug, source_type, title, summary, canonical_url, content_markdown, intent_tags, sales_weight, sales_signals',
+      )
+      .eq('is_published', true)
+      .or(orFilter)
+      .limit(Math.max(limit * 5, 24))
+    if (error) throw error
+
+    const scored = (data ?? [])
+      .map((s) => ({
+        row: s,
+        score: scoreKbSource(
+          {
+            title: s.title as string,
+            summary: s.summary as string | null,
+            content_markdown: s.content_markdown as string,
+            source_type: s.source_type as string,
+            sales_weight: (s.sales_weight as number) ?? 0,
+          },
+          terms,
+          salesIntent,
+          phrases,
+        ),
+      }))
+      .filter((x) => x.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit)
+
+    const matches = scored.map((x, i) =>
+      this.sourceRowToTextMatch(x.row as Record<string, unknown>, 0.88 - i * 0.03),
+    )
+
+    const seen = new Set<string>()
+    const merged: SupportKbChunkMatch[] = []
+    for (const c of [...pinned, ...matches]) {
+      if (seen.has(c.source_slug)) continue
+      seen.add(c.source_slug)
+      merged.push(c)
+    }
+    return merged.slice(0, limit)
   }
 }

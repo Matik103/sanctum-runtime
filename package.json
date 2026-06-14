@@ -96,6 +96,7 @@
     "a2z:marketplace": "node scripts/test-marketplace.mjs",
     "env:pull": "node scripts/pull-supabase-env.mjs",
     "sync:support-kb": "tsx scripts/sync-support-kb.ts",
+    "test:support-chat": "node scripts/test-support-chat-scenarios.mjs",
     "db:push": "supabase db push",
     "db:align": "supabase db push && node scripts/verify-plans-alignment.mjs",
     "db:status": "supabase migration list",
