@@ -17,6 +17,7 @@ import { Overview } from './pages/Overview'
 import { fetchMyOrgs } from './lib/fleet'
 import { useOfflineQueue } from './hooks/useOfflineQueue'
 import { PlanGateAlert } from './components/PlanGateAlert'
+import { PageReadinessPanel } from './components/PageReadinessPanel'
 import { formatApiError } from './lib/sanitize-error'
 import { buildPageUrl, type NavigateQuery } from './lib/navigate'
 
@@ -231,6 +232,8 @@ export function App() {
             onViewActivity={() => onPage('activity')}
           />
         )}
+
+        {!companionMode && <PageReadinessPanel page={page} onPage={onPage} />}
 
         {page === 'overview' && (
           <ErrorBoundary page="Overview">
