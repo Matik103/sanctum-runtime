@@ -79,7 +79,11 @@ function supportPortalUrl(sessionPublicId: string, consoleBaseUrl?: string): str
     process.env.CONSOLE_URL ??
     'https://console.sanctumruntime.com'
   ).replace(/\/$/, '')
-  return `${base}/support?session=${encodeURIComponent(sessionPublicId)}`
+  const params = new URLSearchParams({
+    page: 'support-inbox',
+    session: sessionPublicId,
+  })
+  return `${base}/?${params.toString()}`
 }
 
 export async function notifySupportHandoff(input: HandoffNotifyInput): Promise<void> {

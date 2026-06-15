@@ -42,6 +42,7 @@ function mapMessage(m: {
   citation_sources: unknown
   metadata: unknown
   created_at: unknown
+  feedback_rating?: -1 | 1 | null
 }) {
   const meta = (m.metadata ?? {}) as {
     handoff?: unknown
@@ -57,6 +58,7 @@ function mapMessage(m: {
     handoff: meta.handoff ?? null,
     follow_ups: meta.follow_ups ?? [],
     sender: meta.sender ?? (meta.operator_email ? 'operator' : 'bot'),
+    feedback: m.feedback_rating ?? null,
     created_at: m.created_at,
   }
 }

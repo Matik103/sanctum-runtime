@@ -471,26 +471,30 @@ export class SupportAgentService {
     })
 
     if (input.handoff?.recommended) {
-      const { alreadyQueued } = await this.store.escalateSession({
-        session_id: input.session.id,
-        reason: input.handoff.reason,
-      })
-      if (!alreadyQueued) {
-        const messages = await this.store.listMessages(input.session.id, 20)
-        const inbox = await loadInboxConfig(this.store)
-        void notifySupportHandoff({
-          sessionPublicId: input.session.public_id,
+      const autoQueue =
+        input.handoff.reason === 'requested' || input.handoff.reason === 'sales'
+      if (autoQueue) {
+        const { alreadyQueued } = await this.store.escalateSession({
+          session_id: input.session.id,
           reason: input.handoff.reason,
-          visitorMessage: input.trimmed,
-          landingPath: input.session.landing_path ?? null,
-          transcript: messages.map((m) => ({
-            role: m.role as string,
-            content: m.content as string,
-            created_at: m.created_at as string,
-          })),
-          inbox,
-          consoleBaseUrl: process.env.VITE_CONSOLE_URL ?? process.env.CONSOLE_URL,
         })
+        if (!alreadyQueued) {
+          const messages = await this.store.listMessages(input.session.id, 20)
+          const inbox = await loadInboxConfig(this.store)
+          void notifySupportHandoff({
+            sessionPublicId: input.session.public_id,
+            reason: input.handoff.reason,
+            visitorMessage: input.trimmed,
+            landingPath: input.session.landing_path ?? null,
+            transcript: messages.map((m) => ({
+              role: m.role as string,
+              content: m.content as string,
+              created_at: m.created_at as string,
+            })),
+            inbox,
+            consoleBaseUrl: process.env.VITE_CONSOLE_URL ?? process.env.CONSOLE_URL,
+          })
+        }
       }
     }
 
@@ -774,7 +778,10 @@ export class SupportAgentService {
       latencyMs: Date.now() - started,
     })
 
-    const sessionStatus = handoff?.recommended ? 'queued' : 'bot'
+    const autoQueued =
+      handoff?.recommended &&
+      (handoff.reason === 'requested' || handoff.reason === 'sales')
+    const sessionStatus = autoQueued ? 'queued' : 'bot'
     return this.formatReply(reply, handoff, followUps, sessionStatus)
   }
 

@@ -101,6 +101,7 @@ export async function fetchSupportMessages(sessionId: string): Promise<{
       handoff?: SupportHandoff | null;
       follow_ups?: string[];
       sender?: string;
+      feedback?: -1 | 1 | null;
       created_at: string;
     }>;
   }>(res);
@@ -114,6 +115,7 @@ export async function fetchSupportMessages(sessionId: string): Promise<{
       handoff: m.handoff,
       follow_ups: m.follow_ups,
       sender: (m.sender as SupportChatMessage["sender"]) ?? "bot",
+      feedback: m.feedback ?? null,
       created_at: m.created_at,
     })),
   };

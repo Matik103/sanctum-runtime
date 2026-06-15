@@ -115,15 +115,17 @@ function CitationList({ citations }: { citations: SupportCitation[] }) {
 function HandoffCard({
   handoff,
   sessionId,
+  sessionStatus,
   onEscalate,
   escalating,
 }: {
   handoff?: SupportHandoff | null;
   sessionId: string | null;
+  sessionStatus: SupportSessionStatus;
   onEscalate: () => void;
   escalating: boolean;
 }) {
-  if (!handoff?.recommended) return null;
+  if (!handoff?.recommended || sessionStatus !== "bot") return null;
   return (
     <div className="mt-3 rounded-xl border border-primary/25 bg-primary/10 p-3">
       <div className="flex items-start gap-2">
@@ -400,11 +402,19 @@ export function SupportChatWidget() {
   }, [sessionId, escalating, messages, refreshMessages]);
 
   const handleFeedback = React.useCallback(async (messageId: string, rating: -1 | 1) => {
+    const previous = messages.find((m) => m.id === messageId)?.feedback ?? null;
     setMessages((prev) =>
       prev.map((m) => (m.id === messageId ? { ...m, feedback: rating } : m)),
     );
-    await submitSupportFeedback(messageId, rating);
-  }, []);
+    try {
+      await submitSupportFeedback(messageId, rating);
+    } catch {
+      setMessages((prev) =>
+        prev.map((m) => (m.id === messageId ? { ...m, feedback: previous } : m)),
+      );
+      throw new Error("feedback_failed");
+    }
+  }, [messages]);
 
   const send = React.useCallback(
     async (text: string) => {
@@ -606,6 +616,7 @@ export function SupportChatWidget() {
                       <HandoffCard
                         handoff={m.handoff}
                         sessionId={sessionId}
+                        sessionStatus={sessionStatus}
                         onEscalate={() => void handleEscalate()}
                         escalating={escalating}
                       />
@@ -625,7 +636,7 @@ export function SupportChatWidget() {
                 </div>
               ) : null}
               {loading && !streamingText ? <TypingIndicator /> : null}
-              {!loading && followUps.length ? (
+              {!loading && followUps.length && sessionStatus === "bot" ? (
                 <FollowUpChips
                   suggestions={followUps}
                   disabled={loading || booting}
@@ -660,6 +671,19 @@ export function SupportChatWidget() {
 
         {/* Composer */}
         <div className="shrink-0 border-t border-border/60 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          {sessionStatus === "bot" && sessionId ? (
+            <div className="mb-2 flex justify-end">
+              <button
+                type="button"
+                disabled={escalating}
+                onClick={() => void handleEscalate()}
+                className="inline-flex items-center gap-1 rounded-lg border border-border/70 px-2.5 py-1 text-[10px] font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary disabled:opacity-50"
+              >
+                <UserRoundCheck className="h-3 w-3" />
+                {escalating ? "Connecting…" : "Chat with a human"}
+              </button>
+            </div>
+          ) : null}
           <div className="flex items-end gap-2 rounded-xl border border-input/80 bg-surface/80 p-1.5 focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/30">
             <textarea
               ref={inputRef}
@@ -667,7 +691,13 @@ export function SupportChatWidget() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               rows={1}
-              placeholder="Ask about runtime trust, MCP, pricing…"
+              placeholder={
+                sessionStatus === "human_active"
+                  ? "Message the Sanctum team…"
+                  : sessionStatus === "queued"
+                    ? "You're in the queue — keep typing…"
+                    : "Ask about runtime trust, agents, pricing…"
+              }
               disabled={loading || booting}
               className="max-h-28 min-h-[2.25rem] flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none disabled:opacity-50"
               aria-label="Message"
@@ -683,7 +713,11 @@ export function SupportChatWidget() {
             </button>
           </div>
           <p className="mt-2 text-center text-[10px] text-muted-foreground/80">
-            No sign-in required · AI answers from Sanctum docs &amp; blog
+            {sessionStatus === "human_active"
+              ? "A Sanctum teammate is in this chat"
+              : sessionStatus === "queued"
+                ? "Waiting for a teammate — messages are saved"
+                : "No sign-in required · AI answers from Sanctum docs & blog"}
           </p>
         </div>
       </div>

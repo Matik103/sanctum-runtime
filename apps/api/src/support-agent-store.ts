@@ -452,7 +452,23 @@ export class SupportAgentStore {
       .order('created_at', { ascending: true })
       .limit(limit)
     if (error) throw error
-    return data ?? []
+    const rows = data ?? []
+    if (!rows.length) return rows
+
+    const messageIds = rows.map((r) => r.id as string)
+    const { data: feedbackRows } = await this.admin
+      .from('support_agent_message_feedback')
+      .select('message_id, rating')
+      .in('message_id', messageIds)
+
+    const ratingByMessage = new Map(
+      (feedbackRows ?? []).map((f) => [f.message_id as string, f.rating as -1 | 1]),
+    )
+
+    return rows.map((row) => ({
+      ...row,
+      feedback_rating: ratingByMessage.get(row.id as string) ?? null,
+    }))
   }
 
   async addMessage(input: {

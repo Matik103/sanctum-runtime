@@ -68,19 +68,8 @@ const PAGE_IDS: PageId[] = [
   'live-feed',
 ]
 
-function redirectLegacySupportInbox() {
-  if (typeof window === 'undefined') return false
-  const params = new URLSearchParams(window.location.search)
-  if (params.get('page') !== 'support-inbox') return false
-  const session = params.get('session')
-  const target = `/support${session ? `?session=${encodeURIComponent(session)}` : ''}`
-  window.location.replace(target)
-  return true
-}
-
 function initialPage(): PageId {
   if (typeof window === 'undefined') return 'overview'
-  if (redirectLegacySupportInbox()) return 'overview'
   const requested = new URLSearchParams(window.location.search).get('page') as PageId | null
   return requested && PAGE_IDS.includes(requested) ? requested : 'overview'
 }

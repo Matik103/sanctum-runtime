@@ -92,6 +92,12 @@ services:
     staticPublishPath: apps/dashboard/dist
     routes:
       - type: rewrite
+        source: /support
+        destination: /index.html
+      - type: rewrite
+        source: /support/*
+        destination: /index.html
+      - type: rewrite
         source: /*
         destination: /index.html
     # Strengthen the noindex signal at the HTTP level so search engines
