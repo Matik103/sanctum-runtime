@@ -89,8 +89,8 @@ What would you like to know? You can ask about a specific plan, integration, or 
   } as const,
 
   placeholder: {
-    bot: "Ask about runtime trust, MCP gates, pricing, pilots…",
-    waiting: "Share anything else — your specialist will see it",
+    bot: "Ask about MCP, pricing, pilots…",
+    waiting: "Add more context — your specialist will see it",
     live: (name: string) => `Message ${name}…`,
     liveGeneric: "Message your specialist…",
     resolved: "This conversation is closed",

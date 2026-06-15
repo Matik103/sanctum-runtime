@@ -411,6 +411,13 @@ export function SupportChatWidget() {
     if (open && !loading) inputRef.current?.focus();
   }, [open, loading]);
 
+  React.useLayoutEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 112)}px`;
+  }, [input, open, sessionStatus]);
+
   const handleEscalate = React.useCallback(async () => {
     if (!sessionId || escalating) return;
     setEscalating(true);
@@ -812,7 +819,7 @@ export function SupportChatWidget() {
                         : SUPPORT_VISITOR_COPY.placeholder.bot
                   }
                   disabled={loading || booting}
-                  className="max-h-28 min-h-[2.25rem] flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none disabled:opacity-50"
+                  className="max-h-28 min-h-[2.5rem] flex-1 resize-none overflow-hidden bg-transparent px-2 py-1.5 text-sm leading-normal text-foreground placeholder:text-muted-foreground focus:outline-none disabled:opacity-50"
                   aria-label="Message"
                 />
                 <button
