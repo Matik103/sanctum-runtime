@@ -15,6 +15,7 @@ import {
   claimInboxSession,
   fetchInboxAnalytics,
   fetchInboxSession,
+  fetchInboxSessions,
   pollInboxSessions,
   replyInboxSession,
   resolveInboxSession,
@@ -121,6 +122,11 @@ export function SupportInbox({
 
   const clearSelection = useCallback(() => {
     setSelectedId(null)
+    setMessages([])
+    setSessionMeta(null)
+    setReply('')
+    userScrolledUpRef.current = false
+    messageCountRef.current = 0
     if (portalMode) syncSessionUrl(null)
   }, [portalMode])
 
@@ -154,6 +160,9 @@ export function SupportInbox({
     const stop = pollInboxSessions((list) => {
       setSessions(list)
       setSelectedId((current) => {
+        if (current && !list.some((s) => s.public_id === current)) {
+          return null
+        }
         if (current) return current
         if (initialSessionId && list.some((s) => s.public_id === initialSessionId)) {
           return initialSessionId
@@ -164,6 +173,13 @@ export function SupportInbox({
 
     return stop
   }, [initialSessionId])
+
+  useEffect(() => {
+    if (selectedId) return
+    setMessages([])
+    setSessionMeta(null)
+    setReply('')
+  }, [selectedId])
 
   useEffect(() => {
     if (!selectedId) return
@@ -218,7 +234,9 @@ export function SupportInbox({
     if (!selectedId) return
     try {
       await resolveInboxSession(selectedId)
-      await loadDetail(selectedId)
+      clearSelection()
+      const list = await fetchInboxSessions()
+      setSessions(list)
     } catch (e) {
       setError(formatApiError(e))
     }
@@ -346,10 +364,23 @@ export function SupportInbox({
             {!selectedId ? (
               <div className="support-inbox__thread-empty">
                 <MessageSquare size={28} style={{ opacity: 0.35 }} />
-                <p className="support-inbox__thread-empty-title">Select a conversation</p>
-                <p style={{ margin: 0, fontSize: 13 }}>
-                  Pick a conversation to read the Guide transcript and continue as {operatorName}.
-                </p>
+                {sessions.length === 0 ? (
+                  <>
+                    <p className="support-inbox__thread-empty-title">Waiting for visitors</p>
+                    <p style={{ margin: 0, fontSize: 13, maxWidth: 320 }}>
+                      When someone requests a specialist on the marketing site, the conversation
+                      appears in your inbox — ready for you to claim and reply.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="support-inbox__thread-empty-title">Select a conversation</p>
+                    <p style={{ margin: 0, fontSize: 13 }}>
+                      Pick a conversation from the inbox to read the Guide transcript and continue as{' '}
+                      {operatorName}.
+                    </p>
+                  </>
+                )}
               </div>
             ) : (
               <>
