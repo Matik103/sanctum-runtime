@@ -882,7 +882,7 @@ export function SupportChatWidget() {
           type="button"
           onClick={handleLauncherClick}
           className={cn(
-            "relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-primary/30 bg-surface shadow-glow transition-all duration-300 hover:scale-105 hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            "relative flex h-14 w-14 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-primary/30 bg-surface shadow-glow transition-all duration-300 hover:scale-105 hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           )}
           aria-expanded={open}
           aria-label={open ? "Close support chat" : "Open support chat"}
