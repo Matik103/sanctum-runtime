@@ -48,10 +48,10 @@ export function SupportPortalLogin() {
               <Headphones size={22} style={{ color: 'var(--primary)' }} />
               <div>
                 <h2 className="auth-form-title" style={{ margin: 0 }}>
-                  Sanctum Guide · Support
+                  Sanctum Support
                 </h2>
                 <p className="auth-form-sub auth-form-sub--compact" style={{ margin: '4px 0 0' }}>
-                  Operator portal for marketing-site visitor chats. Not the runtime console.
+                  Specialist inbox for marketing-site conversations.
                 </p>
               </div>
             </div>
@@ -91,7 +91,7 @@ export function SupportPortalLogin() {
                 </div>
               </fieldset>
               <button type="submit" className="auth-submit" disabled={busy}>
-                {busy ? 'Signing in…' : 'Open support inbox'}
+                {busy ? 'Signing in…' : 'Open inbox'}
               </button>
             </form>
             <p className="auth-form-sub auth-form-sub--compact" style={{ marginTop: 16, opacity: 0.75 }}>

@@ -15,7 +15,7 @@ describe('suggestFollowUps', () => {
       url: 'https://example.com',
       email: 'support@example.com',
     })
-    expect(out[0]).toMatch(/human/i)
+    expect(out[0]).toMatch(/specialist/i)
   })
 
   it('returns at most 3 suggestions', () => {

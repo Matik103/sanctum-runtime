@@ -20,6 +20,7 @@ export type InboxMessage = {
   content: string
   citations?: unknown[]
   sender?: string
+  operator_display_name?: string | null
   created_at: string
 }
 

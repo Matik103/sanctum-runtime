@@ -27,6 +27,7 @@ export type SupportChatMessage = {
   handoff?: SupportHandoff | null;
   follow_ups?: string[];
   sender?: "bot" | "operator" | "system";
+  operator_display_name?: string | null;
   created_at: string;
   feedback?: -1 | 1 | null;
 };
@@ -101,6 +102,7 @@ export async function fetchSupportMessages(sessionId: string): Promise<{
       handoff?: SupportHandoff | null;
       follow_ups?: string[];
       sender?: string;
+      operator_display_name?: string | null;
       feedback?: -1 | 1 | null;
       created_at: string;
     }>;
@@ -115,6 +117,7 @@ export async function fetchSupportMessages(sessionId: string): Promise<{
       handoff: m.handoff,
       follow_ups: m.follow_ups,
       sender: (m.sender as SupportChatMessage["sender"]) ?? "bot",
+      operator_display_name: m.operator_display_name ?? null,
       feedback: m.feedback ?? null,
       created_at: m.created_at,
     })),

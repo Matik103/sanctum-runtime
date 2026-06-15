@@ -1,4 +1,4 @@
-import { UserRound } from "lucide-react";
+import { UserRound, UserRoundCheck } from "lucide-react";
 import logo from "@/assets/sanctum-logo.png";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +31,30 @@ export function SanctumGuideAvatar({
       {online ? (
         <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-elevated bg-success" />
       ) : null}
+    </div>
+  );
+}
+
+/** Human operator — distinct from the Sanctum Guide AI avatar. */
+export function OperatorChatAvatar({
+  size = "sm",
+  className,
+}: {
+  size?: keyof typeof guideSizes;
+  className?: string;
+}) {
+  const s = guideSizes[size];
+  return (
+    <div
+      className={cn(
+        "relative flex shrink-0 items-center justify-center border border-success/40 bg-success/10 text-success",
+        s.box,
+        className,
+      )}
+      aria-hidden
+    >
+      <UserRoundCheck className={size === "sm" ? "h-4 w-4" : "h-5 w-5"} strokeWidth={2.25} />
+      <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-elevated bg-success" />
     </div>
   );
 }

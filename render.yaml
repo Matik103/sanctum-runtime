@@ -52,6 +52,8 @@ services:
         value: mailto:ops@sanctumruntime.com
       - key: RESEND_API_KEY
         sync: false
+      - key: SUPPORT_INBOX_ALLOWED_EMAILS
+        value: "support@sanctumruntime.com"
       - key: NOTIFICATION_FROM_EMAIL
         value: "Sanctum Runtime Alerts <alerts@sanctumruntime.com>"
       # Creem billing — https://docs.creem.io/code/webhooks (see docs/CREEM_BILLING.md)

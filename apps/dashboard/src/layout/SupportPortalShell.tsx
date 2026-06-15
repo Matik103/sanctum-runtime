@@ -9,6 +9,9 @@ type Props = {
 
 export function SupportPortalShell({ children }: Props) {
   const { user, signOut } = useSupportPortalAuth()
+  const displayName =
+    (typeof user?.user_metadata?.display_name === 'string' && user.user_metadata.display_name.trim()) ||
+    'Support operator'
 
   return (
     <div className="support-portal">
@@ -16,8 +19,10 @@ export function SupportPortalShell({ children }: Props) {
         <div className="support-portal__brand">
           <Headphones size={18} aria-hidden />
           <div>
-            <p className="support-portal__title">Sanctum Guide · Support</p>
-            <p className="support-portal__subtitle">Visitor chat inbox — not the runtime console</p>
+            <p className="support-portal__title">Sanctum Support</p>
+            <p className="support-portal__subtitle">
+              {displayName} · visitor conversations
+            </p>
           </div>
         </div>
         <div className="support-portal__actions">

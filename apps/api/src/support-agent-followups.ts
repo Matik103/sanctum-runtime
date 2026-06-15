@@ -1,4 +1,5 @@
 import type { SupportHandoff } from './support-agent-store.js'
+import { SUPPORT_VISITOR_COPY } from './support-visitor-copy.js'
 
 const PRICING_FOLLOWUPS = [
   'Compare Observer vs Operator',
@@ -28,7 +29,7 @@ export function suggestFollowUps(
   const out: string[] = []
 
   if (handoff?.recommended) {
-    out.push('Request a human in this chat')
+    out.push(SUPPORT_VISITOR_COPY.handoffChip)
   }
 
   if (/\b(pric|plan|observer|operator|team|enterprise|\$)/i.test(msg) || /\bpricing\b/.test(text)) {

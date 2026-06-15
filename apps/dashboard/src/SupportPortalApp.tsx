@@ -7,7 +7,7 @@ export function SupportPortalApp() {
   const initialSessionId = supportPortalSessionFromUrl()
 
   useEffect(() => {
-    document.title = 'Sanctum Guide · Support'
+    document.title = 'Sanctum Support · Inbox'
   }, [])
 
   return (

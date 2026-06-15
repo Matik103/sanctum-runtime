@@ -10,7 +10,14 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { SanctumGuideAvatar, VisitorChatAvatar } from "@/components/support/SupportChatAvatar";
+import { SanctumGuideAvatar, OperatorChatAvatar, VisitorChatAvatar } from "@/components/support/SupportChatAvatar";
+import {
+  PremiumHandoffCard,
+  SupportPhaseRail,
+  SupportStatusBanner,
+  SupportSystemNotice,
+} from "@/components/support/SupportChatExperience";
+import { isHandoffFollowUpChip, SUPPORT_VISITOR_COPY } from "@/lib/support-visitor-copy";
 import logo from "@/assets/sanctum-logo.png";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -33,7 +40,7 @@ const QUICK_PROMPTS = [
   "What is Sanctum Runtime?",
   "How does MCP tool verification work?",
   "Pricing and plans",
-  "Talk to sales",
+  "Speak with the team",
 ] as const;
 
 function renderInlineMarkdown(text: string): React.ReactNode[] {
@@ -108,65 +115,6 @@ function CitationList({ citations }: { citations: SupportCitation[] }) {
           </span>
         ),
       )}
-    </div>
-  );
-}
-
-function HandoffCard({
-  handoff,
-  sessionId,
-  sessionStatus,
-  onEscalate,
-  escalating,
-}: {
-  handoff?: SupportHandoff | null;
-  sessionId: string | null;
-  sessionStatus: SupportSessionStatus;
-  onEscalate: () => void;
-  escalating: boolean;
-}) {
-  if (!handoff?.recommended || sessionStatus !== "bot") return null;
-  return (
-    <div className="mt-3 rounded-xl border border-primary/25 bg-primary/10 p-3">
-      <div className="flex items-start gap-2">
-        <UserRoundCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold text-foreground">
-            {handoff.reason === "low_confidence" ? "Bring in a human" : handoff.label}
-          </p>
-          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-            {handoff.reason === "low_confidence"
-              ? "The guide did not find enough matching Sanctum knowledge-base context for a confident answer."
-              : "A human can help with pilots, account questions, or anything the guide did not resolve."}
-          </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={!sessionId || escalating}
-              onClick={(e) => {
-                e.stopPropagation();
-                onEscalate();
-              }}
-              className="inline-flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1.5 text-[11px] font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
-            >
-              {escalating ? "Connecting…" : "Chat with a human"}
-            </button>
-            <a
-              href={handoff.url}
-              className="inline-flex items-center gap-1 rounded-lg border border-border/80 px-2.5 py-1.5 text-[11px] font-semibold text-foreground hover:border-primary/50 hover:text-primary"
-            >
-              {handoff.label}
-              <ExternalLink className="h-3 w-3" />
-            </a>
-            <a
-              href={`mailto:${handoff.email}`}
-              className="inline-flex items-center rounded-lg border border-border/80 px-2.5 py-1.5 text-[11px] font-semibold text-foreground hover:border-primary/50 hover:text-primary"
-            >
-              {handoff.email}
-            </a>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
@@ -267,19 +215,22 @@ function FollowUpChips({
   );
 }
 
-function TypingIndicator() {
+function TypingIndicator({ label = "Sanctum Guide" }: { label?: string }) {
   return (
     <div className="flex items-start gap-2.5">
       <SanctumGuideAvatar size="sm" />
-      <div className="rounded-2xl rounded-tl-md border border-border/60 bg-elevated/80 px-4 py-3">
-        <div className="flex gap-1">
-          {[0, 1, 2].map((i) => (
-            <span
-              key={i}
-              className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/70"
-              style={{ animationDelay: `${i * 120}ms` }}
-            />
-          ))}
+      <div className="min-w-0">
+        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+        <div className="rounded-2xl rounded-tl-md border border-border/60 bg-elevated/80 px-4 py-3">
+          <div className="flex gap-1">
+            {[0, 1, 2].map((i) => (
+              <span
+                key={i}
+                className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/70"
+                style={{ animationDelay: `${i * 120}ms` }}
+              />
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -303,6 +254,11 @@ export function SupportChatWidget() {
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLTextAreaElement>(null);
 
+  const activeOperatorName = React.useMemo(() => {
+    const operatorMsg = [...messages].reverse().find((m) => m.sender === "operator");
+    return operatorMsg?.operator_display_name ?? null;
+  }, [messages]);
+
   const scrollToBottom = React.useCallback(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
@@ -310,7 +266,7 @@ export function SupportChatWidget() {
 
   React.useEffect(() => {
     if (open) scrollToBottom();
-  }, [open, messages, loading, streamingText, scrollToBottom]);
+  }, [open, messages, loading, streamingText, sessionStatus, scrollToBottom]);
 
   const refreshMessages = React.useCallback(async (sid: string) => {
     const data = await fetchSupportMessages(sid);
@@ -349,7 +305,7 @@ export function SupportChatWidget() {
         setSessionId(id);
         setMessages([]);
       } catch {
-        if (!cancelled) setError("Could not connect. Try again in a moment.");
+        if (!cancelled) setError(SUPPORT_VISITOR_COPY.errors.connect);
       } finally {
         if (!cancelled) setBooting(false);
       }
@@ -367,7 +323,8 @@ export function SupportChatWidget() {
       void refreshMessages(sessionId).catch(() => {});
     };
     poll();
-    const id = setInterval(poll, 3000);
+    const intervalMs = sessionStatus === "queued" ? 2000 : 2500;
+    const id = setInterval(poll, intervalMs);
     return () => clearInterval(id);
   }, [open, sessionId, sessionStatus, refreshMessages]);
 
@@ -395,7 +352,7 @@ export function SupportChatWidget() {
         await refreshMessages(sessionId);
       }
     } catch {
-      setError("Could not reach the team. Try email or contact form.");
+      setError(SUPPORT_VISITOR_COPY.errors.handoff);
     } finally {
       setEscalating(false);
     }
@@ -468,7 +425,7 @@ export function SupportChatWidget() {
           }
         }
       } catch {
-        setError("Message failed to send. Please try again.");
+        setError(SUPPORT_VISITOR_COPY.errors.send);
         setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
         setStreamingText("");
         setInput(trimmed);
@@ -515,14 +472,23 @@ export function SupportChatWidget() {
 
         {/* Header */}
         <header className="relative flex shrink-0 items-center gap-3 border-b border-border/60 px-4 py-3.5">
-          <SanctumGuideAvatar size="md" online />
+          {sessionStatus === "human_active" ? (
+            <OperatorChatAvatar size="md" />
+          ) : (
+            <SanctumGuideAvatar size="md" online={sessionStatus === "bot"} />
+          )}
           <div className="min-w-0 flex-1">
             <p className="font-display text-sm font-semibold tracking-tight text-foreground">
-              Sanctum Guide
+              {sessionStatus === "human_active"
+                ? activeOperatorName ?? "Sanctum Support"
+                : "Sanctum Guide"}
             </p>
             <p className="text-[11px] text-muted-foreground">
-              Runtime trust · docs · sales
-              {sessionStatus === "human_active" ? " · Human connected" : sessionStatus === "queued" ? " · In queue" : ""}
+              {sessionStatus === "human_active"
+                ? SUPPORT_VISITOR_COPY.header.live
+                : sessionStatus === "queued" || escalating
+                  ? SUPPORT_VISITOR_COPY.header.waiting
+                  : SUPPORT_VISITOR_COPY.header.guide}
             </p>
           </div>
           <button
@@ -545,6 +511,14 @@ export function SupportChatWidget() {
           )}
         </header>
 
+        <SupportPhaseRail status={sessionStatus} escalating={escalating} />
+
+        <SupportStatusBanner
+          status={sessionStatus}
+          escalating={escalating}
+          operatorName={activeOperatorName}
+        />
+
         {/* Messages */}
         <div
           ref={scrollRef}
@@ -553,16 +527,16 @@ export function SupportChatWidget() {
           {booting && !messages.length ? (
             <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
               <Sparkles className="h-6 w-6 animate-pulse text-primary" />
-              <p className="text-sm text-muted-foreground">Connecting…</p>
+              <p className="text-sm text-muted-foreground">Opening your conversation…</p>
             </div>
           ) : messages.length === 0 ? (
             <div className="space-y-4">
-              <div className="rounded-2xl border border-border/50 bg-elevated/50 p-4">
+              <div className="rounded-2xl border border-border/50 bg-gradient-to-br from-elevated/80 to-transparent p-4">
                 <p className="font-display text-sm font-medium text-foreground">
-                  Ask anything about Sanctum
+                  Sanctum Guide
                 </p>
                 <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-                  Product, MCP verification, pricing, pilots — no account needed. Answers grounded in our docs and blog.
+                  Runtime trust, MCP verification, pricing, and pilots — answered from Sanctum docs. Specialists join the same thread whenever you want a human on the line.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -571,7 +545,9 @@ export function SupportChatWidget() {
                     key={prompt}
                     type="button"
                     disabled={loading || booting}
-                    onClick={() => void send(prompt)}
+                    onClick={() =>
+                      prompt === "Speak with the team" ? void handleEscalate() : void send(prompt)
+                    }
                     className="rounded-full border border-border/70 bg-surface/60 px-3 py-1.5 text-left text-[11px] font-medium text-foreground/90 transition-colors hover:border-primary/50 hover:bg-primary/10 hover:text-primary disabled:opacity-50"
                   >
                     {prompt}
@@ -594,39 +570,49 @@ export function SupportChatWidget() {
             </div>
           ) : (
             <div className="space-y-4">
-              {messages.map((m) =>
-                m.role === "user" ? (
-                  <div key={m.id} className="flex items-end justify-end gap-2.5">
-                    <div className="max-w-[calc(100%-2.5rem)] rounded-2xl rounded-tr-md bg-gradient-primary px-3.5 py-2.5 text-[13px] leading-relaxed text-primary-foreground shadow-glow/30">
-                      {m.content}
+              {messages.map((m) => {
+                if (m.sender === "system") {
+                  return <SupportSystemNotice key={m.id} content={m.content} />;
+                }
+
+                if (m.role === "user") {
+                  return (
+                    <div key={m.id} className="flex items-end justify-end gap-2.5">
+                      <div className="max-w-[calc(100%-2.5rem)] rounded-2xl rounded-tr-md bg-gradient-primary px-3.5 py-2.5 text-[13px] leading-relaxed text-primary-foreground shadow-glow/30">
+                        {m.content}
+                      </div>
+                      <VisitorChatAvatar />
                     </div>
-                    <VisitorChatAvatar />
-                  </div>
-                ) : (
+                  );
+                }
+
+                const isOperator = m.sender === "operator";
+
+                return (
                   <div key={m.id} className="flex items-start gap-2.5">
-                    <SanctumGuideAvatar size="sm" />
+                    {isOperator ? <OperatorChatAvatar size="sm" /> : <SanctumGuideAvatar size="sm" />}
                     <div className="min-w-0 max-w-[calc(100%-2.5rem)] rounded-2xl rounded-tl-md border border-border/60 bg-elevated/70 px-3.5 py-2.5">
-                      {m.sender === "operator" ? (
-                        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-primary">
-                          Sanctum team
+                      {isOperator ? (
+                        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-success">
+                          {m.operator_display_name ?? "Sanctum Support"}
                         </p>
                       ) : null}
                       <MessageBody content={m.content} />
                       {m.citations?.length ? <CitationList citations={m.citations} /> : null}
-                      <HandoffCard
+                      <PremiumHandoffCard
                         handoff={m.handoff}
                         sessionId={sessionId}
                         sessionStatus={sessionStatus}
                         onEscalate={() => void handleEscalate()}
                         escalating={escalating}
                       />
-                      {m.role === "assistant" && m.sender !== "system" ? (
+                      {m.role === "assistant" && m.sender !== "system" && !isOperator ? (
                         <FeedbackRow messageId={m.id} rating={m.feedback} onRate={handleFeedback} />
                       ) : null}
                     </div>
                   </div>
-                ),
-              )}
+                );
+              })}
               {loading && streamingText ? (
                 <div className="flex items-start gap-2.5">
                   <SanctumGuideAvatar size="sm" />
@@ -641,7 +627,7 @@ export function SupportChatWidget() {
                   suggestions={followUps}
                   disabled={loading || booting}
                   onSelect={(s) => {
-                    if (s === "Request a human in this chat" || s === "Request urgent help") {
+                    if (isHandoffFollowUpChip(s) || s === "Speak with the team") {
                       void handleEscalate();
                     } else {
                       void send(s);
@@ -680,7 +666,7 @@ export function SupportChatWidget() {
                 className="inline-flex items-center gap-1 rounded-lg border border-border/70 px-2.5 py-1 text-[10px] font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary disabled:opacity-50"
               >
                 <UserRoundCheck className="h-3 w-3" />
-                {escalating ? "Connecting…" : "Chat with a human"}
+                {escalating ? SUPPORT_VISITOR_COPY.handoffButtonActive : SUPPORT_VISITOR_COPY.handoffButton}
               </button>
             </div>
           ) : null}
@@ -693,10 +679,12 @@ export function SupportChatWidget() {
               rows={1}
               placeholder={
                 sessionStatus === "human_active"
-                  ? "Message the Sanctum team…"
+                  ? activeOperatorName
+                    ? SUPPORT_VISITOR_COPY.placeholder.live(activeOperatorName)
+                    : SUPPORT_VISITOR_COPY.placeholder.liveGeneric
                   : sessionStatus === "queued"
-                    ? "You're in the queue — keep typing…"
-                    : "Ask about runtime trust, agents, pricing…"
+                    ? SUPPORT_VISITOR_COPY.placeholder.waiting
+                    : SUPPORT_VISITOR_COPY.placeholder.bot
               }
               disabled={loading || booting}
               className="max-h-28 min-h-[2.25rem] flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none disabled:opacity-50"
@@ -714,10 +702,12 @@ export function SupportChatWidget() {
           </div>
           <p className="mt-2 text-center text-[10px] text-muted-foreground/80">
             {sessionStatus === "human_active"
-              ? "A Sanctum teammate is in this chat"
-              : sessionStatus === "queued"
-                ? "Waiting for a teammate — messages are saved"
-                : "No sign-in required · AI answers from Sanctum docs & blog"}
+              ? activeOperatorName
+                ? SUPPORT_VISITOR_COPY.footer.live(activeOperatorName)
+                : SUPPORT_VISITOR_COPY.footer.liveGeneric
+              : sessionStatus === "queued" || escalating
+                ? SUPPORT_VISITOR_COPY.footer.waiting
+                : SUPPORT_VISITOR_COPY.footer.bot}
           </p>
         </div>
       </div>

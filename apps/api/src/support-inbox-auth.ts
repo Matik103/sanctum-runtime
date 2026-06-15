@@ -1,10 +1,17 @@
 import type { FastifyReply } from 'fastify'
 import type { SupportAgentStore } from './support-agent-store.js'
 
+export type SupportInboxOperator = {
+  email: string
+  display_name: string
+  title?: string
+}
+
 export type SupportInboxConfig = {
   allowed_emails: string[]
   notify_email: string
   slack_webhook_url: string | null
+  operators: SupportInboxOperator[]
 }
 
 function parseAllowedEmails(raw: unknown): string[] {
@@ -37,6 +44,31 @@ export function resolveSupportNotifyEmail(dbNotifyEmail?: string | null): string
   return DEFAULT_SUPPORT_INBOX_NOTIFY_EMAIL
 }
 
+function parseOperators(raw: unknown): SupportInboxOperator[] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .map((entry) => {
+      if (!entry || typeof entry !== 'object') return null
+      const row = entry as Record<string, unknown>
+      const email = typeof row.email === 'string' ? row.email.trim().toLowerCase() : ''
+      const display_name = typeof row.display_name === 'string' ? row.display_name.trim() : ''
+      if (!email || !display_name) return null
+      const title = typeof row.title === 'string' && row.title.trim() ? row.title.trim() : undefined
+      return { email, display_name, title }
+    })
+    .filter((row): row is SupportInboxOperator => row !== null)
+}
+
+export function resolveOperatorDisplayName(
+  inbox: SupportInboxConfig,
+  email: string | undefined,
+): string {
+  const normalized = email?.trim().toLowerCase()
+  if (!normalized) return 'Sanctum Support'
+  const match = inbox.operators.find((op) => op.email === normalized)
+  return match?.display_name ?? 'Sanctum Support'
+}
+
 export async function loadInboxConfig(store: SupportAgentStore): Promise<SupportInboxConfig> {
   const cfg = await store.loadInboxConfig()
   const envEmails = envAllowedInboxEmails()
@@ -45,6 +77,7 @@ export async function loadInboxConfig(store: SupportAgentStore): Promise<Support
     allowed_emails: [...new Set([...dbEmails, ...envEmails])],
     notify_email: resolveSupportNotifyEmail(cfg.notify_email),
     slack_webhook_url: cfg.slack_webhook_url?.trim() || null,
+    operators: parseOperators(cfg.operators),
   }
 }
 

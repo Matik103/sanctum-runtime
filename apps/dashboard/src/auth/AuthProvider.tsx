@@ -13,6 +13,7 @@ import { LegalFooter } from '../components/LegalFooter'
 import { EnterpriseOrgGate } from '../components/EnterpriseOrgGate'
 import { ProfileCompletionGate } from '../components/ProfileCompletionGate'
 import { getSupabase, isSupabaseConfigured } from '../lib/supabase'
+import { buildSupportPortalUrl } from '../lib/support-portal-path'
 import { Login } from '../pages/Login'
 import '../styles/auth.css'
 
@@ -155,6 +156,20 @@ export function useAuth(): AuthState {
   return ctx
 }
 
+function SupportOperatorRedirect() {
+  useEffect(() => {
+    window.location.replace(buildSupportPortalUrl())
+  }, [])
+  return (
+    <div className="auth-loading" style={{ flexDirection: 'column', gap: '0.75rem' }}>
+      <div className="auth-loading__ring" aria-label="Redirecting to support inbox" />
+      <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--muted)' }}>
+        Opening support inbox…
+      </p>
+    </div>
+  )
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(isSupabaseConfigured)
@@ -220,6 +235,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   if (passwordRecovery) {
     return <PasswordRecoveryPanel onDone={() => setPasswordRecovery(false)} />
+  }
+
+  if (session.user.user_metadata?.support_operator === true) {
+    return <SupportOperatorRedirect />
   }
 
   return (

@@ -18,6 +18,7 @@ import { embedTexts } from './support-embeddings.js'
 import { suggestFollowUps } from './support-agent-followups.js'
 import { loadInboxConfig } from './support-inbox-auth.js'
 import { notifySupportHandoff } from './support-handoff-notify.js'
+import { handoffLabelForReason, HANDOFF_CONFIRMATION_MARKER, SUPPORT_VISITOR_COPY } from './support-visitor-copy.js'
 import {
   SupportAgentStore,
   type SupportAgentConfig,
@@ -211,7 +212,7 @@ function supportHandoff(input: {
     return {
       recommended: true,
       reason: sales ? 'sales' : 'requested',
-      label: sales ? 'Talk to sales' : 'Connect to a human',
+      label: sales ? SUPPORT_VISITOR_COPY.handoffLabels.sales : SUPPORT_VISITOR_COPY.handoffLabels.requested,
       url: sales ? 'https://www.sanctumruntime.com/enterprise' : 'https://www.sanctumruntime.com/contact',
       email: sales ? 'sales@sanctumruntime.com' : 'support@sanctumruntime.com',
     }
@@ -225,7 +226,7 @@ function supportHandoff(input: {
   return {
     recommended: true,
     reason: 'low_confidence',
-    label: 'Connect to a human',
+    label: SUPPORT_VISITOR_COPY.handoffLabels.low_confidence,
     url: 'https://www.sanctumruntime.com/contact',
     email: 'support@sanctumruntime.com',
   }
@@ -243,36 +244,20 @@ export function sanitizeReplyForChat(content: string): string {
 }
 
 function greetingReply(): string {
-  return sanitizeReplyForChat(
-    `Hi — I'm Sanctum Guide. I can help with runtime trust, agent security, MCP hardening, pricing, and getting started.\n\n` +
-      `A few things visitors often ask:\n` +
-      `- What is Sanctum Runtime and how is it different from guardrails?\n` +
-      `- How does verify-before-execute / human approval work?\n` +
-      `- MCP security, action tokens, and policy design\n` +
-      `- Plans and pricing (Observer through Enterprise)\n\n` +
-      `What would you like to dig into?`,
-  )
+  return sanitizeReplyForChat(SUPPORT_VISITOR_COPY.greeting)
 }
 
 function generalHelpReply(): string {
-  return sanitizeReplyForChat(
-    `I can answer questions about Sanctum Runtime using our docs, blog, and product guides — no account needed.\n\n` +
-      `Try asking about:\n` +
-      `- Getting started — SDK install, console, quick start\n` +
-      `- Runtime trust — verifyAction, policies, approvals, audit trails\n` +
-      `- Security — MCP gates, prompt injection, SOC 2 evidence, kill switches\n` +
-      `- Pricing — Observer, Operator, Team, Enterprise\n\n` +
-      `What are you building or evaluating?`,
-  )
+  return sanitizeReplyForChat(SUPPORT_VISITOR_COPY.generalHelp)
 }
 
 function appendHandoff(content: string, handoff: SupportHandoff | null): string {
   if (!handoff?.recommended) return content
   const line =
     handoff.reason === 'low_confidence'
-      ? `I do not have enough matching Sanctum knowledge-base context to answer that confidently.`
-      : `If you want a person to take this from here, I can route you to the team.`
-  return `${content}\n\n${line} [${handoff.label}](${handoff.url}) or email ${handoff.email}.`
+      ? SUPPORT_VISITOR_COPY.appendHandoff.low_confidence
+      : SUPPORT_VISITOR_COPY.appendHandoff.default
+  return `${content}\n\n${line} Tap "${handoffLabelForReason(handoff.reason)}" below or continue here — our team can pick up in this thread.`
 }
 
 function composeFromChunks(
@@ -629,13 +614,11 @@ export class SupportAgentService {
       const lastAssistant = [...history].reverse().find((m) => m.role === 'assistant')
       const alreadyNotified =
         lastAssistant &&
-        (lastAssistant.content as string).includes('in the queue')
+        (lastAssistant.content as string).toLowerCase().includes(HANDOFF_CONFIRMATION_MARKER)
 
       if (!alreadyNotified) {
-        const queueReply = sanitizeReplyForChat(
-          'You are in the queue — a Sanctum teammate will join this chat shortly. You can keep typing; they will see your messages.',
-        )
-        const followUps = ['Request urgent help']
+        const queueReply = sanitizeReplyForChat(SUPPORT_VISITOR_COPY.handoffConfirmed)
+        const followUps = [SUPPORT_VISITOR_COPY.handoffChipUrgent]
         const reply = await this.store.addMessage({
           session_id: session.id,
           role: 'assistant',

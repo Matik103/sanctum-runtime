@@ -8,7 +8,7 @@ import { z } from 'zod'
 import type { SupabaseAuthConfig } from './auth.js'
 import { SupportAgentStore } from './support-agent-store.js'
 import { SupportAgentService } from './support-agent-service.js'
-import { assertSupportInboxOperator } from './support-inbox-auth.js'
+import { assertSupportInboxOperator, loadInboxConfig, resolveOperatorDisplayName } from './support-inbox-auth.js'
 
 type SanctumReq = FastifyRequest & {
   sanctumUser?: { id: string; email?: string }
@@ -49,6 +49,7 @@ function mapMessage(m: {
     follow_ups?: string[]
     sender?: string
     operator_email?: string
+    operator_display_name?: string | null
   }
   return {
     id: m.id,
@@ -58,6 +59,7 @@ function mapMessage(m: {
     handoff: meta.handoff ?? null,
     follow_ups: meta.follow_ups ?? [],
     sender: meta.sender ?? (meta.operator_email ? 'operator' : 'bot'),
+    operator_display_name: meta.operator_display_name ?? null,
     feedback: m.feedback_rating ?? null,
     created_at: m.created_at,
   }
@@ -311,6 +313,11 @@ export async function registerSupportRoutes(
       operator_email: user.email ?? 'operator',
     })
     if (!claimed) return reply.status(409).send({ error: 'claim_failed' })
+
+    const inbox = await loadInboxConfig(store)
+    const operatorDisplayName = resolveOperatorDisplayName(inbox, user.email)
+    await store.addOperatorJoinedMessage(session.id, operatorDisplayName)
+
     return { ok: true, status: claimed.status }
   })
 
@@ -331,11 +338,16 @@ export async function registerSupportRoutes(
       operator_email: user.email ?? 'operator',
     })
 
+    const inbox = await loadInboxConfig(store)
+    const operatorDisplayName = resolveOperatorDisplayName(inbox, user.email)
+    await store.addOperatorJoinedMessage(session.id, operatorDisplayName)
+
     const replyMsg = await store.addOperatorMessage({
       session_id: session.id,
       content: body.data.content.trim(),
       operator_id: user.id,
       operator_email: user.email ?? 'operator',
+      operator_display_name: operatorDisplayName,
     })
 
     await store.recordEvent({

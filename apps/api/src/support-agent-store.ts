@@ -1,5 +1,10 @@
 import { createSupabaseAdmin, type SupabaseAuthConfig } from './auth.js'
 import {
+  HANDOFF_CONFIRMATION_MARKER,
+  OPERATOR_JOINED_MARKER,
+  SUPPORT_VISITOR_COPY,
+} from './support-visitor-copy.js'
+import {
   detectSalesIntent,
   extractPhrases,
   extractSearchTerms,
@@ -93,7 +98,7 @@ const DEFAULT_CONFIG: SupportAgentConfig = {
   },
   persona: {
     name: 'Sanctum Guide',
-    tone: 'conversational, warm, and precise — a runtime trust expert who answers first and routes to humans only when asked',
+    tone: 'concierge-level clarity — confident, warm, never apologetic about AI limits; bring specialists in-thread when the visitor wants a person',
     goals: [
       'Answer any visitor question using the knowledge base — product, security, pricing, integrations, and getting started',
       'Teach with clear explanations and links to blog articles and docs',
@@ -172,6 +177,7 @@ export class SupportAgentStore {
     allowed_emails: string[]
     notify_email: string
     slack_webhook_url: string | null
+    operators: unknown
   }> {
     const { data } = await this.admin
       .from('support_agent_config')
@@ -191,6 +197,7 @@ export class SupportAgentStore {
         typeof v.slack_webhook_url === 'string' && v.slack_webhook_url.trim()
           ? v.slack_webhook_url.trim()
           : null,
+      operators: v.operators ?? [],
     }
   }
 
@@ -268,17 +275,34 @@ export class SupportAgentStore {
 
   async addQueueConfirmation(sessionId: string) {
     const recent = await this.listMessages(sessionId, 6)
-    const lastAssistant = [...recent].reverse().find((m) => m.role === 'assistant')
-    const queueMarker = 'in the queue'
-    if (lastAssistant && (lastAssistant.content as string).toLowerCase().includes(queueMarker)) {
-      return lastAssistant
+    const marker = HANDOFF_CONFIRMATION_MARKER.toLowerCase()
+    const already = recent.some((m) => (m.content as string).toLowerCase().includes(marker))
+    if (already) {
+      return [...recent].reverse().find((m) => (m.content as string).toLowerCase().includes(marker)) ?? null
     }
 
     return this.addMessage({
       session_id: sessionId,
       role: 'assistant',
-      content:
-        'You are in the queue — a Sanctum teammate will join this chat shortly. Keep typing here; they will see your messages.',
+      content: SUPPORT_VISITOR_COPY.handoffConfirmed,
+      metadata: { handoff: null, follow_ups: [], sender: 'system' },
+    })
+  }
+
+  async addOperatorJoinedMessage(sessionId: string, operatorDisplayName: string) {
+    const recent = await this.listMessages(sessionId, 12)
+    const nameLower = operatorDisplayName.trim().toLowerCase()
+    const joinedMarker = OPERATOR_JOINED_MARKER
+    const already = recent.some((m) => {
+      const content = (m.content as string).toLowerCase()
+      return content.includes(joinedMarker) && content.includes(nameLower)
+    })
+    if (already) return null
+
+    return this.addMessage({
+      session_id: sessionId,
+      role: 'assistant',
+      content: SUPPORT_VISITOR_COPY.operatorJoined(operatorDisplayName),
       metadata: { handoff: null, follow_ups: [], sender: 'system' },
     })
   }
@@ -336,6 +360,7 @@ export class SupportAgentStore {
     content: string
     operator_id: string
     operator_email: string
+    operator_display_name?: string
   }) {
     return this.addMessage({
       session_id: input.session_id,
@@ -345,6 +370,7 @@ export class SupportAgentStore {
         sender: 'operator',
         operator_id: input.operator_id,
         operator_email: input.operator_email,
+        operator_display_name: input.operator_display_name?.trim() || null,
       },
     })
   }

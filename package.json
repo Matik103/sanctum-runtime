@@ -48,6 +48,7 @@
     "creem:verify-test": "node scripts/verify-creem-test-setup.mjs",
     "creem:verify-remote": "node scripts/invoke-creem-verify.mjs",
     "support:pull-openrouter": "node scripts/pull-openrouter-support-key.mjs",
+    "provision:support-operator": "node scripts/provision-support-operator.mjs",
     "creem:reconcile": "node scripts/invoke-creem-verify.mjs --reconcile",
     "monitor": "tsx scripts/live-monitor.ts",
     "premonitor": "node scripts/ensure-env.mjs",
