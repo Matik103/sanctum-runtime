@@ -9,6 +9,7 @@ import type { SupabaseAuthConfig } from './auth.js'
 import { SupportAgentStore } from './support-agent-store.js'
 import { SupportAgentService } from './support-agent-service.js'
 import { assertSupportInboxOperator, loadInboxConfig, resolveOperatorDisplayName } from './support-inbox-auth.js'
+import { normalizeSupportTranscript } from './support-message-display.js'
 
 type SanctumReq = FastifyRequest & {
   sanctumUser?: { id: string; email?: string }
@@ -113,10 +114,11 @@ export async function registerSupportRoutes(
     if (!session) return reply.status(404).send({ error: 'session_not_found' })
 
     const messages = await store.listMessages(session.id, 50)
+    const mapped = messages.map(mapMessage)
     return {
       session_id: session.public_id,
       status: (session as { status?: string }).status ?? 'bot',
-      messages: messages.map(mapMessage),
+      messages: normalizeSupportTranscript(mapped),
     }
   })
 
@@ -283,6 +285,7 @@ export async function registerSupportRoutes(
     if (!session) return reply.status(404).send({ error: 'session_not_found' })
 
     const messages = await store.listMessages(session.id, 100)
+    const mapped = messages.map(mapMessage)
     return {
       session: {
         session_id: session.public_id,
@@ -295,7 +298,7 @@ export async function registerSupportRoutes(
         created_at: session.created_at,
         last_message_at: session.last_message_at,
       },
-      messages: messages.map(mapMessage),
+      messages: normalizeSupportTranscript(mapped),
     }
   })
 

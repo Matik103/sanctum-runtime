@@ -22,6 +22,7 @@ import {
   type InboxMessage,
   type InboxSession,
 } from '../lib/support-inbox-api'
+import { normalizeInboxMessages } from '../lib/support-message-display'
 import { useSupportPortalAuth } from '../auth/SupportPortalAuthProvider'
 import { useInboxLayout } from '../hooks/useInboxLayout'
 
@@ -50,12 +51,13 @@ function messageKind(m: InboxMessage): 'visitor' | 'guide' | 'operator' | 'syste
 }
 
 function buildTranscript(messages: InboxMessage[]): TranscriptItem[] {
+  const normalized = normalizeInboxMessages(messages)
   const items: TranscriptItem[] = []
   let handoffMarked = false
 
-  for (const m of messages) {
+  for (const m of normalized) {
     const kind = messageKind(m)
-    if (!handoffMarked && (kind === 'operator' || kind === 'system')) {
+    if (!handoffMarked && kind === 'operator') {
       items.push({ kind: 'divider', id: `handoff-${m.id}`, label: 'Sanctum Support · live' })
       handoffMarked = true
     }
@@ -128,7 +130,7 @@ export function SupportInbox({
     try {
       const data = await fetchInboxSession(publicId)
       setSessionMeta(data.session)
-      setMessages(data.messages)
+      setMessages(normalizeInboxMessages(data.messages))
     } catch (e) {
       setError(formatApiError(e))
     } finally {
@@ -202,7 +204,6 @@ export function SupportInbox({
     if (!selectedId || !reply.trim() || sending) return
     setSending(true)
     try {
-      if (sessionStatus === 'queued') await claimInboxSession(selectedId).catch(() => {})
       await replyInboxSession(selectedId, reply.trim())
       setReply('')
       await loadDetail(selectedId)

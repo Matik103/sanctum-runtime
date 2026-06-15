@@ -18,6 +18,7 @@ import {
   SupportSystemNotice,
 } from "@/components/support/SupportChatExperience";
 import { isHandoffFollowUpChip, SUPPORT_VISITOR_COPY } from "@/lib/support-visitor-copy";
+import { mergeWithOptimistic, normalizeSupportMessages } from "@/lib/support-message-display";
 import logo from "@/assets/sanctum-logo.png";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -270,7 +271,7 @@ export function SupportChatWidget() {
 
   const refreshMessages = React.useCallback(async (sid: string) => {
     const data = await fetchSupportMessages(sid);
-    setMessages(data.messages);
+    setMessages((prev) => mergeWithOptimistic(normalizeSupportMessages(data.messages), prev));
     setSessionStatus(data.status);
     return data;
   }, []);
@@ -288,7 +289,7 @@ export function SupportChatWidget() {
             const data = await refreshMessages(stored);
             if (cancelled) return;
             setSessionId(stored);
-            setMessages(data.messages);
+            setMessages(normalizeSupportMessages(data.messages));
             setSessionStatus(data.status);
             return;
           } catch {
@@ -412,16 +413,42 @@ export function SupportChatWidget() {
           setFollowUps(result.followUps);
 
           if (result.message) {
-            setMessages((prev) => [...prev, result.message!]);
+            setMessages((prev) =>
+              mergeWithOptimistic(normalizeSupportMessages([...prev, result.message!]), prev),
+            );
           } else if (result.sessionStatus === "human_active" || result.sessionStatus === "queued") {
             await refreshMessages(sid);
           }
         } catch {
+          try {
+            const snapshot = await fetchSupportMessages(sid);
+            const persisted = snapshot.messages.some(
+              (m) => m.role === "user" && m.content.trim() === trimmed,
+            );
+            if (
+              persisted ||
+              snapshot.status === "human_active" ||
+              snapshot.status === "queued"
+            ) {
+              setSessionStatus(snapshot.status);
+              setMessages((prev) =>
+                mergeWithOptimistic(normalizeSupportMessages(snapshot.messages), prev),
+              );
+              return;
+            }
+          } catch {
+            /* fall through to non-stream send */
+          }
+
           const result = await sendSupportMessage(sid, trimmed);
           setSessionStatus(result.sessionStatus);
           setFollowUps(result.followUps);
           if (result.message) {
-            setMessages((prev) => [...prev, result.message!]);
+            setMessages((prev) =>
+              mergeWithOptimistic(normalizeSupportMessages([...prev, result.message!]), prev),
+            );
+          } else if (result.sessionStatus === "human_active" || result.sessionStatus === "queued") {
+            await refreshMessages(sid);
           }
         }
       } catch {
@@ -701,13 +728,11 @@ export function SupportChatWidget() {
             </button>
           </div>
           <p className="mt-2 text-center text-[10px] text-muted-foreground/80">
-            {sessionStatus === "human_active"
-              ? activeOperatorName
-                ? SUPPORT_VISITOR_COPY.footer.live(activeOperatorName)
-                : SUPPORT_VISITOR_COPY.footer.liveGeneric
-              : sessionStatus === "queued" || escalating
-                ? SUPPORT_VISITOR_COPY.footer.waiting
-                : SUPPORT_VISITOR_COPY.footer.bot}
+            {sessionStatus === "bot"
+              ? escalating
+                ? SUPPORT_VISITOR_COPY.footer.connecting
+                : SUPPORT_VISITOR_COPY.footer.bot
+              : null}
           </p>
         </div>
       </div>

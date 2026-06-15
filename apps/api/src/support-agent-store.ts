@@ -290,11 +290,18 @@ export class SupportAgentStore {
   }
 
   async addOperatorJoinedMessage(sessionId: string, operatorDisplayName: string) {
-    const recent = await this.listMessages(sessionId, 12)
     const nameLower = operatorDisplayName.trim().toLowerCase()
-    const joinedMarker = OPERATOR_JOINED_MARKER
-    const already = recent.some((m) => {
-      const content = (m.content as string).toLowerCase()
+    const joinedMarker = OPERATOR_JOINED_MARKER.toLowerCase()
+    const { data: existing, error: lookupError } = await this.admin
+      .from('support_agent_messages')
+      .select('content')
+      .eq('session_id', sessionId)
+      .eq('role', 'assistant')
+      .ilike('content', `%${OPERATOR_JOINED_MARKER}%`)
+      .limit(24)
+    if (lookupError) throw lookupError
+    const already = (existing ?? []).some((row) => {
+      const content = (row.content as string).toLowerCase()
       return content.includes(joinedMarker) && content.includes(nameLower)
     })
     if (already) return null
