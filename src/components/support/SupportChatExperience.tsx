@@ -1,5 +1,5 @@
 import * as React from "react";
-import { CheckCircle2, MessageSquarePlus, Sparkles, UserRoundCheck } from "lucide-react";
+import { CheckCircle2, MessageSquarePlus, Sparkles, UserRoundCheck, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SUPPORT_VISITOR_COPY } from "@/lib/support-visitor-copy";
 import type { SupportHandoff, SupportSessionStatus } from "@/lib/support-chat-api";
@@ -173,6 +173,66 @@ export function SupportSessionEndDivider() {
     </div>
   );
 }
+
+const LAUNCHER_NUDGE_KEY = "sanctum_support_launcher_nudge_seen";
+
+function hasSeenLauncherNudge(): boolean {
+  if (typeof window === "undefined") return true;
+  try {
+    return sessionStorage.getItem(LAUNCHER_NUDGE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markLauncherNudgeSeen(): void {
+  try {
+    sessionStorage.setItem(LAUNCHER_NUDGE_KEY, "1");
+  } catch {
+    /* private browsing */
+  }
+}
+
+export function SupportLauncherNudge({
+  visible,
+  onDismiss,
+}: {
+  visible: boolean;
+  onDismiss: () => void;
+}) {
+  if (!visible) return null;
+
+  return (
+    <div
+      className="pointer-events-auto relative mb-2.5 max-w-[min(calc(100vw-5rem),220px)] animate-in fade-in-0 slide-in-from-bottom-2 duration-500"
+      role="status"
+    >
+      <div className="relative rounded-xl border border-border/70 bg-elevated/95 px-3.5 py-2.5 pr-8 shadow-elevated backdrop-blur-md">
+        <p className="text-[12px] font-medium leading-snug text-foreground">
+          {SUPPORT_VISITOR_COPY.launcherNudge}
+        </p>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            markLauncherNudgeSeen();
+            onDismiss();
+          }}
+          className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          aria-label="Dismiss"
+        >
+          <X className="h-3 w-3" />
+        </button>
+        <span
+          className="absolute -bottom-1.5 right-5 h-3 w-3 rotate-45 border-b border-r border-border/70 bg-elevated/95"
+          aria-hidden
+        />
+      </div>
+    </div>
+  );
+}
+
+export { hasSeenLauncherNudge, markLauncherNudgeSeen };
 
 export function SupportSystemNotice({ content }: { content: string }) {
   return (

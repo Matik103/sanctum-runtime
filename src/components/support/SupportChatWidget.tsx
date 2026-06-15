@@ -15,6 +15,9 @@ import { SanctumGuideAvatar, OperatorChatAvatar, VisitorChatAvatar } from "@/com
 import {
   PremiumHandoffCard,
   SupportIntroPanel,
+  SupportLauncherNudge,
+  hasSeenLauncherNudge,
+  markLauncherNudgeSeen,
   SupportPhaseRail,
   SupportResumePrompt,
   SupportSessionEndDivider,
@@ -277,6 +280,7 @@ export function SupportChatWidget() {
   const [error, setError] = React.useState<string | null>(null);
   const [connectAttempt, setConnectAttempt] = React.useState(0);
   const [showResumePrompt, setShowResumePrompt] = React.useState(false);
+  const [showLauncherNudge, setShowLauncherNudge] = React.useState(false);
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLTextAreaElement>(null);
 
@@ -410,6 +414,24 @@ export function SupportChatWidget() {
   React.useEffect(() => {
     if (open && !loading) inputRef.current?.focus();
   }, [open, loading]);
+
+  React.useEffect(() => {
+    if (hasSeenLauncherNudge() || open) return;
+    const showTimer = window.setTimeout(() => {
+      if (!hasSeenLauncherNudge()) setShowLauncherNudge(true);
+    }, 2500);
+    return () => window.clearTimeout(showTimer);
+  }, [open]);
+
+  const dismissLauncherNudge = React.useCallback(() => {
+    setShowLauncherNudge(false);
+  }, []);
+
+  const handleLauncherClick = React.useCallback(() => {
+    markLauncherNudgeSeen();
+    setShowLauncherNudge(false);
+    setOpen((v) => !v);
+  }, []);
 
   React.useLayoutEffect(() => {
     const el = inputRef.current;
@@ -845,25 +867,35 @@ export function SupportChatWidget() {
       </div>
 
       {/* Launcher bubble — hidden on mobile when panel is open (header has close) */}
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
+      <div
         className={cn(
-          "pointer-events-auto relative flex items-center justify-center overflow-hidden rounded-full border border-primary/30 bg-surface shadow-glow transition-all duration-300 hover:scale-105 hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-          isMobile ? "m-4 h-14 w-14" : "h-14 w-14",
-          open && (isMobile ? "hidden" : "scale-0 opacity-0"),
+          "pointer-events-auto relative flex flex-col items-end",
+          isMobile && "m-4",
+          open && (isMobile ? "hidden" : "scale-0 opacity-0 pointer-events-none"),
         )}
-        aria-expanded={open}
-        aria-label={open ? "Close support chat" : "Open support chat"}
       >
-        {!open && (
-          <span
-            className="absolute inset-0 animate-ping rounded-full bg-primary/30"
-            style={{ animationDuration: "2.5s" }}
-          />
-        )}
-        <img src={logo} alt="" className="relative h-8 w-8 object-contain" aria-hidden />
-      </button>
+        <SupportLauncherNudge
+          visible={showLauncherNudge && !open}
+          onDismiss={dismissLauncherNudge}
+        />
+        <button
+          type="button"
+          onClick={handleLauncherClick}
+          className={cn(
+            "relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-primary/30 bg-surface shadow-glow transition-all duration-300 hover:scale-105 hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+          )}
+          aria-expanded={open}
+          aria-label={open ? "Close support chat" : "Open support chat"}
+        >
+          {!open && (
+            <span
+              className="absolute inset-0 animate-ping rounded-full bg-primary/30"
+              style={{ animationDuration: "2.5s" }}
+            />
+          )}
+          <img src={logo} alt="" className="relative h-8 w-8 object-contain" aria-hidden />
+        </button>
+      </div>
     </div>
   );
 }

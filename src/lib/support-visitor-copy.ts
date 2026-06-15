@@ -102,6 +102,8 @@ What would you like to know? You can ask about a specific plan, integration, or 
     live: "Live",
     done: "Done",
   } as const,
+
+  launcherNudge: "Questions? Ask Sanctum Guide",
 } as const;
 
 export function isHandoffFollowUpChip(text: string): boolean {
