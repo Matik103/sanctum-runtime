@@ -14,9 +14,9 @@ export const SUPPORT_VISITOR_COPY = {
 
 I answer from Sanctum docs on runtime trust, MCP gates, pricing, and pilots. Ask anything — or say **Speak with the team** when you want a person in this thread.`,
 
-  generalHelp: `I can walk you through verify-before-execute, MCP hardening, approval flows, audit evidence, and plans from Observer through Enterprise.
+  generalHelp: `Happy to help. I answer from Sanctum docs on runtime trust, MCP gates, pricing, pilots, and getting started.
 
-What are you building or evaluating?`,
+What would you like to know? You can ask about a specific plan, integration, or say Speak with the team for a person.`,
 
   welcome: {
     headline: "How can we help?",

@@ -114,7 +114,38 @@ export function isGreeting(message: string): boolean {
 }
 
 export function isGeneralHelpQuery(message: string): boolean {
-  return /\b(what can you (do|help with)|how can you help|help me|need help)\b/i.test(message.trim())
+  const m = message.trim()
+  const hasHelpFraming =
+    /\b(what can you (do|help with)|how can you help|help me|need help|can you help)\b/i.test(m)
+  if (!hasHelpFraming) return false
+
+  // "I need help with pricing" / "help me understand MCP" — answer the topic, not meta copy.
+  if (/\b(need help|help me|can you help)\s+(with|on|about|understanding|to|figure out|for)\s+/i.test(m)) {
+    return false
+  }
+
+  if (detectSalesIntent(m) || detectPlanTier(m)) return false
+
+  // Pure meta requests with no product topic — use the short capability intro.
+  if (
+    /^(what can you (do|help with)|how can you help|help me|i need help|need help|can you help|help)[\s!.?]*$/i.test(
+      m,
+    )
+  ) {
+    return true
+  }
+
+  if (topicHintsForMessage(m).length > 0) return false
+
+  if (
+    /\b(sanctum|runtime|mcp|sdk|pricing|price|plan|observer|operator|personal|team|enterprise|verify|verification|approval|policy|policies|audit|shield|gate|token|langchain|openai|claude|gemini|robot|ros2|pilot|console|docs|integrat|install|npm|quick\s*start|security|compliance|soc\s*2)\b/i.test(
+      m,
+    )
+  ) {
+    return false
+  }
+
+  return true
 }
 
 export function detectHumanHandoffIntent(message: string): boolean {
@@ -181,6 +212,8 @@ const TOPIC_HINTS: { pattern: RegExp; slugs: string[] }[] = [
   { pattern: /\bpolic(y|ies)\b.*\bscale\b|\bscale\b.*\bpolic/i, slugs: ['blog/how-to-design-ai-agent-policies-that-scale'] },
   { pattern: /\b(observer|operator|personal|team)\b.*\b(vs|versus|compare)\b|\bcompare\b.*\b(observer|operator|personal|team|plan|pricing)\b/i, slugs: ['page/pricing'] },
   { pattern: /\bteam\s+plan\b|\bhow\s+much\b.*\bteam\b/i, slugs: ['page/pricing'] },
+  { pattern: /\b(pric(e|ing)|how much|what\s+plans?|subscription|plans?\s+cost)\b/i, slugs: ['page/pricing', 'product/overview'] },
+  { pattern: /\bneed help\b.*\b(pric|plan|mcp|sdk|sanctum|runtime|observer|operator|enterprise)\b/i, slugs: ['page/pricing', 'product/overview', 'docs/index'] },
   { pattern: /\bopen[\s-]*core\b/i, slugs: ['blog/open-core-ai-agent-security-vs-enterprise-suite', 'product/overview', 'docs/index'] },
   { pattern: /^(hi|hello|hey)\b|\bwhat can you (do|help)/i, slugs: ['product/overview', 'docs/index'] },
 ]

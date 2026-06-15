@@ -5,6 +5,7 @@ import {
   detectHumanHandoffIntent,
   extractSearchTerms,
   filterChunksForReply,
+  isGeneralHelpQuery,
   isGreeting,
   planComparisonSummary,
   planSectionFromChunk,
@@ -76,6 +77,19 @@ describe('support-agent-retrieval', () => {
       ]),
     ).toBe(false)
     expect(shouldAutoHandoffForLowConfidence('how do action tokens work?', [])).toBe(true)
+  })
+
+  it('routes scoped help requests to KB instead of generic help copy', () => {
+    expect(isGeneralHelpQuery('I need help with pricing?')).toBe(false)
+    expect(isGeneralHelpQuery('help me understand MCP verification')).toBe(false)
+    expect(isGeneralHelpQuery('can you help with Observer plan limits')).toBe(false)
+    expect(isGeneralHelpQuery('I need help')).toBe(true)
+    expect(isGeneralHelpQuery('what can you help with?')).toBe(true)
+    expect(isGeneralHelpQuery('how can you help')).toBe(true)
+  })
+
+  it('hints pricing pages for pricing questions', () => {
+    expect(topicHintsForMessage('I need help with pricing?')).toContain('page/pricing')
   })
 
   it('drops stop words from search terms', () => {
