@@ -372,6 +372,11 @@ export async function registerSupportRoutes(
     if (!session) return reply.status(404).send({ error: 'session_not_found' })
 
     const resolved = await store.resolveSession(session.id, user.email)
+    if (resolved) {
+      const inbox = await loadInboxConfig(store)
+      const operatorDisplayName = resolveOperatorDisplayName(inbox, user.email)
+      await store.addSessionResolvedMessage(session.id, operatorDisplayName)
+    }
     return { ok: true, status: resolved?.status ?? 'resolved' }
   })
 

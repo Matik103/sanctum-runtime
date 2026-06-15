@@ -2,6 +2,7 @@ import * as React from "react";
 import {
   ExternalLink,
   Minus,
+  MessageSquarePlus,
   Send,
   Sparkles,
   ThumbsDown,
@@ -13,15 +14,19 @@ import { cn } from "@/lib/utils";
 import { SanctumGuideAvatar, OperatorChatAvatar, VisitorChatAvatar } from "@/components/support/SupportChatAvatar";
 import {
   PremiumHandoffCard,
+  SupportIntroPanel,
   SupportPhaseRail,
+  SupportResumePrompt,
+  SupportSessionEndDivider,
   SupportStatusBanner,
   SupportSystemNotice,
 } from "@/components/support/SupportChatExperience";
-import { isHandoffFollowUpChip, SUPPORT_VISITOR_COPY } from "@/lib/support-visitor-copy";
+import { isHandoffFollowUpChip, SESSION_RESOLVED_MARKER, SUPPORT_VISITOR_COPY } from "@/lib/support-visitor-copy";
 import { mergeWithOptimistic, normalizeSupportMessages } from "@/lib/support-message-display";
 import logo from "@/assets/sanctum-logo.png";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
+  clearStoredSessionId,
   createSupportSession,
   escalateSupportSession,
   fetchSupportMessages,
@@ -43,6 +48,25 @@ const QUICK_PROMPTS = [
   "Pricing and plans",
   "Speak with the team",
 ] as const;
+
+const RESUME_DISMISSED_PREFIX = "sanctum_support_resumed_";
+
+function hasResumeDismissed(sessionId: string): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return sessionStorage.getItem(`${RESUME_DISMISSED_PREFIX}${sessionId}`) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markResumeDismissed(sessionId: string): void {
+  try {
+    sessionStorage.setItem(`${RESUME_DISMISSED_PREFIX}${sessionId}`, "1");
+  } catch {
+    /* private browsing */
+  }
+}
 
 function renderInlineMarkdown(text: string): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
@@ -252,6 +276,7 @@ export function SupportChatWidget() {
   const [escalating, setEscalating] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [connectAttempt, setConnectAttempt] = React.useState(0);
+  const [showResumePrompt, setShowResumePrompt] = React.useState(false);
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLTextAreaElement>(null);
 
@@ -260,10 +285,51 @@ export function SupportChatWidget() {
     return operatorMsg?.operator_display_name ?? null;
   }, [messages]);
 
+  const lastMessagePreview = React.useMemo(() => {
+    const last = [...messages].reverse().find((m) => m.role === "user" || m.sender === "operator");
+    return last?.content?.slice(0, 140) ?? null;
+  }, [messages]);
+
+  const hasResolvedNotice = React.useMemo(
+    () =>
+      messages.some(
+        (m) =>
+          m.sender === "system" &&
+          m.content.toLowerCase().includes(SESSION_RESOLVED_MARKER),
+      ),
+    [messages],
+  );
+
+  const handleStartFresh = React.useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      clearStoredSessionId();
+      const id = await createSupportSession();
+      setSessionId(id);
+      setMessages([]);
+      setSessionStatus("bot");
+      setFollowUps([]);
+      setInput("");
+      setShowResumePrompt(false);
+      markResumeDismissed(id);
+    } catch {
+      setError(SUPPORT_VISITOR_COPY.errors.connect);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const scrollToBottom = React.useCallback(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, []);
+
+  const handleContinueConversation = React.useCallback(() => {
+    if (sessionId) markResumeDismissed(sessionId);
+    setShowResumePrompt(false);
+    scrollToBottom();
+  }, [sessionId, scrollToBottom]);
 
   React.useEffect(() => {
     if (open) scrollToBottom();
@@ -291,6 +357,11 @@ export function SupportChatWidget() {
             setSessionId(stored);
             setMessages(normalizeSupportMessages(data.messages));
             setSessionStatus(data.status);
+            setShowResumePrompt(
+              data.messages.length > 0 &&
+                data.status !== "resolved" &&
+                !hasResumeDismissed(stored),
+            );
             return;
           } catch {
             try {
@@ -318,13 +389,20 @@ export function SupportChatWidget() {
 
   React.useEffect(() => {
     if (!open || !sessionId) return;
-    if (sessionStatus !== "human_active" && sessionStatus !== "queued") return;
+    if (
+      sessionStatus !== "human_active" &&
+      sessionStatus !== "queued" &&
+      sessionStatus !== "resolved"
+    ) {
+      return;
+    }
 
     const poll = () => {
       void refreshMessages(sessionId).catch(() => {});
     };
     poll();
-    const intervalMs = sessionStatus === "queued" ? 2000 : 2500;
+    const intervalMs =
+      sessionStatus === "queued" ? 2000 : sessionStatus === "human_active" ? 2500 : 5000;
     const id = setInterval(poll, intervalMs);
     return () => clearInterval(id);
   }, [open, sessionId, sessionStatus, refreshMessages]);
@@ -508,14 +586,18 @@ export function SupportChatWidget() {
             <p className="font-display text-sm font-semibold tracking-tight text-foreground">
               {sessionStatus === "human_active"
                 ? activeOperatorName ?? "Sanctum Support"
-                : "Sanctum Guide"}
+                : sessionStatus === "resolved"
+                  ? "Sanctum Support"
+                  : "Sanctum Guide"}
             </p>
             <p className="text-[11px] text-muted-foreground">
-              {sessionStatus === "human_active"
-                ? SUPPORT_VISITOR_COPY.header.live
-                : sessionStatus === "queued" || escalating
-                  ? SUPPORT_VISITOR_COPY.header.waiting
-                  : SUPPORT_VISITOR_COPY.header.guide}
+              {sessionStatus === "resolved"
+                ? SUPPORT_VISITOR_COPY.header.resolved
+                : sessionStatus === "human_active"
+                  ? SUPPORT_VISITOR_COPY.header.live
+                  : sessionStatus === "queued" || escalating
+                    ? SUPPORT_VISITOR_COPY.header.waiting
+                    : SUPPORT_VISITOR_COPY.header.guide}
             </p>
           </div>
           <button
@@ -558,29 +640,13 @@ export function SupportChatWidget() {
             </div>
           ) : messages.length === 0 ? (
             <div className="space-y-4">
-              <div className="rounded-2xl border border-border/50 bg-gradient-to-br from-elevated/80 to-transparent p-4">
-                <p className="font-display text-sm font-medium text-foreground">
-                  Sanctum Guide
-                </p>
-                <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-                  Runtime trust, MCP verification, pricing, and pilots — answered from Sanctum docs. Specialists join the same thread whenever you want a human on the line.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {QUICK_PROMPTS.map((prompt) => (
-                  <button
-                    key={prompt}
-                    type="button"
-                    disabled={loading || booting}
-                    onClick={() =>
-                      prompt === "Speak with the team" ? void handleEscalate() : void send(prompt)
-                    }
-                    className="rounded-full border border-border/70 bg-surface/60 px-3 py-1.5 text-left text-[11px] font-medium text-foreground/90 transition-colors hover:border-primary/50 hover:bg-primary/10 hover:text-primary disabled:opacity-50"
-                  >
-                    {prompt}
-                  </button>
-                ))}
-              </div>
+              <SupportIntroPanel
+                prompts={QUICK_PROMPTS}
+                disabled={loading || booting}
+                onPrompt={(prompt) =>
+                  prompt === "Speak with the team" ? void handleEscalate() : void send(prompt)
+                }
+              />
               <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
                 <a href={docsPath} className="underline-offset-2 hover:text-primary hover:underline">
                   Docs
@@ -597,9 +663,23 @@ export function SupportChatWidget() {
             </div>
           ) : (
             <div className="space-y-4">
+              {showResumePrompt ? (
+                <SupportResumePrompt
+                  resolved={sessionStatus === "resolved"}
+                  preview={lastMessagePreview}
+                  onContinue={handleContinueConversation}
+                  onNewChat={() => void handleStartFresh()}
+                />
+              ) : null}
               {messages.map((m) => {
                 if (m.sender === "system") {
-                  return <SupportSystemNotice key={m.id} content={m.content} />;
+                  const isResolvedNotice = m.content.toLowerCase().includes(SESSION_RESOLVED_MARKER);
+                  return (
+                    <React.Fragment key={m.id}>
+                      {isResolvedNotice ? <SupportSessionEndDivider /> : null}
+                      <SupportSystemNotice content={m.content} />
+                    </React.Fragment>
+                  );
                 }
 
                 if (m.role === "user") {
@@ -662,6 +742,7 @@ export function SupportChatWidget() {
                   }}
                 />
               ) : null}
+              {sessionStatus === "resolved" && !hasResolvedNotice ? <SupportSessionEndDivider /> : null}
             </div>
           )}
           {error ? (
@@ -684,56 +765,75 @@ export function SupportChatWidget() {
 
         {/* Composer */}
         <div className="shrink-0 border-t border-border/60 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          {sessionStatus === "bot" && sessionId ? (
-            <div className="mb-2 flex justify-end">
+          {sessionStatus === "resolved" ? (
+            <div className="space-y-2">
               <button
                 type="button"
-                disabled={escalating}
-                onClick={() => void handleEscalate()}
-                className="inline-flex items-center gap-1 rounded-lg border border-border/70 px-2.5 py-1 text-[10px] font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary disabled:opacity-50"
+                onClick={() => void handleStartFresh()}
+                disabled={loading}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-glow/40 transition-opacity hover:opacity-90 disabled:opacity-50"
               >
-                <UserRoundCheck className="h-3 w-3" />
-                {escalating ? SUPPORT_VISITOR_COPY.handoffButtonActive : SUPPORT_VISITOR_COPY.handoffButton}
+                <MessageSquarePlus className="h-4 w-4" />
+                {SUPPORT_VISITOR_COPY.resume.newChat}
               </button>
+              <p className="text-center text-[10px] text-muted-foreground/80">
+                {SUPPORT_VISITOR_COPY.footer.resolved}
+              </p>
             </div>
-          ) : null}
-          <div className="flex items-end gap-2 rounded-xl border border-input/80 bg-surface/80 p-1.5 focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/30">
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              rows={1}
-              placeholder={
-                sessionStatus === "human_active"
-                  ? activeOperatorName
-                    ? SUPPORT_VISITOR_COPY.placeholder.live(activeOperatorName)
-                    : SUPPORT_VISITOR_COPY.placeholder.liveGeneric
-                  : sessionStatus === "queued"
-                    ? SUPPORT_VISITOR_COPY.placeholder.waiting
-                    : SUPPORT_VISITOR_COPY.placeholder.bot
-              }
-              disabled={loading || booting}
-              className="max-h-28 min-h-[2.25rem] flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none disabled:opacity-50"
-              aria-label="Message"
-            />
-            <button
-              type="button"
-              onClick={() => void send(input)}
-              disabled={!input.trim() || loading || booting}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-primary text-primary-foreground shadow-glow transition-opacity hover:opacity-90 disabled:opacity-40"
-              aria-label="Send message"
-            >
-              <Send className="h-4 w-4" />
-            </button>
-          </div>
-          <p className="mt-2 text-center text-[10px] text-muted-foreground/80">
-            {sessionStatus === "bot"
-              ? escalating
-                ? SUPPORT_VISITOR_COPY.footer.connecting
-                : SUPPORT_VISITOR_COPY.footer.bot
-              : null}
-          </p>
+          ) : (
+            <>
+              {sessionStatus === "bot" && sessionId ? (
+                <div className="mb-2 flex justify-end">
+                  <button
+                    type="button"
+                    disabled={escalating}
+                    onClick={() => void handleEscalate()}
+                    className="inline-flex items-center gap-1 rounded-lg border border-border/70 px-2.5 py-1 text-[10px] font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary disabled:opacity-50"
+                  >
+                    <UserRoundCheck className="h-3 w-3" />
+                    {escalating ? SUPPORT_VISITOR_COPY.handoffButtonActive : SUPPORT_VISITOR_COPY.handoffButton}
+                  </button>
+                </div>
+              ) : null}
+              <div className="flex items-end gap-2 rounded-xl border border-input/80 bg-surface/80 p-1.5 focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/30">
+                <textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  rows={1}
+                  placeholder={
+                    sessionStatus === "human_active"
+                      ? activeOperatorName
+                        ? SUPPORT_VISITOR_COPY.placeholder.live(activeOperatorName)
+                        : SUPPORT_VISITOR_COPY.placeholder.liveGeneric
+                      : sessionStatus === "queued"
+                        ? SUPPORT_VISITOR_COPY.placeholder.waiting
+                        : SUPPORT_VISITOR_COPY.placeholder.bot
+                  }
+                  disabled={loading || booting}
+                  className="max-h-28 min-h-[2.25rem] flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none disabled:opacity-50"
+                  aria-label="Message"
+                />
+                <button
+                  type="button"
+                  onClick={() => void send(input)}
+                  disabled={!input.trim() || loading || booting}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-primary text-primary-foreground shadow-glow transition-opacity hover:opacity-90 disabled:opacity-40"
+                  aria-label="Send message"
+                >
+                  <Send className="h-4 w-4" />
+                </button>
+              </div>
+              <p className="mt-2 text-center text-[10px] text-muted-foreground/80">
+                {sessionStatus === "bot"
+                  ? escalating
+                    ? SUPPORT_VISITOR_COPY.footer.connecting
+                    : SUPPORT_VISITOR_COPY.footer.bot
+                  : null}
+              </p>
+            </>
+          )}
         </div>
       </div>
 

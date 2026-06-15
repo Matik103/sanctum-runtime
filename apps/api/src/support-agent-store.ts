@@ -2,6 +2,7 @@ import { createSupabaseAdmin, type SupabaseAuthConfig } from './auth.js'
 import {
   HANDOFF_CONFIRMATION_MARKER,
   OPERATOR_JOINED_MARKER,
+  SESSION_RESOLVED_MARKER,
   SUPPORT_VISITOR_COPY,
 } from './support-visitor-copy.js'
 import {
@@ -310,6 +311,25 @@ export class SupportAgentStore {
       session_id: sessionId,
       role: 'assistant',
       content: SUPPORT_VISITOR_COPY.operatorJoined(operatorDisplayName),
+      metadata: { handoff: null, follow_ups: [], sender: 'system' },
+    })
+  }
+
+  async addSessionResolvedMessage(sessionId: string, operatorDisplayName?: string | null) {
+    const { data: existing, error: lookupError } = await this.admin
+      .from('support_agent_messages')
+      .select('content')
+      .eq('session_id', sessionId)
+      .eq('role', 'assistant')
+      .ilike('content', `%${SESSION_RESOLVED_MARKER}%`)
+      .limit(4)
+    if (lookupError) throw lookupError
+    if ((existing ?? []).length > 0) return null
+
+    return this.addMessage({
+      session_id: sessionId,
+      role: 'assistant',
+      content: SUPPORT_VISITOR_COPY.sessionResolved(operatorDisplayName),
       metadata: { handoff: null, follow_ups: [], sender: 'system' },
     })
   }

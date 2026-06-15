@@ -63,6 +63,15 @@ export function storeSessionId(id: string): void {
   }
 }
 
+export function clearStoredSessionId(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(SESSION_KEY);
+  } catch {
+    /* private browsing */
+  }
+}
+
 export async function createSupportSession(meta?: {
   landing_path?: string;
   referrer?: string;

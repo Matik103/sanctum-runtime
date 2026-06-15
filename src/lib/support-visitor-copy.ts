@@ -7,7 +7,39 @@ export const HANDOFF_CONFIRMATION_MARKER = "specialist is reviewing";
 
 export const OPERATOR_JOINED_MARKER = "joined the conversation";
 
+export const SESSION_RESOLVED_MARKER = "conversation was marked resolved";
+
 export const SUPPORT_VISITOR_COPY = {
+  greeting: `Hi — I'm Sanctum Guide.
+
+I answer from Sanctum docs on runtime trust, MCP gates, pricing, and pilots. Ask anything — or say **Speak with the team** when you want a person in this thread.`,
+
+  generalHelp: `I can walk you through verify-before-execute, MCP hardening, approval flows, audit evidence, and plans from Observer through Enterprise.
+
+What are you building or evaluating?`,
+
+  welcome: {
+    headline: "How can we help?",
+    subline:
+      "Grounded in Sanctum docs — runtime trust, MCP verification, pricing, and pilots. Specialists join this same thread anytime.",
+  },
+
+  resume: {
+    headline: "Welcome back",
+    bodyActive: "Pick up where you left off, or start a fresh conversation.",
+    bodyResolved: "Your last conversation is closed. Start a new one if you need more help.",
+    continue: "Continue conversation",
+    newChat: "Start new chat",
+  },
+
+  sessionResolved: (operatorName?: string | null) =>
+    operatorName
+      ? `${operatorName} marked this conversation resolved. Thanks for chatting with Sanctum — start a new conversation anytime if you need more help.`
+      : `This conversation was marked resolved. Thanks for chatting with Sanctum — start a new conversation anytime if you need more help.`,
+
+  sessionReopened:
+    "Starting a fresh conversation — your previous messages stay on our side for context if you hand off again.",
+
   handoffConfirmed:
     "You're with our team now. A specialist is reviewing this conversation and will respond right here — everything you've shared stays in this thread.",
 
@@ -46,12 +78,14 @@ export const SUPPORT_VISITOR_COPY = {
     waiting: "Specialist on the way · keep typing here",
     live: (name: string) => `Live with ${name}`,
     liveGeneric: "Live with Sanctum Support",
+    resolved: "Conversation closed · start a new chat anytime",
   } as const,
 
   header: {
     guide: "Runtime trust · grounded answers",
     waiting: "Specialist joining shortly",
     live: "Live specialist support",
+    resolved: "Conversation resolved",
   } as const,
 
   placeholder: {
@@ -59,12 +93,14 @@ export const SUPPORT_VISITOR_COPY = {
     waiting: "Share anything else — your specialist will see it",
     live: (name: string) => `Message ${name}…`,
     liveGeneric: "Message your specialist…",
+    resolved: "This conversation is closed",
   } as const,
 
   phase: {
     guide: "Guide",
     handoff: "Handoff",
     live: "Live",
+    done: "Done",
   } as const,
 } as const;
 
