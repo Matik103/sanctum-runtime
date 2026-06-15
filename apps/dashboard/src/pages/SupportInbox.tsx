@@ -102,6 +102,7 @@ export function SupportInbox({
 
   const transcriptRef = useRef<HTMLDivElement>(null)
   const messageCountRef = useRef(0)
+  const userScrolledUpRef = useRef(false)
 
   const selectedSession = useMemo(
     () => sessions.find((s) => s.public_id === selectedId) ?? null,
@@ -164,15 +165,25 @@ export function SupportInbox({
 
   useEffect(() => {
     if (!selectedId) return
+    userScrolledUpRef.current = false
     void loadDetail(selectedId)
     const id = setInterval(() => void loadDetail(selectedId), 4000)
     return () => clearInterval(id)
   }, [selectedId, loadDetail])
 
+  const handleTranscriptScroll = useCallback(() => {
+    const el = transcriptRef.current
+    if (!el) return
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+    userScrolledUpRef.current = distanceFromBottom > 96
+  }, [])
+
   useEffect(() => {
-    if (messages.length > messageCountRef.current) {
-      const el = transcriptRef.current
-      if (el) el.scrollTop = el.scrollHeight
+    const el = transcriptRef.current
+    if (!el) return
+    const grew = messages.length > messageCountRef.current
+    if (grew && (!userScrolledUpRef.current || messageCountRef.current === 0)) {
+      el.scrollTop = el.scrollHeight
     }
     messageCountRef.current = messages.length
   }, [messages])
@@ -239,29 +250,36 @@ export function SupportInbox({
               aria-expanded={statsOpen}
               onClick={() => setStatsOpen((v) => !v)}
             >
-              <span>Last 7 days</span>
-              <span>{statsOpen ? 'Hide' : 'Show'} metrics</span>
+              <span className="support-inbox__stats-summary">
+                <span>{analytics.chats_completed} chats</span>
+                <span className="support-inbox__stats-dot" aria-hidden />
+                <span>{analytics.handoffs} handoffs</span>
+                <span className="support-inbox__stats-dot" aria-hidden />
+                <span>{analytics.queued} awaiting</span>
+                <span className="support-inbox__stats-dot" aria-hidden />
+                <span>{analytics.human_active} live</span>
+              </span>
+              <span className="support-inbox__stats-toggle-label">{statsOpen ? 'Hide' : 'Details'}</span>
             </button>
-            <div
-              className="support-inbox__stats-grid"
-              hidden={isNarrow && !statsOpen}
-            >
-              {[
-                { label: 'Chats', value: analytics.chats_completed },
-                { label: 'Handoffs', value: analytics.handoffs },
-                { label: 'Handoff %', value: `${analytics.handoff_rate}%` },
-                { label: 'Latency', value: analytics.avg_latency_ms ? `${analytics.avg_latency_ms}ms` : '—' },
-                { label: 'Thumbs up', value: analytics.feedback_up },
-                { label: 'Thumbs down', value: analytics.feedback_down },
-                { label: 'Queued', value: analytics.queued },
-                { label: 'Live', value: analytics.human_active },
-              ].map((s) => (
-                <div key={s.label} className="support-inbox__stat">
-                  <div className="support-inbox__stat-label">{s.label}</div>
-                  <div className="support-inbox__stat-value">{s.value}</div>
-                </div>
-              ))}
-            </div>
+            {statsOpen ? (
+              <div className="support-inbox__stats-grid">
+                {[
+                  { label: 'Chats', value: analytics.chats_completed },
+                  { label: 'Handoffs', value: analytics.handoffs },
+                  { label: 'Handoff %', value: `${analytics.handoff_rate}%` },
+                  { label: 'Latency', value: analytics.avg_latency_ms ? `${analytics.avg_latency_ms}ms` : '—' },
+                  { label: 'Thumbs up', value: analytics.feedback_up },
+                  { label: 'Thumbs down', value: analytics.feedback_down },
+                  { label: 'Awaiting', value: analytics.queued },
+                  { label: 'Live', value: analytics.human_active },
+                ].map((s) => (
+                  <div key={s.label} className="support-inbox__stat">
+                    <div className="support-inbox__stat-label">{s.label}</div>
+                    <div className="support-inbox__stat-value">{s.value}</div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </section>
         ) : null}
 
@@ -383,9 +401,14 @@ export function SupportInbox({
                   </div>
                 </header>
 
-                <div ref={transcriptRef} className="support-inbox__transcript">
+                <div className="support-inbox__thread-body">
+                <div
+                  ref={transcriptRef}
+                  className="support-inbox__transcript"
+                  onScroll={handleTranscriptScroll}
+                >
                   {detailLoading && !messages.length ? (
-                    <p style={{ color: 'var(--muted)', fontSize: 13 }}>Loading transcript…</p>
+                    <p className="support-inbox__loading">Loading transcript…</p>
                   ) : null}
                   {transcript.map((item) => {
                     if (item.kind === 'divider') {
@@ -458,6 +481,7 @@ export function SupportInbox({
                   >
                     <Send size={16} />
                   </button>
+                </div>
                 </div>
               </>
             )}

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { Headphones, LogOut } from 'lucide-react'
 import { useSupportPortalAuth } from '../auth/SupportPortalAuthProvider'
 import '../styles/support-portal.css'
@@ -12,6 +12,11 @@ export function SupportPortalShell({ children }: Props) {
   const displayName =
     (typeof user?.user_metadata?.display_name === 'string' && user.user_metadata.display_name.trim()) ||
     'Support operator'
+
+  useEffect(() => {
+    document.body.classList.add('support-portal-body')
+    return () => document.body.classList.remove('support-portal-body')
+  }, [])
 
   return (
     <div className="support-portal">
