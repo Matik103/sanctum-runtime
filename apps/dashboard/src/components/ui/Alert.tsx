@@ -1,13 +1,14 @@
 import { AlertCircle, AlertTriangle, CheckCircle2, Info } from 'lucide-react'
 import type { CSSProperties, ReactNode } from 'react'
 
-type Variant = 'error' | 'success' | 'info' | 'warn'
+type Variant = 'error' | 'success' | 'info' | 'warn' | 'warning'
 
 const icons = {
   error: AlertCircle,
   success: CheckCircle2,
   info: Info,
   warn: AlertTriangle,
+  warning: AlertTriangle,
 }
 
 type Props = {
@@ -18,9 +19,10 @@ type Props = {
 }
 
 export function Alert({ variant = 'info', children, onDismiss, style }: Props) {
+  const resolved = variant === 'warning' ? 'warn' : variant
   const Icon = icons[variant]
   return (
-    <div className={`alert alert--${variant}`} role="alert" style={style}>
+    <div className={`alert alert--${resolved}`} role="alert" style={style}>
       <Icon size={18} className="alert__icon" aria-hidden />
       <div className="alert__body">{children}</div>
       {onDismiss && (

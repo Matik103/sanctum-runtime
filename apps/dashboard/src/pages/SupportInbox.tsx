@@ -215,7 +215,8 @@ export function SupportInbox({
   if (forbidden) {
     return (
       <div className={portalMode ? 'support-portal-inbox page' : 'page'} style={{ padding: 16 }}>
-        <Alert variant="warning" title="Support inbox access required">
+        <Alert variant="warn">
+          <strong>Support inbox access required.</strong>{' '}
           Your account is not on the support operator allowlist. Ask an admin to add{' '}
           <code>SUPPORT_INBOX_ALLOWED_EMAILS</code> or update{' '}
           <code>support_agent_config.inbox.allowed_emails</code>.
@@ -266,7 +267,7 @@ export function SupportInbox({
 
         {error ? (
           <div className="support-inbox__alert">
-            <Alert variant="error" title={error} />
+            <Alert variant="error">{error}</Alert>
           </div>
         ) : null}
 
