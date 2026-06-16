@@ -14,15 +14,33 @@ export function Navbar() {
           <span className="font-display text-lg font-semibold tracking-tight">Sanctum</span>
         </Link>
         <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
-          <a href="#problem" className="hover:text-foreground transition-colors">Problem</a>
-          <a href="#solution" className="hover:text-foreground transition-colors">Runtime</a>
-          <a href="#quick-start" className="hover:text-foreground transition-colors">Quick start</a>
-          <Link to="/pilot/" className="hover:text-foreground transition-colors">Pilot</Link>
-          <a href="#sdk" className="hover:text-foreground transition-colors">SDK</a>
-          <a href="#use-cases" className="hover:text-foreground transition-colors">Use cases</a>
-          <Link to="/blog/" className="hover:text-foreground transition-colors">Blog</Link>
-          <Link to="/docs/" className="hover:text-foreground transition-colors">Docs</Link>
-          <Link to="/pricing/" className="hover:text-foreground transition-colors">Pricing</Link>
+          <Link to="/" hash="problem" className="hover:text-foreground transition-colors">
+            Problem
+          </Link>
+          <Link to="/" hash="solution" className="hover:text-foreground transition-colors">
+            Runtime
+          </Link>
+          <Link to="/" hash="quick-start" className="hover:text-foreground transition-colors">
+            Quick start
+          </Link>
+          <Link to="/pilot/" className="hover:text-foreground transition-colors">
+            Pilot
+          </Link>
+          <Link to="/sdk/" className="hover:text-foreground transition-colors">
+            SDK
+          </Link>
+          <Link to="/" hash="use-cases" className="hover:text-foreground transition-colors">
+            Use cases
+          </Link>
+          <Link to="/blog/" className="hover:text-foreground transition-colors">
+            Blog
+          </Link>
+          <Link to="/docs/" className="hover:text-foreground transition-colors">
+            Docs
+          </Link>
+          <Link to="/pricing/" className="hover:text-foreground transition-colors">
+            Pricing
+          </Link>
         </nav>
         <div className="flex items-center gap-2">
           <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex text-muted-foreground hover:text-foreground">
