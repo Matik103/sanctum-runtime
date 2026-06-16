@@ -1,6 +1,6 @@
 {
   "name": "@sanctum-runtime/sdk",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Sanctum Runtime SDK — the runtime trust boundary for autonomous systems. Signed action tokens, blast-radius scoring, source-trust classification (indirect-prompt-injection defense), dual-approver + auto-escalate, policy replay, SOC2 + NIST AI RMF evidence. Gate every AI agent / robot / MCP tool / workflow action before it runs.",
   "type": "module",
   "license": "MIT",
@@ -120,8 +120,8 @@
   },
   "devDependencies": {
     "@types/ws": "^8.18.1",
-    "tsup": "^8.5.0",
-    "typescript": "^5.8.3"
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.3"
   },
   "engines": {
     "node": ">=18"

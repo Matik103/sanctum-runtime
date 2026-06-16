@@ -46,6 +46,12 @@ All notable changes to the public Sanctum open-core runtime are documented here.
 - `sanctum shield rules | events`
 - `sanctum webhooks dead | status`
 
+### Changed
+
+- **`@sanctum-runtime/sdk`** — `zod` ^4.4.3; `typescript` ^6.0.3; `tsup` ^8.5.1
+- **`@sanctum-runtime/adapter-agent-runtime`** — removed unused direct `zod` dependency; aligned dev toolchain versions
+- **`@sanctum-runtime/cli`** — aligned SDK pin and dev toolchain versions
+
 ### Fixed
 
 - Shield test fixtures used wrong action names for blast-radius tests

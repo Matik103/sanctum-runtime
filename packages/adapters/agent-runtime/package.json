@@ -1,6 +1,6 @@
 {
   "name": "@sanctum-runtime/adapter-agent-runtime",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "protectAgent() for Sanctum Runtime — verify-before-execute wrapper for AI agents, tool use, and LLM automations.",
   "type": "module",
   "license": "MIT",
@@ -52,12 +52,11 @@
     "registry": "https://registry.npmjs.org"
   },
   "dependencies": {
-    "@sanctum-runtime/sdk": "^0.1.1",
-    "zod": "^4.4.3"
+    "@sanctum-runtime/sdk": "^0.1.2"
   },
   "devDependencies": {
-    "tsup": "^8.5.0",
-    "typescript": "^5.8.3"
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.3"
   },
   "engines": {
     "node": ">=18"
