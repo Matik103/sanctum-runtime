@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Building2, Mail, ShieldCheck } from "lucide-react";
 import { DiscoverPageLayout } from "@/components/DiscoverPageLayout";
@@ -12,6 +12,8 @@ const description =
 
 const salesEmail = billingEmail;
 
+type SubmitState = "idle" | "submitting" | "success" | "error";
+
 export const Route = createFileRoute("/contact")({
   component: ContactPage,
   head: () => pageSeo({ title, description, path }),
@@ -23,26 +25,43 @@ function ContactPage() {
   const [useCase, setUseCase] = useState("Hosted Connect + approvals");
   const [timeline, setTimeline] = useState("This month");
   const [details, setDetails] = useState("");
+  const [submitState, setSubmitState] = useState<SubmitState>("idle");
+  const [submitMessage, setSubmitMessage] = useState("");
 
-  const salesMailto = useMemo(() => {
-    const subject = encodeURIComponent(`Enterprise inquiry for ${productLegalName}`);
-    const body = encodeURIComponent(
-      [
-        `Organization: ${org || ""}`,
-        `Work email: ${email || ""}`,
-        `Use case: ${useCase}`,
-        `Timeline: ${timeline}`,
-        "",
-        "What actions should Sanctum control?",
-        details || "",
-      ].join("\n"),
-    );
-    return `mailto:${salesEmail}?subject=${subject}&body=${body}`;
-  }, [details, email, org, timeline, useCase]);
-
-  function handleSalesSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSalesSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    window.location.href = salesMailto;
+    setSubmitState("submitting");
+    setSubmitMessage("");
+
+    try {
+      const response = await fetch("/api/contact-sales", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          organization: org,
+          email,
+          need: useCase,
+          timeline,
+          details,
+          path: typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : path,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`submit_failed_${response.status}`);
+      }
+
+      setSubmitState("success");
+      setSubmitMessage("Thanks. Your request was sent to Sanctum sales. We will reply by email.");
+      setOrg("");
+      setEmail("");
+      setUseCase("Hosted Connect + approvals");
+      setTimeline("This month");
+      setDetails("");
+    } catch {
+      setSubmitState("error");
+      setSubmitMessage(`We could not submit the form. Email ${salesEmail} and we will help from there.`);
+    }
   }
 
   return (
@@ -147,13 +166,26 @@ function ContactPage() {
             </label>
             <button
               type="submit"
+              disabled={submitState === "submitting"}
               className="inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-5 py-2 font-semibold text-primary-foreground"
             >
-              Contact sales
+              {submitState === "submitting" ? "Sending..." : "Contact sales"}
             </button>
-            <p className="text-xs text-muted-foreground">
-              The form opens your email client with these details prefilled so you can review before sending.
-            </p>
+            {submitMessage ? (
+              <p
+                className={
+                  submitState === "success"
+                    ? "rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200"
+                    : "rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                }
+              >
+                {submitMessage}
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                This submits directly to {salesEmail}. We use your work email only to reply.
+              </p>
+            )}
           </form>
         </div>
       </section>
