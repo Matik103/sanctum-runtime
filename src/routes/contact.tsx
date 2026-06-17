@@ -20,7 +20,7 @@ export const Route = createFileRoute("/contact")({
 function ContactPage() {
   const [org, setOrg] = useState("");
   const [email, setEmail] = useState("");
-  const [useCase, setUseCase] = useState("Hosted Connect and production approvals");
+  const [useCase, setUseCase] = useState("Hosted Connect + approvals");
   const [timeline, setTimeline] = useState("This month");
   const [details, setDetails] = useState("");
 
@@ -33,7 +33,7 @@ function ContactPage() {
         `Use case: ${useCase}`,
         `Timeline: ${timeline}`,
         "",
-        "What needs to be protected?",
+        "What actions should Sanctum control?",
         details || "",
       ].join("\n"),
     );
@@ -53,9 +53,9 @@ function ContactPage() {
     >
       <p className="text-sm text-muted-foreground">Last updated: June 3, 2026</p>
 
-      <section className="rounded-2xl border border-border bg-card/50 p-5">
-        <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-          <div>
+      <section className="overflow-hidden rounded-2xl border border-border bg-card/50 p-5 sm:p-6">
+        <div className="grid min-w-0 gap-8 xl:grid-cols-[0.9fr_minmax(0,1.1fr)]">
+          <div className="min-w-0">
             <div className="grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary">
               <ShieldCheck className="h-5 w-5" />
             </div>
@@ -64,15 +64,15 @@ function ContactPage() {
               Use this for private cloud, air-gapped deployments, SSO, compliance review,
               custom retention, procurement, and production rollout planning.
             </p>
-            <div className="mt-4 grid gap-3 text-sm text-muted-foreground sm:grid-cols-2">
-              <div className="rounded-xl border border-border bg-background/70 p-4">
+            <div className="mt-5 grid min-w-0 gap-3 text-sm text-muted-foreground md:grid-cols-2">
+              <div className="min-w-0 rounded-xl border border-border bg-background/70 p-4">
                 <Building2 className="mb-2 h-4 w-4 text-primary" />
                 Regulated fleets, robotics, finance, healthcare, and enterprise agent platforms.
               </div>
-              <div className="rounded-xl border border-border bg-background/70 p-4">
+              <div className="min-w-0 rounded-xl border border-border bg-background/70 p-4">
                 <Mail className="mb-2 h-4 w-4 text-primary" />
                 Prefer email? Write to{" "}
-                <a href={`mailto:${salesEmail}`} className="text-primary hover:underline">
+                <a href={`mailto:${salesEmail}`} className="break-all text-primary hover:underline">
                   {salesEmail}
                 </a>
                 .
@@ -80,51 +80,54 @@ function ContactPage() {
             </div>
           </div>
 
-          <form onSubmit={handleSalesSubmit} className="grid gap-4 rounded-xl border border-border bg-background/70 p-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="grid gap-2 text-sm font-medium text-foreground">
+          <form
+            onSubmit={handleSalesSubmit}
+            className="grid min-w-0 gap-5 rounded-xl border border-border bg-background/70 p-4 sm:p-5"
+          >
+            <div className="grid min-w-0 gap-4 md:grid-cols-2">
+              <label className="grid min-w-0 gap-2 text-sm font-medium text-foreground">
                 Organization
                 <input
                   value={org}
                   onChange={(event) => setOrg(event.target.value)}
-                  className="min-h-11 rounded-lg border border-border bg-card px-3 text-foreground outline-none focus:border-primary"
+                  className="min-h-11 w-full min-w-0 rounded-lg border border-border bg-card px-3 text-foreground outline-none focus:border-primary"
                   placeholder="Acme Robotics"
                   required
                 />
               </label>
-              <label className="grid gap-2 text-sm font-medium text-foreground">
+              <label className="grid min-w-0 gap-2 text-sm font-medium text-foreground">
                 Work email
                 <input
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  className="min-h-11 rounded-lg border border-border bg-card px-3 text-foreground outline-none focus:border-primary"
+                  className="min-h-11 w-full min-w-0 rounded-lg border border-border bg-card px-3 text-foreground outline-none focus:border-primary"
                   placeholder="you@company.com"
                   type="email"
                   required
                 />
               </label>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="grid gap-2 text-sm font-medium text-foreground">
+            <div className="grid min-w-0 gap-4 md:grid-cols-2">
+              <label className="grid min-w-0 gap-2 text-sm font-medium text-foreground">
                 Need
                 <select
                   value={useCase}
                   onChange={(event) => setUseCase(event.target.value)}
-                  className="min-h-11 rounded-lg border border-border bg-card px-3 text-foreground outline-none focus:border-primary"
+                  className="min-h-11 w-full min-w-0 rounded-lg border border-border bg-card px-3 text-foreground outline-none focus:border-primary"
                 >
-                  <option>Hosted Connect and production approvals</option>
-                  <option>Private cloud or air-gapped deployment</option>
-                  <option>SSO, RBAC, and compliance evidence</option>
-                  <option>Robotics, edge, or physical action gates</option>
-                  <option>Security review or procurement</option>
+                  <option>Hosted Connect + approvals</option>
+                  <option>Private cloud or air gap</option>
+                  <option>SSO, RBAC, compliance</option>
+                  <option>Robotics or physical gates</option>
+                  <option>Security review</option>
                 </select>
               </label>
-              <label className="grid gap-2 text-sm font-medium text-foreground">
+              <label className="grid min-w-0 gap-2 text-sm font-medium text-foreground">
                 Timeline
                 <select
                   value={timeline}
                   onChange={(event) => setTimeline(event.target.value)}
-                  className="min-h-11 rounded-lg border border-border bg-card px-3 text-foreground outline-none focus:border-primary"
+                  className="min-h-11 w-full min-w-0 rounded-lg border border-border bg-card px-3 text-foreground outline-none focus:border-primary"
                 >
                   <option>This month</option>
                   <option>This quarter</option>
@@ -133,12 +136,12 @@ function ContactPage() {
                 </select>
               </label>
             </div>
-            <label className="grid gap-2 text-sm font-medium text-foreground">
+            <label className="grid min-w-0 gap-2 text-sm font-medium text-foreground">
               What actions should Sanctum control?
               <textarea
                 value={details}
                 onChange={(event) => setDetails(event.target.value)}
-                className="min-h-32 rounded-lg border border-border bg-card px-3 py-3 text-foreground outline-none focus:border-primary"
+                className="min-h-32 w-full min-w-0 resize-y rounded-lg border border-border bg-card px-3 py-3 text-foreground outline-none focus:border-primary"
                 placeholder="Payments, email sends, deployments, MCP tools, robot movement, home access, customer data..."
               />
             </label>
