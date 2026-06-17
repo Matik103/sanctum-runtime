@@ -14,7 +14,7 @@ import { Navbar } from "@/components/Navbar";
 import { CtaFooter } from "@/components/CtaFooter";
 import { trackCta } from "@/lib/analytics";
 import { pageSeo, webPageJsonLd } from "@/lib/seo";
-import { consoleUrl } from "@/lib/site-links";
+import { contactUrl, consoleUrl } from "@/lib/site-links";
 
 const path = "/pricing";
 const title = "Pricing - Sanctum Runtime";
@@ -28,6 +28,8 @@ type Plan = {
   note?: string;
   promise: string;
   cta: string;
+  ctaHref?: string;
+  ctaDestination?: "console" | "contact";
   ctaVariant?: "primary" | "secondary";
   highlighted?: boolean;
   stats: Array<{ label: string; value: string }>;
@@ -126,6 +128,8 @@ const plans: Plan[] = [
     note: "Private cloud, air-gap, SLA",
     promise: "Dedicated controls for regulated fleets, custom retention, and enterprise procurement.",
     cta: "Contact sales",
+    ctaHref: `${contactUrl}?intent=enterprise`,
+    ctaDestination: "contact",
     stats: [
       { label: "Agents", value: "Unlimited" },
       { label: "Runtimes", value: "Unlimited" },
@@ -275,13 +279,19 @@ function PricingPage() {
                   </ul>
 
                   <a
-                    href={consoleUrl}
+                    href={plan.ctaHref ?? consoleUrl}
                     className={`mt-6 inline-flex min-h-11 items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold transition ${
                       plan.ctaVariant === "primary"
                         ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:-translate-y-0.5"
                         : "border border-border bg-card/60 text-foreground hover:border-primary/40 hover:bg-card"
                     }`}
-                    onClick={() => trackCta({ location: "pricing_card", cta: plan.name.toLowerCase(), destination: "console" })}
+                    onClick={() =>
+                      trackCta({
+                        location: "pricing_card",
+                        cta: plan.name.toLowerCase(),
+                        destination: plan.ctaDestination ?? "console",
+                      })
+                    }
                   >
                     {plan.cta}
                   </a>
