@@ -36,7 +36,7 @@ type Plan = {
 
 const plans: Plan[] = [
   {
-    name: "Observer",
+    name: "Developer",
     headline: "See every payment and email",
     price: "$0",
     note: "Free forever",
@@ -119,6 +119,26 @@ const plans: Plan[] = [
       "Priority support path",
     ],
   },
+  {
+    name: "Enterprise",
+    headline: "Run Sanctum your way",
+    price: "Custom",
+    note: "Private cloud, air-gap, SLA",
+    promise: "Dedicated controls for regulated fleets, custom retention, and enterprise procurement.",
+    cta: "Contact sales",
+    stats: [
+      { label: "Agents", value: "Unlimited" },
+      { label: "Runtimes", value: "Unlimited" },
+      { label: "Governed actions", value: "Unlimited" },
+      { label: "Retention", value: "90+ days" },
+    ],
+    features: [
+      "Air-gapped or private cloud deployment",
+      "Custom SSO, RBAC, and audit retention",
+      "Compliance and security review support",
+      "SLA and dedicated support",
+    ],
+  },
 ];
 
 const meters = [
@@ -144,7 +164,7 @@ const meters = [
 
 const upgradeTriggers = [
   "Need to block or approve? Governed control starts at Personal ($12/mo).",
-  "Day 8 on Observer: upgrade for 30-day history.",
+  "Day 8 on Developer: upgrade for 30-day history.",
   "Toggle Connect to gate: production control starts at Operator.",
   "Shadow mode: see which transfer would have been held.",
 ];
@@ -212,7 +232,7 @@ function PricingPage() {
 
         <section className="border-y border-border bg-card/20 py-12">
           <div className="container mx-auto px-6">
-            <div className="grid gap-4 lg:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
               {plans.map((plan) => (
                 <article
                   key={plan.name}
@@ -278,7 +298,7 @@ function PricingPage() {
               The paywall appears when power appears.
             </h2>
             <p className="mt-4 text-muted-foreground">
-              Observer is built for discovery. Personal and Operator unlock the moment Sanctum moves from
+              Developer is built for discovery. Personal and Operator unlock the moment Sanctum moves from
               "what happened?" to "should this execute?"
             </p>
           </div>
@@ -347,16 +367,16 @@ function PricingPage() {
           <div className="rounded-2xl border border-border bg-primary/10 p-6 text-center">
             <h2 className="text-2xl font-semibold text-foreground">Not ready to buy? Perfect.</h2>
             <p className="mx-auto mt-3 max-w-2xl text-muted-foreground">
-              Start on Observer, connect one real action, and watch the boundary appear in Live Feed.
+              Start on Developer, connect one real action, and watch the boundary appear in Live Feed.
               Upgrade only when you want Sanctum to stop or approve execution.
             </p>
             <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
               <a
                 href={consoleUrl}
                 className="inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-5 py-2 font-semibold text-primary-foreground"
-                onClick={() => trackCta({ location: "pricing_footer", cta: "start_observer", destination: "console" })}
+                onClick={() => trackCta({ location: "pricing_footer", cta: "start_developer", destination: "console" })}
               >
-                Start Observer
+                Start Developer
               </a>
               <Link
                 to="/billing"

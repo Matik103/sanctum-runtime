@@ -34,7 +34,7 @@ function BillingPage() {
       <section>
         <h2>1. Plans</h2>
         <p>
-          We offer multiple plans (Observer, Personal, Operator, Team, and Enterprise) with different
+          We offer multiple plans (Developer, Personal, Operator, Team, and Enterprise) with different
           limits on runtimes, agents, governed actions, audit retention, and features such as Shield,
           webhooks, SSO, and compliance export.
           Current limits are shown in the cloud console and may change with notice.
@@ -80,9 +80,9 @@ function BillingPage() {
       </section>
 
       <section>
-        <h2>6. Observer tier</h2>
+        <h2>6. Developer tier</h2>
         <p>
-          Observer is the free plan for seeing what agents touch before paying for production control.
+          Developer is the free plan for seeing what agents touch before paying for production control.
           It includes live feed visibility and observe-only Connect — no verify, approve, block, or gate
           on governed actions. We may modify free-tier limits with reasonable notice.
         </p>

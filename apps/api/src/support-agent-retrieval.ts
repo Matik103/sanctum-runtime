@@ -54,7 +54,7 @@ export function detectSalesIntent(message: string): boolean {
   if (/\b(can|how)\s+(?:ai\s+)?agents?\s+buy\b/i.test(message)) return false
   if (/\bbuy\s+(things|online|safely|stuff)\b/i.test(m)) return false
   // "buy" without product/pricing context (e.g. "buyers guide" still has buy in SALES)
-  if (/\bbuy\b/i.test(m) && !/\b(pricing|plan|observer|operator|personal|team|enterprise|subscription|sanctum|trial)\b/i.test(m)) {
+  if (/\bbuy\b/i.test(m) && !/\b(pricing|plan|developer|observer|operator|personal|team|enterprise|subscription|sanctum|trial)\b/i.test(m)) {
     return false
   }
   return SALES_INTENT_RE.test(message)
@@ -71,7 +71,7 @@ export function extractSearchTerms(query: string, salesIntent: boolean): string[
 
   const phrases = extractPhrases(query)
   if (salesIntent) {
-    return [...new Set([...raw, ...phrases, 'pricing', 'plan', 'observer'])]
+    return [...new Set([...raw, ...phrases, 'pricing', 'plan', 'developer', 'observer'])]
   }
   return [...new Set([...raw, ...phrases])]
 }
@@ -88,7 +88,7 @@ export function extractPhrases(query: string): string[] {
 }
 
 export const CHEAPEST_INTENT_RE =
-  /\b(cheap|cheapest|free|lowest|observer|beginner|hobby|indie)\b/i
+  /\b(cheap|cheapest|free|lowest|developer|observer|beginner|hobby|indie)\b/i
 
 /** Explicit visitor request for a person — not product vocabulary (plans, MCP, support features). */
 const EXPLICIT_HANDOFF_PATTERNS: RegExp[] = [
@@ -138,7 +138,7 @@ export function isGeneralHelpQuery(message: string): boolean {
   if (topicHintsForMessage(m).length > 0) return false
 
   if (
-    /\b(sanctum|runtime|mcp|sdk|pricing|price|plan|observer|operator|personal|team|enterprise|verify|verification|approval|policy|policies|audit|shield|gate|token|langchain|openai|claude|gemini|robot|ros2|pilot|console|docs|integrat|install|npm|quick\s*start|security|compliance|soc\s*2)\b/i.test(
+    /\b(sanctum|runtime|mcp|sdk|pricing|price|plan|developer|observer|operator|personal|team|enterprise|verify|verification|approval|policy|policies|audit|shield|gate|token|langchain|openai|claude|gemini|robot|ros2|pilot|console|docs|integrat|install|npm|quick\s*start|security|compliance|soc\s*2)\b/i.test(
       m,
     )
   ) {
@@ -155,7 +155,7 @@ export function detectHumanHandoffIntent(message: string): boolean {
   // Product/pricing questions — never treat plan names or feature "support" as escalation.
   if (detectPlanTier(m)) return false
   if (
-    /\b(how much|price|cost|pricing|plan|observer|operator|personal|team|enterprise)\b/i.test(m) &&
+    /\b(how much|price|cost|pricing|plan|developer|observer|operator|personal|team|enterprise)\b/i.test(m) &&
     !/\b(talk|speak|human|person|connect\s+me|schedule)\b/i.test(m)
   ) {
     return false
@@ -210,10 +210,10 @@ const TOPIC_HINTS: { pattern: RegExp; slugs: string[] }[] = [
   { pattern: /\boffline\b|\blocal\s+model\b/i, slugs: ['blog/can-you-run-ai-agent-security-offline', 'blog/local-ollama-offline-runtime-trust'] },
   { pattern: /\bconfused\s+deputy\b/i, slugs: ['blog/what-is-confused-deputy-in-ai-agents'] },
   { pattern: /\bpolic(y|ies)\b.*\bscale\b|\bscale\b.*\bpolic/i, slugs: ['blog/how-to-design-ai-agent-policies-that-scale'] },
-  { pattern: /\b(observer|operator|personal|team)\b.*\b(vs|versus|compare)\b|\bcompare\b.*\b(observer|operator|personal|team|plan|pricing)\b/i, slugs: ['page/pricing'] },
+  { pattern: /\b(developer|observer|operator|personal|team)\b.*\b(vs|versus|compare)\b|\bcompare\b.*\b(developer|observer|operator|personal|team|plan|pricing)\b/i, slugs: ['page/pricing'] },
   { pattern: /\bteam\s+plan\b|\bhow\s+much\b.*\bteam\b/i, slugs: ['page/pricing'] },
   { pattern: /\b(pric(e|ing)|how much|what\s+plans?|subscription|plans?\s+cost)\b/i, slugs: ['page/pricing', 'product/overview'] },
-  { pattern: /\bneed help\b.*\b(pric|plan|mcp|sdk|sanctum|runtime|observer|operator|enterprise)\b/i, slugs: ['page/pricing', 'product/overview', 'docs/index'] },
+  { pattern: /\bneed help\b.*\b(pric|plan|mcp|sdk|sanctum|runtime|developer|observer|operator|enterprise)\b/i, slugs: ['page/pricing', 'product/overview', 'docs/index'] },
   { pattern: /\bopen[\s-]*core\b/i, slugs: ['blog/open-core-ai-agent-security-vs-enterprise-suite', 'product/overview', 'docs/index'] },
   { pattern: /^(hi|hello|hey)\b|\bwhat can you (do|help)/i, slugs: ['product/overview', 'docs/index'] },
 ]
@@ -362,7 +362,7 @@ export function detectPlanTier(message: string): string | null {
   if (/\bteam\b/i.test(message)) return 'Team'
   if (/\boperator\b/i.test(message)) return 'Operator'
   if (/\bpersonal\b/i.test(message)) return 'Personal'
-  if (/\bobserver\b/i.test(message)) return 'Observer'
+  if (/\b(developer|observer)\b/i.test(message)) return 'Developer'
   return null
 }
 
@@ -378,7 +378,7 @@ export function planSectionFromChunk(content: string, planName: string): string 
 }
 
 export function planComparisonSummary(content: string): string | null {
-  const observer = planSectionFromChunk(content, 'Observer')
+  const observer = planSectionFromChunk(content, 'Developer') ?? planSectionFromChunk(content, 'Observer')
   const operator = planSectionFromChunk(content, 'Operator')
   if (!observer || !operator) return null
   return `Here is a comparison from our pricing page:\n\n${observer}\n\n${operator}`
@@ -386,7 +386,7 @@ export function planComparisonSummary(content: string): string | null {
 
 export function pricingSummaryFromChunk(content: string): string | null {
   const observer = content.match(
-    /##\s*Observer[^#]*?(?:Price:\s*\*\*\$0\*\*|free forever)[^#]*/i,
+    /##\s*(?:Developer|Observer)[^#]*?(?:Price:\s*\*\*\$0\*\*|free forever)[^#]*/i,
   )
   if (observer) {
     const line = observer[0]
@@ -395,7 +395,7 @@ export function pricingSummaryFromChunk(content: string): string | null {
       .filter(Boolean)
       .slice(0, 6)
       .join('\n')
-    return `The cheapest plan is Observer — $0 / free forever. Observer is observe-only: unlimited observe events and no governed actions (no verify, approve, block, or gate). Upgrade to Personal for governed actions.\n\n${line.replace(/\*\*/g, '')}`
+    return `The cheapest plan is Developer — $0 / free forever. Developer is observe-only: unlimited observe events and no governed actions (no verify, approve, block, or gate). Upgrade to Personal for governed actions.\n\n${line.replace(/\*\*/g, '')}`
   }
   return null
 }

@@ -11,7 +11,7 @@ const SCENARIOS = [
     category: 'pricing',
     message: 'what is the cheapest plan?',
     expectSlug: /page\/pricing/,
-    expectContent: /\$0|Observer|observe|none|no govern/i,
+    expectContent: /\$0|Developer|observe|none|no govern/i,
     rejectContent: /50\/mo|50\/month|50 governed/i,
     rejectSlug: null,
   },
@@ -39,7 +39,7 @@ const SCENARIOS = [
     category: 'pricing',
     message: 'is there a free trial?',
     expectSlug: /page\/pricing/,
-    expectContent: /Observer|\$0|free/i,
+    expectContent: /Developer|\$0|free/i,
   },
 
   {
@@ -50,9 +50,9 @@ const SCENARIOS = [
   },
   {
     category: 'pricing',
-    message: 'compare Observer vs Operator',
+    message: 'compare Developer vs Operator',
     expectSlug: /page\/pricing/,
-    expectContent: /Observer|Operator/i,
+    expectContent: /Developer|Operator/i,
   },
 
   // Product & positioning

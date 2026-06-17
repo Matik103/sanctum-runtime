@@ -30,7 +30,7 @@ type KbSourceInput = {
 
 const PRICING_MARKDOWN = `# Sanctum Runtime Pricing
 
-## Observer (cheapest plan — free forever, observe only)
+## Developer (cheapest plan — free forever, observe only)
 - Price: **$0** / free forever
 - Best for: watching agent side effects before paying for production control
 - Agents: 2
@@ -57,7 +57,7 @@ const PRICING_MARKDOWN = `# Sanctum Runtime Pricing
 ## Enterprise
 - Custom pricing for fleet, SSO, compliance, and dedicated support — contact sales.
 
-Start free on Observer ($0), then upgrade when you need production gates.
+Start free on Developer ($0), then upgrade when you need production gates.
 `
 
 const PRODUCT_MARKDOWN = `# What is Sanctum Runtime?
@@ -141,11 +141,11 @@ function buildSources(): KbSourceInput[] {
       slug: 'page/pricing',
       source_type: 'pricing',
       title: 'Sanctum Runtime Pricing Plans',
-      summary: 'Observer free observe-only plan, Personal $12, Operator $59, Team $299, Enterprise custom.',
+      summary: 'Developer free observe-only plan, Personal $12, Operator $59, Team $299, Enterprise custom.',
       content_markdown: PRICING_MARKDOWN,
       canonical_url: `${MARKETING_URL}/pricing`,
       external_key: 'page/pricing',
-      tags: ['pricing', 'plans', 'observer', 'personal', 'operator', 'team', 'enterprise'],
+      tags: ['pricing', 'plans', 'developer', 'observer', 'personal', 'operator', 'team', 'enterprise'],
       intent_tags: ['buy', 'pricing', 'compare', 'onboard'],
       sales_weight: 10,
     },
