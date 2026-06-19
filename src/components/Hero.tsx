@@ -7,7 +7,7 @@ import { ArrowRight, BookOpen, ShieldCheck } from "lucide-react";
 export function Hero() {
   return (
     <section className="relative overflow-hidden pt-32 pb-24 md:pt-44 md:pb-36">
-      <div className="absolute inset-0 grid-bg opacity-40" />
+      <div className="absolute inset-0 grid-bg opacity-40" aria-hidden />
       <div className="absolute inset-0 bg-gradient-glow" />
       <div className="absolute -top-20 left-1/2 h-[500px] w-[800px] -translate-x-1/2 bg-gradient-primary opacity-20 blur-[120px] rounded-full" />
 
