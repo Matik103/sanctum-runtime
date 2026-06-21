@@ -1,5 +1,6 @@
 import "./lib/error-capture";
 
+import { resolveBlogSlug } from "./lib/blog-slug-resolve";
 import { crawlStaticResponse, isCrawlStaticPath } from "./lib/crawl-static";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
@@ -261,6 +262,17 @@ function redirectFavicon(request: Request): Response | null {
   return Response.redirect(url.toString(), 308);
 }
 
+/** LinkedIn/social often strip hyphens — redirect to canonical blog slug. */
+function redirectBlogSlugAlias(request: Request): Response | null {
+  const url = new URL(request.url);
+  const match = url.pathname.match(/^\/blog\/([^/]+)$/);
+  if (!match) return null;
+  const resolved = resolveBlogSlug(match[1]);
+  if (!resolved || resolved === match[1]) return null;
+  url.pathname = `/blog/${resolved}`;
+  return Response.redirect(url.toString(), 308);
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     const url = new URL(request.url);
@@ -283,6 +295,9 @@ export default {
 
     const faviconRedirect = redirectFavicon(request);
     if (faviconRedirect) return faviconRedirect;
+
+    const blogAliasRedirect = redirectBlogSlugAlias(request);
+    if (blogAliasRedirect) return blogAliasRedirect;
 
     const slashRedirect = redirectTrailingSlash(request);
     if (slashRedirect) return slashRedirect;

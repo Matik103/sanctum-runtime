@@ -1,12 +1,12 @@
-import { createFileRoute, Link, notFound } from '@tanstack/react-router'
+import { createFileRoute, notFound, redirect } from '@tanstack/react-router'
 import { BlogLayout } from '@/components/BlogLayout'
 import { BlogConsoleCta } from '@/components/BlogConsoleCta'
 import { BlogRelatedGuides } from '@/components/BlogRelatedGuides'
 import { getExpandedSections } from '@/lib/blog-expanded-sections'
 import { blogPostHead, getBlogPostSeo } from '@/lib/blog-seo'
-import { blogIndexPath, blogPostPath, getBlogAnswerPost, getBlogPost } from '@/lib/blog-posts'
+import { getBlogAnswerPost, getBlogPost } from '@/lib/blog-posts'
+import { resolveBlogSlug } from '@/lib/blog-slug-resolve'
 import { getRelatedSlugs } from '@/lib/blog-related'
-import { docsPath } from '@/lib/site-links'
 
 function faqJsonLd(slug: string) {
   const content = getBlogAnswerPost(slug)
@@ -27,17 +27,20 @@ function faqJsonLd(slug: string) {
 
 export const Route = createFileRoute('/blog/$slug')({
   beforeLoad: ({ params }) => {
-    if (!getBlogPost(params.slug)) {
-      throw notFound()
+    const resolved = resolveBlogSlug(params.slug)
+    if (!resolved) throw notFound()
+    if (resolved !== params.slug) {
+      throw redirect({ to: '/blog/$slug', params: { slug: resolved }, replace: true })
     }
   },
   component: PostPage,
   head: ({ params }) => {
-    const post = getBlogPost(params.slug)
+    const slug = resolveBlogSlug(params.slug)
+    const post = slug ? getBlogPost(slug) : undefined
     if (!post) return {}
-    const faq = faqJsonLd(params.slug)
+    const faq = faqJsonLd(slug!)
     return blogPostHead(
-      params.slug,
+      slug!,
       post,
       faq ? [{ type: 'application/ld+json', children: JSON.stringify(faq) }] : [],
     )
