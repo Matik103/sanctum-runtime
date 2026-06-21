@@ -5,6 +5,7 @@ import { CtaFooter } from '@/components/CtaFooter'
 import { getHubForSlug, getPostsForHub, BLOG_HUBS } from '@/lib/blog-hubs'
 import { BLOG_POSTS, blogPostPath, getBlogPost } from '@/lib/blog-posts'
 import { blogIndexJsonLd, pageSeo } from '@/lib/seo'
+import { formatPublishedDate } from '@/lib/format-date'
 import { llmsTxtUrl } from '@/lib/site-links'
 
 const path = '/blog'
@@ -164,11 +165,7 @@ function BlogCard({
   post: (typeof BLOG_POSTS)[number]
   large?: boolean
 }) {
-  const date = new Date(post.publishedAt).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
+  const date = formatPublishedDate(post.publishedAt)
 
   return (
     <Link

@@ -6,6 +6,7 @@ import { BlogConsoleCta } from '@/components/BlogConsoleCta'
 import { CtaFooter } from '@/components/CtaFooter'
 import type { BlogPostMeta } from '@/lib/blog-posts'
 import { blogIndexPath, blogPostPath } from '@/lib/blog-posts'
+import { formatPublishedDate } from '@/lib/format-date'
 import { BlogRelatedGuides } from '@/components/BlogRelatedGuides'
 import { getHubForSlug } from '@/lib/blog-hubs'
 import { getRelatedSlugs } from '@/lib/blog-related'
@@ -29,11 +30,7 @@ export function BlogLayout({
   showRelatedGuides = true,
 }: Props) {
   const hub = slug ? getHubForSlug(slug) : undefined
-  const date = new Date(post.publishedAt).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
+  const date = formatPublishedDate(post.publishedAt)
 
   return (
     <div className="min-h-screen bg-background">

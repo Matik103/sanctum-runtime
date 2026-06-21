@@ -581,6 +581,7 @@ export function SupportChatWidget() {
     <div
       className="pointer-events-none fixed inset-x-0 bottom-0 z-[60] flex justify-end p-0 sm:inset-x-auto sm:right-4 sm:bottom-4 sm:p-0"
       style={{ paddingBottom: "max(0px, env(safe-area-inset-bottom))" }}
+      suppressHydrationWarning
     >
       {/* Chat panel */}
       <div

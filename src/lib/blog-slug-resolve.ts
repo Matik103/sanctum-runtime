@@ -10,7 +10,10 @@ for (const post of BLOG_POSTS) {
   }
 }
 
-/** Resolve blog slug — exact match first, then hyphen-stripped alias. */
+/**
+ * Resolve blog slug — exact match first, then hyphen-stripped alias.
+ * Aliases 308 to canonical (GSC/sitemap URLs with hyphens are unchanged and stay 200).
+ */
 export function resolveBlogSlug(raw: string): string | undefined {
   if (getBlogPost(raw)) return raw
   const compact = raw.toLowerCase().replace(/-/g, '')
