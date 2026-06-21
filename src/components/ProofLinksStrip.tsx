@@ -11,7 +11,7 @@ const links = [
   },
   {
     label: "Security model",
-    to: "/security/",
+    to: "/security",
     cta: "proof_security_model",
     destination: "security",
     internal: true,

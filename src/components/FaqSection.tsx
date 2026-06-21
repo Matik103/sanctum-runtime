@@ -37,7 +37,7 @@ export function FaqSection() {
           ))}
         </dl>
         <p className="mt-10 text-center text-sm text-muted-foreground">
-          <Link to="/blog/" className="text-primary hover:underline">
+          <Link to="/blog" className="text-primary hover:underline">
             Read the blog
           </Link>
           {' · '}

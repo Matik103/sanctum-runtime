@@ -83,8 +83,8 @@ function AcceptableUsePage() {
           </a>
         </p>
         <p>
-          <Link to="/terms/">Terms &amp; Conditions</Link> · <Link to="/privacy/">Privacy Policy</Link>{" "}
-          · <Link to="/refund/">Refund Policy</Link> · <Link to="/contact/">Contact</Link>
+          <Link to="/terms">Terms &amp; Conditions</Link> · <Link to="/privacy">Privacy Policy</Link>{" "}
+          · <Link to="/refund">Refund Policy</Link> · <Link to="/contact">Contact</Link>
         </p>
       </section>
 

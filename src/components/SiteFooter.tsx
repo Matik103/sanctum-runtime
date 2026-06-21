@@ -74,7 +74,7 @@ export function SiteFooter() {
             <FooterNavLink href={refundUrl}>Refund Policy</FooterNavLink>
             <FooterNavLink href={acceptableUseUrl}>Acceptable Use</FooterNavLink>
             <FooterNavLink href="/blog">Blog</FooterNavLink>
-            <FooterNavLink href="/ai/">AI Index</FooterNavLink>
+            <FooterNavLink href="/ai">AI Index</FooterNavLink>
             <FooterNavLink href={docsPath}>Documentation</FooterNavLink>
             <FooterNavLink href={llmsTxtUrl}>llms.txt</FooterNavLink>
             <FooterNavLink href={contactUrl}>Contact</FooterNavLink>

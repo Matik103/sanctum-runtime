@@ -63,7 +63,7 @@ function EnterprisePage() {
         <h2>Self-serve start</h2>
         <p>
           Create an organization in the console, invite operators, and connect your first runtime — or{' '}
-          <Link to="/docs/" hash="quickstart" className="text-primary hover:underline">
+          <Link to="/docs" hash="quickstart" className="text-primary hover:underline">
             self-host from GitHub
           </Link>{' '}
           first.

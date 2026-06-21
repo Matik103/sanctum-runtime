@@ -58,11 +58,11 @@ function AiIndexPage() {
 
       <p>
         Looking for implementation examples? See the{" "}
-        <Link to="/docs/" className="text-primary hover:underline">
+        <Link to="/docs" className="text-primary hover:underline">
           docs
         </Link>{" "}
         and the{" "}
-        <Link to="/blog/" className="text-primary hover:underline">
+        <Link to="/blog" className="text-primary hover:underline">
           blog
         </Link>
         .

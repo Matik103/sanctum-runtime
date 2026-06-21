@@ -75,8 +75,8 @@ function CookiesPage() {
           </a>
         </p>
         <p>
-          <Link to="/privacy/">Privacy Policy</Link> · <Link to="/terms/">Terms</Link> ·{" "}
-          <Link to="/billing/">Billing</Link>
+          <Link to="/privacy">Privacy Policy</Link> · <Link to="/terms">Terms</Link> ·{" "}
+          <Link to="/billing">Billing</Link>
         </p>
       </section>
 

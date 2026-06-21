@@ -187,7 +187,7 @@ function buildSources(): KbSourceInput[] {
       title: post.title,
       summary: post.description,
       content_markdown: md,
-      canonical_url: `${MARKETING_URL}/blog/${post.slug}/`,
+      canonical_url: `${MARKETING_URL}/blog/${post.slug}`,
       external_key: post.slug,
       tags: post.tags,
       intent_tags: isPricing ? ['learn', 'buy', 'pricing'] : ['learn', 'troubleshoot'],

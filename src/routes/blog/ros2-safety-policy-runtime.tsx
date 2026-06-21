@@ -40,7 +40,7 @@ function PostPage() {
           Embodied AI policy gate
         </Link>
         {' · '}
-        <Link to="/architecture/" className="text-primary hover:underline">Architecture</Link>
+        <Link to="/architecture" className="text-primary hover:underline">Architecture</Link>
       </p>
     </BlogLayout>
   )

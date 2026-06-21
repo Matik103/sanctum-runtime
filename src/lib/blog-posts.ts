@@ -1,6 +1,7 @@
 import { BLOG_ACQUISITION_POSTS } from './blog-acquisition-posts'
 import { BLOG_TRENDING_POSTS } from './blog-trending-posts'
 import { BLOG_TRANSACTIONAL_POSTS } from './blog-transactional-posts'
+import { BLOG_ANSWER_POSTS, type BlogAnswerPost } from './blog-answers'
 /** Blog registry — add posts here + a matching route under src/routes/blog/ */
 
 export type BlogPostMeta = {
@@ -400,6 +401,54 @@ export function getBlogPost(slug: string): BlogPostMeta | undefined {
   return BLOG_POSTS.find((p) => p.slug === slug)
 }
 
+const FALLBACK_KEY_POINTS = [
+  'Control must run at execution time, not only in prompts or post-hoc dashboards.',
+  'Policies should be explicit, versioned, and mapped to business risk.',
+  'Use Sanctum Runtime to enforce safe outcomes without spammy UX.',
+]
+
+const FALLBACK_CHECKLIST = [
+  'Classify actions by impact and irreversibility.',
+  'Route risky actions to verification with clear operator context.',
+  'Log decisions and execution receipts for replay and compliance.',
+]
+
+const FALLBACK_ANSWERS: BlogAnswerPost['answers'] = [
+  {
+    question: 'How do we lower risk without slowing teams down?',
+    answer:
+      'Use risk-tiered policy so only high-impact actions require human verification, while low-risk actions continue automatically with audit.',
+  },
+  {
+    question: 'What should we implement first?',
+    answer:
+      'Start with pre-execution gating for irreversible actions, then add approval SLA, escalation, and policy replay.',
+  },
+  {
+    question: 'Where does Sanctum fit?',
+    answer:
+      'Sanctum sits at the action boundary so teams can approve, verify, or block side effects before execution with clear audit evidence.',
+  },
+]
+
+/** Resolve article body — explicit entry or synthesized fallback from post metadata. */
+export function getBlogAnswerPost(slug: string): BlogAnswerPost | undefined {
+  const existing = BLOG_ANSWER_POSTS[slug]
+  if (existing) return existing
+  const post = getBlogPost(slug)
+  if (!post) return undefined
+  return {
+    intro: post.description,
+    keyPoints: FALLBACK_KEY_POINTS,
+    checklist: FALLBACK_CHECKLIST,
+    answers: FALLBACK_ANSWERS,
+    related: ['runtime-trust-layer-for-ai-agents', 'ai-agent-security-checklist-for-production'],
+  }
+}
+
 export function blogPostPath(slug: string): string {
   return `/blog/${slug}`
 }
+
+/** Blog index — no trailing slash (matches router trailingSlash: never). */
+export const blogIndexPath = '/blog'

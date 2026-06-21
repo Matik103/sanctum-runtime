@@ -1,16 +1,15 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { BlogLayout } from '@/components/BlogLayout'
 import { BlogConsoleCta } from '@/components/BlogConsoleCta'
 import { BlogRelatedGuides } from '@/components/BlogRelatedGuides'
-import { BLOG_ANSWER_POSTS } from '@/lib/blog-answers'
 import { getExpandedSections } from '@/lib/blog-expanded-sections'
 import { blogPostHead, getBlogPostSeo } from '@/lib/blog-seo'
-import { blogPostPath, getBlogPost } from '@/lib/blog-posts'
+import { blogIndexPath, blogPostPath, getBlogAnswerPost, getBlogPost } from '@/lib/blog-posts'
 import { getRelatedSlugs } from '@/lib/blog-related'
 import { docsPath } from '@/lib/site-links'
 
 function faqJsonLd(slug: string) {
-  const content = BLOG_ANSWER_POSTS[slug]
+  const content = getBlogAnswerPost(slug)
   if (!content) return null
   return {
     '@context': 'https://schema.org',
@@ -27,6 +26,11 @@ function faqJsonLd(slug: string) {
 }
 
 export const Route = createFileRoute('/blog/$slug')({
+  beforeLoad: ({ params }) => {
+    if (!getBlogPost(params.slug)) {
+      throw notFound()
+    }
+  },
   component: PostPage,
   head: ({ params }) => {
     const post = getBlogPost(params.slug)
@@ -43,36 +47,12 @@ export const Route = createFileRoute('/blog/$slug')({
 function PostPage() {
   const { slug } = Route.useParams()
   const post = getBlogPost(slug)
-  const content = BLOG_ANSWER_POSTS[slug]
+  const content = getBlogAnswerPost(slug)
   const expanded = getExpandedSections(slug)
   const seo = post ? getBlogPostSeo(slug, post) : null
 
   if (!post || !content) {
-    return (
-      <BlogLayout
-        post={{
-          slug: 'missing-post',
-          title: 'Post not found',
-          description: 'This article is not available yet.',
-          publishedAt: '2026-05-27',
-          tags: ['blog'],
-          readTime: 1,
-        }}
-      >
-        <p>This article could not be found.</p>
-        <p>
-          Browse the{' '}
-          <Link to="/blog/" className="text-primary hover:underline">
-            full blog index
-          </Link>{' '}
-          or read the{' '}
-          <Link to={docsPath} className="text-primary hover:underline">
-            docs
-          </Link>
-          .
-        </p>
-      </BlogLayout>
-    )
+    throw notFound()
   }
 
   const displayPost = seo ? { ...post, title: seo.displayTitle, description: seo.description } : post

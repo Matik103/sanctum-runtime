@@ -41,7 +41,7 @@ export function PilotSection() {
             <div className="mt-8 flex flex-wrap gap-3">
               <Button asChild className="bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90">
                 <Link
-                  to="/pilot/"
+                  to="/pilot"
                   onClick={() =>
                     trackCta({ location: "pilot_home", cta: "open_pilot_guide", destination: "pilot" })
                   }

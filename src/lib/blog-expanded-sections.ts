@@ -1,7 +1,7 @@
 /** Deep content sections for high-impression posts — merged into BLOG_ANSWER_POSTS at render time. */
 
 import { BLOG_ANSWER_POSTS } from './blog-answers'
-import { getBlogPost } from './blog-posts'
+import { getBlogAnswerPost, getBlogPost } from './blog-posts'
 
 export type BlogExpandedSection = {
   heading: string
@@ -261,7 +261,7 @@ function autoExpandedFromPost(slug: string): BlogExpandedSection[] {
 }
 
 function autoExpandedSections(slug: string): BlogExpandedSection[] {
-  const content = BLOG_ANSWER_POSTS[slug]
+  const content = getBlogAnswerPost(slug)
   const post = getBlogPost(slug)
   if (!content || !post) return autoExpandedFromPost(slug)
 

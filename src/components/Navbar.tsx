@@ -23,22 +23,22 @@ export function Navbar() {
           <Link to="/" hash="quick-start" className="hover:text-foreground transition-colors">
             Quick start
           </Link>
-          <Link to="/pilot/" className="hover:text-foreground transition-colors">
+          <Link to="/pilot" className="hover:text-foreground transition-colors">
             Pilot
           </Link>
-          <Link to="/sdk/" className="hover:text-foreground transition-colors">
+          <Link to="/sdk" className="hover:text-foreground transition-colors">
             SDK
           </Link>
           <Link to="/" hash="use-cases" className="hover:text-foreground transition-colors">
             Use cases
           </Link>
-          <Link to="/blog/" className="hover:text-foreground transition-colors">
+          <Link to="/blog" className="hover:text-foreground transition-colors">
             Blog
           </Link>
-          <Link to="/docs/" className="hover:text-foreground transition-colors">
+          <Link to="/docs" className="hover:text-foreground transition-colors">
             Docs
           </Link>
-          <Link to="/pricing/" className="hover:text-foreground transition-colors">
+          <Link to="/pricing" className="hover:text-foreground transition-colors">
             Pricing
           </Link>
         </nav>

@@ -13,6 +13,7 @@ import {
   Settings2,
 } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
+import { blogPostPath } from '@/lib/blog-posts'
 
 const cases = [
   { icon: Workflow, title: 'AI Agents', desc: 'Verify emails, files, APIs, and workflows before they execute.' },
@@ -60,11 +61,11 @@ export function UseCases() {
         </div>
 
         <p className="mt-10 text-center text-sm text-muted-foreground">
-          <Link to="/glossary/" className="text-primary hover:underline">
+          <Link to="/glossary" className="text-primary hover:underline">
             Glossary
           </Link>
           {' · '}
-          <Link to="/blog/embodied-ai-robotics-policy-gate/" className="text-primary hover:underline">
+          <Link to={blogPostPath('embodied-ai-robotics-policy-gate')} className="text-primary hover:underline">
             Embodied AI guide
           </Link>
           {' · '}

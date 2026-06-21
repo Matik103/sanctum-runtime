@@ -5,7 +5,7 @@ import { Navbar } from '@/components/Navbar'
 import { BlogConsoleCta } from '@/components/BlogConsoleCta'
 import { CtaFooter } from '@/components/CtaFooter'
 import type { BlogPostMeta } from '@/lib/blog-posts'
-import { blogPostPath } from '@/lib/blog-posts'
+import { blogIndexPath, blogPostPath } from '@/lib/blog-posts'
 import { BlogRelatedGuides } from '@/components/BlogRelatedGuides'
 import { getHubForSlug } from '@/lib/blog-hubs'
 import { getRelatedSlugs } from '@/lib/blog-related'
@@ -41,7 +41,7 @@ export function BlogLayout({
       <main className="pt-[calc(7rem+env(safe-area-inset-top,0px))] pb-24">
         <article className="container mx-auto px-6 max-w-3xl">
           <Link
-            to="/blog/"
+            to={blogIndexPath}
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-8"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -49,7 +49,7 @@ export function BlogLayout({
           </Link>
           {hub && (
             <p className="text-xs font-medium text-primary uppercase tracking-wider mb-3">
-              <Link to="/blog/" hash={hub.id} className="hover:underline">
+              <Link to={blogIndexPath} hash={hub.id} className="hover:underline">
                 {hub.title}
               </Link>
             </p>
@@ -85,33 +85,33 @@ export function BlogLayout({
           ) : null}
           <p className="mt-12 pt-8 border-t border-border text-sm text-muted-foreground">
             Guides:{' '}
-            <Link to="/blog/" hash="agentic-risk" className="text-primary hover:underline">
+            <Link to={blogIndexPath} hash="agentic-risk" className="text-primary hover:underline">
               agentic AI risk
             </Link>
             {' · '}
-            <Link to="/blog/" hash="mcp-security" className="text-primary hover:underline">
+            <Link to={blogIndexPath} hash="mcp-security" className="text-primary hover:underline">
               MCP security
             </Link>
             {' · '}
-            <Link to="/blog/" hash="runtime-authorization" className="text-primary hover:underline">
+            <Link to={blogIndexPath} hash="runtime-authorization" className="text-primary hover:underline">
               runtime authorization
             </Link>
             {' · '}
-            <Link to="/blog/" hash="hitl-approvals" className="text-primary hover:underline">
+            <Link to={blogIndexPath} hash="hitl-approvals" className="text-primary hover:underline">
               HITL approvals
             </Link>
             {' · '}
-            <Link to="/blog/" hash="developer-agents" className="text-primary hover:underline">
+            <Link to={blogIndexPath} hash="developer-agents" className="text-primary hover:underline">
               coding agents
             </Link>
             {' · '}
-            <Link to="/blog/" hash="get-started" className="text-primary hover:underline">
+            <Link to={blogIndexPath} hash="get-started" className="text-primary hover:underline">
               get started
             </Link>
             <br className="hidden sm:block" />
             <span className="sm:ml-0">
               More:{' '}
-              <Link to="/blog/" className="text-primary hover:underline">
+              <Link to={blogIndexPath} className="text-primary hover:underline">
                 all posts
               </Link>
               {' · '}

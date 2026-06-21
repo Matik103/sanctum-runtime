@@ -27,7 +27,7 @@ export function BlogRelatedGuides({ slug, relatedSlugs }: Props) {
           <h2 className="text-lg font-semibold text-foreground">{hub.title}</h2>
           <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{hub.description}</p>
           <Link
-            to="/blog/"
+            to="/blog"
             hash={hub.id}
             className="mt-3 inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
           >

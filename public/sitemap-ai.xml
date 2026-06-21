@@ -2,1255 +2,1255 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://www.sanctumruntime.com/llms.txt</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/llms-full.txt</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.70</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/ai/blog-index.md</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.70</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/ai/overview.md</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.70</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/ai/architecture.md</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.70</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/ai/sdk.md</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.70</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/ai/security.md</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.70</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/ai/glossary.md</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.70</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/introducing-sanctum-runtime</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/runtime-trust-layer-for-ai-agents</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ai-agent-action-approval-before-execution</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/embodied-ai-robotics-policy-gate</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/sanctum-vs-guardrails</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/mobile-pwa-runtime-verification</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/mcp-server-action-gate</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ros2-safety-policy-runtime</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/soc2-nist-ai-rmf-runtime-evidence</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/fleet-kill-switch-autonomous-systems</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/langchain-agent-middleware-verification</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/smart-home-ai-unlock-door-policy</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/signed-action-tokens-executor-verification</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/indirect-prompt-injection-source-trust</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/local-ollama-offline-runtime-trust</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/workflow-automation-ai-governance</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/healthcare-robotics-phi-policy-packs</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/humanoid-robot-physical-action-gate</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/what-is-ai-agent-observability-vs-control</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/how-to-stop-ai-agents-from-sending-emails-without-approval</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/can-ai-agents-be-soc2-compliant</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/mcp-server-security-checklist-2026</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/what-is-human-in-the-loop-for-ai-agents</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/how-to-approve-ai-agent-actions-on-mobile</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/can-you-run-ai-agent-security-offline</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/how-to-prevent-ai-agent-data-exfiltration</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/what-is-confused-deputy-in-ai-agents</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ai-agent-kill-switch-best-practices</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/runtime-authorization-vs-guardrails-explained</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/how-to-audit-ai-agent-decisions</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/can-openai-claude-gemini-share-one-agent-control-plane</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ai-agent-rbac-for-tool-permissions</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ai-agent-incident-response-runbook</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/how-to-validate-tool-arguments-in-mcp</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ai-agent-approval-sla-and-escalation-design</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ai-agent-policy-versioning-and-replay</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/safe-ai-agent-automation-for-crm-and-slack</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ai-agent-security-checklist-for-production</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/what-is-agentic-ai-risk-management</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/best-practices-for-ai-agent-tool-calling</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/how-to-design-ai-agent-policies-that-scale</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ai-agent-credit-card-safety-checklist</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/agentic-commerce-fraud-prevention</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/can-ai-agents-buy-online-safely</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/autonomous-trading-agent-risk-controls</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ai-agent-spending-limits-and-wallet-segmentation</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/shadow-ai-agents-and-unauthorized-purchases</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/chargebacks-and-ai-agent-transactions</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ai-agent-payments-approval-workflows</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/prompt-injection-in-shopping-agents</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/mcp-payment-tools-security</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/compute-scarcity-and-ai-agent-reliability</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/gpu-scarcity-risk-for-safety-systems</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/cost-pressure-causes-unsafe-agent-shortcuts</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/degraded-mode-policies-during-infrastructure-outages</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/embodied-ai-safety-near-humans</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/robot-flood-road-failure-lessons</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/delivery-robot-sidewalk-safety-policies</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/physical-world-prompt-injection-robots</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/healthcare-ai-agent-life-critical-decisions</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ai-triage-systems-human-override-patterns</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/aviation-style-checklists-for-ai-operations</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ai-agent-skill-decay-and-operator-readiness</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/timeout-should-not-mean-auto-approval</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/dual-approval-for-high-risk-actions</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ai-agent-trust-framework-for-enterprises</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ai-agent-governance-for-finance-teams</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ai-agent-governance-for-healthcare-teams</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ai-agent-governance-for-industrial-automation</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/what-happens-when-ai-agent-is-hacked</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/can-ai-agents-have-legal-accountability</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/building-customer-trust-in-agentic-products</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ai-agent-audit-trails-for-dispute-resolution</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/safe-defaults-for-autonomous-ai</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/red-teaming-agentic-commerce-scenarios</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/preventing-consent-fatigue-in-approval-queues</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/secure-agent-wallet-architecture</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/map-agent-actions-to-business-risk</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ai-agent-stop-button-design</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/trustworthy-robotics-rollout-checklist</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/from-observability-to-runtime-enforcement</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/best-ai-agent-security-software-2026</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/sanctum-runtime-free-trial-get-started</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ai-agent-approval-platform-comparison-2026</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/best-human-in-the-loop-approval-software-2026</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/how-much-does-ai-agent-governance-cost</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/deploy-ai-agent-kill-switch-in-30-minutes</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/mcp-security-platform-for-production-teams</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/langchain-agent-security-setup-today</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/open-core-ai-agent-security-vs-enterprise-suite</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/microsoft-agent-365-alternative-execution-control</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/palo-alto-portkey-runtime-security-layer</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/vertex-ai-agent-security-controls-after-double-agent-news</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ai-agent-policy-engine-software-buyers-guide</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ai-agent-security-pilot-week-one-playbook</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/sanctum-vs-guardrails-only-stack</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ai-agent-runtime-trust-pricing-open-core</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/get-soc2-ready-ai-agent-controls-in-days</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/crewai-production-security-setup-guide</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/n8n-ai-workflow-security-gate-setup</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/fintech-ai-agent-approval-platform-requirements</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/healthcare-ai-agent-compliance-software-buy</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/shadow-ai-agent-detection-software-comparison</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ai-agent-security-for-startups-under-50</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/enterprise-ai-agent-control-plane-shortlist-2026</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/buy-ai-agent-audit-logging-software</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/mobile-ai-agent-approval-app-setup-10-minutes</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ai-gateway-vs-runtime-trust-which-to-buy-first</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/operant-agent-protector-alternative-execution-gate</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/one-control-plane-openai-claude-gemini-agents</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/self-host-ai-agent-security-vs-hosted-console</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/prove-ai-agent-controls-to-auditors-fast</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/sign-up-ai-agent-approval-workflow-5-minutes</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ai-agent-spend-control-software-finance-buyers</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/production-mcp-server-hardening-platform-buy</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/eu-ai-act-agent-controls-software-2026</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/insurance-cyber-requirements-ai-agent-security</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ai-agent-security-for-vibe-coding-teams</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/replace-spreadsheet-agent-approvals-with-software</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ai-agent-security-rfp-template-2026</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/first-production-agent-gate-this-weekend</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/google-agent-gateway-mcp-security-2026</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/google-model-armor-vs-runtime-execution-gates</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/google-cloud-next-2026-agent-identity-lessons</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/gemini-enterprise-agent-tool-use-controls</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/google-a2a-agent-protocol-security-baseline</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/vertex-managed-mcp-servers-production-hardening</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/google-iam-deny-policies-for-ai-service-agents</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/google-ai-overviews-and-agent-trust-for-teams</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/people-also-ask-ai-agent-approval-software</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/bing-copilot-enterprise-agent-execution-controls</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/microsoft-copilot-studio-action-approval-patterns</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/azure-ai-foundry-agent-security-baseline</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/semantic-kernel-tool-calling-verification</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/power-automate-ai-flow-governance</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/microsoft-entra-agent-identity-gaps</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/fabric-copilot-agents-data-plane-security</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/windows-copilot-actions-runtime-trust</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/microsoft-agent-365-plus-execution-gates</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/cursor-ai-agent-production-guardrails</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/windsurf-cascade-agent-tool-security</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/github-copilot-workspace-agent-controls</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/devin-autonomous-engineer-spend-and-deploy-gates</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/replit-agent-database-write-protection</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/lovable-ai-app-generator-production-safety</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/bolt-new-v0-agent-deployment-gates</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/claude-code-cli-tool-verification</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/openai-codex-agent-side-effect-controls</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/tabnine-enterprise-agent-policy-layer</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/chatgpt-gpt-actions-enterprise-security</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/claude-projects-mcp-connector-governance</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/perplexity-pro-search-agent-actions</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/grok-xai-api-tool-use-safety</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/meta-ai-business-agent-controls</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/anthropic-computer-use-agent-safety</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/openai-operator-browser-agent-safety</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/amazon-bedrock-agents-execution-verification</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/linkedin-automation-ai-agent-approval</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/twitter-x-ai-bot-post-approval-gates</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/facebook-messenger-ai-agent-policy</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/instagram-dm-automation-human-review</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/tiktok-shop-ai-agent-payment-controls</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/reddit-mod-ai-agent-tool-limits</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/youtube-community-ai-moderation-gates</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/discord-bot-ai-admin-action-verification</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/slack-ai-agent-workflow-approval</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/threads-meta-ai-posting-controls</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/bluesky-atproto-agent-automation-safety</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/whatsapp-business-ai-message-approval</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/yahoo-finance-ai-trading-bot-risk-controls</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ai-agent-security-after-headline-incidents-2026</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ciso-checklist-agent-execution-gates-2026</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/insurance-renewal-ai-agent-controls-evidence</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/google-news-ai-agent-governance-buying-guide</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/yahoo-search-ai-agent-approval-answers</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/zapier-ai-actions-approval-workflow</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/make-com-scenario-agent-gates</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/hubspot-ai-agent-crm-write-controls</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/salesforce-agentforce-execution-verification</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/servicenow-now-assist-agent-governance</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/workday-ai-agent-hr-action-approval</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/sap-joule-agent-financial-controls</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/databricks-agent-brick-warehouse-gates</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/langgraph-multi-agent-approval-patterns</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/autogen-group-chat-agent-gates</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/openai-swarm-multi-agent-runtime-trust</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/llamaindex-agent-tool-verification</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/haystack-ai-pipeline-action-gates</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/mcp-registry-third-party-server-trust</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/agent2agent-protocol-trust-boundaries</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/connect-agent-openai-claude-gemini-unified</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/ai-agent-safety-pilot-for-startups</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/founder-guide-runtime-trust-before-launch</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/indie-hacker-ai-saas-agent-gates-weekend</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/product-hunt-launch-agentic-ai-safely</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/hackernews-ai-agent-security-what-to-build</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/github-stars-to-production-agent-controls</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/startup-seo-ai-agent-security-keywords</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/free-console-ai-agent-approval-no-sales-call</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/invite-team-ai-agent-console-onboarding</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
   <url>
     <loc>https://www.sanctumruntime.com/blog/yc-batch-agent-security-one-pager</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.72</priority>
   </url>
