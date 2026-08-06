@@ -16,7 +16,15 @@ type ContactSalesPayload = {
   timeline?: unknown;
   details?: unknown;
   path?: unknown;
+  /** Honeypot — must be empty for real submissions. */
+  website?: unknown;
 };
+
+const CONTACT_SALES_MAX_BYTES = 20_000;
+const CONTACT_SALES_RATE_LIMIT = 5;
+const CONTACT_SALES_RATE_WINDOW_MS = 60_000;
+const CONTACT_SALES_RESEND_TIMEOUT_MS = 10_000;
+const contactSalesHits = new Map<string, number[]>();
 
 let serverEntryPromise: Promise<ServerEntry> | undefined;
 
@@ -84,13 +92,82 @@ function detailsRow(label: string, value: string): string {
   return `<tr><td style="padding:8px 10px;color:#94a3b8;border-bottom:1px solid #1e293b;width:34%;font-size:13px;">${escapeHtml(label)}</td><td style="padding:8px 10px;color:#e2e8f0;border-bottom:1px solid #1e293b;font-size:13px;">${escapeHtml(value || "Not provided")}</td></tr>`;
 }
 
+function contactSalesClientKey(request: Request): string {
+  const cfIp = request.headers.get("cf-connecting-ip")?.trim();
+  if (cfIp) return cfIp;
+  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  if (forwarded) return forwarded;
+  return "unknown";
+}
+
+function isContactSalesRateLimited(key: string): boolean {
+  const now = Date.now();
+  const windowStart = now - CONTACT_SALES_RATE_WINDOW_MS;
+  const recent = (contactSalesHits.get(key) ?? []).filter((ts) => ts > windowStart);
+  if (recent.length >= CONTACT_SALES_RATE_LIMIT) {
+    contactSalesHits.set(key, recent);
+    return true;
+  }
+  recent.push(now);
+  contactSalesHits.set(key, recent);
+  return false;
+}
+
+async function readJsonBodyLimited(
+  request: Request,
+  maxBytes: number,
+): Promise<{ ok: true; value: unknown } | { ok: false; error: "payload_too_large" | "invalid_json" }> {
+  const body = request.body;
+  if (!body) {
+    return { ok: false, error: "invalid_json" };
+  }
+
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel().catch(() => undefined);
+        return { ok: false, error: "payload_too_large" };
+      }
+      chunks.push(value);
+    }
+  } catch {
+    return { ok: false, error: "invalid_json" };
+  }
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  try {
+    const text = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+    return { ok: true, value: JSON.parse(text) as unknown };
+  } catch {
+    return { ok: false, error: "invalid_json" };
+  }
+}
+
 async function handleContactSales(request: Request, env: unknown): Promise<Response> {
   if (request.method !== "POST") {
     return jsonResponse({ error: "method_not_allowed" }, { status: 405, headers: { allow: "POST" } });
   }
 
+  if (isContactSalesRateLimited(contactSalesClientKey(request))) {
+    return jsonResponse({ error: "rate_limited" }, { status: 429 });
+  }
+
   const contentLength = Number(request.headers.get("content-length") ?? "0");
-  if (Number.isFinite(contentLength) && contentLength > 20_000) {
+  if (Number.isFinite(contentLength) && contentLength > CONTACT_SALES_MAX_BYTES) {
     return jsonResponse({ error: "payload_too_large" }, { status: 413 });
   }
 
@@ -99,11 +176,27 @@ async function handleContactSales(request: Request, env: unknown): Promise<Respo
     return jsonResponse({ error: "json_required" }, { status: 415 });
   }
 
-  let rawPayload: ContactSalesPayload;
-  try {
-    rawPayload = (await request.json()) as ContactSalesPayload;
-  } catch {
+  const parsedBody = await readJsonBodyLimited(request, CONTACT_SALES_MAX_BYTES);
+  if (!parsedBody.ok) {
+    if (parsedBody.error === "payload_too_large") {
+      return jsonResponse({ error: "payload_too_large" }, { status: 413 });
+    }
     return jsonResponse({ error: "invalid_json" }, { status: 400 });
+  }
+
+  if (
+    parsedBody.value === null ||
+    typeof parsedBody.value !== "object" ||
+    Array.isArray(parsedBody.value)
+  ) {
+    return jsonResponse({ error: "invalid_json" }, { status: 400 });
+  }
+
+  const rawPayload = parsedBody.value as ContactSalesPayload;
+
+  // Bot / honeypot check — real clients leave this empty.
+  if (cleanField(rawPayload.website, 200) !== "") {
+    return jsonResponse({ error: "bot_verification_failed" }, { status: 400 });
   }
 
   const organization = cleanField(rawPayload.organization, 160);
@@ -167,6 +260,8 @@ async function handleContactSales(request: Request, env: unknown): Promise<Respo
     </div>
   `;
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), CONTACT_SALES_RESEND_TIMEOUT_MS);
   try {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -182,6 +277,7 @@ async function handleContactSales(request: Request, env: unknown): Promise<Respo
         html,
         text,
       }),
+      signal: controller.signal,
     });
 
     if (!response.ok) {
@@ -193,6 +289,8 @@ async function handleContactSales(request: Request, env: unknown): Promise<Respo
   } catch (error) {
     reportServerError("contact-sales-send", error);
     return jsonResponse({ error: "contact_sales_send_failed" }, { status: 502 });
+  } finally {
+    clearTimeout(timer);
   }
 }
 

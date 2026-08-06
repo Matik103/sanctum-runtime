@@ -433,8 +433,9 @@ const FALLBACK_ANSWERS: BlogAnswerPost['answers'] = [
 
 /** Resolve article body — explicit entry or synthesized fallback from post metadata. */
 export function getBlogAnswerPost(slug: string): BlogAnswerPost | undefined {
-  const existing = BLOG_ANSWER_POSTS[slug]
-  if (existing) return existing
+  if (Object.hasOwn(BLOG_ANSWER_POSTS, slug)) {
+    return BLOG_ANSWER_POSTS[slug]
+  }
   const post = getBlogPost(slug)
   if (!post) return undefined
   return {

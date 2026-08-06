@@ -52,7 +52,7 @@ const SCENARIOS = [
     category: 'pricing',
     message: 'compare Developer vs Operator',
     expectSlug: /page\/pricing/,
-    expectContent: /Developer|Operator/i,
+    expectContent: /(?=.*Developer)(?=.*Operator)/i,
   },
 
   // Product & positioning

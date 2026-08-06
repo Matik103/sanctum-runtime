@@ -25,6 +25,7 @@ function ContactPage() {
   const [useCase, setUseCase] = useState("Hosted Connect + approvals");
   const [timeline, setTimeline] = useState("This month");
   const [details, setDetails] = useState("");
+  const [website, setWebsite] = useState("");
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
   const [submitMessage, setSubmitMessage] = useState("");
 
@@ -43,6 +44,7 @@ function ContactPage() {
           need: useCase,
           timeline,
           details,
+          website,
           path: typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : path,
         }),
       });
@@ -58,6 +60,7 @@ function ContactPage() {
       setUseCase("Hosted Connect + approvals");
       setTimeline("This month");
       setDetails("");
+      setWebsite("");
     } catch {
       setSubmitState("error");
       setSubmitMessage(`We could not submit the form. Email ${salesEmail} and we will help from there.`);
@@ -70,7 +73,7 @@ function ContactPage() {
       title="Talk to Sanctum"
       lead={`${productLegalName} is operated by ${companyLegalName}. Tell us what your agents can do in the real world, and we will help you choose the right control path.`}
     >
-      <p className="text-sm text-muted-foreground">Last updated: June 3, 2026</p>
+      <p className="text-sm text-muted-foreground">Last updated: August 6, 2026</p>
 
       <section className="overflow-hidden rounded-2xl border border-border bg-card/50 p-5 sm:p-6">
         <div className="grid min-w-0 gap-8 xl:grid-cols-[0.9fr_minmax(0,1.1fr)]">
@@ -162,6 +165,15 @@ function ContactPage() {
                 onChange={(event) => setDetails(event.target.value)}
                 className="min-h-32 w-full min-w-0 resize-y rounded-lg border border-border bg-card px-3 py-3 text-foreground outline-none focus:border-primary"
                 placeholder="Payments, email sends, deployments, MCP tools, robot movement, home access, customer data..."
+              />
+            </label>
+            <label className="absolute -left-[10000px] h-px w-px overflow-hidden" aria-hidden="true">
+              Website
+              <input
+                tabIndex={-1}
+                autoComplete="off"
+                value={website}
+                onChange={(event) => setWebsite(event.target.value)}
               />
             </label>
             <button

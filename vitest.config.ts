@@ -9,6 +9,7 @@ export default defineConfig({
     include: [
       'apps/**/src/**/*.{test,spec}.{ts,tsx}',
       'packages/**/src/**/*.{test,spec}.{ts,tsx}',
+      'src/**/*.{test,spec}.{ts,tsx}',
     ],
     exclude: ['**/node_modules/**', '**/dist/**'],
     coverage: {

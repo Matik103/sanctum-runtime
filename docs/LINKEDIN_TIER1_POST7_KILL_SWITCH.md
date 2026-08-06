@@ -8,6 +8,14 @@
 - `public/marketing/linkedin-kill-switch-day7-1200x627.png` (LinkedIn feed / Twitter)
 - `public/marketing/linkedin-kill-switch-day7-1080x1350.png` (LinkedIn portrait)
 
+**Alt text — feed `linkedin-kill-switch-day7-1200x627.png` (enter in LinkedIn):**
+- **Short:** Sanctum Runtime infographic: an incident is live but revoking API keys is not containment. Flow shows agents still executing while a fleet kill switch returns BLOCKED and preserves audit for triage.
+- **Detailed:** Sanctum Runtime infographic on dark navy background titled around incident containment. Left: agents keep sending emails, updating CRM, and calling payment APIs while operators revoke keys one service at a time. Right: org-wide kill switch returns BLOCKED on every verifyAction, continues audit logging, records who paused when and why, then resumes normal policy after dual-control disable clearance. Footer points to www.sanctumruntime.com kill-switch guide.
+
+**Alt text — portrait `linkedin-kill-switch-day7-1080x1350.png` (enter in LinkedIn):**
+- **Short:** Vertical Sanctum Runtime kill-switch infographic: one authorized pause blocks state-changing actions across the fleet while read-only triage and audit continue.
+- **Detailed:** Vertical Sanctum Runtime portrait graphic showing fleet pause design rules — org-wide policy override, audit every enable/disable, quarterly tabletop drills — plus who may trigger the switch: a small audited responder set with role-based access and dual-control for disable where regulated.
+
 ---
 
 ## LinkedIn post (copy/paste)
@@ -42,7 +50,7 @@ What it should not require:
 
 Who should trigger it?
 
-A small, audited set of incident responders — role-based access, dual-control for resume where regulated. Not every engineer. Not the agent itself.
+A small, audited set of incident responders — role-based access, dual-control for disable where regulated. Not every engineer. Not the agent itself.
 
 Block all actions or only high-risk ones?
 
@@ -120,7 +128,7 @@ What it should NOT require:
 ```
 Who triggers it?
 
-Small audited responder set. Role-based access. Dual-control for resume where regulated.
+Small audited responder set. Role-based access. Dual-control for disable where regulated.
 
 Not every engineer. Not the agent.
 ```
@@ -177,7 +185,8 @@ Article tags (on-site): `incident-response`, `fleet`, `ai-safety`, `operations`
 
 1. Request indexing in GSC for `https://www.sanctumruntime.com/blog/ai-agent-kill-switch-best-practices` (Tier 1 #8).
 2. Reply to comments in the first 90 minutes.
-3. Attach `linkedin-kill-switch-day7-1080x1350.png` on LinkedIn for max mobile presence.
+3. Attach `linkedin-kill-switch-day7-1080x1350.png` on LinkedIn for max mobile presence; paste the portrait short/detailed alt text from the Images section above.
+4. For the feed asset `linkedin-kill-switch-day7-1200x627.png`, paste the feed short/detailed alt text from the Images section when LinkedIn prompts for image description.
 
 ---
 
@@ -185,7 +194,7 @@ Article tags (on-site): `incident-response`, `fleet`, `ai-safety`, `operations`
 
 | Day | Article URL |
 |-----|-------------|
-| Day 8 | `/blog/how-to-stop-ai-agents-from-sending-emails-without-approval` |
+| Day 8 | `/blog/how-to-stop-ai-agents-from-sending-emails-without-approval` → see `LINKEDIN_TIER1_POST8_EMAIL_APPROVAL.md` |
 | Day 9 | `/blog/mobile-pwa-runtime-verification` |
 | Day 10 | `/what-is-sanctum-runtime` |
 | Day 11 | `/` |
