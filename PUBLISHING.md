@@ -77,8 +77,8 @@ Add repo secrets:
 
 | Setting | Value |
 |---------|--------|
-| Build command | `npm run cf:build` |
-| Deploy command | `npm run cf:deploy` |
+| Build command | `npm run cf:build` (or `npm run build`) |
+| Deploy command | `npm run cf:deploy` (or `npx wrangler deploy` after build — uses generated `wrangler.json`) |
 | Root directory | `/` |
 
 Click **Update**, then **Retry build** on the latest `main` commit (after `bun.lock` was removed).

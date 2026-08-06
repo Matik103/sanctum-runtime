@@ -1,8 +1,11 @@
 import { defineNitroConfig } from "nitro/config";
 
-/** Vercel-only Nitro config (used by `vite.config.vercel.ts`). Cloudflare uses vite.config.ts. */
+/**
+ * Shared Nitro route rules only — do not pin `preset` here.
+ * Cloudflare: vite.config.ts (`nitro.preset: cloudflare-module`)
+ * Vercel: vite.config.vercel.ts (`nitro({ preset: "vercel" })`)
+ */
 export default defineNitroConfig({
-  preset: "vercel",
   compatibilityDate: "2025-05-15",
   routeRules: {
     "/assets/**": {

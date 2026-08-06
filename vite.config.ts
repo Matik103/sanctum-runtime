@@ -8,13 +8,23 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { loadEnv } from "vite";
 
 // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
-// nitro: true generates dist/server/wrangler.json for `npx wrangler deploy`.
+// Explicit cloudflare-module preset generates dist/server/wrangler.json for deploy.
 const devEnv = loadEnv("development", process.cwd(), "");
 const configuredPort = Number(devEnv.SITE_PORT || 8080);
 
 export default defineConfig({
-  // Required for Cloudflare deploy: generates dist/server/wrangler.json (see npm run deploy).
-  nitro: true,
+  nitro: {
+    preset: "cloudflare-module",
+    output: {
+      dir: "dist",
+      serverDir: "dist/server",
+      publicDir: "dist/client",
+    },
+    cloudflare: {
+      nodeCompat: true,
+      deployConfig: true,
+    },
+  },
   tanstackStart: {
     server: { entry: "server" },
   },
