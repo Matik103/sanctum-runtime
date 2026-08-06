@@ -131,7 +131,6 @@
     "format": "prettier --write ."
   },
   "dependencies": {
-    "@cloudflare/vite-plugin": "^1.38.0",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -185,7 +184,15 @@
     "vite-tsconfig-paths": "^6.0.2",
     "zod": "^4.4.3"
   },
+  "overrides": {
+    "@babel/core": "^7.29.7",
+    "fast-uri": "3.1.5",
+    "find-my-way": "^9.7.0",
+    "js-yaml": "^4.3.1",
+    "ws": "^8.21.2"
+  },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.51.0",
     "@eslint/js": "^9.32.0",
     "@lovable.dev/vite-tanstack-config": "^2.3.1",
     "@playwright/test": "^1.60.0",

@@ -18,7 +18,7 @@
     "@sanctum/runtime-engine": "*",
     "@supabase/supabase-js": "^2.106.2",
     "bcryptjs": "^3.0.2",
-    "fastify": "^5.3.3",
+    "fastify": "^5.11.2",
     "web-push": "^3.6.7",
     "zod": "^4.4.3"
   },
