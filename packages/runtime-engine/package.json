@@ -11,6 +11,6 @@
     "@sanctum/risk-model": "*",
     "@sanctum/policy-engine": "*",
     "@sanctum-runtime/sdk": "*",
-    "@supabase/supabase-js": "^2.106.2"
+    "@supabase/supabase-js": "^2.112.4"
   }
 }
