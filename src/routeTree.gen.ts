@@ -9,118 +9,48 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as WhatIsSanctumRuntimeRouteImport } from './routes/what-is-sanctum-runtime'
-import { Route as TermsRouteImport } from './routes/terms'
-import { Route as SecurityRouteImport } from './routes/security'
-import { Route as SdkRouteImport } from './routes/sdk'
-import { Route as RefundRouteImport } from './routes/refund'
-import { Route as PrivacyRouteImport } from './routes/privacy'
-import { Route as PricingRouteImport } from './routes/pricing'
-import { Route as PilotRouteImport } from './routes/pilot'
-import { Route as GlossaryRouteImport } from './routes/glossary'
-import { Route as EnterpriseRouteImport } from './routes/enterprise'
-import { Route as DocsRouteImport } from './routes/docs'
-import { Route as CookiesRouteImport } from './routes/cookies'
-import { Route as ContactRouteImport } from './routes/contact'
-import { Route as BillingRouteImport } from './routes/billing'
-import { Route as ArchitectureRouteImport } from './routes/architecture'
-import { Route as AcceptableUseRouteImport } from './routes/acceptable-use'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as BlogIndexRouteImport } from './routes/blog.index'
+import { Route as AcceptableUseRouteImport } from './routes/acceptable-use'
+import { Route as ArchitectureRouteImport } from './routes/architecture'
+import { Route as BillingRouteImport } from './routes/billing'
+import { Route as ContactRouteImport } from './routes/contact'
+import { Route as CookiesRouteImport } from './routes/cookies'
+import { Route as DocsRouteImport } from './routes/docs'
+import { Route as EnterpriseRouteImport } from './routes/enterprise'
+import { Route as GlossaryRouteImport } from './routes/glossary'
+import { Route as PilotRouteImport } from './routes/pilot'
+import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as RefundRouteImport } from './routes/refund'
+import { Route as SdkRouteImport } from './routes/sdk'
+import { Route as SecurityRouteImport } from './routes/security'
+import { Route as TermsRouteImport } from './routes/terms'
+import { Route as WhatIsSanctumRuntimeRouteImport } from './routes/what-is-sanctum-runtime'
 import { Route as AiIndexRouteImport } from './routes/ai.index'
-import { Route as BlogWorkflowAutomationAiGovernanceRouteImport } from './routes/blog/workflow-automation-ai-governance'
-import { Route as BlogSoc2NistAiRmfRuntimeEvidenceRouteImport } from './routes/blog/soc2-nist-ai-rmf-runtime-evidence'
-import { Route as BlogSmartHomeAiUnlockDoorPolicyRouteImport } from './routes/blog/smart-home-ai-unlock-door-policy'
-import { Route as BlogSignedActionTokensExecutorVerificationRouteImport } from './routes/blog/signed-action-tokens-executor-verification'
-import { Route as BlogSanctumVsGuardrailsRouteImport } from './routes/blog/sanctum-vs-guardrails'
-import { Route as BlogRuntimeTrustLayerForAiAgentsRouteImport } from './routes/blog/runtime-trust-layer-for-ai-agents'
-import { Route as BlogRos2SafetyPolicyRuntimeRouteImport } from './routes/blog/ros2-safety-policy-runtime'
-import { Route as BlogMobilePwaRuntimeVerificationRouteImport } from './routes/blog/mobile-pwa-runtime-verification'
-import { Route as BlogMcpServerActionGateRouteImport } from './routes/blog/mcp-server-action-gate'
-import { Route as BlogLocalOllamaOfflineRuntimeTrustRouteImport } from './routes/blog/local-ollama-offline-runtime-trust'
-import { Route as BlogLangchainAgentMiddlewareVerificationRouteImport } from './routes/blog/langchain-agent-middleware-verification'
-import { Route as BlogIntroducingSanctumRuntimeRouteImport } from './routes/blog/introducing-sanctum-runtime'
-import { Route as BlogIndirectPromptInjectionSourceTrustRouteImport } from './routes/blog/indirect-prompt-injection-source-trust'
-import { Route as BlogHumanoidRobotPhysicalActionGateRouteImport } from './routes/blog/humanoid-robot-physical-action-gate'
-import { Route as BlogHealthcareRoboticsPhiPolicyPacksRouteImport } from './routes/blog/healthcare-robotics-phi-policy-packs'
-import { Route as BlogFleetKillSwitchAutonomousSystemsRouteImport } from './routes/blog/fleet-kill-switch-autonomous-systems'
-import { Route as BlogEmbodiedAiRoboticsPolicyGateRouteImport } from './routes/blog/embodied-ai-robotics-policy-gate'
-import { Route as BlogAiAgentActionApprovalBeforeExecutionRouteImport } from './routes/blog/ai-agent-action-approval-before-execution'
+import { Route as BlogIndexRouteImport } from './routes/blog.index'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
+import { Route as BlogAiAgentActionApprovalBeforeExecutionRouteImport } from './routes/blog/ai-agent-action-approval-before-execution'
+import { Route as BlogEmbodiedAiRoboticsPolicyGateRouteImport } from './routes/blog/embodied-ai-robotics-policy-gate'
+import { Route as BlogFleetKillSwitchAutonomousSystemsRouteImport } from './routes/blog/fleet-kill-switch-autonomous-systems'
+import { Route as BlogHealthcareRoboticsPhiPolicyPacksRouteImport } from './routes/blog/healthcare-robotics-phi-policy-packs'
+import { Route as BlogHumanoidRobotPhysicalActionGateRouteImport } from './routes/blog/humanoid-robot-physical-action-gate'
+import { Route as BlogIndirectPromptInjectionSourceTrustRouteImport } from './routes/blog/indirect-prompt-injection-source-trust'
+import { Route as BlogIntroducingSanctumRuntimeRouteImport } from './routes/blog/introducing-sanctum-runtime'
+import { Route as BlogLangchainAgentMiddlewareVerificationRouteImport } from './routes/blog/langchain-agent-middleware-verification'
+import { Route as BlogLocalOllamaOfflineRuntimeTrustRouteImport } from './routes/blog/local-ollama-offline-runtime-trust'
+import { Route as BlogMcpServerActionGateRouteImport } from './routes/blog/mcp-server-action-gate'
+import { Route as BlogMobilePwaRuntimeVerificationRouteImport } from './routes/blog/mobile-pwa-runtime-verification'
+import { Route as BlogRos2SafetyPolicyRuntimeRouteImport } from './routes/blog/ros2-safety-policy-runtime'
+import { Route as BlogRuntimeTrustLayerForAiAgentsRouteImport } from './routes/blog/runtime-trust-layer-for-ai-agents'
+import { Route as BlogSanctumVsGuardrailsRouteImport } from './routes/blog/sanctum-vs-guardrails'
+import { Route as BlogSignedActionTokensExecutorVerificationRouteImport } from './routes/blog/signed-action-tokens-executor-verification'
+import { Route as BlogSmartHomeAiUnlockDoorPolicyRouteImport } from './routes/blog/smart-home-ai-unlock-door-policy'
+import { Route as BlogSoc2NistAiRmfRuntimeEvidenceRouteImport } from './routes/blog/soc2-nist-ai-rmf-runtime-evidence'
+import { Route as BlogWorkflowAutomationAiGovernanceRouteImport } from './routes/blog/workflow-automation-ai-governance'
 
-const WhatIsSanctumRuntimeRoute = WhatIsSanctumRuntimeRouteImport.update({
-  id: '/what-is-sanctum-runtime',
-  path: '/what-is-sanctum-runtime',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TermsRoute = TermsRouteImport.update({
-  id: '/terms',
-  path: '/terms',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SecurityRoute = SecurityRouteImport.update({
-  id: '/security',
-  path: '/security',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SdkRoute = SdkRouteImport.update({
-  id: '/sdk',
-  path: '/sdk',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RefundRoute = RefundRouteImport.update({
-  id: '/refund',
-  path: '/refund',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrivacyRoute = PrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PricingRoute = PricingRouteImport.update({
-  id: '/pricing',
-  path: '/pricing',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PilotRoute = PilotRouteImport.update({
-  id: '/pilot',
-  path: '/pilot',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GlossaryRoute = GlossaryRouteImport.update({
-  id: '/glossary',
-  path: '/glossary',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EnterpriseRoute = EnterpriseRouteImport.update({
-  id: '/enterprise',
-  path: '/enterprise',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DocsRoute = DocsRouteImport.update({
-  id: '/docs',
-  path: '/docs',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CookiesRoute = CookiesRouteImport.update({
-  id: '/cookies',
-  path: '/cookies',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ContactRoute = ContactRouteImport.update({
-  id: '/contact',
-  path: '/contact',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BillingRoute = BillingRouteImport.update({
-  id: '/billing',
-  path: '/billing',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ArchitectureRoute = ArchitectureRouteImport.update({
-  id: '/architecture',
-  path: '/architecture',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AcceptableUseRoute = AcceptableUseRouteImport.update({
@@ -128,14 +58,79 @@ const AcceptableUseRoute = AcceptableUseRouteImport.update({
   path: '/acceptable-use',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const ArchitectureRoute = ArchitectureRouteImport.update({
+  id: '/architecture',
+  path: '/architecture',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BlogIndexRoute = BlogIndexRouteImport.update({
-  id: '/blog/',
-  path: '/blog/',
+const BillingRoute = BillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CookiesRoute = CookiesRouteImport.update({
+  id: '/cookies',
+  path: '/cookies',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsRoute = DocsRouteImport.update({
+  id: '/docs',
+  path: '/docs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EnterpriseRoute = EnterpriseRouteImport.update({
+  id: '/enterprise',
+  path: '/enterprise',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GlossaryRoute = GlossaryRouteImport.update({
+  id: '/glossary',
+  path: '/glossary',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PilotRoute = PilotRouteImport.update({
+  id: '/pilot',
+  path: '/pilot',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RefundRoute = RefundRouteImport.update({
+  id: '/refund',
+  path: '/refund',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SdkRoute = SdkRouteImport.update({
+  id: '/sdk',
+  path: '/sdk',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SecurityRoute = SecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WhatIsSanctumRuntimeRoute = WhatIsSanctumRuntimeRouteImport.update({
+  id: '/what-is-sanctum-runtime',
+  path: '/what-is-sanctum-runtime',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AiIndexRoute = AiIndexRouteImport.update({
@@ -143,98 +138,20 @@ const AiIndexRoute = AiIndexRouteImport.update({
   path: '/ai/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BlogWorkflowAutomationAiGovernanceRoute =
-  BlogWorkflowAutomationAiGovernanceRouteImport.update({
-    id: '/blog/workflow-automation-ai-governance',
-    path: '/blog/workflow-automation-ai-governance',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const BlogSoc2NistAiRmfRuntimeEvidenceRoute =
-  BlogSoc2NistAiRmfRuntimeEvidenceRouteImport.update({
-    id: '/blog/soc2-nist-ai-rmf-runtime-evidence',
-    path: '/blog/soc2-nist-ai-rmf-runtime-evidence',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const BlogSmartHomeAiUnlockDoorPolicyRoute =
-  BlogSmartHomeAiUnlockDoorPolicyRouteImport.update({
-    id: '/blog/smart-home-ai-unlock-door-policy',
-    path: '/blog/smart-home-ai-unlock-door-policy',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const BlogSignedActionTokensExecutorVerificationRoute =
-  BlogSignedActionTokensExecutorVerificationRouteImport.update({
-    id: '/blog/signed-action-tokens-executor-verification',
-    path: '/blog/signed-action-tokens-executor-verification',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const BlogSanctumVsGuardrailsRoute = BlogSanctumVsGuardrailsRouteImport.update({
-  id: '/blog/sanctum-vs-guardrails',
-  path: '/blog/sanctum-vs-guardrails',
+const BlogIndexRoute = BlogIndexRouteImport.update({
+  id: '/blog/',
+  path: '/blog/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BlogRuntimeTrustLayerForAiAgentsRoute =
-  BlogRuntimeTrustLayerForAiAgentsRouteImport.update({
-    id: '/blog/runtime-trust-layer-for-ai-agents',
-    path: '/blog/runtime-trust-layer-for-ai-agents',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const BlogRos2SafetyPolicyRuntimeRoute =
-  BlogRos2SafetyPolicyRuntimeRouteImport.update({
-    id: '/blog/ros2-safety-policy-runtime',
-    path: '/blog/ros2-safety-policy-runtime',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const BlogMobilePwaRuntimeVerificationRoute =
-  BlogMobilePwaRuntimeVerificationRouteImport.update({
-    id: '/blog/mobile-pwa-runtime-verification',
-    path: '/blog/mobile-pwa-runtime-verification',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const BlogMcpServerActionGateRoute = BlogMcpServerActionGateRouteImport.update({
-  id: '/blog/mcp-server-action-gate',
-  path: '/blog/mcp-server-action-gate',
+const BlogSlugRoute = BlogSlugRouteImport.update({
+  id: '/blog/$slug',
+  path: '/blog/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BlogLocalOllamaOfflineRuntimeTrustRoute =
-  BlogLocalOllamaOfflineRuntimeTrustRouteImport.update({
-    id: '/blog/local-ollama-offline-runtime-trust',
-    path: '/blog/local-ollama-offline-runtime-trust',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const BlogLangchainAgentMiddlewareVerificationRoute =
-  BlogLangchainAgentMiddlewareVerificationRouteImport.update({
-    id: '/blog/langchain-agent-middleware-verification',
-    path: '/blog/langchain-agent-middleware-verification',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const BlogIntroducingSanctumRuntimeRoute =
-  BlogIntroducingSanctumRuntimeRouteImport.update({
-    id: '/blog/introducing-sanctum-runtime',
-    path: '/blog/introducing-sanctum-runtime',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const BlogIndirectPromptInjectionSourceTrustRoute =
-  BlogIndirectPromptInjectionSourceTrustRouteImport.update({
-    id: '/blog/indirect-prompt-injection-source-trust',
-    path: '/blog/indirect-prompt-injection-source-trust',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const BlogHumanoidRobotPhysicalActionGateRoute =
-  BlogHumanoidRobotPhysicalActionGateRouteImport.update({
-    id: '/blog/humanoid-robot-physical-action-gate',
-    path: '/blog/humanoid-robot-physical-action-gate',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const BlogHealthcareRoboticsPhiPolicyPacksRoute =
-  BlogHealthcareRoboticsPhiPolicyPacksRouteImport.update({
-    id: '/blog/healthcare-robotics-phi-policy-packs',
-    path: '/blog/healthcare-robotics-phi-policy-packs',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const BlogFleetKillSwitchAutonomousSystemsRoute =
-  BlogFleetKillSwitchAutonomousSystemsRouteImport.update({
-    id: '/blog/fleet-kill-switch-autonomous-systems',
-    path: '/blog/fleet-kill-switch-autonomous-systems',
+const BlogAiAgentActionApprovalBeforeExecutionRoute =
+  BlogAiAgentActionApprovalBeforeExecutionRouteImport.update({
+    id: '/blog/ai-agent-action-approval-before-execution',
+    path: '/blog/ai-agent-action-approval-before-execution',
     getParentRoute: () => rootRouteImport,
   } as any)
 const BlogEmbodiedAiRoboticsPolicyGateRoute =
@@ -243,17 +160,100 @@ const BlogEmbodiedAiRoboticsPolicyGateRoute =
     path: '/blog/embodied-ai-robotics-policy-gate',
     getParentRoute: () => rootRouteImport,
   } as any)
-const BlogAiAgentActionApprovalBeforeExecutionRoute =
-  BlogAiAgentActionApprovalBeforeExecutionRouteImport.update({
-    id: '/blog/ai-agent-action-approval-before-execution',
-    path: '/blog/ai-agent-action-approval-before-execution',
+const BlogFleetKillSwitchAutonomousSystemsRoute =
+  BlogFleetKillSwitchAutonomousSystemsRouteImport.update({
+    id: '/blog/fleet-kill-switch-autonomous-systems',
+    path: '/blog/fleet-kill-switch-autonomous-systems',
     getParentRoute: () => rootRouteImport,
   } as any)
-const BlogSlugRoute = BlogSlugRouteImport.update({
-  id: '/blog/$slug',
-  path: '/blog/$slug',
+const BlogHealthcareRoboticsPhiPolicyPacksRoute =
+  BlogHealthcareRoboticsPhiPolicyPacksRouteImport.update({
+    id: '/blog/healthcare-robotics-phi-policy-packs',
+    path: '/blog/healthcare-robotics-phi-policy-packs',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const BlogHumanoidRobotPhysicalActionGateRoute =
+  BlogHumanoidRobotPhysicalActionGateRouteImport.update({
+    id: '/blog/humanoid-robot-physical-action-gate',
+    path: '/blog/humanoid-robot-physical-action-gate',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const BlogIndirectPromptInjectionSourceTrustRoute =
+  BlogIndirectPromptInjectionSourceTrustRouteImport.update({
+    id: '/blog/indirect-prompt-injection-source-trust',
+    path: '/blog/indirect-prompt-injection-source-trust',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const BlogIntroducingSanctumRuntimeRoute =
+  BlogIntroducingSanctumRuntimeRouteImport.update({
+    id: '/blog/introducing-sanctum-runtime',
+    path: '/blog/introducing-sanctum-runtime',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const BlogLangchainAgentMiddlewareVerificationRoute =
+  BlogLangchainAgentMiddlewareVerificationRouteImport.update({
+    id: '/blog/langchain-agent-middleware-verification',
+    path: '/blog/langchain-agent-middleware-verification',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const BlogLocalOllamaOfflineRuntimeTrustRoute =
+  BlogLocalOllamaOfflineRuntimeTrustRouteImport.update({
+    id: '/blog/local-ollama-offline-runtime-trust',
+    path: '/blog/local-ollama-offline-runtime-trust',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const BlogMcpServerActionGateRoute = BlogMcpServerActionGateRouteImport.update({
+  id: '/blog/mcp-server-action-gate',
+  path: '/blog/mcp-server-action-gate',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BlogMobilePwaRuntimeVerificationRoute =
+  BlogMobilePwaRuntimeVerificationRouteImport.update({
+    id: '/blog/mobile-pwa-runtime-verification',
+    path: '/blog/mobile-pwa-runtime-verification',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const BlogRos2SafetyPolicyRuntimeRoute =
+  BlogRos2SafetyPolicyRuntimeRouteImport.update({
+    id: '/blog/ros2-safety-policy-runtime',
+    path: '/blog/ros2-safety-policy-runtime',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const BlogRuntimeTrustLayerForAiAgentsRoute =
+  BlogRuntimeTrustLayerForAiAgentsRouteImport.update({
+    id: '/blog/runtime-trust-layer-for-ai-agents',
+    path: '/blog/runtime-trust-layer-for-ai-agents',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const BlogSanctumVsGuardrailsRoute = BlogSanctumVsGuardrailsRouteImport.update({
+  id: '/blog/sanctum-vs-guardrails',
+  path: '/blog/sanctum-vs-guardrails',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogSignedActionTokensExecutorVerificationRoute =
+  BlogSignedActionTokensExecutorVerificationRouteImport.update({
+    id: '/blog/signed-action-tokens-executor-verification',
+    path: '/blog/signed-action-tokens-executor-verification',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const BlogSmartHomeAiUnlockDoorPolicyRoute =
+  BlogSmartHomeAiUnlockDoorPolicyRouteImport.update({
+    id: '/blog/smart-home-ai-unlock-door-policy',
+    path: '/blog/smart-home-ai-unlock-door-policy',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const BlogSoc2NistAiRmfRuntimeEvidenceRoute =
+  BlogSoc2NistAiRmfRuntimeEvidenceRouteImport.update({
+    id: '/blog/soc2-nist-ai-rmf-runtime-evidence',
+    path: '/blog/soc2-nist-ai-rmf-runtime-evidence',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const BlogWorkflowAutomationAiGovernanceRoute =
+  BlogWorkflowAutomationAiGovernanceRouteImport.update({
+    id: '/blog/workflow-automation-ai-governance',
+    path: '/blog/workflow-automation-ai-governance',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -542,109 +542,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/what-is-sanctum-runtime': {
-      id: '/what-is-sanctum-runtime'
-      path: '/what-is-sanctum-runtime'
-      fullPath: '/what-is-sanctum-runtime'
-      preLoaderRoute: typeof WhatIsSanctumRuntimeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/terms': {
-      id: '/terms'
-      path: '/terms'
-      fullPath: '/terms'
-      preLoaderRoute: typeof TermsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/security': {
-      id: '/security'
-      path: '/security'
-      fullPath: '/security'
-      preLoaderRoute: typeof SecurityRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sdk': {
-      id: '/sdk'
-      path: '/sdk'
-      fullPath: '/sdk'
-      preLoaderRoute: typeof SdkRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/refund': {
-      id: '/refund'
-      path: '/refund'
-      fullPath: '/refund'
-      preLoaderRoute: typeof RefundRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/privacy': {
-      id: '/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PrivacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/pricing': {
-      id: '/pricing'
-      path: '/pricing'
-      fullPath: '/pricing'
-      preLoaderRoute: typeof PricingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/pilot': {
-      id: '/pilot'
-      path: '/pilot'
-      fullPath: '/pilot'
-      preLoaderRoute: typeof PilotRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/glossary': {
-      id: '/glossary'
-      path: '/glossary'
-      fullPath: '/glossary'
-      preLoaderRoute: typeof GlossaryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/enterprise': {
-      id: '/enterprise'
-      path: '/enterprise'
-      fullPath: '/enterprise'
-      preLoaderRoute: typeof EnterpriseRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/docs': {
-      id: '/docs'
-      path: '/docs'
-      fullPath: '/docs'
-      preLoaderRoute: typeof DocsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/cookies': {
-      id: '/cookies'
-      path: '/cookies'
-      fullPath: '/cookies'
-      preLoaderRoute: typeof CookiesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/contact': {
-      id: '/contact'
-      path: '/contact'
-      fullPath: '/contact'
-      preLoaderRoute: typeof ContactRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/billing': {
-      id: '/billing'
-      path: '/billing'
-      fullPath: '/billing'
-      preLoaderRoute: typeof BillingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/architecture': {
-      id: '/architecture'
-      path: '/architecture'
-      fullPath: '/architecture'
-      preLoaderRoute: typeof ArchitectureRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/acceptable-use': {
@@ -654,18 +556,109 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AcceptableUseRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/architecture': {
+      id: '/architecture'
+      path: '/architecture'
+      fullPath: '/architecture'
+      preLoaderRoute: typeof ArchitectureRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/blog/': {
-      id: '/blog/'
-      path: '/blog'
-      fullPath: '/blog/'
-      preLoaderRoute: typeof BlogIndexRouteImport
+    '/billing': {
+      id: '/billing'
+      path: '/billing'
+      fullPath: '/billing'
+      preLoaderRoute: typeof BillingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cookies': {
+      id: '/cookies'
+      path: '/cookies'
+      fullPath: '/cookies'
+      preLoaderRoute: typeof CookiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs': {
+      id: '/docs'
+      path: '/docs'
+      fullPath: '/docs'
+      preLoaderRoute: typeof DocsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/enterprise': {
+      id: '/enterprise'
+      path: '/enterprise'
+      fullPath: '/enterprise'
+      preLoaderRoute: typeof EnterpriseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/glossary': {
+      id: '/glossary'
+      path: '/glossary'
+      fullPath: '/glossary'
+      preLoaderRoute: typeof GlossaryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pilot': {
+      id: '/pilot'
+      path: '/pilot'
+      fullPath: '/pilot'
+      preLoaderRoute: typeof PilotRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/refund': {
+      id: '/refund'
+      path: '/refund'
+      fullPath: '/refund'
+      preLoaderRoute: typeof RefundRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sdk': {
+      id: '/sdk'
+      path: '/sdk'
+      fullPath: '/sdk'
+      preLoaderRoute: typeof SdkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/security': {
+      id: '/security'
+      path: '/security'
+      fullPath: '/security'
+      preLoaderRoute: typeof SecurityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/what-is-sanctum-runtime': {
+      id: '/what-is-sanctum-runtime'
+      path: '/what-is-sanctum-runtime'
+      fullPath: '/what-is-sanctum-runtime'
+      preLoaderRoute: typeof WhatIsSanctumRuntimeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ai/': {
@@ -675,123 +668,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AiIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/blog/workflow-automation-ai-governance': {
-      id: '/blog/workflow-automation-ai-governance'
-      path: '/blog/workflow-automation-ai-governance'
-      fullPath: '/blog/workflow-automation-ai-governance'
-      preLoaderRoute: typeof BlogWorkflowAutomationAiGovernanceRouteImport
+    '/blog/': {
+      id: '/blog/'
+      path: '/blog'
+      fullPath: '/blog/'
+      preLoaderRoute: typeof BlogIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/blog/soc2-nist-ai-rmf-runtime-evidence': {
-      id: '/blog/soc2-nist-ai-rmf-runtime-evidence'
-      path: '/blog/soc2-nist-ai-rmf-runtime-evidence'
-      fullPath: '/blog/soc2-nist-ai-rmf-runtime-evidence'
-      preLoaderRoute: typeof BlogSoc2NistAiRmfRuntimeEvidenceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/blog/smart-home-ai-unlock-door-policy': {
-      id: '/blog/smart-home-ai-unlock-door-policy'
-      path: '/blog/smart-home-ai-unlock-door-policy'
-      fullPath: '/blog/smart-home-ai-unlock-door-policy'
-      preLoaderRoute: typeof BlogSmartHomeAiUnlockDoorPolicyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/blog/signed-action-tokens-executor-verification': {
-      id: '/blog/signed-action-tokens-executor-verification'
-      path: '/blog/signed-action-tokens-executor-verification'
-      fullPath: '/blog/signed-action-tokens-executor-verification'
-      preLoaderRoute: typeof BlogSignedActionTokensExecutorVerificationRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/blog/sanctum-vs-guardrails': {
-      id: '/blog/sanctum-vs-guardrails'
-      path: '/blog/sanctum-vs-guardrails'
-      fullPath: '/blog/sanctum-vs-guardrails'
-      preLoaderRoute: typeof BlogSanctumVsGuardrailsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/blog/runtime-trust-layer-for-ai-agents': {
-      id: '/blog/runtime-trust-layer-for-ai-agents'
-      path: '/blog/runtime-trust-layer-for-ai-agents'
-      fullPath: '/blog/runtime-trust-layer-for-ai-agents'
-      preLoaderRoute: typeof BlogRuntimeTrustLayerForAiAgentsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/blog/ros2-safety-policy-runtime': {
-      id: '/blog/ros2-safety-policy-runtime'
-      path: '/blog/ros2-safety-policy-runtime'
-      fullPath: '/blog/ros2-safety-policy-runtime'
-      preLoaderRoute: typeof BlogRos2SafetyPolicyRuntimeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/blog/mobile-pwa-runtime-verification': {
-      id: '/blog/mobile-pwa-runtime-verification'
-      path: '/blog/mobile-pwa-runtime-verification'
-      fullPath: '/blog/mobile-pwa-runtime-verification'
-      preLoaderRoute: typeof BlogMobilePwaRuntimeVerificationRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/blog/mcp-server-action-gate': {
-      id: '/blog/mcp-server-action-gate'
-      path: '/blog/mcp-server-action-gate'
-      fullPath: '/blog/mcp-server-action-gate'
-      preLoaderRoute: typeof BlogMcpServerActionGateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/blog/local-ollama-offline-runtime-trust': {
-      id: '/blog/local-ollama-offline-runtime-trust'
-      path: '/blog/local-ollama-offline-runtime-trust'
-      fullPath: '/blog/local-ollama-offline-runtime-trust'
-      preLoaderRoute: typeof BlogLocalOllamaOfflineRuntimeTrustRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/blog/langchain-agent-middleware-verification': {
-      id: '/blog/langchain-agent-middleware-verification'
-      path: '/blog/langchain-agent-middleware-verification'
-      fullPath: '/blog/langchain-agent-middleware-verification'
-      preLoaderRoute: typeof BlogLangchainAgentMiddlewareVerificationRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/blog/introducing-sanctum-runtime': {
-      id: '/blog/introducing-sanctum-runtime'
-      path: '/blog/introducing-sanctum-runtime'
-      fullPath: '/blog/introducing-sanctum-runtime'
-      preLoaderRoute: typeof BlogIntroducingSanctumRuntimeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/blog/indirect-prompt-injection-source-trust': {
-      id: '/blog/indirect-prompt-injection-source-trust'
-      path: '/blog/indirect-prompt-injection-source-trust'
-      fullPath: '/blog/indirect-prompt-injection-source-trust'
-      preLoaderRoute: typeof BlogIndirectPromptInjectionSourceTrustRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/blog/humanoid-robot-physical-action-gate': {
-      id: '/blog/humanoid-robot-physical-action-gate'
-      path: '/blog/humanoid-robot-physical-action-gate'
-      fullPath: '/blog/humanoid-robot-physical-action-gate'
-      preLoaderRoute: typeof BlogHumanoidRobotPhysicalActionGateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/blog/healthcare-robotics-phi-policy-packs': {
-      id: '/blog/healthcare-robotics-phi-policy-packs'
-      path: '/blog/healthcare-robotics-phi-policy-packs'
-      fullPath: '/blog/healthcare-robotics-phi-policy-packs'
-      preLoaderRoute: typeof BlogHealthcareRoboticsPhiPolicyPacksRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/blog/fleet-kill-switch-autonomous-systems': {
-      id: '/blog/fleet-kill-switch-autonomous-systems'
-      path: '/blog/fleet-kill-switch-autonomous-systems'
-      fullPath: '/blog/fleet-kill-switch-autonomous-systems'
-      preLoaderRoute: typeof BlogFleetKillSwitchAutonomousSystemsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/blog/embodied-ai-robotics-policy-gate': {
-      id: '/blog/embodied-ai-robotics-policy-gate'
-      path: '/blog/embodied-ai-robotics-policy-gate'
-      fullPath: '/blog/embodied-ai-robotics-policy-gate'
-      preLoaderRoute: typeof BlogEmbodiedAiRoboticsPolicyGateRouteImport
+    '/blog/$slug': {
+      id: '/blog/$slug'
+      path: '/blog/$slug'
+      fullPath: '/blog/$slug'
+      preLoaderRoute: typeof BlogSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/blog/ai-agent-action-approval-before-execution': {
@@ -801,11 +689,123 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogAiAgentActionApprovalBeforeExecutionRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/blog/$slug': {
-      id: '/blog/$slug'
-      path: '/blog/$slug'
-      fullPath: '/blog/$slug'
-      preLoaderRoute: typeof BlogSlugRouteImport
+    '/blog/embodied-ai-robotics-policy-gate': {
+      id: '/blog/embodied-ai-robotics-policy-gate'
+      path: '/blog/embodied-ai-robotics-policy-gate'
+      fullPath: '/blog/embodied-ai-robotics-policy-gate'
+      preLoaderRoute: typeof BlogEmbodiedAiRoboticsPolicyGateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/fleet-kill-switch-autonomous-systems': {
+      id: '/blog/fleet-kill-switch-autonomous-systems'
+      path: '/blog/fleet-kill-switch-autonomous-systems'
+      fullPath: '/blog/fleet-kill-switch-autonomous-systems'
+      preLoaderRoute: typeof BlogFleetKillSwitchAutonomousSystemsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/healthcare-robotics-phi-policy-packs': {
+      id: '/blog/healthcare-robotics-phi-policy-packs'
+      path: '/blog/healthcare-robotics-phi-policy-packs'
+      fullPath: '/blog/healthcare-robotics-phi-policy-packs'
+      preLoaderRoute: typeof BlogHealthcareRoboticsPhiPolicyPacksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/humanoid-robot-physical-action-gate': {
+      id: '/blog/humanoid-robot-physical-action-gate'
+      path: '/blog/humanoid-robot-physical-action-gate'
+      fullPath: '/blog/humanoid-robot-physical-action-gate'
+      preLoaderRoute: typeof BlogHumanoidRobotPhysicalActionGateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/indirect-prompt-injection-source-trust': {
+      id: '/blog/indirect-prompt-injection-source-trust'
+      path: '/blog/indirect-prompt-injection-source-trust'
+      fullPath: '/blog/indirect-prompt-injection-source-trust'
+      preLoaderRoute: typeof BlogIndirectPromptInjectionSourceTrustRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/introducing-sanctum-runtime': {
+      id: '/blog/introducing-sanctum-runtime'
+      path: '/blog/introducing-sanctum-runtime'
+      fullPath: '/blog/introducing-sanctum-runtime'
+      preLoaderRoute: typeof BlogIntroducingSanctumRuntimeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/langchain-agent-middleware-verification': {
+      id: '/blog/langchain-agent-middleware-verification'
+      path: '/blog/langchain-agent-middleware-verification'
+      fullPath: '/blog/langchain-agent-middleware-verification'
+      preLoaderRoute: typeof BlogLangchainAgentMiddlewareVerificationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/local-ollama-offline-runtime-trust': {
+      id: '/blog/local-ollama-offline-runtime-trust'
+      path: '/blog/local-ollama-offline-runtime-trust'
+      fullPath: '/blog/local-ollama-offline-runtime-trust'
+      preLoaderRoute: typeof BlogLocalOllamaOfflineRuntimeTrustRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/mcp-server-action-gate': {
+      id: '/blog/mcp-server-action-gate'
+      path: '/blog/mcp-server-action-gate'
+      fullPath: '/blog/mcp-server-action-gate'
+      preLoaderRoute: typeof BlogMcpServerActionGateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/mobile-pwa-runtime-verification': {
+      id: '/blog/mobile-pwa-runtime-verification'
+      path: '/blog/mobile-pwa-runtime-verification'
+      fullPath: '/blog/mobile-pwa-runtime-verification'
+      preLoaderRoute: typeof BlogMobilePwaRuntimeVerificationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/ros2-safety-policy-runtime': {
+      id: '/blog/ros2-safety-policy-runtime'
+      path: '/blog/ros2-safety-policy-runtime'
+      fullPath: '/blog/ros2-safety-policy-runtime'
+      preLoaderRoute: typeof BlogRos2SafetyPolicyRuntimeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/runtime-trust-layer-for-ai-agents': {
+      id: '/blog/runtime-trust-layer-for-ai-agents'
+      path: '/blog/runtime-trust-layer-for-ai-agents'
+      fullPath: '/blog/runtime-trust-layer-for-ai-agents'
+      preLoaderRoute: typeof BlogRuntimeTrustLayerForAiAgentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/sanctum-vs-guardrails': {
+      id: '/blog/sanctum-vs-guardrails'
+      path: '/blog/sanctum-vs-guardrails'
+      fullPath: '/blog/sanctum-vs-guardrails'
+      preLoaderRoute: typeof BlogSanctumVsGuardrailsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/signed-action-tokens-executor-verification': {
+      id: '/blog/signed-action-tokens-executor-verification'
+      path: '/blog/signed-action-tokens-executor-verification'
+      fullPath: '/blog/signed-action-tokens-executor-verification'
+      preLoaderRoute: typeof BlogSignedActionTokensExecutorVerificationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/smart-home-ai-unlock-door-policy': {
+      id: '/blog/smart-home-ai-unlock-door-policy'
+      path: '/blog/smart-home-ai-unlock-door-policy'
+      fullPath: '/blog/smart-home-ai-unlock-door-policy'
+      preLoaderRoute: typeof BlogSmartHomeAiUnlockDoorPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/soc2-nist-ai-rmf-runtime-evidence': {
+      id: '/blog/soc2-nist-ai-rmf-runtime-evidence'
+      path: '/blog/soc2-nist-ai-rmf-runtime-evidence'
+      fullPath: '/blog/soc2-nist-ai-rmf-runtime-evidence'
+      preLoaderRoute: typeof BlogSoc2NistAiRmfRuntimeEvidenceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/workflow-automation-ai-governance': {
+      id: '/blog/workflow-automation-ai-governance'
+      path: '/blog/workflow-automation-ai-governance'
+      fullPath: '/blog/workflow-automation-ai-governance'
+      preLoaderRoute: typeof BlogWorkflowAutomationAiGovernanceRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
