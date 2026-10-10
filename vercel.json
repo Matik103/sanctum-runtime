@@ -3,7 +3,6 @@
   "installCommand": "npm ci --legacy-peer-deps",
   "buildCommand": "npm run build:vercel",
   "framework": null,
-  "outputDirectory": ".vercel/output",
   "trailingSlash": false,
   "redirects": [
     {
